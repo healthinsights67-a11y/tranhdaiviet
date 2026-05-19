@@ -9,10 +9,12 @@ import {
   Download,
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/src/lib/utils';
+import { toast } from 'sonner';
 
 interface ImagePreviewDialogProps {
   isOpen: boolean;
@@ -48,6 +50,60 @@ export function ImagePreviewDialog({
   const handleReset = () => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!imageUrl) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Chia sẻ hình ảnh mẫu',
+          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+          url: imageUrl,
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+          fallbackShare();
+        }
+      }
+    } else {
+      fallbackShare();
+    }
+  };
+
+  const fallbackShare = () => {
+    navigator.clipboard.writeText(imageUrl || '');
+    toast.success('Đã sao chép liên kết ảnh vào bộ nhớ tạm! Bạn có thể gửi link này cho bất kỳ ai.');
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!imageUrl) return;
+    
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const dateStr = new Date().toISOString().slice(0, 10);
+      link.download = `inoithat_gallery_${dateStr}.jpg`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Đã tải ảnh xuống thành công!');
+    } catch (err) {
+      console.error(err);
+      // Fallback: open image in new tab
+      window.open(imageUrl, '_blank');
+      toast.success('Đã mở ảnh trong tab mới để tải xuống!');
+    }
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -155,13 +211,32 @@ export function ImagePreviewDialog({
             </>
           )}
 
-          {/* Nút đóng */}
-          <button 
-            className="absolute top-4 right-4 z-[102] h-10 w-10 rounded-full bg-card text-card-foreground/10 hover:bg-card text-card-foreground/20 text-white flex items-center justify-center backdrop-blur-md border border-white/20"
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-          >
-            <X className="h-6 w-6" />
-          </button>
+          {/* Nhóm nút điều khiển ở góc trên bên phải */}
+          <div className="absolute top-4 right-4 z-[102] flex items-center gap-2">
+            <button 
+              className="h-10 w-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 hover:bg-black/80 transition-all"
+              onClick={handleDownload}
+              title="Tải ảnh xuống"
+            >
+              <Download className="h-5 w-5" />
+            </button>
+            
+            <button 
+              className="h-10 w-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 hover:bg-black/80 transition-all"
+              onClick={handleShare}
+              title="Chia sẻ"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+
+            <button 
+              className="h-10 w-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 hover:bg-black/80 transition-all"
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              title="Đóng"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Thanh điều khiển ở phía dưới */}
