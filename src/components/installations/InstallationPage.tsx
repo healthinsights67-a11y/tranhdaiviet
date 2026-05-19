@@ -382,7 +382,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 flex flex-col h-full max-w-[1600px] mx-auto px-2">
+    <div className="space-y-4 flex flex-col h-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -589,8 +589,12 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                 value={formData.taskId || 'manual'} 
                 onValueChange={handleTaskSelect}
               >
-              <SelectTrigger className="h-10 bg-gray-50 border-gray-200 rounded-xl dark:bg-zinc-800 dark:border-zinc-700">
-                  <SelectValue placeholder="Chọn từ danh sách chờ lắp hoặc tự nhập" />
+              <SelectTrigger className="h-10 bg-gray-50 border-gray-200 rounded-xl dark:bg-zinc-800 dark:border-zinc-700 w-full">
+                  <SelectValue placeholder="Chọn từ danh sách chờ lắp hoặc tự nhập">
+                    {formData.taskId && formData.taskId !== 'manual' 
+                      ? (taskOptions.find(o => o.value === formData.taskId)?.label || formData.taskId) 
+                      : (formData.taskId === 'manual' ? '-- Nhập tay / Không liên kết thẻ --' : 'Chọn từ danh sách chờ lắp hoặc tự nhập')}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="z-50 bg-card">
                   {taskOptions.map(o => (
@@ -651,7 +655,11 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                 <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
                 <Select value={formData.assigneeId || undefined} onValueChange={handleInstallerSelect}>
                   <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full dark:bg-zinc-800 dark:border-zinc-700">
-                    <SelectValue placeholder="Chọn thợ lắp đặt" />
+                    <SelectValue placeholder="Chọn thợ lắp đặt">
+                      {formData.assigneeId 
+                        ? (displayInstallerOptions.find(o => o.value === formData.assigneeId)?.label || formData.assigneeId) 
+                        : 'Chọn thợ lắp đặt'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="z-50 bg-card">
                     {displayInstallerOptions.map(m => (
@@ -746,7 +754,11 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                                   onValueChange={(val) => setEditFormData({...editFormData, assigneeId: val})}
                                 >
                                   <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card">
-                                    <SelectValue placeholder="Chọn nhân viên" />
+                                    <SelectValue placeholder="Chọn nhân viên">
+                                      {editFormData.assigneeId 
+                                        ? (members.find(m => m.id === editFormData.assigneeId)?.name || editFormData.assigneeId) 
+                                        : 'Chọn nhân viên'}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent className="bg-card z-50">
                                     {members.map(m => (
@@ -762,7 +774,11 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                                   onValueChange={(val: any) => setEditFormData({...editFormData, status: val})}
                                 >
                                   <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card">
-                                    <SelectValue placeholder="Chọn trạng thái" />
+                                    <SelectValue placeholder="Chọn trạng thái">
+                                      {editFormData.status === 'completed' ? 'Đã hoàn thành' : 
+                                       editFormData.status === 'cancelled' ? 'Đã hủy' : 
+                                       editFormData.status === 'pending' ? 'Chờ lắp đặt' : 'Chọn trạng thái'}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent className="bg-card z-50">
                                     <SelectItem value="pending">Chờ lắp đặt</SelectItem>
