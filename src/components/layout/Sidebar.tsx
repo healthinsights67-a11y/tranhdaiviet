@@ -41,6 +41,7 @@ interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   currentUser: Member | null;
+  permissions?: Record<string, boolean>;
 }
 
 const navGroups = [
@@ -64,7 +65,7 @@ const navGroups = [
     items: [
       { id: 'measurements', label: 'Lịch Đo Đạc', icon: CalendarDays, permission: 'menuMeasurement' },
       { id: 'production', label: 'Lịch Sản Xuất', icon: CalendarDays, permission: 'menuProduction' },
-      { id: 'installations', label: 'Lịch Lắp Đặt', icon: CalendarDays, permission: 'menuSaleOrProduction' },
+      { id: 'installations', label: 'Lịch Lắp Đặt', icon: CalendarDays, permission: 'menuOrders' },
     ]
   },
   {
@@ -86,7 +87,7 @@ const navGroups = [
   }
 ];
 
-export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, isOpen, onClose, currentUser }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, isOpen, onClose, currentUser, permissions }: SidebarProps) {
   const { isAdmin } = useAuth();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
@@ -125,23 +126,18 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
   const filterItem = (item: any) => {
     // Admin only items
     if (item.isAdminOnly) return isAdmin;
-
-    // If no permission key defined, it's public (like dashboard)
+    // If no permission key defined, it's always visible (like dashboard)
     if (!item.permission) return true;
-    
-    // If manager or admin, show all
+    // Use the passed permissions object if available
+    if (permissions) {
+      return permissions[item.permission] !== false;
+    }
+    // Fallback: check on currentUser.permissions directly
     const isManager = isAdmin || currentUser?.role?.toLowerCase().includes('quản lý');
     if (isManager) return true;
-
-    // Check specific permission
     if (currentUser?.permissions) {
-      if (item.permission === 'menuSaleOrProduction') {
-        return (currentUser.permissions as any).menuSale !== false || (currentUser.permissions as any).menuProduction !== false;
-      }
       return (currentUser.permissions as any)[item.permission] !== false;
     }
-
-    // Default for old members or no permissions object
     return true;
   };
 

@@ -1,4 +1,4 @@
-import { auth, signOut, onAuthStateChanged, setPersistence, indexedDBLocalPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, db, doc, setDoc, getDoc, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from '../lib/firebase';
+import { auth, signOut, onAuthStateChanged, setPersistence, indexedDBLocalPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, db, doc, setDoc, getDoc, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, collection, getDocs, query, where } from '../lib/firebase';
 import { User } from 'firebase/auth';
 import { toast } from 'sonner';
 
@@ -142,8 +142,10 @@ export const authService = {
   },
 
   /**
-   * Get user profile from Firestore
-   * Automatically upgrades whitelisted admins
+   * Get user profile from Firestore.
+   * - Admin emails are always auto-approved.
+   * - Users whose email is in the `members` collection are auto-approved.
+   * - All others stay as 'pending' and must be manually approved.
    */
   async getUserProfile(uid: string) {
     try {
@@ -153,13 +155,39 @@ export const authService = {
       
       const isWhitelistedAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
+      // Check if this email exists in the members whitelist
+      let isMemberWhitelisted = false;
+      if (user?.email && !isWhitelistedAdmin) {
+        try {
+          const membersRef = collection(db, 'members');
+          const q = query(membersRef, where('email', '==', user.email.toLowerCase()));
+          const memberSnap = await getDocs(q);
+          // Also check case-insensitive with trim
+          const q2 = query(membersRef, where('email', '==', user.email));
+          const memberSnap2 = await getDocs(q2);
+          isMemberWhitelisted = !memberSnap.empty || !memberSnap2.empty;
+        } catch (e) {
+          console.warn("AuthService: Could not check members whitelist", e);
+        }
+      }
+
+      const shouldAutoApprove = isWhitelistedAdmin || isMemberWhitelisted;
+
       if (snap.exists()) {
         const data = snap.data();
         
-        // Auto-upgrade existing profile if email is now in whitelist
+        // Auto-upgrade existing profile if email is now in whitelist or admin
         if (isWhitelistedAdmin && (data.role !== 'admin' || data.status !== 'approved')) {
           console.log("AuthService: Auto-upgrading whitelisted admin profile");
           const updatedData = { ...data, role: 'admin', status: 'approved' };
+          await setDoc(userRef, updatedData, { merge: true });
+          return updatedData;
+        }
+
+        // Auto-approve member-whitelisted users
+        if (isMemberWhitelisted && data.status !== 'approved') {
+          console.log("AuthService: Auto-approving member-whitelisted user");
+          const updatedData = { ...data, status: 'approved' };
           await setDoc(userRef, updatedData, { merge: true });
           return updatedData;
         }
@@ -180,9 +208,22 @@ export const authService = {
         };
         await setDoc(userRef, newProfile);
         return newProfile;
+      } else if (user && isMemberWhitelisted) {
+        // Member whitelisted - auto-approve
+        console.log("AuthService: Creating auto-approved profile for whitelisted member");
+        const newProfile = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email?.split('@')[0],
+          status: 'approved',
+          role: 'user',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(userRef, newProfile);
+        return newProfile;
       } else if (user) {
-        // Create normal user profile
-        console.log("AuthService: Creating profile for new user");
+        // Not in whitelist — create normal pending profile
+        console.log("AuthService: Creating pending profile for unknown user");
         const newProfile = {
           uid: user.uid,
           email: user.email,

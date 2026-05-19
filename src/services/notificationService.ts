@@ -110,44 +110,80 @@ export async function notifyCurrentUser(title: string, body: string) {
   }
 }
 
-export async function notifyManagers(title: string, body: string, data?: any) {
+export async function notifyManagers(
+  title: string,
+  body: string,
+  data?: any,
+  assigneeId?: string,
+  targetRoles?: string[]
+) {
   try {
-    console.log('Searching for managers to notify...');
+    console.log('Searching for managers & targets to notify...');
     const tokens: string[] = [];
+    const managerEmails = ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'];
     
+    // Normalize targetRoles to lowercase
+    const normalizedTargetRoles = targetRoles?.map(r => r.toLowerCase()) || [];
+
     // 1. Get tokens from members collection
     const membersSnap = await getDocs(collection(db, 'members'));
     membersSnap.forEach(doc => {
       const member = doc.data();
+      const memberId = doc.id;
       const role = member.role?.toLowerCase() || '';
-      if (role.includes('quản lý') || role.includes('sản xuất')) {
-        if (member.fcmTokens && Array.isArray(member.fcmTokens)) {
-          tokens.push(...member.fcmTokens);
+      
+      let shouldNotify = false;
+
+      // Rule A: Managers always get notified
+      if (role.includes('quản lý') || managerEmails.includes(member.email)) {
+        shouldNotify = true;
+      }
+      
+      // Rule B: Assigned person gets notified
+      if (assigneeId && memberId === assigneeId) {
+        shouldNotify = true;
+      }
+
+      // Rule C: Specific target roles get notified (e.g. 'sản xuất', 'lắp đặt')
+      if (normalizedTargetRoles.length > 0) {
+        const matchesTargetRole = normalizedTargetRoles.some(targetRole => role.includes(targetRole));
+        if (matchesTargetRole) {
+          shouldNotify = true;
         }
+      }
+
+      if (shouldNotify && member.fcmTokens && Array.isArray(member.fcmTokens)) {
+        tokens.push(...member.fcmTokens);
       }
     });
 
-    // 2. Fallback: Get tokens from users collection for known manager emails
-    // (This is just a fallback in case members collection doesn't have the tokens)
-    const managerEmails = ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'];
+    // 2. Fallback: Get tokens from users collection
     const usersSnap = await getDocs(collection(db, 'users'));
     usersSnap.forEach(doc => {
       const user = doc.data();
+      const userId = doc.id;
+      
+      let shouldNotify = false;
+
+      // Rule A: Managers
       if (managerEmails.includes(user.email)) {
-        if (user.fcmTokens && Array.isArray(user.fcmTokens)) {
-          tokens.push(...user.fcmTokens);
-        }
+        shouldNotify = true;
+      }
+
+      // Rule B: Assignee
+      if (assigneeId && userId === assigneeId) {
+        shouldNotify = true;
+      }
+
+      if (shouldNotify && user.fcmTokens && Array.isArray(user.fcmTokens)) {
+        tokens.push(...user.fcmTokens);
       }
     });
 
     const uniqueTokens = [...new Set(tokens)].filter(t => !!t);
 
     if (uniqueTokens.length === 0) {
-      console.warn('No tokens found for managers/production.');
-      toast.warning('Chưa có thiết bị quản lý nào đăng ký. Hãy F5 app và nhấn "Cho phép thông báo".', {
-        description: `Đang tìm: ${managerEmails.join(', ')}`,
-        duration: 10000
-      });
+      console.warn('No tokens found for managers or target roles.');
       return;
     }
 

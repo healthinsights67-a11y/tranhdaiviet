@@ -68,6 +68,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { notifyManagers } from '@/src/services/notificationService';
 
 interface CustomerPageProps {
   customers: Customer[];
@@ -154,6 +155,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       if (user) {
         const docRef = await addDoc(collection(db, 'customers'), customerData);
         createdCustomerId = docRef.id;
+        
+        // Notify managers about the new customer
+        notifyManagers(
+          'Khách hàng mới',
+          `Sale ${currentUser?.name || 'nào đó'} vừa tạo khách hàng mới: ${customerData.name} (${customerData.phone})`
+        );
       } else {
         const customer: Customer = {
           id: `c-${Date.now()}`,

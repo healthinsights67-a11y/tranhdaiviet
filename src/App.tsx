@@ -268,6 +268,18 @@ function AppContent() {
   // Determine if we should show all data (Manager or missing profile for now)
   const showAllData = !user || isManager || !currentMember;
 
+  // Permissions helper: managers/admins bypass all; others follow their member.permissions
+  const DEFAULT_PERMS = {
+    viewPrice: true, viewRevenue: true,
+    menuProduction: true, menuMeasurement: true, menuOrders: true,
+    menuQuotations: true, menuSale: true, menuDesign: true,
+    menuMarketing: true, menuReports: true, menuMedia: true,
+    menuMembers: true, menuCustomers: true, menuAi: true,
+  };
+  const perms = isManager || !currentMember
+    ? DEFAULT_PERMS
+    : { ...DEFAULT_PERMS, ...(currentMember.permissions || {}) };
+
   // Filtered data based on role
   const isWorkshopRestricted = !isManager && currentMember && currentMember.workshop && currentMember.workshop !== 'all';
   
@@ -304,35 +316,64 @@ function AppContent() {
   }, [isDarkMode]);
 
   const renderContent = () => {
+    // Guard: redirect unauthorized tabs back to dashboard
+    const redirect = (allowed: boolean) => !allowed;
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />;
       case 'reports':
-        return <ReportPage tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotationsData} />;
+        return redirect(perms.menuReports)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <ReportPage tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotationsData} />;
       case 'production':
-        return <ProductionCalendar orders={filteredOrders} tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
+        return redirect(perms.menuProduction)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <ProductionCalendar orders={filteredOrders} tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
       case 'orders':
-        return <OrderPage orders={filteredOrders} customers={customers} user={user} currentUser={currentMember} />;
+        return redirect(perms.menuOrders)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <OrderPage orders={filteredOrders} customers={customers} user={user} currentUser={currentMember} />;
       case 'sale':
-        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={customers} currentUser={currentMember} />;
+        return redirect(perms.menuSale)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={customers} currentUser={currentMember} />;
       case 'marketing':
-        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={customers} currentUser={currentMember} />;
+        return redirect(perms.menuMarketing)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={customers} currentUser={currentMember} />;
       case 'design':
-        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={customers} currentUser={currentMember} />;
+        return redirect(perms.menuDesign)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={customers} currentUser={currentMember} />;
       case 'employees':
-        return <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} />;
+        return redirect(perms.menuMembers)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} />;
       case 'media':
-        return <MediaLibrary folders={folders} user={user} />;
+        return redirect(perms.menuMedia)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <MediaLibrary folders={folders} user={user} />;
       case 'quotations':
-        return <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
+        return redirect(perms.menuQuotations)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
-        return <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
+        return redirect(perms.menuMeasurement)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
       case 'installations':
-        return <InstallationPage schedules={installations} members={activeMembers} customers={customers} tasks={tasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
+        return redirect(perms.menuOrders)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <InstallationPage schedules={installations} members={activeMembers} customers={customers} tasks={tasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
       case 'customers':
-        return <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} orders={orders} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
+        return redirect(perms.menuCustomers)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} orders={orders} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':
-        return <AIRenderPage />;
+        return redirect(perms.menuAi)
+          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />
+          : <AIRenderPage />;
       case 'users':
         return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />;
       default:
@@ -400,6 +441,7 @@ function AppContent() {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           currentUser={currentMember}
+          permissions={perms}
         />
         
         <div className="flex-1 flex flex-col min-w-0">
@@ -459,6 +501,7 @@ function AppContent() {
           }} 
           onMenuClick={() => setIsSidebarOpen(true)}
           currentUser={currentMember}
+          permissions={perms}
         />
         <Toaster />
         <NotificationManager />

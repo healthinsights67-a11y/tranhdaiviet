@@ -138,12 +138,13 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
       
       await setDoc(doc(db, 'measurement_schedules', id), schedule);
 
-      // Trigger notification to managers
+      // Trigger notification to managers and the assignee
       const assignee = members.find(m => m.id === schedule.assigneeId);
       notifyManagers(
         'Lịch đo đạc mới',
         `Sale ${assignee?.name || 'nào đó'} vừa tạo lịch đo cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}`,
-        { taskId: schedule.id, type: 'measurement' }
+        { taskId: schedule.id, type: 'measurement' },
+        schedule.assigneeId
       );
 
       // Automatically update customer stage to 'surveying' if created as completed

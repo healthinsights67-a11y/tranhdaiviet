@@ -9,9 +9,10 @@ interface MobileBottomNavProps {
   setActiveTab: (tab: string) => void;
   onMenuClick: () => void;
   currentUser: Member | null;
+  permissions?: Record<string, boolean>;
 }
 
-export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentUser }: MobileBottomNavProps) {
+export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentUser, permissions }: MobileBottomNavProps) {
   const tabs = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'orders', label: 'Đơn hàng', icon: Repeat, permission: 'menuOrders' },
@@ -20,6 +21,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentU
 
   const filteredTabs = tabs.filter(tab => {
     if (!tab.permission) return true;
+    if (permissions) return permissions[tab.permission] !== false;
     const isManager = currentUser?.role?.toLowerCase().includes('quản lý');
     if (isManager) return true;
     if (currentUser?.permissions) {

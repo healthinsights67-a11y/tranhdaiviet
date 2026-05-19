@@ -166,7 +166,8 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       notifyManagers(
         'Lịch lắp đặt mới',
         `Điều phối lịch lắp đặt cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}. Phụ trách: ${assignee?.name || 'Chưa rõ'}`,
-        { taskId: schedule.id, type: 'installation' }
+        { taskId: schedule.id, type: 'installation' },
+        schedule.assigneeId
       );
 
       // If completing directly, update linked task status

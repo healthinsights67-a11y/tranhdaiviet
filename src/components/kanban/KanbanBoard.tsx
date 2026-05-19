@@ -52,6 +52,7 @@ import { db, collection, addDoc, updateDoc, doc, handleFirestoreError, Operation
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { ImagePreviewDialog } from '@/src/components/ui/ImagePreviewDialog';
 import { writeBatch } from 'firebase/firestore';
+import { notifyManagers } from '@/src/services/notificationService';
 
 import { getCurrentVNMonth, getCurrentVNDateString, getVNMonth, getVNTimestamp } from '@/src/lib/utils';
 interface KanbanBoardProps {
@@ -376,7 +377,7 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
 
     // Find linked customer for automation data
     const linkedCustomer = props.customers?.find(c => c.id === task.customerId);
-    const targetMember = members.find(m => m.id === (preSelectedAssigneeId || ''));
+    const targetMember = members.find(m => m.id === (preSelectedAssigneeId || task.assigneeId || ''));
     const assigneeName = targetMember ? targetMember.name : 'Chưa gán';
 
     try {
@@ -431,6 +432,28 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
           }
           await updateDoc(doc(db, 'tasks', taskId), updateData);
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+
+        // Trigger notifications for design/production status transitions
+        if (type === 'design') {
+          if (newStatus === 'in-progress' && task.status !== 'in-progress') {
+            notifyManagers('Thiết kế: Lên bản vẽ 2D/3D', `Dự án "${task.title}" bắt đầu lên bản vẽ 2D/3D. Phụ trách: ${assigneeName}`, null, targetMember?.id);
+          } else if (newStatus === 'review' && task.status !== 'review') {
+            notifyManagers('Thiết kế: Bóc tách vật tư', `Dự án "${task.title}" bắt đầu bóc tách vật tư. Phụ trách: ${assigneeName}`, null, targetMember?.id);
+          } else if (newStatus === 'done' && task.status !== 'done') {
+            // Notify managers, the designer, AND all production members
+            notifyManagers('Thiết kế: Hoàn tất', `Dự án "${task.title}" đã hoàn tất bản vẽ và bóc tách vật tư. Sẵn sàng chuyển giao sản xuất.`, null, targetMember?.id, ['sản xuất']);
+          }
+        } else if (type === 'production') {
+          const projectTitle = task.title.replace('Sản xuất: ', '');
+          if (newStatus === 'in-progress' && task.status !== 'in-progress') {
+            notifyManagers('Sản xuất: Bắt đầu', `Dự án "${projectTitle}" bắt đầu được đưa vào sản xuất tại xưởng. Phụ trách: ${assigneeName}`, null, targetMember?.id);
+          } else if (newStatus === 'waiting_install' && task.status !== 'waiting_install') {
+            // Notify managers, the worker, AND all installers
+            notifyManagers('Sản xuất: Chờ lắp đặt', `Dự án "${projectTitle}" đã hoàn thành sản xuất, chuyển sang trạng thái chờ lắp đặt.`, null, targetMember?.id, ['lắp đặt']);
+          } else if (newStatus === 'done' && task.status !== 'done') {
+            notifyManagers('Sản xuất: Hoàn thành', `Dự án "${projectTitle}" đã lắp đặt hoàn tất và bàn giao khách hàng.`, null, targetMember?.id);
+          }
         }
         
         // Automated Workflow: Production Review -> Order Shipping

@@ -54,6 +54,7 @@ import { ProductLibrary } from './ProductLibrary';
 import { QuotationTemplateConfig } from './QuotationTemplateConfig';
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { saveProductTemplate } from '@/src/services/productService';
+import { notifyManagers } from '@/src/services/notificationService';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
 
@@ -115,6 +116,12 @@ export function QuotationPage({ quotations, user, customers, members, products =
               orderValue: data.totalAmount
             });
           }
+
+          // Notify managers about the new quotation
+          notifyManagers(
+            'Báo giá mới',
+            `Khách hàng ${data.customerName} vừa nhận báo giá mới: ${data.quotationNumber} trị giá ${(data.totalAmount / 1000000).toFixed(1)}M`
+          );
 
           toast.success("Đã lưu báo giá thành công");
         }
