@@ -250,18 +250,22 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
         </ScrollArea>
 
       <div className="p-4 mt-auto border-t border-border bg-secondary/30 space-y-1">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:bg-secondary",
-            isCollapsed && "justify-center px-0"
-          )}
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          <Settings className="h-4.5 w-4.5" />
-          {!isCollapsed && <span className="text-sm">Cấu hình API</span>}
-        </Button>
-        <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+        {isAdmin && (
+          <>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:bg-secondary",
+                isCollapsed && "justify-center px-0"
+              )}
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <Settings className="h-4.5 w-4.5" />
+              {!isCollapsed && <span className="text-sm">Cấu hình API</span>}
+            </Button>
+            <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+          </>
+        )}
         <Button
           variant="ghost"
           className={cn(
