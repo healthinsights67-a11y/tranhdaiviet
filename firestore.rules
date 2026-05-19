@@ -1,35 +1,227 @@
-rules_version = '2';
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: members
+// Fields: id, name, role, avatar, email
+//
+// Collection: customers
+// Fields: id, name, phone, address, stage, notes, assignedSaleId, orderValue, createdAt
+//
+// Collection: orders
+// Fields: id, customerName, totalValue, status, orderDate, deliveryDate, items
+//
+// Collection: tasks
+// Fields: id, title, description, assigneeId, dueDate, priority, status, createdAt
+//
+// ===============================================================
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Other collections
-    match /tasks/{docId} { allow read, write: if request.auth != null; }
-    match /customers/{docId} { allow read, write: if request.auth != null; }
-    match /orders/{docId} { allow read, write: if request.auth != null; }
-    match /members/{docId} { allow read, write: if request.auth != null; }
-    match /media_folders/{docId} { allow read, write: if request.auth != null; }
-    match /media_library/{docId} { allow read, write: if request.auth != null; }
-    match /quotations/{docId} { allow read, write: if request.auth != null; }
-    match /measurement_schedules/{docId} { allow read, write: if request.auth != null; }
-    match /installation_schedules/{docId} { allow read, write: if request.auth != null; }
-    match /product_library/{docId} { 
-      allow read, write: if request.auth != null; 
+    // ===============================================================
+    // Global Safety Net
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
     }
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
     }
-    match /configs/{docId} { 
-      allow read: if request.auth != null; 
-      allow write: if false; 
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "nhoanhkoem01@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "haanhtran.cv02@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['name', 'role', 'email', 'avatar']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role is string && data.role.size() > 0 &&
+             isValidEmail(data.email) &&
+             data.avatar is string &&
+             (data.get('workshop', 'all') is string);
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['name', 'phone', 'stage', 'assignedSaleId', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() >= 9 &&
+             data.stage in ['lead', 'consulting', 'surveying', 'contracted', 'lost'] &&
+             data.assignedSaleId is string;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['customerName', 'totalValue', 'status', 'orderDate', 'items']) &&
+             data.customerName is string &&
+             data.totalValue is number &&
+             data.status in ['pending', 'processing', 'shipping', 'completed', 'cancelled'];
+    }
+
+    function isValidTask(data) {
+      // More resilient validation using safe checks
+      let title = data.get('title', '');
+      let assigneeId = data.get('assigneeId', '');
+      
+      return (title == null || title is string) &&
+             (assigneeId == null || assigneeId is string) &&
+             (data.get('dueDate', '') == null || data.get('dueDate', '') is string) &&
+             (data.get('priority', 'medium') == null || data.get('priority', 'medium') in ['low', 'medium', 'high', 'Normal']) &&
+             (data.get('status', 'todo') == null || data.get('status', 'todo') in ['todo', 'in-progress', 'review', 'done', 'waiting_install', 'archived']) &&
+             (data.get('description', '') == null || data.get('description', '') is string) &&
+             (data.get('files2D3D', []) == null || data.get('files2D3D', []) is list) &&
+             (data.get('workshop', '') == null || data.get('workshop', '') is string) &&
+             (data.get('materialRequisition', {}) == null || data.get('materialRequisition', {}) is map) &&
+             (data.get('productionChecklist', {}) == null || data.get('productionChecklist', {}) is map);
+    }
+
+    function isValidMediaFolder(data) {
+      return data.keys().hasAll(['name', 'link', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.link is string && data.link.matches("^https?://.*") &&
+             data.createdAt is string;
+    }
+
+    function isValidMediaImage(data) {
+      return data.keys().hasAll(['url', 'name', 'categoryId', 'createdAt']) &&
+             data.url is string && data.url.size() > 10 &&
+             data.name is string && data.name.size() > 0 &&
+             data.categoryId is string &&
+             data.createdAt is string;
+    }
+
+    function isValidQuotation(data) {
+      return data.keys().hasAll(['quotationNumber', 'customerName', 'totalAmount', 'createdBy', 'createdAt', 'status']) &&
+             data.quotationNumber is string &&
+             data.customerName is string &&
+             data.totalAmount is number &&
+             data.status in ['draft', 'sent', 'accepted', 'rejected'];
+    }
+
+    function isValidMeasurementSchedule(data) {
+      return data.keys().hasAll(['date', 'customerName', 'phone', 'address', 'status', 'assigneeId', 'createdAt']) &&
+             data.date is string &&
+             data.customerName is string &&
+             data.phone is string &&
+             data.address is string &&
+             data.status in ['pending', 'completed', 'cancelled'] &&
+             data.assigneeId is string &&
+             data.createdAt is string;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    match /members/{memberId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /customers/{customerId} {
+      allow list, read: if isAuthenticated(); 
+      allow create: if isAuthenticated() && isValidCustomer(request.resource.data);
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidOrder(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /configs/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /media_folders/{folderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /media_library/{imageId} {
+      allow read, list: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMediaImage(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /quotations/{quotationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
     
-    match /{document=**} {
-      allow read, write: if request.auth != null && (
-        request.auth.token.email.matches('(?i)haanhtran.cv02@gmail.com') ||
-        request.auth.uid == 'W93oNEMY3Jeef6S5FHnchqABvwy1' ||
-        request.auth.token.email.matches('(?i)nhoanhkoem01@gmail.com')
-      );
+    match /measurement_schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
+
+    match /installation_schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    // ===============================================================
+    // KHO SẢN PHẨM & MẪU BÁO GIÁ (MỚI THÊM)
+    // ===============================================================
+    
+    match /product_library/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /productTemplates/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }
