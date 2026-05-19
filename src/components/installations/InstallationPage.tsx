@@ -83,13 +83,17 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
 
     const task = tasks.find(t => t.id === taskId);
     if (task) {
+      const customer = task.customerId 
+        ? customers.find(c => c.id === task.customerId) 
+        : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+
       setFormData(prev => ({
         ...prev,
         taskId: task.id,
-        customerId: task.customerId || '',
-        customerName: task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
-        phone: task.phone || '',
-        address: task.address || ''
+        customerId: customer?.id || task.customerId || '',
+        customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+        phone: customer?.phone || task.phone || '',
+        address: customer?.address || task.address || ''
       }));
     }
   };
@@ -370,13 +374,17 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   };
 
   const handleQuickSchedule = (task: Task) => {
+    const customer = task.customerId 
+      ? customers.find(c => c.id === task.customerId) 
+      : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+
     setFormData(prev => ({
       ...prev,
       taskId: task.id,
-      customerId: task.customerId || '',
-      customerName: task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
-      phone: task.phone || '',
-      address: task.address || ''
+      customerId: customer?.id || task.customerId || '',
+      customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+      phone: customer?.phone || task.phone || '',
+      address: customer?.address || task.address || ''
     }));
     setIsOpen(true);
   };
