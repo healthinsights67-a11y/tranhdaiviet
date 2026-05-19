@@ -10,7 +10,15 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
-export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+let messagingInstance = null;
+if (typeof window !== 'undefined') {
+  try {
+    messagingInstance = getMessaging(app);
+  } catch (error) {
+    console.warn("Firebase Messaging is not supported or failed to initialize in this browser:", error);
+  }
+}
+export const messaging = messagingInstance;
 export const googleProvider = new GoogleAuthProvider();
 
 export { signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
