@@ -124,6 +124,76 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     }
   };
 
+  const handleShare = async () => {
+    const element = printRef.current;
+    if (!element) return;
+
+    try {
+      setIsExporting(true);
+      toast.info("Đang khởi tạo tệp ảnh báo giá...");
+
+      // Render quotation content to canvas
+      const canvas = await toCanvas(element, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+      });
+
+      // Convert canvas to blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error("Không thể tạo tệp ảnh báo giá.");
+          setIsExporting(false);
+          return;
+        }
+
+        const file = new File([blob], `Bao_Gia_${quotation.quotationNumber}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Báo giá ${quotation.quotationNumber}`,
+              text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
+            });
+            toast.success("Chia sẻ báo giá thành công!");
+          } catch (err: any) {
+            if (err.name !== 'AbortError') {
+              console.error('Error sharing file:', err);
+              fallbackShare();
+            }
+          }
+        } else {
+          fallbackShare();
+        }
+        setIsExporting(false);
+      }, 'image/png', 1.0);
+
+    } catch (error) {
+      console.error('Share Error:', error);
+      toast.error("Gặp lỗi trong quá trình chia sẻ báo giá.");
+      setIsExporting(false);
+    }
+  };
+
+  const fallbackShare = () => {
+    toast.info("Trình duyệt không hỗ trợ chia sẻ tệp trực tiếp. Đang tải ảnh xuống để bạn gửi thủ công...");
+    const element = printRef.current;
+    if (!element) return;
+    
+    toCanvas(element, { pixelRatio: 2, backgroundColor: '#ffffff' }).then((canvas) => {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `Bao_Gia_${quotation.quotationNumber}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Đã tải ảnh báo giá thành công! Bạn có thể chọn ảnh này để gửi sang Zalo/Facebook.");
+    }).catch(err => {
+      console.error(err);
+      toast.error("Không hỗ trợ chia sẻ tự động trên trình duyệt này.");
+    });
+  };
+
   const handleAccept = () => {
     if (onUpdateStatus) {
       onUpdateStatus('accepted');
@@ -154,6 +224,23 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
               <span className="hidden sm:inline">Chỉnh sửa</span>
               <span className="sm:hidden">Sửa</span>
             </Button>
+            
+            <Button 
+               variant="outline" 
+               size="sm" 
+               onClick={handleShare}
+               disabled={isExporting}
+               className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 border-emerald-100 hover:bg-emerald-50 text-emerald-600 text-[10px] md:text-sm"
+            >
+              {isExporting ? (
+                <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              )}
+              <span className="hidden sm:inline">Chia sẻ</span>
+              <span className="sm:hidden">Gửi</span>
+            </Button>
+
             <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-[10px] md:text-sm">
               <Printer className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">In báo giá</span>
