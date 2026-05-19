@@ -45,7 +45,7 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 import { CreditCard, DollarSign, Package, Bell } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
-export function Dashboard({ tasks, members, orders, customers }: { tasks: any[], members: any[], orders?: any[], customers?: any[] }) {
+export function Dashboard({ tasks, members, orders, customers, currentUser }: { tasks: any[], members: any[], orders?: any[], customers?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
   const activeOrders = orders || [];
@@ -53,6 +53,9 @@ export function Dashboard({ tasks, members, orders, customers }: { tasks: any[],
   const [selectedMonth, setSelectedMonth] = React.useState<string>(''); // Default to all time
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
 
+  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
+  const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 
   const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && getVNMonth(t.createdAt) === selectedMonth) || (t.updatedAt && getVNMonth(t.updatedAt) === selectedMonth) || (t.completedAt && getVNMonth(t.completedAt) === selectedMonth) || !t.createdAt);
   const filteredOrders = activeOrders.filter(o => !selectedMonth || (o.orderDate && getVNMonth(o.orderDate) === selectedMonth) || !o.orderDate);
@@ -106,7 +109,7 @@ export function Dashboard({ tasks, members, orders, customers }: { tasks: any[],
   ];
 
   const financialStats = [
-    { label: 'Doanh thu dự kiến', value: `${(totalRevenue / 1000000).toFixed(1)}M`, icon: DollarSign, color: 'text-yellow-600' },
+    { label: 'Doanh thu dự kiến', value: canViewRevenue ? `${(totalRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: DollarSign, color: 'text-yellow-600' },
     { label: 'Tổng đơn hàng', value: filteredOrders.length, icon: Package, color: 'text-indigo-500' },
     { label: 'Đơn chờ xử lý', value: filteredOrders.filter(o => o.status === 'pending').length, icon: Clock, color: 'text-rose-500' },
     { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-emerald-500' },
@@ -351,7 +354,7 @@ export function Dashboard({ tasks, members, orders, customers }: { tasks: any[],
                          <p className="text-xs font-bold">{(() => { const customer = activeCustomers.find(c => c.name === order.customerName); return customer?.code || 'KH - [Không xác định]'; })()} - {order.customerName}</p>
                          <p className="text-[10px] text-muted-foreground mt-0.5">{order.productName || 'Sản phẩm'}</p>
                          <p className="text-[10px] font-semibold text-primary mt-0.5">
-                           Giá trị: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalValue || 0)}
+                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalValue || 0) : '*** ₫'}
                          </p>
                        </div>
                        <div className="text-right">
