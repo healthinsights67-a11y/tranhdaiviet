@@ -349,7 +349,7 @@ function AppContent() {
       case 'employees':
         return redirect(perms.menuMembers)
           ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} currentUser={currentMember} />
-          : <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} />;
+          : <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} currentUser={currentMember} />;
       case 'media':
         return redirect(perms.menuMedia)
           ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} currentUser={currentMember} />

@@ -54,6 +54,7 @@ const PERMISSION_LABELS: { [K in keyof MemberPermissions]: string } = {
   menuCustomers: "Khách hàng",
   menuAi: "Thiết kế AI",
 };
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -81,10 +82,16 @@ interface MemberPageProps {
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
   tasks: Task[];
   user?: any;
+  currentUser?: Member | null;
 }
 
-export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps) {
+export function MemberPage({ members, setMembers, tasks, user, currentUser }: MemberPageProps) {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
+  const canManage = isAdmin || 
+                    currentUser?.role === 'Giám đốc' || 
+                    currentUser?.role === 'Tổng quản lý' || 
+                    currentUser?.role === 'Trợ lý';
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [newMember, setNewMember] = React.useState({
@@ -129,6 +136,10 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
 
   const handleUpdateMember = async () => {
     if (!editingMember || isUpdating) return;
+    if (!canManage) {
+      toast.error("Bạn không có quyền thực hiện thao tác này.");
+      return;
+    }
     setIsUpdating(true);
     
     const timeoutPromise = new Promise((_, reject) => 
@@ -174,6 +185,10 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
       toast.error("Vui lòng nhập tên và email");
       return;
     }
+    if (!canManage) {
+      toast.error("Bạn không có quyền thực hiện thao tác này.");
+      return;
+    }
     setIsAdding(true);
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Quá thời gian.")), 15000));
     const memberData = {
@@ -203,6 +218,10 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
   const handleDeleteMember = async (id: string) => {
+    if (!canManage) {
+      toast.error("Bạn không có quyền thực hiện thao tác này.");
+      return;
+    }
     try {
       if (user) {
         await deleteDoc(doc(db, 'members', id));
@@ -240,120 +259,121 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => !isAdding && setIsAddDialogOpen(open)}>
-            <DialogTrigger 
-              render={
-                <Button className="h-8 gap-1.5 px-3 rounded-lg text-xs">
-                  <Plus className="h-3.5 w-3.5" />
-                  Thêm
-                </Button>
-              }
-            />
-            <DialogContent className="sm:max-w-[400px] p-4">
-              <DialogHeader className="pb-2">
-                <DialogTitle className="text-lg">Thêm thành viên mới</DialogTitle>
-                <DialogDescription className="text-[10px]">Nhập thông tin nhân viên.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
-                <div className="flex flex-col items-center gap-2 pb-2">
-                  <div className="relative group">
-                    <Avatar className="h-20 w-20 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                      <AvatarImage src={newMember.avatar || (newMember.email ? `https://i.pravatar.cc/150?u=${newMember.email}` : '')} />
-                      <AvatarFallback className="text-xl">{newMember.name?.charAt(0) || '?'}</AvatarFallback>
-                    </Avatar>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-                  </div>
-                  <p className="text-[9px] text-muted-foreground">Click để tải ảnh</p>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label className="text-xs">Họ và tên</Label>
-                  <Input value={newMember.name} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label className="text-xs">Email</Label>
-                  <Input value={newMember.email} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} />
-                </div>
-                <div className="grid gap-2 grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs">Chức vụ</Label>
-                    <Select value={newMember.role || 'Sale'} onValueChange={(v) => setNewMember({ ...newMember, role: v })}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map(role => (
-                          <SelectItem key={role} value={role} className="text-xs">{role}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs">Cơ sở</Label>
-                    <Select 
-                      value={((newMember.workshop === 'CoSo1' || newMember.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                             (newMember.workshop === 'CoSo2' || newMember.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                             newMember.workshop) || 'all'} 
-                      onValueChange={(v) => setNewMember({ ...newMember, workshop: v })}
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="Chọn cơ sở" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {WORKSHOPS.map(w => <SelectItem key={w.id} value={w.id} className="text-xs">{w.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="border rounded-lg p-2 mt-1">
-                  <button 
-                    type="button"
-                    onClick={() => setShowPermissions(!showPermissions)}
-                    className="flex items-center justify-between w-full text-xs font-bold px-1"
-                  >
-                    <div className="flex items-center gap-1.5 text-primary">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Phân quyền truy cập
+          {canManage && (
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => !isAdding && setIsAddDialogOpen(open)}>
+              <DialogTrigger 
+                render={
+                  <Button className="h-8 gap-1.5 px-3 rounded-lg text-xs">
+                    <Plus className="h-3.5 w-3.5" />
+                    Thêm
+                  </Button>
+                }
+              />
+              <DialogContent className="sm:max-w-[400px] p-4">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-lg">Thêm thành viên mới</DialogTitle>
+                  <DialogDescription className="text-[10px]">Nhập thông tin nhân viên.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3 py-2">
+                  <div className="flex flex-col items-center gap-2 pb-2">
+                    <div className="relative group">
+                      <Avatar className="h-20 w-20 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <AvatarImage src={newMember.avatar || (newMember.email ? `https://i.pravatar.cc/150?u=${newMember.email}` : '')} />
+                        <AvatarFallback className="text-xl">{newMember.name?.charAt(0) || '?'}</AvatarFallback>
+                      </Avatar>
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
                     </div>
-                    {showPermissions ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showPermissions && (
-                      <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 px-1 pb-1">
-                          {(Object.keys(DEFAULT_PERMISSIONS) as Array<keyof MemberPermissions>).map((key) => (
-                            <div key={key} className="flex items-center gap-2">
-                              <input 
-                                type="checkbox" 
-                                id={`new-${key}`}
-                                checked={newMember.permissions[key]} 
-                                onChange={(e) => setNewMember({
-                                  ...newMember, 
-                                  permissions: { ...newMember.permissions, [key]: e.target.checked }
-                                })}
-                                className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
-                              />
-                              <Label htmlFor={`new-${key}`} className="text-[10px] cursor-pointer leading-none">
-                                {PERMISSION_LABELS[key]}
-                              </Label>
-                            </div>
+                    <p className="text-[9px] text-muted-foreground">Click để tải ảnh</p>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Họ và tên</Label>
+                    <Input value={newMember.name} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Email</Label>
+                    <Input value={newMember.email} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} />
+                  </div>
+                  <div className="grid gap-2 grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Select value={newMember.role || 'Sale'} onValueChange={(v) => setNewMember({ ...newMember, role: v })}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map(role => (
+                            <SelectItem key={role} value={role} className="text-xs">{role}</SelectItem>
                           ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Cơ sở</Label>
+                      <Select 
+                        value={((newMember.workshop === 'CoSo1' || newMember.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
+                               (newMember.workshop === 'CoSo2' || newMember.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
+                               newMember.workshop) || 'all'} 
+                        onValueChange={(v) => setNewMember({ ...newMember, workshop: v })}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Chọn cơ sở" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WORKSHOPS.map(w => <SelectItem key={w.id} value={w.id} className="text-xs">{w.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-2 mt-1">
+                    <button 
+                      type="button"
+                      onClick={() => setShowPermissions(!showPermissions)}
+                      className="flex items-center justify-between w-full text-xs font-bold px-1"
+                    >
+                      <div className="flex items-center gap-1.5 text-primary">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Phân quyền truy cập
+                      </div>
+                      {showPermissions ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                    
+                    <AnimatePresence>
+                      {showPermissions && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 px-1 pb-1">
+                            {(Object.keys(DEFAULT_PERMISSIONS) as Array<keyof MemberPermissions>).map((key) => (
+                              <div key={key} className="flex items-center gap-2">
+                                <input 
+                                  type="checkbox" 
+                                  id={`new-${key}`}
+                                  checked={newMember.permissions[key]} 
+                                  onChange={(e) => setNewMember({
+                                    ...newMember, 
+                                    permissions: { ...newMember.permissions, [key]: e.target.checked }
+                                  })}
+                                  className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor={`new-${key}`} className="text-[10px] cursor-pointer leading-none">
+                                  {PERMISSION_LABELS[key]}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-              </div>
-              <DialogFooter className="pt-2">
-                <Button variant="outline" className="h-8 text-xs" onClick={() => setIsAddDialogOpen(false)} disabled={isAdding}>Hủy</Button>
-                <Button onClick={handleAddMember} className="h-8 text-xs" disabled={isAdding}>{isAdding ? "Đang lưu..." : "Lưu"}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter className="pt-2">
+                  <Button variant="outline" className="h-8 text-xs" onClick={() => setIsAddDialogOpen(false)} disabled={isAdding}>Hủy</Button>
+                  <Button onClick={handleAddMember} className="h-8 text-xs" disabled={isAdding}>{isAdding ? "Đang lưu..." : "Lưu"}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -370,15 +390,17 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
                       <AvatarImage src={member.avatar} />
                       <AvatarFallback className="text-[10px]">{member.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {deleteConfirmId === member.id ? (
-                      <div className="flex gap-1 items-center bg-red-50 p-0.5 rounded scale-90 border border-red-200">
-                        <Button variant="destructive" size="sm" className="h-5 text-[8px] px-1" onClick={() => handleDeleteMember(member.id)}>Xóa</Button>
-                        <Button variant="outline" size="sm" className="h-5 text-[8px] px-1" onClick={() => setDeleteConfirmId(null)}>Hủy</Button>
-                      </div>
-                    ) : (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/40" onClick={() => setDeleteConfirmId(member.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                    {canManage && (
+                      deleteConfirmId === member.id ? (
+                        <div className="flex gap-1 items-center bg-red-50 p-0.5 rounded scale-90 border border-red-200">
+                          <Button variant="destructive" size="sm" className="h-5 text-[8px] px-1" onClick={() => handleDeleteMember(member.id)}>Xóa</Button>
+                          <Button variant="outline" size="sm" className="h-5 text-[8px] px-1" onClick={() => setDeleteConfirmId(null)}>Hủy</Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/40" onClick={() => setDeleteConfirmId(member.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )
                     )}
                   </div>
                   <div className="pt-1.5 flex flex-col gap-0.5">
@@ -406,7 +428,9 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
                       <p className="text-xs md:text-sm font-bold text-emerald-600">{completedTasks}</p>
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full h-7 text-[9px] font-bold uppercase" onClick={() => setEditingMember(member)}>Cập nhật</Button>
+                  {canManage && (
+                    <Button variant="outline" className="w-full h-7 text-[9px] font-bold uppercase" onClick={() => setEditingMember(member)}>Cập nhật</Button>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
