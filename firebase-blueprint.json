@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "Team member or employee",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "avatar": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "email"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "stage": { "type": "string", "enum": ["consulting", "surveying", "contracted", "lost"], "description": "Giai đoạn: Đã tư vấn, Đã đo đạc, Đã chốt, Tạm dừng" },
+        "notes": { "type": "string" },
+        "assignedSaleId": { "type": "string" },
+        "orderValue": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "stage", "assignedSaleId", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Production order information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "totalValue": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "shipping", "completed", "cancelled"] },
+        "orderDate": { "type": "string", "format": "date" },
+        "deliveryDate": { "type": "string", "format": "date" },
+        "items": { "type": "string" }
+      },
+      "required": ["id", "customerName", "totalValue", "status", "orderDate", "items"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Project task or to-do item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "assigneeId": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "status": { "type": "string", "enum": ["todo", "in-progress", "review", "done", "waiting_install", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["production", "design", "sale", "marketing", "general"] },
+        "customerId": { "type": "string" },
+        "files2D3D": { "type": "array", "items": { "type": "string" } },
+        "workshop": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "waiting_install_at": { "type": "string", "format": "date-time" },
+        "column": { "type": "string" },
+        "materialRequisition": {
+          "type": "object",
+          "properties": {
+            "receiver": { "type": "string" },
+            "department": { "type": "string" },
+            "items": { "type": "array" }
+          }
+        }
+      },
+      "required": ["id", "title", "assigneeId", "dueDate", "priority", "status", "createdAt"]
+    },
+    "MediaFolder": {
+      "title": "Media Folder",
+      "description": "External folder link (OneDrive, etc.)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "link", "createdAt"]
+    },
+    "Quotation": {
+      "title": "Quotation",
+      "description": "Customer quotation/proposal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "quotationNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "constructionType": { "type": "string" },
+        "estimatedTime": { "type": "string" },
+        "date": { "type": "string" },
+        "items": { "type": "array" },
+        "subTotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentInfo": { "type": "object" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "rejected"] }
+      },
+      "required": ["quotationNumber", "customerName", "totalAmount", "createdBy", "createdAt", "status"]
+    },
+    "MeasurementSchedule": {
+      "title": "Measurement Schedule",
+      "description": "Schedule for sales to visit customer for measurement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "assigneeId": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "customerName", "phone", "address", "status", "assigneeId", "createdAt"]
+    },
+    "ProductLibraryItem": {
+      "title": "Product Library Item",
+      "description": "Template product for quick quotation creation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "The UID of the user who owns this product template" },
+        "productName": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "unit": { "type": "string" },
+        "unitPrice": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "productName", "unit", "unitPrice", "createdAt", "updatedAt"]
+    },
+    "MediaImage": {
+      "title": "Media Image",
+      "description": "Image stored in the media library (ImgBB link)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "name": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "uploadedBy": { "type": "string" }
+      },
+      "required": ["url", "name", "categoryId", "createdAt"]
+    },
+    "Config": {
+      "title": "Application Configuration",
+      "description": "System settings and API keys",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "imgbbKey": { "type": "string" },
+        "geminiKey": { "type": "string" }
+      }
+    },
+    "UserAccount": {
+      "title": "User Account",
+      "description": "User account registration and approval status",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "status", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "Collection of user account metadata and approval status"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Collection of team members"
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Collection of customers"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of production orders"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of project tasks"
+    },
+    "/media_folders/{folderId}": {
+      "schema": "MediaFolder",
+      "description": "Collection of external media storage links"
+    },
+    "/media_library/{imageId}": {
+      "schema": "MediaImage",
+      "description": "Collection of images uploaded to ImgBB and tracked in the app"
+    },
+    "/quotations/{quotationId}": {
+      "schema": "Quotation",
+      "description": "Collection of customer quotations"
+    },
+    "/measurement_schedules/{scheduleId}": {
+      "schema": "MeasurementSchedule",
+      "description": "Collection of measurement schedules"
+    },
+    "/product_library/{productId}": {
+      "schema": "ProductLibraryItem",
+      "description": "Templates for design products and quotations"
+    },
+    "/configs/{configId}": {
+      "schema": "Config",
+      "description": "System configuration and keys"
+    }
+  }
+}

@@ -1,0 +1,514 @@
+import * as React from 'react';
+import { Component } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { auth, db, onSnapshot, query, collection, orderBy, handleFirestoreError, OperationType, where } from './lib/firebase';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LoginForm } from './components/auth/LoginForm';
+import { fetchTasks, fetchCustomers, fetchOrders, fetchMembers, fetchFolders, fetchQuotations, fetchMeasurementSchedules, fetchProductLibrary } from './services/dataService';
+import { Sidebar } from './components/layout/Sidebar';
+import { Navbar } from './components/layout/Navbar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
+const Dashboard = React.lazy(() => import('./components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
+const KanbanBoard = React.lazy(() => import('./components/kanban/KanbanBoard').then(module => ({ default: module.KanbanBoard })));
+const MemberPage = React.lazy(() => import('./components/members/MemberPage').then(module => ({ default: module.MemberPage })));
+const CustomerPage = React.lazy(() => import('./components/customers/CustomerPage').then(module => ({ default: module.CustomerPage })));
+const OrderPage = React.lazy(() => import('./components/orders/OrderPage').then(module => ({ default: module.OrderPage })));
+const AIRenderPage = React.lazy(() => import('./components/ai-render/AIRenderPage'));
+const ProductionCalendar = React.lazy(() => import('./components/production/ProductionCalendar').then(module => ({ default: module.ProductionCalendar })));
+const MediaLibrary = React.lazy(() => import('./components/media/MediaLibrary').then(module => ({ default: module.MediaLibrary })));
+const QuotationPage = React.lazy(() => import('./components/quotations/QuotationPage').then(module => ({ default: module.QuotationPage })));
+const MeasurementPage = React.lazy(() => import('./components/measurements/MeasurementPage').then(module => ({ default: module.MeasurementPage })));
+const ReportPage = React.lazy(() => import('./components/reports/ReportPage').then(module => ({ default: module.ReportPage })));
+const UserManagement = React.lazy(() => import('./components/admin/UserManagement').then(module => ({ default: module.UserManagement })));
+import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_ORDERS, MOCK_QUOTATIONS } from './lib/mockData';
+import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'sonner';
+import { NotificationManager } from './components/notifications/NotificationManager';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, Circle, Clock, UserCircle, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Task, Customer, Order, Member } from './types';
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen p-6 text-center space-y-4 bg-background">
+      <div className="p-4 bg-destructive/10 rounded-full">
+        <AlertTriangle className="h-10 w-10 text-destructive" />
+      </div>
+      <h2 className="text-xl font-bold">Không thể kết nối hệ thống</h2>
+      <p className="text-muted-foreground max-w-xs text-sm">
+        Có vẻ như đã xảy ra sự cố kết nối hoặc phiên đăng nhập của bạn đã hết hạn.
+      </p>
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <Button onClick={resetErrorBoundary} className="w-full">
+          Thử kết nối lại
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={() => window.location.href = window.location.origin} 
+          className="w-full"
+        >
+          Trang chủ
+        </Button>
+      </div>
+      {process.env.NODE_ENV !== 'production' && (
+        <pre className="mt-8 p-4 bg-muted rounded-lg text-[10px] overflow-auto max-w-full text-left opacity-50">
+          {error?.message || String(error)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+
+function AppContent() {
+  const { user, userProfile, loading, signOut, isLoginDialogOpen, setLoginDialogOpen, isApproved, isAdmin } = useAuth();
+  
+  const [activeTab, setActiveTab] = React.useState('dashboard');
+  const [isDarkMode, setIsDarkMode] = React.useState(() => {
+    // Check if user has previously saved a theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    // Default to system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
+  const [tasksState, setTasks] = React.useState<Task[]>(MOCK_TASKS);
+  const [customersState, setCustomers] = React.useState<Customer[]>(MOCK_CUSTOMERS);
+  const [membersState, setMembers] = React.useState<Member[]>(MOCK_MEMBERS);
+  const [ordersState, setOrders] = React.useState<Order[]>(MOCK_ORDERS);
+
+  const [localFolders, setFolders] = React.useState<any[]>([]);
+
+  // Real-time synchronization
+  const queryClient = useQueryClient();
+  React.useEffect(() => {
+    if (!user) return;
+
+    const customersQuery = query(collection(db, 'customers'), orderBy('createdAt', 'desc'));
+    const unsubscribeCustomers = onSnapshot(customersQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Customer[];
+      queryClient.setQueryData(['customers'], data);
+    }, (error) => {
+      // Chỉ log lỗi, không handleFirestoreError để tránh reload loop do ErrorBoundary
+      console.warn('Real-time sync (customers) limited or delayed:', error.message);
+    });
+
+    const tasksQuery = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'));
+    const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Task[];
+      queryClient.setQueryData(['tasks'], data);
+    }, (error) => {
+      console.warn('Real-time sync (tasks) limited or delayed:', error.message);
+    });
+
+    const ordersQuery = query(collection(db, 'orders'), orderBy('orderDate', 'desc'));
+    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+      queryClient.setQueryData(['orders'], data);
+    }, (error) => {
+      console.warn('Real-time sync (orders) limited or delayed:', error.message);
+    });
+
+    const membersQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
+    const unsubscribeMembers = onSnapshot(membersQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Member[];
+      queryClient.setQueryData(['members'], data);
+    }, (error) => {
+      console.warn('Real-time sync (members) limited or delayed:', error.message);
+    });
+
+    const foldersQuery = query(collection(db, 'media_folders'), orderBy('createdAt', 'desc'));
+    const unsubscribeFolders = onSnapshot(foldersQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      queryClient.setQueryData(['folders'], data);
+    }, (error) => {
+      console.warn('Real-time sync (folders) limited or delayed:', error.message);
+    });
+
+    const quotationsQuery = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
+    const unsubscribeQuotations = onSnapshot(quotationsQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      queryClient.setQueryData(['quotations'], data);
+    }, (error) => {
+      console.warn('Real-time sync (quotations) limited or delayed:', error.message);
+    });
+
+    const schedulesQuery = query(collection(db, 'measurement_schedules'), orderBy('createdAt', 'desc'));
+    const unsubscribeSchedules = onSnapshot(schedulesQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      queryClient.setQueryData(['measurement_schedules'], data);
+    }, (error) => {
+      console.warn('Real-time sync (schedules) limited or delayed:', error.message);
+    });
+
+    const productLibraryQuery = query(collection(db, 'product_library'), orderBy('createdAt', 'desc'));
+    const unsubscribeProductLibrary = onSnapshot(productLibraryQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      queryClient.setQueryData(['product_library'], data);
+    }, (error) => {
+      console.warn('Real-time sync (library) limited or delayed:', error.message);
+    });
+
+    return () => {
+      unsubscribeCustomers();
+      unsubscribeTasks();
+      unsubscribeOrders();
+      unsubscribeMembers();
+      unsubscribeFolders();
+      unsubscribeQuotations();
+      unsubscribeSchedules();
+      unsubscribeProductLibrary();
+    };
+  }, [user, queryClient]);
+
+  // TanStack Query
+  const { data: tasksData, isLoading: isTasksLoading } = useQuery({ 
+    queryKey: ['tasks'], 
+    queryFn: fetchTasks, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: customersData, isLoading: isCustomersLoading } = useQuery({ 
+    queryKey: ['customers'], 
+    queryFn: fetchCustomers, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: ordersData, isLoading: isOrdersLoading } = useQuery({ 
+    queryKey: ['orders'], 
+    queryFn: fetchOrders, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: membersData, isLoading: isMembersLoading } = useQuery({ 
+    queryKey: ['members'], 
+    queryFn: fetchMembers, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: foldersData = [], isLoading: isFoldersLoading } = useQuery({ 
+    queryKey: ['folders'], 
+    queryFn: fetchFolders, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: quotationsData, isLoading: isQuotationsLoading } = useQuery({ 
+    queryKey: ['quotations'], 
+    queryFn: fetchQuotations, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: schedulesData = [], isLoading: isSchedulesLoading } = useQuery({ 
+    queryKey: ['measurement_schedules'], 
+    queryFn: fetchMeasurementSchedules, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+  const { data: productLibraryData = [], isLoading: isProductLibraryLoading } = useQuery({ 
+    queryKey: ['product_library'], 
+    queryFn: fetchProductLibrary, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
+
+  const tasks = user ? (tasksData || []) : MOCK_TASKS;
+  const customers = user ? (customersData || []) : MOCK_CUSTOMERS;
+  const orders = user ? (ordersData || []) : MOCK_ORDERS;
+  const members = user ? (membersData || []) : MOCK_MEMBERS;
+  const quotations = user ? (quotationsData || []) : MOCK_QUOTATIONS;
+  const folders = foldersData;
+  
+  const handleLogout = signOut;
+
+  // Use real members if available, only fallback to mock for preview (not logged in)
+  const activeMembers = user ? members : MOCK_MEMBERS;
+
+  // Find current member profile based on logged in user's email
+  const currentMember = user ? (
+    members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase()) || 
+    MOCK_MEMBERS.find(m => m.email?.toLowerCase() === user.email?.toLowerCase())
+  ) : null;
+
+  const isManager = isAdmin || (currentMember?.role?.toLowerCase().includes('quản lý'));
+
+  // Determine if we should show all data (Manager or missing profile for now)
+  const showAllData = !user || isManager || !currentMember;
+
+  // Filtered data based on role
+  const isWorkshopRestricted = !isManager && currentMember && currentMember.workshop && currentMember.workshop !== 'all';
+  
+  const filteredCustomers = showAllData 
+    ? (user ? customers : MOCK_CUSTOMERS)
+    : customers.filter(c => 
+        c.assignedSaleId === currentMember?.id || 
+        (isWorkshopRestricted ? c.workshop === currentMember?.workshop : true)
+      );
+
+  const filteredTasks = showAllData 
+    ? (user ? tasks : MOCK_TASKS)
+    : tasks.filter(t => 
+        t.assigneeId === currentMember?.id || 
+        (isWorkshopRestricted ? t.workshop === currentMember?.workshop : true)
+      );
+
+  const filteredOrders = showAllData
+    ? (user ? orders : MOCK_ORDERS)
+    : orders.filter(o => {
+        const customer = (user ? customers : MOCK_CUSTOMERS).find(c => c.name === o.customerName);
+        return customer?.assignedSaleId === currentMember?.id || 
+               (isWorkshopRestricted ? (o.workshop || customer?.workshop) === currentMember?.workshop : true);
+      });
+
+  React.useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />;
+      case 'reports':
+        return <ReportPage tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotationsData} />;
+      case 'production':
+        return <ProductionCalendar orders={filteredOrders} tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
+      case 'orders':
+        return <OrderPage orders={filteredOrders} customers={customers} user={user} currentUser={currentMember} />;
+      case 'sale':
+        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={customers} currentUser={currentMember} />;
+      case 'marketing':
+        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={customers} currentUser={currentMember} />;
+      case 'design':
+        return <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={customers} currentUser={currentMember} />;
+      case 'employees':
+        return <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} />;
+      case 'media':
+        return <MediaLibrary folders={folders} user={user} />;
+      case 'quotations':
+        return <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
+      case 'measurements':
+        return <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
+      case 'customers':
+        return <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} orders={orders} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
+      case 'ai-render':
+        return <AIRenderPage />;
+      case 'users':
+        return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} />;
+      default:
+        return (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Trang đang được phát triển
+          </div>
+        );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <p className="text-sm font-medium animate-pulse">Khởi tạo hệ thống...</p>
+      </div>
+    );
+  }
+
+  // Handle data loading separately - show a more integrated loading state inside the App
+  // or just let the components handle their own MOCK/Empty states while loading.
+  // We avoid the full-screen blanker once auth is resolved.
+
+
+  if (user && !isApproved && !isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-6 text-center space-y-6 bg-slate-50">
+        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 shadow-sm animate-bounce">
+          <Clock className="h-10 w-10" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <h2 className="text-2xl font-bold text-slate-900">Tài khoản chờ duyệt</h2>
+          <p className="text-slate-500 text-sm">
+            Chào <strong>{user.email}</strong>, tài khoản của bạn đã được đăng ký thành công và đang chờ Quản trị viên phê duyệt.
+          </p>
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-700 text-[11px] mt-4">
+             Vui lòng quay lại sau khi nhận được xác nhận từ Admin.
+          </div>
+        </div>
+        <Button variant="outline" onClick={() => signOut()} className="gap-2">
+           Đăng xuất
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <ErrorBoundary 
+      FallbackComponent={ErrorFallback}
+      onReset={() => {
+        // Reset query client or states here if needed
+        queryClient.invalidateQueries();
+      }}
+    >
+      <div className="flex h-dvh bg-background text-foreground overflow-hidden relative">
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false);
+          }} 
+          isDarkMode={isDarkMode} 
+          toggleDarkMode={() => setIsDarkMode(!isDarkMode)} 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          currentUser={currentMember}
+        />
+        
+        <div className="flex-1 flex flex-col min-w-0">
+          {!user && (
+            <div className="flex items-center justify-between px-4 md:px-6 py-2 bg-secondary border-b border-border">
+              <div className="flex items-center gap-2 text-[10px] md:text-xs font-medium text-muted-foreground">
+                <UserCircle className="h-3.5 w-3.5 md:h-4 w-4" />
+                <span className="hidden xs:inline">Chế độ xem trước (Dữ liệu mẫu). Đăng nhập để đồng bộ dữ liệu thực tế.</span>
+              </div>
+              <Dialog open={isLoginDialogOpen} onOpenChange={setLoginDialogOpen}>
+                <DialogTrigger 
+                  render={(
+                    <Button variant="outline" size="sm" className="h-7 text-[10px] md:text-xs">
+                       Đăng nhập
+                    </Button>
+                  ) as React.ReactElement}
+                />
+                <DialogContent className="max-w-[calc(100vw-2rem)] md:max-w-md rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <LoginForm />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+          <Navbar 
+            onMenuClick={() => setIsSidebarOpen(true)} 
+            user={user} 
+            onLogin={() => setLoginDialogOpen(true)} 
+            onLogout={handleLogout} 
+            currentUser={currentMember}
+          />
+          <main className="flex-1 overflow-y-auto px-3 md:px-10 py-4 md:py-8 pb-28 md:pb-10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="min-h-full"
+              >
+                <React.Suspense fallback={
+                  <div className="flex h-[50vh] items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                }>
+                  {renderContent()}
+                </React.Suspense>
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+        <MobileBottomNav 
+          activeTab={activeTab} 
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false);
+          }} 
+          onMenuClick={() => setIsSidebarOpen(true)}
+          currentUser={currentMember}
+        />
+        <Toaster />
+        <NotificationManager />
+      </div>
+    </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function MyTasks({ tasks }: { tasks: typeof MOCK_TASKS }) {
+  // Mock current user ID as '1' (Alex Rivera)
+  const myTasks = tasks.filter(t => t.assigneeId === '1');
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Nhiệm vụ của tôi</h1>
+        <p className="text-muted-foreground">Tập trung vào những gì quan trọng. Đây là các nhiệm vụ được giao cho bạn.</p>
+      </div>
+
+      <div className="grid gap-4">
+        {myTasks.map((task, i) => (
+          <motion.div
+            key={task.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1 }}
+          >
+            <Card className="hover:bg-gray-50 transition-colors cursor-pointer border border-gray-200 shadow-sm">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  {task.status === 'done' ? (
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold">{task.title}</h3>
+                  <p className="text-xs text-muted-foreground">{task.description}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="hidden sm:flex capitalize">
+                    {task.status === 'todo' ? 'Cần làm' : 
+                     task.status === 'in-progress' ? 'Đang làm' : 
+                     task.status === 'review' ? 'Đánh giá' : 'Hoàn thành'}
+                  </Badge>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                    <Clock className="h-3.5 w-3.5" />
+                    {task.dueDate}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+        {myTasks.length === 0 && (
+          <div className="text-center py-20 text-muted-foreground">
+            Chưa có nhiệm vụ nào được giao cho bạn.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
