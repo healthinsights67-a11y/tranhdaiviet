@@ -492,10 +492,14 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
                             <input 
                               type="checkbox" 
                               id={`edit-${key}`}
-                              checked={(editingMember.permissions || DEFAULT_PERMISSIONS)[key]} 
+                              checked={editingMember.permissions?.[key] ?? DEFAULT_PERMISSIONS[key]} 
                               onChange={(e) => setEditingMember({
                                 ...editingMember, 
-                                permissions: { ...(editingMember.permissions || DEFAULT_PERMISSIONS), [key]: e.target.checked }
+                                permissions: { 
+                                  ...DEFAULT_PERMISSIONS, 
+                                  ...editingMember.permissions, 
+                                  [key]: e.target.checked 
+                                }
                               })}
                               className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
                             />
