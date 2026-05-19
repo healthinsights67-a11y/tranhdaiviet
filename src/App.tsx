@@ -259,8 +259,8 @@ function AppContent() {
 
   // Find current member profile based on logged in user's email
   const currentMember = user ? (
-    members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase()) || 
-    MOCK_MEMBERS.find(m => m.email?.toLowerCase() === user.email?.toLowerCase())
+    members.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()) || 
+    MOCK_MEMBERS.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase())
   ) : null;
 
   const isManager = isAdmin || (currentMember?.role?.toLowerCase().includes('quản lý'));

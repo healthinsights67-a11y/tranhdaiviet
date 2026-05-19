@@ -24,20 +24,20 @@ export const CustomerStageSchema = z.enum(['consulting', 'surveying', 'contracte
 export const OrderStatusSchema = z.enum(['pending', 'processing', 'shipping', 'completed', 'cancelled']);
 
 export const MemberPermissionsSchema = z.object({
-  viewPrice: z.boolean(),
-  viewRevenue: z.boolean(),
-  menuProduction: z.boolean(),
-  menuMeasurement: z.boolean(),
-  menuOrders: z.boolean(),
-  menuQuotations: z.boolean(),
-  menuSale: z.boolean(),
-  menuDesign: z.boolean(),
-  menuMarketing: z.boolean(),
-  menuReports: z.boolean(),
-  menuMedia: z.boolean(),
-  menuMembers: z.boolean(),
-  menuCustomers: z.boolean(),
-  menuAi: z.boolean(),
+  viewPrice: z.boolean().optional().catch(true),
+  viewRevenue: z.boolean().optional().catch(true),
+  menuProduction: z.boolean().optional().catch(true),
+  menuMeasurement: z.boolean().optional().catch(true),
+  menuOrders: z.boolean().optional().catch(true),
+  menuQuotations: z.boolean().optional().catch(true),
+  menuSale: z.boolean().optional().catch(true),
+  menuDesign: z.boolean().optional().catch(true),
+  menuMarketing: z.boolean().optional().catch(true),
+  menuReports: z.boolean().optional().catch(true),
+  menuMedia: z.boolean().optional().catch(true),
+  menuMembers: z.boolean().optional().catch(true),
+  menuCustomers: z.boolean().optional().catch(true),
+  menuAi: z.boolean().optional().catch(true),
 });
 
 export const MemberSchema = z.object({

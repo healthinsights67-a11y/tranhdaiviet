@@ -145,7 +145,7 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
 
         const updatePromise = setDoc(doc(db, 'members', editingMember.id), {
           name: editingMember.name,
-          email: editingMember.email,
+          email: editingMember.email?.trim(),
           role: editingMember.role,
           avatar: editingMember.avatar,
           workshop: editingMember.workshop || 'all',
@@ -178,7 +178,8 @@ export function MemberPage({ members, setMembers, tasks, user }: MemberPageProps
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Quá thời gian.")), 15000));
     const memberData = {
       ...newMember,
-      avatar: newMember.avatar || `https://i.pravatar.cc/150?u=${newMember.email}`,
+      email: newMember.email.trim(),
+      avatar: newMember.avatar || `https://i.pravatar.cc/150?u=${newMember.email.trim()}`,
     };
     try {
       if (user) {
