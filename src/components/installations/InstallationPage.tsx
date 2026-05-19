@@ -194,11 +194,13 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       });
       queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
     } catch (error) {
+      console.error("Lỗi khi xếp lịch lắp đặt:", error);
       if (error instanceof z.ZodError) {
-        toast.error('Vui lòng điền đầy đủ và đúng định dạng');
+        const errorMsg = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        toast.error('Lỗi định dạng dữ liệu: ' + errorMsg);
       } else {
         handleFirestoreError(error, OperationType.CREATE, 'installation_schedules');
-        toast.error('Có lỗi xảy ra');
+        toast.error('Có lỗi xảy ra: ' + (error instanceof Error ? error.message : String(error)));
       }
     }
   };
