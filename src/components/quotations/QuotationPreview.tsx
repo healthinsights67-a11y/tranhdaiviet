@@ -94,10 +94,16 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       setIsExporting(true);
       toast.info("Đang tạo file PDF...");
 
-      // Better method using html-to-image + jsPDF
+      // Better method using html-to-image + jsPDF with style override to ignore active scale transforms
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          width: '210mm',
+          height: '297mm'
+        }
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -132,10 +138,16 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       setIsExporting(true);
       toast.info("Đang khởi tạo tệp ảnh báo giá...");
 
-      // Render quotation content to canvas
+      // Render quotation content to canvas with style override to ignore active scale transforms
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          width: '210mm',
+          height: '297mm'
+        }
       });
 
       // Convert canvas to blob
@@ -180,7 +192,16 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     const element = printRef.current;
     if (!element) return;
     
-    toCanvas(element, { pixelRatio: 2, backgroundColor: '#ffffff' }).then((canvas) => {
+    toCanvas(element, { 
+      pixelRatio: 2, 
+      backgroundColor: '#ffffff',
+      style: {
+        transform: 'none',
+        transformOrigin: 'top left',
+        width: '210mm',
+        height: '297mm'
+      }
+    }).then((canvas) => {
       const link = document.createElement('a');
       link.href = canvas.toDataURL('image/png');
       link.download = `Bao_Gia_${quotation.quotationNumber}.png`;
@@ -263,15 +284,19 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
           </div>
         </DialogHeader>
 
-        <div className="flex-1 bg-gray-100 overflow-auto custom-scrollbar flex justify-center">
+        <div className="flex-1 bg-gray-100 overflow-auto custom-scrollbar flex justify-center items-start p-4">
           <div className="p-2 md:p-8 w-full min-w-max flex justify-center">
-            <div className="bg-card text-card-foreground shadow-2xl p-[5mm] md:p-[10mm] min-h-[297mm] w-[210mm] ring-1 ring-gray-200 relative overflow-hidden print:shadow-none print:p-0 print:m-0 origin-top transform scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 transition-transform">
+            <div 
+              ref={printRef}
+              className="bg-white text-black shadow-2xl p-[10mm] min-h-[297mm] w-[210mm] ring-1 ring-gray-200 relative overflow-hidden print:shadow-none print:p-0 print:m-0 origin-top transform scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 transition-transform"
+              style={{ width: '210mm', minHeight: '297mm', padding: '10mm', background: '#ffffff', color: '#000000' }}
+            >
             {/* Background Texture Element */}
             <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none select-none print:hidden">
                 <FileText className="h-64 w-64 rotate-12" />
             </div>
 
-            <div ref={printRef} className="text-black font-serif text-[12px] leading-snug relative z-10 w-full">
+            <div className="text-black font-serif text-[12px] leading-snug relative z-10 w-full">
               {/* Header Table */}
               <table className="w-full border-collapse border-2 border-black mb-1 table-fixed">
                 <tbody>
@@ -295,7 +320,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                        </div>
                     </td>
                     <td className="p-2 text-center border-r-2 border-black">
-                      <div className="text-xl font-bold tracking-tight text-foreground uppercase">
+                      <div className="text-xl font-bold tracking-tight text-black uppercase">
                         {template.companyName}
                       </div>
                       <div className="mt-0.5 space-y-0 text-[10px] text-gray-600 font-bold">
@@ -316,12 +341,12 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                   <tr>
                     <td className="p-2 text-center border-t-2 border-r-2 border-black">
                        <div className="flex flex-col items-center">
-                          <div className="text-2xl font-bold tracking-[0.2em] text-foreground uppercase">
+                          <div className="text-2xl font-bold tracking-[0.2em] text-black uppercase">
                              BÁO GIÁ THI CÔNG
                           </div>
                           <div className="mt-1 flex items-center gap-3">
                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">HỒ SƠ SỐ:</span>
-                             <span className="text-lg font-mono font-bold text-foreground">{quotation.quotationNumber.split('-')[1]}</span>
+                             <span className="text-lg font-mono font-bold text-black">{quotation.quotationNumber.split('-')[1]}</span>
                           </div>
                        </div>
                     </td>
@@ -363,7 +388,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
               </div>
               <table className="w-full border-2 border-black text-[11px] table-fixed">
                 <thead>
-                  <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-foreground">
+                  <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
                     <th className="border-r border-black p-1 w-[35px]">STT</th>
                     <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
                     <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
@@ -385,7 +410,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                       {quotation.items.filter(item => item.category === cat).map((item, idx) => (
                         <tr key={item.id} className="border-b border-black last:border-b-0">
                           <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
-                          <td className="border-r border-black p-1.5 font-bold text-foreground leading-tight">{item.name}</td>
+                          <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
                           <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                             <div className="whitespace-pre-wrap">{item.description}</div>
                           </td>
@@ -412,7 +437,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                     </td>
                   </tr>
                   <tr className="bg-gray-100 border-t-2 border-black">
-                    <td colSpan={6} className="p-3 text-right text-[12px] font-bold uppercase tracking-[0.2em] text-foreground">
+                    <td colSpan={6} className="p-3 text-right text-[12px] font-bold uppercase tracking-[0.2em] text-black">
                        TỔNG GIÁ TRỊ THANH TOÁN (VNĐ)
                     </td>
                     <td className="p-3 text-right font-mono text-[18px] font-bold tracking-tighter text-gray-950">
@@ -425,21 +450,21 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
               {/* Policy & Payment Section */}
               <div className="mt-4 grid grid-cols-2 gap-4 items-start">
                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 font-bold text-foreground uppercase tracking-widest text-[10px] border-b border-black pb-1">
+                    <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
                        CHÍNH SÁCH VÀ GHI CHÚ
                     </div>
-                    <div className="text-[10px] text-foreground whitespace-pre-line leading-relaxed pl-1 pt-1 font-medium">
-                      {template.terms || 'Chưa có điều khoản'}
+                    <div className="text-[10px] text-black whitespace-pre-line leading-relaxed pl-1 pt-1 font-medium">
+                       {template.terms || 'Chưa có điều khoản'}
                     </div>
                  </div>
                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 font-bold text-foreground uppercase tracking-widest text-[10px] border-b border-black pb-1">
+                    <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
                        THANH TOÁN CHUYỂN KHOẢN
                     </div>
                     <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 space-y-1 text-[10px] relative">
                        <div className="flex justify-between items-center relative z-10 w-2/3">
                           <span className="text-gray-500 font-bold uppercase text-[8px]">Ngân hàng</span>
-                          <span className="font-bold text-foreground text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
+                          <span className="font-bold text-black text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
                        </div>
                        <div className="flex justify-between items-center relative z-10 w-2/3">
                           <span className="text-gray-500 font-bold uppercase text-[8px]">Số tài khoản</span>
@@ -447,7 +472,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                        </div>
                        <div className="flex justify-between items-center relative z-10 w-2/3">
                           <span className="text-gray-500 font-bold uppercase text-[8px]">Chủ tài khoản</span>
-                          <span className="font-bold text-foreground uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
+                          <span className="font-bold text-black uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
                        </div>
                        {template.qrCodeUrl && (
                          <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
@@ -467,7 +492,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
               <div className="mt-4 flex justify-between px-10">
                  <div className="text-center space-y-1">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Khách hàng xác nhận</p>
-                    <p className="text-sm font-bold text-foreground">KÝ VÀ GHI HỌ TÊN</p>
+                    <p className="text-sm font-bold text-black">KÝ VÀ GHI HỌ TÊN</p>
                     <div className="h-16" />
                     <p className="text-[9px] font-medium text-gray-500 italic pb-2 border-b border-gray-100 items-center justify-center flex gap-1">
                       <Download className="h-3 w-3" /> Ngày ...... / ...... / 202...
@@ -475,7 +500,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                  </div>
                  <div className="text-center space-y-1">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Đại diện Công ty</p>
-                    <p className="text-sm font-bold text-foreground uppercase">NGƯỜI LẬP BIỂU</p>
+                    <p className="text-sm font-bold text-black uppercase">NGƯỜI LẬP BIỂU</p>
                     <div className="h-16 flex items-center justify-center relative">
                        <div className="w-20 h-20 border-2 border-dashed border-red-200 rounded-full flex items-center justify-center text-[7px] font-bold text-red-200 uppercase rotate-[-15deg] absolute">
                           ĐÃ ĐÓNG DẤU HỢP LỆ
