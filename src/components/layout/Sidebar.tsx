@@ -20,7 +20,8 @@ import {
   ExternalLink,
   FileText,
   Package,
-  ShieldAlert
+  ShieldAlert,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,37 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
   const { isAdmin } = useAuth();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+
+  const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {
+      'Chung': true,
+      'Đơn hàng & Khách': true,
+      'Sản xuất & Thi công': false,
+      'Phòng ban': false,
+      'Hệ thống': false,
+    };
+    navGroups.forEach(group => {
+      if (group.items.some(item => item.id === activeTab)) {
+        initial[group.title] = true;
+      }
+    });
+    return initial;
+  });
+
+  React.useEffect(() => {
+    navGroups.forEach(group => {
+      if (group.items.some(item => item.id === activeTab)) {
+        setExpandedGroups(prev => ({ ...prev, [group.title]: true }));
+      }
+    });
+  }, [activeTab]);
+
+  const toggleGroup = (title: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
+  };
 
   const filterItem = (item: any) => {
     // Admin only items
@@ -158,19 +190,33 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
         </div>
 
         <ScrollArea className="flex-1 px-3">
-          <nav className="space-y-4 py-2">
+          <nav className="space-y-3 py-2">
             {navGroups.map((group, idx) => {
               const groupItems = group.items.filter(filterItem);
               if (groupItems.length === 0) return null;
 
+              const isExpanded = isCollapsed && !isOpen ? true : !!expandedGroups[group.title];
+
               return (
-                <div key={idx}>
+                <div key={idx} className="space-y-1">
                   {(!isCollapsed || isOpen) && (
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-4 mb-2">
-                      {group.title}
-                    </p>
+                    <button
+                      onClick={() => toggleGroup(group.title)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-secondary/40 rounded-xl text-left transition-colors group/header"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 group-hover/header:text-foreground transition-colors">
+                        {group.title}
+                      </span>
+                      <ChevronDown className={cn(
+                        "h-3.5 w-3.5 text-muted-foreground/50 group-hover/header:text-foreground transition-transform duration-200",
+                        isExpanded ? "transform rotate-180" : ""
+                      )} />
+                    </button>
                   )}
-                  <div className="space-y-1">
+                  <div className={cn(
+                    "space-y-0.5 overflow-hidden transition-all duration-200",
+                    isExpanded ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0 pointer-events-none"
+                  )}>
                     {groupItems.map((item) => (
                       <Button
                         key={item.id}
@@ -182,7 +228,12 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
                             : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
                           isCollapsed && !isOpen && "justify-center px-0"
                         )}
-                        onClick={() => setActiveTab(item.id)}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          if (isOpen) {
+                            onClose?.();
+                          }
+                        }}
                       >
                         <item.icon className={cn(
                           "h-4.5 w-4.5 shrink-0 transition-transform group-hover:scale-110",
