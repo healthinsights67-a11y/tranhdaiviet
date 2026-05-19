@@ -288,9 +288,11 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                   <Label className="text-sm font-semibold flex items-center gap-2">
                     Khách hàng <span className="text-destructive">*</span>
                   </Label>
-                  <Select onValueChange={handleCustomerSelect} defaultValue={formData.customerId}>
+                  <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
                     <SelectTrigger className="h-10 w-full">
-                      <SelectValue placeholder="Chọn khách hàng mục tiêu" />
+                      <SelectValue placeholder="Chọn khách hàng mục tiêu">
+                        {formData.customerName || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {customers.map((c) => (
