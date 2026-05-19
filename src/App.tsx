@@ -5,7 +5,7 @@ import { auth, db, onSnapshot, query, collection, orderBy, handleFirestoreError,
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoginForm } from './components/auth/LoginForm';
-import { fetchTasks, fetchCustomers, fetchOrders, fetchMembers, fetchFolders, fetchQuotations, fetchMeasurementSchedules, fetchProductLibrary } from './services/dataService';
+import { fetchTasks, fetchCustomers, fetchOrders, fetchMembers, fetchFolders, fetchQuotations, fetchMeasurementSchedules, fetchProductLibrary, fetchInstallationSchedules } from './services/dataService';
 import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
@@ -19,6 +19,7 @@ const ProductionCalendar = React.lazy(() => import('./components/production/Prod
 const MediaLibrary = React.lazy(() => import('./components/media/MediaLibrary').then(module => ({ default: module.MediaLibrary })));
 const QuotationPage = React.lazy(() => import('./components/quotations/QuotationPage').then(module => ({ default: module.QuotationPage })));
 const MeasurementPage = React.lazy(() => import('./components/measurements/MeasurementPage').then(module => ({ default: module.MeasurementPage })));
+const InstallationPage = React.lazy(() => import('./components/installations/InstallationPage').then(module => ({ default: module.InstallationPage })));
 const ReportPage = React.lazy(() => import('./components/reports/ReportPage').then(module => ({ default: module.ReportPage })));
 const UserManagement = React.lazy(() => import('./components/admin/UserManagement').then(module => ({ default: module.UserManagement })));
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_ORDERS, MOCK_QUOTATIONS } from './lib/mockData';
@@ -40,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, Customer, Order, Member } from './types';
+import { Task, Customer, Order, Member, InstallationSchedule } from './types';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
   return (
@@ -158,6 +159,14 @@ function AppContent() {
       console.warn('Real-time sync (schedules) limited or delayed:', error.message);
     });
 
+    const installationsQuery = query(collection(db, 'installation_schedules'), orderBy('createdAt', 'desc'));
+    const unsubscribeInstallations = onSnapshot(installationsQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      queryClient.setQueryData(['installation_schedules'], data);
+    }, (error) => {
+      console.warn('Real-time sync (installations) limited or delayed:', error.message);
+    });
+
     const productLibraryQuery = query(collection(db, 'product_library'), orderBy('createdAt', 'desc'));
     const unsubscribeProductLibrary = onSnapshot(productLibraryQuery, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
@@ -174,6 +183,7 @@ function AppContent() {
       unsubscribeFolders();
       unsubscribeQuotations();
       unsubscribeSchedules();
+      unsubscribeInstallations();
       unsubscribeProductLibrary();
     };
   }, [user, queryClient]);
@@ -221,6 +231,12 @@ function AppContent() {
     enabled: !!user,
     staleTime: Infinity 
   });
+  const { data: installationsData = [], isLoading: isInstallationsLoading } = useQuery({ 
+    queryKey: ['installation_schedules'], 
+    queryFn: fetchInstallationSchedules, 
+    enabled: !!user,
+    staleTime: Infinity 
+  });
   const { data: productLibraryData = [], isLoading: isProductLibraryLoading } = useQuery({ 
     queryKey: ['product_library'], 
     queryFn: fetchProductLibrary, 
@@ -234,6 +250,7 @@ function AppContent() {
   const members = user ? (membersData || []) : MOCK_MEMBERS;
   const quotations = user ? (quotationsData || []) : MOCK_QUOTATIONS;
   const folders = foldersData;
+  const installations = user ? (installationsData || []) : [];
   
   const handleLogout = signOut;
 
@@ -310,6 +327,8 @@ function AppContent() {
         return <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
         return <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
+      case 'installations':
+        return <InstallationPage schedules={installations} members={activeMembers} customers={customers} tasks={tasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
       case 'customers':
         return <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} orders={orders} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':

@@ -64,6 +64,7 @@ const navGroups = [
     items: [
       { id: 'measurements', label: 'Lịch Đo Đạc', icon: CalendarDays, permission: 'menuMeasurement' },
       { id: 'production', label: 'Lịch Sản Xuất', icon: CalendarDays, permission: 'menuProduction' },
+      { id: 'installations', label: 'Lịch Lắp Đặt', icon: CalendarDays, permission: 'menuSaleOrProduction' },
     ]
   },
   {
@@ -134,6 +135,9 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
 
     // Check specific permission
     if (currentUser?.permissions) {
+      if (item.permission === 'menuSaleOrProduction') {
+        return (currentUser.permissions as any).menuSale !== false || (currentUser.permissions as any).menuProduction !== false;
+      }
       return (currentUser.permissions as any)[item.permission] !== false;
     }
 

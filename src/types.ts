@@ -208,3 +208,18 @@ export interface MeasurementSchedule {
   designAssigneeId?: string;
   isPushedToDesign?: boolean;
 }
+
+export interface InstallationSchedule {
+  id: string;
+  date: string;
+  taskId?: string;
+  customerId?: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  assigneeId: string;
+  notes?: string;
+  createdAt: string;
+  imageUrls?: string[];
+}

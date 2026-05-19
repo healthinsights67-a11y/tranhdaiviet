@@ -209,3 +209,18 @@ export const MeasurementScheduleSchema = z.object({
   designAssigneeId: z.string().optional(),
   isPushedToDesign: z.boolean().optional(),
 });
+
+export const InstallationScheduleSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  taskId: z.string().optional(),
+  customerId: z.string().optional(),
+  customerName: z.string(),
+  phone: z.string(),
+  address: z.string(),
+  status: z.enum(['pending', 'completed', 'cancelled']),
+  assigneeId: z.string(),
+  notes: z.string().optional(),
+  createdAt: timestampSchema,
+  imageUrls: z.array(z.string()).optional(),
+});

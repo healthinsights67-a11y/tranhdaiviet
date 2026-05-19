@@ -1,0 +1,931 @@
+import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { InstallationSchedule, Member, Customer, Task } from '@/src/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Hammer, Wrench, CheckCircle2, ClipboardList } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { uploadToImgBB } from '@/src/services/uploadService';
+import { z } from 'zod';
+import { InstallationScheduleSchema } from '@/src/schemas';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn, getCurrentVNDate } from '@/src/lib/utils';
+import { notifyManagers } from '@/src/services/notificationService';
+
+interface InstallationPageProps {
+  schedules: InstallationSchedule[];
+  members: Member[];
+  customers: Customer[];
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  user: any;
+  currentUser: Member | null;
+}
+
+export function InstallationPage({ schedules, members, customers, tasks, setTasks, user, currentUser }: InstallationPageProps) {
+  const queryClient = useQueryClient();
+  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
+
+  const filteredSchedules = isManager 
+    ? schedules 
+    : schedules.filter(s => s.assigneeId === currentUser?.id);
+
+  const installerMembers = members.filter(m => 
+    m.role.toLowerCase().includes('thi công') || 
+    m.role.toLowerCase().includes('lắp đặt') || 
+    m.role.toLowerCase().includes('sản xuất') ||
+    m.role.toLowerCase().includes('kỹ thuật')
+  );
+
+  const [currentMonth, setCurrentMonth] = useState(() => getCurrentVNDate());
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const [formData, setFormData] = useState<Partial<InstallationSchedule>>({
+    taskId: '',
+    customerId: '',
+    customerName: '',
+    phone: '',
+    address: '',
+    date: new Date().toISOString().slice(0, 16),
+    assigneeId: '',
+    notes: '',
+    status: 'pending'
+  });
+
+  // Filter tasks waiting for installation that don't have an active installation schedule
+  const unscheduledTasks = tasks.filter(t => 
+    t.status === 'waiting_install' && 
+    !schedules.some(s => s.taskId === t.id && s.status !== 'cancelled')
+  );
+
+  const handleTaskSelect = (taskId: string) => {
+    if (taskId === 'manual') {
+      setFormData(prev => ({ 
+        ...prev, 
+        taskId: '',
+        customerId: '', 
+        customerName: '', 
+        phone: '', 
+        address: '' 
+      }));
+      return;
+    }
+
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setFormData(prev => ({
+        ...prev,
+        taskId: task.id,
+        customerId: task.customerId || '',
+        customerName: task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+        phone: task.phone || '',
+        address: task.address || ''
+      }));
+    }
+  };
+
+  const handleInstallerSelect = (assigneeId: string) => {
+    setFormData(prev => ({ ...prev, assigneeId }));
+  };
+
+  const taskOptions = [
+    { label: '-- Nhập tay / Không liên kết thẻ --', value: 'manual' },
+    ...unscheduledTasks.map(t => ({
+      label: `${t.customerName || t.title} (${t.address || 'Không có địa chỉ'})`,
+      value: t.id
+    }))
+  ];
+
+  if (formData.taskId && formData.taskId !== 'manual' && !taskOptions.find(o => o.value === formData.taskId)) {
+    const t = tasks.find(x => x.id === formData.taskId);
+    taskOptions.push({
+      label: t ? `${t.customerName || t.title} (${t.address || 'Không có địa chỉ'})` : formData.customerName || formData.taskId,
+      value: formData.taskId
+    });
+  }
+
+  const installerOptions = installerMembers.map(m => ({ label: `${m.name} (${m.role})`, value: m.id }));
+  // Fallback to all members if list is empty
+  const displayInstallerOptions = installerOptions.length > 0 
+    ? installerOptions 
+    : members.map(m => ({ label: `${m.name} (${m.role})`, value: m.id }));
+
+  if (formData.assigneeId && !displayInstallerOptions.find(o => o.value === formData.assigneeId)) {
+    const m = members.find(x => x.id === formData.assigneeId);
+    displayInstallerOptions.push({
+      label: m ? `${m.name} (${m.role})` : formData.assigneeId,
+      value: formData.assigneeId
+    });
+  }
+
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const today = () => setCurrentMonth(getCurrentVNDate());
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để lưu');
+      return;
+    }
+    try {
+      const id = Date.now().toString();
+      const schedule: InstallationSchedule = {
+        id,
+        date: new Date(formData.date!).toISOString(),
+        taskId: formData.taskId || '',
+        customerId: formData.customerId || '',
+        customerName: formData.customerName || '',
+        phone: formData.phone || '',
+        address: formData.address || '',
+        status: formData.status as 'pending' | 'completed' | 'cancelled',
+        assigneeId: formData.assigneeId || '',
+        notes: formData.notes,
+        createdAt: new Date().toISOString()
+      };
+
+      InstallationScheduleSchema.parse(schedule);
+      
+      await setDoc(doc(db, 'installation_schedules', id), schedule);
+
+      // Trigger notification to managers and assigned staff
+      const assignee = members.find(m => m.id === schedule.assigneeId);
+      notifyManagers(
+        'Lịch lắp đặt mới',
+        `Điều phối lịch lắp đặt cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}. Phụ trách: ${assignee?.name || 'Chưa rõ'}`,
+        { taskId: schedule.id, type: 'installation' }
+      );
+
+      // If completing directly, update linked task status
+      if (schedule.status === 'completed' && schedule.taskId) {
+        const taskRef = doc(db, 'tasks', schedule.taskId);
+        await updateDoc(taskRef, {
+          status: 'done',
+          completedAt: new Date().toISOString()
+        });
+        toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+      }
+
+      toast.success('Đã xếp lịch lắp đặt thành công');
+      setIsOpen(false);
+      setFormData({
+        taskId: '',
+        customerId: '',
+        customerName: '',
+        phone: '',
+        address: '',
+        date: new Date().toISOString().slice(0, 16),
+        assigneeId: '',
+        status: 'pending',
+        notes: ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error('Vui lòng điền đầy đủ và đúng định dạng');
+      } else {
+        handleFirestoreError(error, OperationType.CREATE, 'installation_schedules');
+        toast.error('Có lỗi xảy ra');
+      }
+    }
+  };
+
+  const [isUploading, setIsUploading] = useState<string | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<InstallationSchedule>>({});
+
+  const handleEditClick = (schedule: InstallationSchedule) => {
+    setEditingId(schedule.id);
+    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(new Date(schedule.date).getTime() - tzOffset)).toISOString().slice(0, 16);
+    setEditFormData({ ...schedule, date: localISOTime });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditFormData({});
+  };
+
+  const handleSaveEdit = async (schedule: InstallationSchedule) => {
+    if (!editFormData.customerName || editFormData.customerName.trim() === '') {
+        toast.error('Vui lòng nhập tên khách hàng');
+        return;
+    }
+    if (!editFormData.date || editFormData.date.trim() === '') {
+        toast.error('Vui lòng nhập thời gian lắp');
+        return;
+    }
+    if (!editFormData.phone || editFormData.phone.trim().length < 9) {
+        toast.error('Vui lòng nhập số điện thoại hợp lệ');
+        return;
+    }
+
+    setIsSaving(true);
+    try {
+        const scheduleRef = doc(db, 'installation_schedules', schedule.id);
+        const updatedData = {
+          ...editFormData,
+          date: new Date(editFormData.date!).toISOString()
+        };
+
+        // If status changed to completed, update linked task status
+        if (updatedData.status === 'completed' && schedule.status !== 'completed' && updatedData.taskId) {
+          const taskRef = doc(db, 'tasks', updatedData.taskId);
+          await updateDoc(taskRef, {
+            status: 'done',
+            completedAt: new Date().toISOString()
+          });
+          toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+        }
+
+        const { id, createdAt, ...dataToUpdate } = updatedData as any;
+        await updateDoc(scheduleRef, dataToUpdate);
+        toast.success('Đã cập nhật lịch lắp đặt');
+        setEditingId(null);
+        setEditFormData({});
+        queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+    } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, 'installation_schedules');
+        toast.error('Lỗi khi lưu thay đổi');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (schedule: InstallationSchedule, file: File) => {
+    setIsUploading(schedule.id);
+    const toastId = toast.loading('Đang tải ảnh nghiệm thu lên ImgBB...');
+
+    try {
+      const newUrl = await uploadToImgBB(file);
+      if (!newUrl) {
+        toast.dismiss(toastId);
+        return;
+      }
+      
+      await updateDoc(doc(db, 'installation_schedules', schedule.id), {
+        imageUrls: arrayUnion(newUrl)
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      toast.success('Đã tải ảnh lên thành công', { id: toastId });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Lỗi khi tải ảnh: ' + (error instanceof Error ? error.message : 'Unknown'), { id: toastId });
+    } finally {
+      setIsUploading(null);
+    }
+  };
+
+  const handleUpdateStatus = async (item: InstallationSchedule, newStatus: 'pending' | 'completed' | 'cancelled') => {
+    try {
+      const scheduleRef = doc(db, 'installation_schedules', item.id);
+      
+      // Fetch fresh data for image validation
+      const snap = await getDoc(scheduleRef);
+      const freshItem = snap.exists() ? snap.data() as InstallationSchedule : item;
+
+      if (newStatus === 'completed' && (!freshItem.imageUrls || freshItem.imageUrls.length === 0)) {
+        toast.error('Vui lòng tải ảnh nghiệm thu lắp đặt lên trước khi hoàn tất!');
+        return;
+      }
+
+      await updateDoc(scheduleRef, {
+        status: newStatus
+      });
+
+      // Update linked task status if completed
+      if (newStatus === 'completed' && freshItem.taskId) {
+        const taskRef = doc(db, 'tasks', freshItem.taskId);
+        await updateDoc(taskRef, {
+          status: 'done',
+          completedAt: new Date().toISOString()
+        });
+        toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      
+      let message = 'Đã cập nhật trạng thái';
+      if (newStatus === 'completed') message = 'Đã hoàn thành lắp đặt';
+      else if (newStatus === 'cancelled') message = 'Đã hủy lịch lắp đặt';
+      else if (newStatus === 'pending') message = 'Đã đưa về trạng thái chờ lắp';
+
+      toast.success(message);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'installation_schedules');
+      toast.error('Có lỗi xảy ra');
+    }
+  };
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+  const dateFormat = "d";
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  const getSchedulesForDay = (day: Date) => {
+    return filteredSchedules.filter(schedule => isSameDay(parseISO(schedule.date), day));
+  };
+
+  const currentMonthSchedules = filteredSchedules.filter(schedule => isSameMonth(parseISO(schedule.date), currentMonth));
+  const stats = {
+    total: currentMonthSchedules.length,
+    completed: currentMonthSchedules.filter(s => s.status === 'completed').length,
+    pending: currentMonthSchedules.filter(s => s.status === 'pending').length,
+    cancelled: currentMonthSchedules.filter(s => s.status === 'cancelled').length,
+  };
+
+  const openDayDetails = (day: Date) => {
+    setSelectedDate(day);
+    setDetailsOpen(true);
+  };
+
+  const openAddForDate = (date: Date) => {
+    const newDate = new Date(date);
+    newDate.setHours(8, 0, 0, 0);
+    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(newDate.getTime() - tzOffset)).toISOString().slice(0, 16);
+    
+    setFormData(prev => ({
+      ...prev,
+      date: localISOTime
+    }));
+    setIsOpen(true);
+    setDetailsOpen(false);
+  };
+
+  const handleQuickSchedule = (task: Task) => {
+    setFormData(prev => ({
+      ...prev,
+      taskId: task.id,
+      customerId: task.customerId || '',
+      customerName: task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+      phone: task.phone || '',
+      address: task.address || ''
+    }));
+    setIsOpen(true);
+  };
+
+  return (
+    <div className="space-y-3 sm:space-y-4 flex flex-col h-full max-w-[1600px] mx-auto px-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Hammer className="h-5.5 w-5.5 text-primary" />
+            Lịch Lắp Đặt
+          </h2>
+          <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Điều phối, xếp lịch thi công & hoàn thiện tại công trình</p>
+        </div>
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+           <div className="text-sm font-semibold w-[120px] text-center hidden sm:block">
+             Tháng {format(currentMonth, 'MM/yyyy')}
+           </div>
+           <div className="flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200 shadow-sm dark:bg-zinc-800">
+            <Button variant="ghost" size="icon" onClick={prevMonth} className="h-7 w-7">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" className="h-7 px-2 text-xs font-medium" onClick={today}>
+              Hôm nay
+            </Button>
+            <Button variant="ghost" size="icon" onClick={nextMonth} className="h-7 w-7">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button onClick={() => openAddForDate(new Date())} size="sm" className="gap-1 px-2.5 shrink-0 h-8 text-xs rounded-xl shadow-md">
+            <Plus className="h-3.5 w-3.5" />
+            <span>Xếp lịch</span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0">
+        {[
+          { label: 'Tổng lịch', value: stats.total, color: '' },
+          { label: 'Chờ lắp', value: stats.pending, color: 'text-blue-600' },
+          { label: 'Hoàn thành', value: stats.completed, color: 'text-emerald-600' },
+          { label: 'Hủy lịch', value: stats.cancelled, color: 'text-red-600' },
+        ].map((s) => (
+          <Card key={s.label} className="bg-card text-card-foreground border border-gray-200 relative group overflow-hidden shadow-sm dark:border-zinc-800 rounded-xl">
+            <CardContent className="p-2 flex flex-col items-center justify-center relative">
+              <span className="text-[8px] md:text-[10px] text-muted-foreground uppercase font-black tracking-wider truncate">{s.label}</span>
+              <span className={cn("text-sm md:text-lg font-bold", s.color)}>{s.value}</span>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1">
+        {/* Left Column: Calendar */}
+        <Card className="flex-1 flex flex-col min-h-[400px] overflow-hidden shadow-sm border border-gray-200 dark:border-zinc-800 rounded-2xl">
+          <div className="grid grid-cols-7 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
+            {weekDays.map((day, idx) => (
+              <div key={idx} className="py-2.5 text-center text-xs font-bold text-muted-foreground">
+                {day}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 overflow-auto min-h-0 bg-card text-card-foreground">
+            <div className="grid grid-cols-7 min-w-[700px] auto-rows-[minmax(80px,1fr)] sm:auto-rows-[minmax(100px,1fr)] md:auto-rows-[minmax(120px,1fr)] min-h-full">
+              {days.map((day, dayIdx) => {
+                const daySchedules = getSchedulesForDay(day);
+                const isCurrentMonth = isSameMonth(day, monthStart);
+                const isDayToday = isSameDay(day, getCurrentVNDate());
+
+                return (
+                  <div
+                    key={day.toString()}
+                    onClick={() => openDayDetails(day)}
+                    className={cn(
+                      "min-h-[70px] sm:min-h-[100px] md:min-h-[120px] p-1.5 border-b border-r transition-colors cursor-pointer hover:bg-secondary/40 group relative flex flex-col justify-between",
+                      !isCurrentMonth ? "bg-gray-100/50 text-muted-foreground dark:bg-zinc-900/40" : "bg-card text-card-foreground",
+                      dayIdx % 7 === 6 ? "border-r-0" : "border-r"
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-1 shrink-0">
+                      <span className={cn(
+                        "inline-flex items-center justify-center w-5.5 h-5.5 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold",
+                        isDayToday ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : ""
+                      )}>
+                        {format(day, dateFormat)}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex hover:bg-secondary rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddForDate(day);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-hidden flex flex-col space-y-1">
+                      {daySchedules.slice(0, 3).map((schedule) => (
+                        <div 
+                          key={schedule.id}
+                          className={cn(
+                            "text-[9px] sm:text-xs px-2 py-1 rounded truncate border font-medium flex items-center gap-1 shadow-sm",
+                            schedule.status === 'completed' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900' :
+                            schedule.status === 'cancelled' ? 'text-red-700 border-red-200 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900' :
+                            'text-blue-700 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900'
+                          )}
+                          title={`${schedule.customerName} - ${schedule.address}`}
+                        >
+                          <span className="font-bold opacity-75">{format(parseISO(schedule.date), 'HH:mm')}</span>
+                          <span className="truncate">{schedule.customerName}</span>
+                        </div>
+                      ))}
+                      {daySchedules.length > 3 && (
+                        <div className="text-[9px] sm:text-xs text-muted-foreground text-center font-semibold py-0.5">
+                          + {daySchedules.length - 3} lịch lắp
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+
+        {/* Right Column: Unscheduled tasks list */}
+        <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0">
+          <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
+            <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+              <ClipboardList className="h-4.5 w-4.5 text-primary" />
+              Chờ xếp lịch lắp đặt
+              {unscheduledTasks.length > 0 && (
+                <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
+                  {unscheduledTasks.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription className="text-[10px]">
+              Kéo sang cột chờ lắp để hiển thị tại đây
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-3 flex-1 overflow-y-auto">
+            {unscheduledTasks.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                <Wrench className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                <p className="text-xs font-semibold">Tất cả việc đã xếp lịch</p>
+                <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có dự án nào đang chờ xếp lịch lắp đặt.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {unscheduledTasks.map((task) => (
+                  <Card key={task.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
+                          {task.customerName || task.title}
+                        </span>
+                        <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none capitalize">
+                          {task.workshop || 'Cơ sở 1'}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{task.address || 'Chưa cập nhật địa chỉ'}</span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                        <Phone className="h-3 w-3 shrink-0" />
+                        <span>{task.phone || 'Chưa cập nhật SĐT'}</span>
+                      </p>
+                      
+                      <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                        <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                        <Button 
+                          onClick={() => handleQuickSchedule(task)} 
+                          size="sm" 
+                          className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold"
+                        >
+                          Xếp lịch
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add/Schedule Dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5 font-bold">
+              <Hammer className="h-5 w-5 text-primary" />
+              Điều phối Lịch Lắp Đặt
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Vui lòng điền thông tin và phân công thợ thi công lắp đặt tại công trình.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-3 text-sm">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Liên kết Công việc Chờ lắp *</Label>
+              <Select 
+                value={formData.taskId || 'manual'} 
+                onValueChange={handleTaskSelect}
+              >
+              <SelectTrigger className="h-10 bg-gray-50 border-gray-200 rounded-xl dark:bg-zinc-800 dark:border-zinc-700">
+                  <SelectValue placeholder="Chọn từ danh sách chờ lắp hoặc tự nhập" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-card">
+                  {taskOptions.map(o => (
+                    <SelectItem 
+                      key={o.value} 
+                      value={o.value}
+                      className={o.value === 'manual' ? "font-bold text-primary" : ""}
+                    >
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Tên khách hàng *</Label>
+                <Input 
+                  value={formData.customerName} 
+                  onChange={e => setFormData({...formData, customerName: e.target.value})} 
+                  placeholder="Họ và tên"
+                  className="h-10 rounded-xl w-full border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Điện thoại khách *</Label>
+                <Input 
+                  value={formData.phone} 
+                  onChange={e => setFormData({...formData, phone: e.target.value})} 
+                  placeholder="090..."
+                  className="h-10 rounded-xl w-full border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Địa chỉ lắp đặt *</Label>
+              <Input 
+                 value={formData.address} 
+                onChange={e => setFormData({...formData, address: e.target.value})} 
+                placeholder="Địa chỉ công trình"
+                className="h-10 rounded-xl border-gray-200 dark:border-zinc-700"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Thời gian lắp đặt *</Label>
+                <Input 
+                  type="datetime-local" 
+                  value={formData.date} 
+                  onChange={e => setFormData({...formData, date: e.target.value})}
+                  className="h-10 rounded-xl bg-gray-50 border-gray-200 cursor-pointer w-full dark:bg-zinc-800 dark:border-zinc-700"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
+                <Select value={formData.assigneeId || undefined} onValueChange={handleInstallerSelect}>
+                  <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full dark:bg-zinc-800 dark:border-zinc-700">
+                    <SelectValue placeholder="Chọn thợ lắp đặt" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-card">
+                    {displayInstallerOptions.map(m => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Ghi chú lắp đặt</Label>
+              <Input 
+                value={formData.notes || ''} 
+                onChange={e => setFormData({...formData, notes: e.target.value})} 
+                placeholder="Lưu ý về sản phẩm, tiến độ lắp ráp..."
+                className="h-10 rounded-xl border-gray-200 dark:border-zinc-700"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl">Hủy</Button>
+            <Button onClick={handleSave} className="rounded-xl">Lưu thông tin</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details/Edit Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-2xl">
+          <div className="flex flex-col max-h-[90vh]">
+            <DialogHeader className="shrink-0 border-b p-6 pb-3">
+              <DialogTitle className="flex items-center gap-2 font-bold">
+                 <CalendarIcon className="h-5 w-5 text-primary" />
+                 Chi tiết ngày {selectedDate && format(selectedDate, 'dd/MM/yyyy')}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Danh sách các lịch lắp đặt và thi công hoàn thiện trong ngày.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="space-y-4">
+                {selectedDate && getSchedulesForDay(selectedDate).length > 0 ? (
+                  getSchedulesForDay(selectedDate).map((schedule) => {
+                    const assignee = members.find(m => m.id === schedule.assigneeId);
+                    return (
+                      <div key={schedule.id} className="p-4 rounded-xl border bg-card shadow-sm space-y-3 dark:border-zinc-800">
+                        {editingId === schedule.id ? (
+                          <div className="space-y-4 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Ngày giờ lắp *</Label>
+                                <Input 
+                                  type="datetime-local"
+                                  value={editFormData.date || ''}
+                                  onChange={e => setEditFormData({...editFormData, date: e.target.value})}
+                                  className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Tên khách hàng *</Label>
+                                <Input 
+                                  value={editFormData.customerName || ''}
+                                  onChange={e => setEditFormData({...editFormData, customerName: e.target.value})}
+                                  className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">SĐT khách hàng *</Label>
+                                <Input 
+                                  type="tel"
+                                  value={editFormData.phone || ''}
+                                  onChange={e => setEditFormData({...editFormData, phone: e.target.value})}
+                                  className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Địa chỉ *</Label>
+                                <Input 
+                                  value={editFormData.address || ''}
+                                  onChange={e => setEditFormData({...editFormData, address: e.target.value})}
+                                  className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
+                                <Select 
+                                  value={editFormData.assigneeId || ''} 
+                                  onValueChange={(val) => setEditFormData({...editFormData, assigneeId: val})}
+                                >
+                                  <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card">
+                                    <SelectValue placeholder="Chọn nhân viên" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-card z-50">
+                                    {members.map(m => (
+                                      <SelectItem key={m.id} value={m.id}>{m.name || 'Không xác định'}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Trạng thái</Label>
+                                <Select 
+                                  value={editFormData.status || ''} 
+                                  onValueChange={(val: any) => setEditFormData({...editFormData, status: val})}
+                                >
+                                  <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card">
+                                    <SelectValue placeholder="Chọn trạng thái" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-card z-50">
+                                    <SelectItem value="pending">Chờ lắp đặt</SelectItem>
+                                    <SelectItem value="completed">Đã hoàn thành</SelectItem>
+                                    <SelectItem value="cancelled">Đã hủy</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground">Ghi chú</Label>
+                                <Input 
+                                  value={editFormData.notes || ''}
+                                  onChange={e => setEditFormData({...editFormData, notes: e.target.value})}
+                                  className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                              <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={isSaving} className="rounded-xl">Hủy</Button>
+                              <Button size="sm" onClick={() => handleSaveEdit(schedule)} disabled={isSaving} className="rounded-xl">{isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-start gap-4">
+                              <div>
+                                <h4 className="font-bold text-base text-primary">{schedule.customerName}</h4>
+                                <div className="flex items-center text-muted-foreground text-xs mt-1 gap-4 font-medium">
+                                  <span className="flex items-center gap-1 text-foreground">
+                                    <Clock className="w-3.5 h-3.5 text-primary" /> 
+                                    {format(parseISO(schedule.date), 'HH:mm')}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <User className="w-3.5 h-3.5" /> 
+                                    Phụ trách: {assignee?.name || 'Chưa phân công'}
+                                  </span>
+                                </div>
+                              </div>
+                              <Badge className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-lg shadow-none",
+                                schedule.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-500/20' : 
+                                schedule.status === 'pending' ? 'bg-blue-500/15 text-blue-600 dark:bg-blue-950 dark:text-blue-400 border border-blue-500/20' : 
+                                'bg-red-500/15 text-red-600 dark:bg-red-950 dark:text-red-400 border border-red-500/20'
+                              )}>
+                                {schedule.status === 'completed' ? 'Đã lắp xong' : 
+                                 schedule.status === 'pending' ? 'Chờ lắp đặt' : 'Đã hủy lịch'}
+                              </Badge>
+                            </div>
+
+                            <div className="grid gap-2 text-xs font-medium text-muted-foreground pt-1">
+                              <div className="flex items-start gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                                <span className="text-foreground">{schedule.address}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-foreground">{schedule.phone}</span>
+                              </div>
+                              {schedule.notes && (
+                                 <div className="mt-2 text-xs p-3 bg-secondary/35 rounded-xl border text-muted-foreground italic">
+                                   {schedule.notes}
+                                 </div>
+                              )}
+                            </div>
+
+                            <div className="pt-3 border-t dark:border-zinc-800 mt-4 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs font-bold text-muted-foreground">Ảnh nghiệm thu / lắp đặt hoàn thiện</Label>
+                                  {(currentUser?.id === schedule.assigneeId || isManager) && (
+                                    <div className="space-y-2">
+                                      <Input 
+                                        type="file" 
+                                        accept="image/*"
+                                        disabled={isUploading === schedule.id}
+                                        onChange={(e) => {
+                                          if (e.target.files?.length) {
+                                            handleFileUpload(schedule, e.target.files[0]);
+                                          }
+                                        }}
+                                        className="h-9 text-xs file:text-xs file:h-full rounded-xl cursor-pointer"
+                                      />
+                                      {isUploading === schedule.id && (
+                                        <div className="text-[10px] text-blue-500 animate-pulse font-bold">Đang tải ảnh lên...</div>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2 mt-2 flex-wrap min-h-[40px]">
+                                    {(schedule.imageUrls || []).map((url, i) => (
+                                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative group/img cursor-pointer">
+                                        <img src={url} alt={`installation-${i}`} className="w-12 h-12 object-cover rounded-lg border hover:scale-105 transition-transform" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                                <div className="flex gap-1.5">
+                                  {(isManager || currentUser?.id === schedule.assigneeId) && schedule.status !== 'completed' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-xl h-8 text-xs font-semibold"
+                                      onClick={() => handleUpdateStatus(schedule, 'completed')}
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      Hoàn thành lắp
+                                    </Button>
+                                  )}
+                                  {schedule.status === 'completed' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="gap-1 rounded-xl h-8 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                      onClick={() => handleUpdateStatus(schedule, 'pending')}
+                                    >
+                                      Mở lại lịch
+                                    </Button>
+                                  )}
+                                  {schedule.status === 'pending' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      className="rounded-xl h-8 text-xs font-semibold"
+                                      onClick={() => handleUpdateStatus(schedule, 'cancelled')}
+                                    >
+                                      Hủy lịch
+                                    </Button>
+                                  )}
+                                </div>
+                                
+                                <div className="flex gap-1.5">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="rounded-xl h-8 text-xs font-semibold"
+                                    onClick={() => handleEditClick(schedule)}
+                                  >
+                                    Chỉnh sửa
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CalendarIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-xs font-semibold">Không có lịch lắp đặt nào</p>
+                    <p className="text-[10px] text-muted-foreground/75 mt-0.5">Nhấp vào nút thêm ở góc để tạo lịch lắp đặt.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0 border-t p-4 flex justify-end bg-gray-50 dark:bg-zinc-900">
+              <Button variant="outline" onClick={() => setDetailsOpen(false)} className="rounded-xl h-9 text-xs">Đóng</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

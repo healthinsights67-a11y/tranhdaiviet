@@ -1,6 +1,6 @@
 import { db, collection, getDocs, handleFirestoreError, OperationType, deleteDoc } from '../lib/firebase';
-import { Task, Customer, Order, Member, MediaFolder, Quotation, MeasurementSchedule } from '../types';
-import { TaskSchema, CustomerSchema, OrderSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema } from '../schemas';
+import { Task, Customer, Order, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule } from '../types';
+import { TaskSchema, CustomerSchema, OrderSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema } from '../schemas';
 import { z } from 'zod';
 
 const validateData = <T>(schema: z.ZodSchema<T>, data: any): T => {
@@ -77,6 +77,16 @@ export const fetchMeasurementSchedules = async (): Promise<MeasurementSchedule[]
   }
 };
 
+export const fetchInstallationSchedules = async (): Promise<InstallationSchedule[]> => {
+  try {
+    const snapshot = await getDocs(collection(db, 'installation_schedules'));
+    return snapshot.docs.map(doc => validateData(InstallationScheduleSchema, { ...doc.data(), id: doc.id }) as InstallationSchedule);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'installation_schedules');
+    throw new Error('Failed to fetch installation schedules');
+  }
+};
+
 export const fetchProductLibrary = async (): Promise<any[]> => {
   try {
     const snapshot = await getDocs(collection(db, 'product_library'));
@@ -95,7 +105,8 @@ export const clearAllAppData = async () => {
       'members', 
       'media_folders', 
       'quotations', 
-      'measurement_schedules'
+      'measurement_schedules',
+      'installation_schedules'
   ];
   
   for (const colName of collectionsToClear) {

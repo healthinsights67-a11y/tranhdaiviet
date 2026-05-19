@@ -130,6 +130,25 @@
       },
       "required": ["date", "customerName", "phone", "address", "status", "assigneeId", "createdAt"]
     },
+    "InstallationSchedule": {
+      "title": "Installation Schedule",
+      "description": "Schedule for installers to perform work at the customer's location",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "taskId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "assigneeId": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "customerName", "phone", "address", "status", "assigneeId", "createdAt"]
+    },
     "ProductLibraryItem": {
       "title": "Product Library Item",
       "description": "Template product for quick quotation creation",
@@ -222,6 +241,10 @@
     "/measurement_schedules/{scheduleId}": {
       "schema": "MeasurementSchedule",
       "description": "Collection of measurement schedules"
+    },
+    "/installation_schedules/{scheduleId}": {
+      "schema": "InstallationSchedule",
+      "description": "Collection of installation schedules"
     },
     "/product_library/{productId}": {
       "schema": "ProductLibraryItem",
