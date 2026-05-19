@@ -134,7 +134,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       unitPrice: Number(formPrice),
       unit: formUnit,
       description: formDescription,
-      imageUrl: previewUrl || editingProduct.imageUrl || '',
+      imageUrl: previewUrl || '',
       category: editingProduct.category,
       userId: user?.uid || 'anonymous'
     };
@@ -142,7 +142,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
     try {
       await onSave(productToSave);
       setEditingProduct(null);
-      setPreviewUrl(null);
+      setPreviewUrl('');
     } catch (e) {
       console.error("Lỗi khi lưu:", e);
       // Don't close if error
@@ -167,13 +167,13 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       imageUrl: ''
     };
     setEditingProduct(newProduct);
-    setPreviewUrl(null);
+    setPreviewUrl('');
     resetForm(newProduct);
   };
 
   const openEdit = (product: any) => {
     setEditingProduct(product);
-    setPreviewUrl(product.imageUrl || null);
+    setPreviewUrl(product.imageUrl || '');
     resetForm(product);
   };
 
@@ -305,11 +305,10 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       <Dialog open={!!editingProduct} onOpenChange={(open) => {
         if (!open) {
           setEditingProduct(null);
-          setPreviewUrl(null);
+          setPreviewUrl('');
         }
       }}>
         <DialogContent 
-          key={editingProduct?.id || 'new'}
           className="sm:max-w-[700px] p-0 rounded-[32px] border-none shadow-2xl bg-card text-card-foreground max-h-[95vh] flex flex-col overflow-y-auto"
         >
           <div className="flex flex-col md:flex-row flex-1">
@@ -344,12 +343,26 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                 />
                 
                 {previewUrl && !isUploading && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button variant="secondary" size="sm" className="rounded-xl font-bold bg-card text-card-foreground/90">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Thay đổi ảnh
+                  <>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button variant="secondary" size="sm" className="rounded-xl font-bold bg-card text-card-foreground/90">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Thay đổi ảnh
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-3 right-3 z-20 rounded-full w-8 h-8 shadow-md opacity-90 hover:opacity-100 hover:scale-105 transition-all bg-red-600 hover:bg-red-700 text-white border-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewUrl('');
+                      }}
+                    >
+                      <X className="w-4 h-4" />
                     </Button>
-                  </div>
+                  </>
                 )}
               </div>
               
