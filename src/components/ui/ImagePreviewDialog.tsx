@@ -56,21 +56,40 @@ export function ImagePreviewDialog({
     e.stopPropagation();
     if (!imageUrl) return;
 
-    if (navigator.share) {
-      try {
+    try {
+      toast.info("Đang chuẩn bị tệp hình ảnh để chia sẻ...");
+      
+      // 1. Fetch the image from URL and convert to blob
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Extract original extension or fallback to png
+      const extension = imageUrl.split('.').pop()?.split('?')[0] || 'png';
+      const file = new File([blob], `i_noi_that_${Date.now()}.${extension}`, { type: blob.type || 'image/png' });
+
+      // 2. Check if file sharing is supported natively
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Chia sẻ hình ảnh mẫu',
+          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+        });
+        toast.success('Đã mở màn hình chia sẻ hình ảnh!');
+      } else if (navigator.share) {
+        // Fallback to sharing URL if browser supports sharing but not file objects
         await navigator.share({
           title: 'Chia sẻ hình ảnh mẫu',
           text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
           url: imageUrl,
         });
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.error('Error sharing:', err);
-          fallbackShare();
-        }
+      } else {
+        fallbackShare();
       }
-    } else {
-      fallbackShare();
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Error sharing image file:', err);
+        fallbackShare();
+      }
     }
   };
 
