@@ -83,13 +83,10 @@ export function NotificationManager() {
     };
   }, [permission]);
 
-  // Debugging helper
+  // Debugging helper (console only, no disruptive toasts for users)
   useEffect(() => {
     if (debugInfo && auth.currentUser) {
-      toast.error('Nhắc nhở Kỹ thuật', {
-        description: debugInfo,
-        duration: 5000,
-      });
+      console.warn('Nhắc nhở Kỹ thuật (FCM/VAPID Debug):', debugInfo);
     }
   }, [debugInfo]);
 
