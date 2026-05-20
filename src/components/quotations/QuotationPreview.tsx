@@ -149,17 +149,25 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       setIsExporting(true);
       toast.info("Đang tạo file PDF...");
 
-      // Better method using html-to-image + jsPDF with style override to ignore active scale transforms
+      // 1. Save original styles and classes
+      const originalClassName = element.className;
+      const originalStyleTransform = element.style.transform;
+
+      // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
+      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+      element.style.transform = "none";
+
+      // 3. Render canvas with high resolution
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        style: {
-          transform: 'none',
-          transformOrigin: 'top left',
-          width: '210mm',
-          height: '297mm'
-        }
+        width: 794,
+        height: 1123
       });
+
+      // 4. Restore original styles immediately
+      element.className = originalClassName;
+      element.style.transform = originalStyleTransform;
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({
@@ -169,11 +177,10 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const margin = 10;
-      const printWidth = pdfWidth - margin * 2;
-      const printHeight = (canvas.height * printWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
+      // Fit A4 exactly
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${getFileName()}.pdf`);
       
       toast.success("Đã tải xuống PDF thành công");
@@ -193,17 +200,25 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       setIsExporting(true);
       toast.info("Đang khởi tạo tệp ảnh báo giá...");
 
-      // Render quotation content to canvas with style override to ignore active scale transforms
+      // 1. Save original styles and classes
+      const originalClassName = element.className;
+      const originalStyleTransform = element.style.transform;
+
+      // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
+      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+      element.style.transform = "none";
+
+      // 3. Render canvas
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        style: {
-          transform: 'none',
-          transformOrigin: 'top left',
-          width: '210mm',
-          height: '297mm'
-        }
+        width: 794,
+        height: 1123
       });
+
+      // 4. Restore original styles immediately
+      element.className = originalClassName;
+      element.style.transform = originalStyleTransform;
 
       // Convert canvas to blob
       canvas.toBlob(async (blob) => {
@@ -247,16 +262,24 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     const element = printRef.current;
     if (!element) return;
     
+    // 1. Save original styles and classes
+    const originalClassName = element.className;
+    const originalStyleTransform = element.style.transform;
+
+    // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
+    element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+    element.style.transform = "none";
+
     toCanvas(element, { 
       pixelRatio: 2, 
       backgroundColor: '#ffffff',
-      style: {
-        transform: 'none',
-        transformOrigin: 'top left',
-        width: '210mm',
-        height: '297mm'
-      }
+      width: 794,
+      height: 1123
     }).then((canvas) => {
+      // Restore styles
+      element.className = originalClassName;
+      element.style.transform = originalStyleTransform;
+
       const link = document.createElement('a');
       link.href = canvas.toDataURL('image/png');
       link.download = `${getFileName()}.png`;
@@ -266,6 +289,8 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       toast.success("Đã tải ảnh báo giá thành công! Bạn có thể chọn ảnh này để gửi sang Zalo/Facebook.");
     }).catch(err => {
       console.error(err);
+      element.className = originalClassName;
+      element.style.transform = originalStyleTransform;
       toast.error("Không hỗ trợ chia sẻ tự động trên trình duyệt này.");
     });
   };
