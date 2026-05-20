@@ -99,7 +99,10 @@ export function Dashboard({ tasks, members, orders, customers, currentUser }: { 
     };
   }).sort((a, b) => b.count - a.count);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+  const totalRevenue = filteredOrders.reduce((sum, o) => {
+    const customer = activeCustomers.find(c => c.name === o.customerName);
+    return sum + (o.totalValue || customer?.orderValue || 0);
+  }, 0);
 
   const stats = [
     { label: 'Tổng nhiệm vụ', value: filteredTasks.length, icon: CheckCircle2, color: 'text-blue-500' },
@@ -354,7 +357,7 @@ export function Dashboard({ tasks, members, orders, customers, currentUser }: { 
                          <p className="text-xs font-bold">{(() => { const customer = activeCustomers.find(c => c.name === order.customerName); return customer?.code || 'KH - [Không xác định]'; })()} - {order.customerName}</p>
                          <p className="text-[10px] text-muted-foreground mt-0.5">{order.productName || 'Sản phẩm'}</p>
                          <p className="text-[10px] font-semibold text-primary mt-0.5">
-                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalValue || 0) : '*** ₫'}
+                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalValue || activeCustomers.find((c: any) => c.name === order.customerName)?.orderValue || 0) : '*** ₫'}
                          </p>
                        </div>
                        <div className="text-right">
