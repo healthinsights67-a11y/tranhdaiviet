@@ -41,6 +41,8 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = React.useState(false);
   const [template, setTemplate] = React.useState<QuotationTemplate>(defaultTemplate);
+  const [customerCode, setCustomerCode] = React.useState<string>('KH000');
+  const [quotationIndex, setQuotationIndex] = React.useState<number>(1);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -58,6 +60,59 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     }
   }, [isOpen]);
 
+  React.useEffect(() => {
+    if (isOpen && quotation.customerId) {
+      const fetchCustomerAndIndex = async () => {
+        try {
+          const { doc, getDoc, collection, getDocs, query, where, db } = await import('@/src/lib/firebase');
+          
+          // Get customer code
+          const customerSnap = await getDoc(doc(db, 'customers', quotation.customerId));
+          let resolvedCode = 'KH000';
+          if (customerSnap.exists()) {
+            const custData = customerSnap.data();
+            if (custData.code) {
+              const codePart = custData.code.split('_')[0];
+              resolvedCode = codePart || 'KH000';
+            }
+          }
+          setCustomerCode(resolvedCode);
+
+          // Get quotation count index for this customer
+          const q = query(collection(db, 'quotations'), where('customerId', '==', quotation.customerId));
+          const snap = await getDocs(q);
+          const allQuots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          
+          // Sort by date or createdAt ascending
+          allQuots.sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
+          
+          const index = allQuots.findIndex(q => q.id === quotation.id);
+          setQuotationIndex(index !== -1 ? index + 1 : allQuots.length + 1);
+        } catch (error) {
+          console.error('Error fetching customer code/index:', error);
+        }
+      };
+      
+      fetchCustomerAndIndex();
+    }
+  }, [isOpen, quotation.customerId, quotation.id]);
+
+  const removeVietnameseAccents = (str: string) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  };
+
+  const getFileName = () => {
+    const customerNameNoAccents = removeVietnameseAccents(quotation.customerName || 'Khach_Hang');
+    return `Bao_Gia_${customerCode}_${customerNameNoAccents}_So_${quotationIndex}`;
+  };
+
   const isIframe = () => {
     try {
       return window.self !== window.top;
@@ -69,7 +124,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
   // Reliable, high-fidelity printing utilizing react-to-print
   const triggerPrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Bao_Gia_${quotation.quotationNumber}`,
+    documentTitle: getFileName(),
     onAfterPrint: () => {
       toast.success('Bắt đầu tiến trình in.');
     },
@@ -119,7 +174,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
       const printHeight = (canvas.height * printWidth) / canvas.width;
 
       pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
-      pdf.save(`Bao_Gia_${quotation.quotationNumber}.pdf`);
+      pdf.save(`${getFileName()}.pdf`);
       
       toast.success("Đã tải xuống PDF thành công");
     } catch (error) {
@@ -158,13 +213,13 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
           return;
         }
 
-        const file = new File([blob], `Bao_Gia_${quotation.quotationNumber}.png`, { type: 'image/png' });
+        const file = new File([blob], `${getFileName()}.png`, { type: 'image/png' });
 
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
-              title: `Báo giá ${quotation.quotationNumber}`,
+              title: `Báo giá ${getFileName()}`,
               text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
             });
             toast.success("Chia sẻ báo giá thành công!");
@@ -204,7 +259,7 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     }).then((canvas) => {
       const link = document.createElement('a');
       link.href = canvas.toDataURL('image/png');
-      link.download = `Bao_Gia_${quotation.quotationNumber}.png`;
+      link.download = `${getFileName()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -437,10 +492,10 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                     </td>
                   </tr>
                   <tr className="bg-gray-100 border-t-2 border-black">
-                    <td colSpan={6} className="p-3 text-right text-[12px] font-bold uppercase tracking-[0.2em] text-black">
+                    <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
                        TỔNG GIÁ TRỊ THANH TOÁN (VNĐ)
                     </td>
-                    <td className="p-3 text-right font-mono text-[18px] font-bold tracking-tighter text-gray-950">
+                    <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
                       {quotation.totalAmount.toLocaleString()}
                     </td>
                   </tr>
