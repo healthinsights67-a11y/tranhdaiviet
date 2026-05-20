@@ -69,6 +69,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { notifyManagers } from '@/src/services/notificationService';
+import { moveToTrash } from '@/src/services/trashService';
+
 
 interface CustomerPageProps {
   customers: Customer[];
@@ -294,7 +296,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   const handleDeleteCustomer = async (id: string) => {
     try {
       if (user) {
-        await deleteDoc(doc(db, 'customers', id));
+        const customerToDelete = customers.find(c => c.id === id);
+        const title = customerToDelete ? `${customerToDelete.code || 'KH'} - ${customerToDelete.name}` : id;
+        await moveToTrash('customers', id, title, user.email || '');
       } else {
         setCustomers(customers.filter(c => c.id !== id));
       }

@@ -21,7 +21,8 @@ import {
   FileText,
   Package,
   ShieldAlert,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,7 @@ const navGroups = [
       { id: 'media', label: 'Thư viện ảnh', icon: Image, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },
+      { id: 'trash', label: 'Thùng rác', icon: Trash2 },
     ]
   }
 ];

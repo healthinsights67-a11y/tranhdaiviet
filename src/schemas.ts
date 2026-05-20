@@ -224,3 +224,13 @@ export const InstallationScheduleSchema = z.object({
   createdAt: timestampSchema,
   imageUrls: z.array(z.string()).optional(),
 });
+
+export const TrashItemSchema = z.object({
+  id: z.string(),
+  originalId: z.string(),
+  collection: z.string(),
+  title: z.string(),
+  data: z.any(),
+  deletedAt: timestampSchema,
+  deletedBy: z.string(),
+});

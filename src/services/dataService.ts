@@ -1,6 +1,6 @@
 import { db, collection, getDocs, handleFirestoreError, OperationType, deleteDoc } from '../lib/firebase';
-import { Task, Customer, Order, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule } from '../types';
-import { TaskSchema, CustomerSchema, OrderSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema } from '../schemas';
+import { Task, Customer, Order, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule, TrashItem } from '../types';
+import { TaskSchema, CustomerSchema, OrderSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema, TrashItemSchema } from '../schemas';
 import { z } from 'zod';
 
 const validateData = <T>(schema: z.ZodSchema<T>, data: any): T => {
@@ -114,5 +114,15 @@ export const clearAllAppData = async () => {
       for (const docSnapshot of snapshot.docs) {
           await deleteDoc(docSnapshot.ref);
       }
+  }
+};
+
+export const fetchTrash = async (): Promise<TrashItem[]> => {
+  try {
+    const snapshot = await getDocs(collection(db, 'trash'));
+    return snapshot.docs.map(doc => validateData(TrashItemSchema, { ...doc.data(), id: doc.id }) as TrashItem);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'trash');
+    throw new Error('Failed to fetch trash items');
   }
 };

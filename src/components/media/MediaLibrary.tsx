@@ -36,6 +36,7 @@ import { db, collection, addDoc, deleteDoc, doc, handleFirestoreError, Operation
 import { getVNTimestamp } from '@/src/lib/utils';
 import { ImagePreviewDialog } from '@/src/components/ui/ImagePreviewDialog';
 import { uploadToImgBB } from '@/src/services/uploadService';
+import { moveToTrash } from '@/src/services/trashService';
 
 interface MediaLibraryProps {
   folders: MediaFolder[];
@@ -141,7 +142,13 @@ export function MediaLibrary({ folders, user }: MediaLibraryProps) {
   const handleDeleteImage = async (id: string) => {
     if (!confirm("Bạn có chắc chắn muốn xóa ảnh này?")) return;
     try {
-      await deleteDoc(doc(db, 'media_library', id));
+      if (user) {
+        const image = images.find(img => img.id === id);
+        const title = image ? `Ảnh thư viện: ${image.name || id}` : id;
+        await moveToTrash('media_library', id, title, user.email || '');
+      } else {
+        await deleteDoc(doc(db, 'media_library', id));
+      }
       toast.success("Đã xóa ảnh");
     } catch (error: any) {
       toast.error("Lỗi xóa ảnh");
@@ -167,7 +174,13 @@ export function MediaLibrary({ folders, user }: MediaLibraryProps) {
 
   const handleDeleteFolder = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'media_folders', id));
+      if (user) {
+        const folder = folders.find(f => f.id === id);
+        const title = folder ? `Thư mục Drive: ${folder.name}` : id;
+        await moveToTrash('media_folders', id, title, user.email || '');
+      } else {
+        await deleteDoc(doc(db, 'media_folders', id));
+      }
       toast.success("Đã xóa liên kết");
       setDeleteConfirmId(null);
     } catch (error) {

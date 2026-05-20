@@ -223,3 +223,13 @@ export interface InstallationSchedule {
   createdAt: string;
   imageUrls?: string[];
 }
+
+export interface TrashItem {
+  id: string;
+  originalId: string;
+  collection: string;
+  title: string;
+  data: any;
+  deletedAt: string;
+  deletedBy: string;
+}

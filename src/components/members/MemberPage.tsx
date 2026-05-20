@@ -76,6 +76,7 @@ import {
 import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, setDoc, deleteDoc, doc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { compressImage } from '@/src/lib/imageUtils';
+import { moveToTrash } from '@/src/services/trashService';
 
 interface MemberPageProps {
   members: Member[];
@@ -224,7 +225,9 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
     }
     try {
       if (user) {
-        await deleteDoc(doc(db, 'members', id));
+        const memberToDelete = members.find(m => m.id === id);
+        const title = memberToDelete ? `Nhân sự: ${memberToDelete.name}` : id;
+        await moveToTrash('members', id, title, user.email || '');
         queryClient.invalidateQueries({ queryKey: ['members'] });
       } else {
         setMembers(members.filter(m => m.id !== id));

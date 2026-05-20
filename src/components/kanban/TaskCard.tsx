@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ImagePreviewDialog } from '@/src/components/ui/ImagePreviewDialog';
 import { MaterialRequisitionForm } from './MaterialRequisitionForm';
 import { ProductionChecklistForm } from './ProductionChecklistForm';
-import { db, doc, deleteDoc, updateDoc, handleFirestoreError, OperationType, storage, ref, uploadBytes, getDownloadURL, addDoc, collection } from '@/src/lib/firebase';
+import { db, auth, doc, deleteDoc, updateDoc, handleFirestoreError, OperationType, storage, ref, uploadBytes, getDownloadURL, addDoc, collection } from '@/src/lib/firebase';
+import { moveToTrash } from '@/src/services/trashService';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -375,10 +376,11 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
     try {
       if (isVirtual) {
         // Delete the source order for virtual tasks
-        await deleteDoc(doc(db, 'orders', actualId));
+        const orderTitle = task.customerName ? `Đơn hàng: ${task.customerName}` : task.title;
+        await moveToTrash('orders', actualId, orderTitle, auth.currentUser?.email || 'Người dùng');
       } else {
         // Delete the real task
-        await deleteDoc(doc(db, 'tasks', actualId));
+        await moveToTrash('tasks', actualId, task.title, auth.currentUser?.email || 'Người dùng');
       }
     } catch (error) {
       console.error("Lỗi khi xóa ở server:", error);

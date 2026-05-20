@@ -46,6 +46,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQueryClient } from '@tanstack/react-query';
 import { Quotation, Customer, Member } from '@/src/types';
 import { format } from 'date-fns';
@@ -56,6 +64,7 @@ import { QuotationTemplateConfig } from './QuotationTemplateConfig';
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';
+import { moveToTrash } from '@/src/services/trashService';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
 
@@ -78,6 +87,8 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null);
+  const [pendingDesignTask, setPendingDesignTask] = React.useState<{ quotationId: string; customerId: string; customerName: string; } | null>(null);
+  const [targetDesignerId, setTargetDesignerId] = React.useState<string>('');
 
   const filteredQuotations = quotations.filter(q => {
     const matchesSearch = q.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -155,11 +166,53 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const handleDeleteQuotation = async (id: string) => {
     if (!confirm("Xác nhận xóa báo giá này khỏi hệ thống?")) return;
     try {
-      await deleteDoc(doc(db, 'quotations', id));
+      if (user) {
+        const quote = quotations.find(q => q.id === id);
+        const title = quote ? `Báo giá: ${quote.quotationNumber} - ${quote.customerName}` : id;
+        await moveToTrash('quotations', id, title, user.email || '');
+      }
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
       toast.success("Đã xóa báo giá");
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `quotations/${id}`);
+    }
+  };
+
+  const handleCreateDesignTask = async () => {
+    if (!pendingDesignTask || !targetDesignerId) return;
+    const { quotationId, customerId, customerName } = pendingDesignTask;
+
+    const customer = customers.find(c => c.id === customerId);
+    const address = customer?.address || '';
+    const category = customer?.furnitureCategory || 'Nội thất';
+    const phone = customer?.phone || '';
+    const workshop = customer?.workshop || '';
+
+    const newTaskData = {
+      title: `Thiết kế: ${customerName}`,
+      description: `Tiếp nhận thông tin từ báo giá chốt của khách hàng ${customerName}. Hạng mục: ${category}. Địa chỉ: ${address}. SĐT: ${phone}`,
+      status: 'todo' as const,
+      type: 'design' as const,
+      priority: 'medium' as const,
+      assigneeId: targetDesignerId,
+      customerId: customerId,
+      createdAt: new Date().toISOString(),
+      workshop: workshop,
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    };
+
+    try {
+      if (user) {
+        await addDoc(collection(db, 'tasks'), newTaskData);
+      }
+      
+      const designerName = members.find(m => m.id === targetDesignerId)?.name || 'Nhân viên';
+      toast.success(`Hợp đồng đã chốt! Đã giao việc thiết kế cho ${designerName}`);
+      setPendingDesignTask(null);
+      setTargetDesignerId('');
+    } catch (error: any) {
+      console.error("Error creating design task:", error);
+      toast.error("Lỗi khi tạo nhiệm vụ thiết kế");
     }
   };
 
@@ -183,6 +236,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
             });
             toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng & Cập nhật giá trị đơn hàng.');
           }
+          
+          // Show the assignment dialog whether or not there's a registered customerId
+          setPendingDesignTask({
+            quotationId: id,
+            customerId: qData.customerId || '',
+            customerName: qData.customerName || 'Khách lẻ'
+          });
         }
       }
 
@@ -226,7 +286,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const handleDeleteProduct = async (id: string) => {
     if (!confirm("Xác nhận xóa sản phẩm này khỏi kho mẫu?")) return;
     try {
-      await deleteDoc(doc(db, 'product_library', id));
+      if (user) {
+        const product = products.find(p => p.id === id);
+        const title = product ? `Sản phẩm mẫu: ${product.name}` : id;
+        await moveToTrash('product_library', id, title, user.email || '');
+      }
       queryClient.invalidateQueries({ queryKey: ['product_library'] });
       toast.success("Đã xóa sản phẩm");
     } catch (error) {
@@ -575,6 +639,36 @@ export function QuotationPage({ quotations, user, customers, members, products =
           />
         )}
       </AnimatePresence>
+
+      <Dialog open={!!pendingDesignTask} onOpenChange={(open) => !open && setPendingDesignTask(null)}>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Bàn giao thiết kế</DialogTitle>
+            <DialogDescription>
+              Báo giá đã được chốt. Vui lòng chọn nhân sự thiết kế để tiếp tục quy trình.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Người thiết kế</label>
+              <Select value={targetDesignerId} onValueChange={setTargetDesignerId}>
+                <SelectTrigger className="w-full h-11 rounded-xl">
+                  <SelectValue placeholder="Chọn nhân viên thiết kế..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {members.filter(m => m.role?.toLowerCase().includes('thiết kế') || m.role?.toLowerCase().includes('design')).map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDesignTask(null)}>Bỏ qua</Button>
+            <Button onClick={handleCreateDesignTask} disabled={!targetDesignerId}>Giao việc</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
