@@ -171,30 +171,32 @@ export function QuotationPage({ quotations, user, customers, members, products =
         updatedAt: new Date().toISOString()
       });
 
-      // Automatically update customer stage to 'contracted' if quotation is accepted
+      // Automatically update customer stage and order value if quotation is accepted
       if (status === 'accepted') {
         const snap = await getDoc(quotationRef);
         if (snap.exists()) {
           const qData = snap.data() as Quotation;
           if (qData.customerId) {
             await updateDoc(doc(db, 'customers', qData.customerId), {
-              stage: 'contracted'
+              stage: 'contracted',
+              orderValue: qData.totalAmount
             });
-            toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng (Đã chốt)');
+            toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng & Cập nhật giá trị đơn hàng.');
           }
         }
       }
 
-      // Automatically update customer stage to 'lost' if quotation is rejected
+      // Automatically update customer stage to 'lost' and reset order value if quotation is rejected
       if (status === 'rejected') {
         const snap = await getDoc(quotationRef);
         if (snap.exists()) {
           const qData = snap.data() as Quotation;
           if (qData.customerId) {
             await updateDoc(doc(db, 'customers', qData.customerId), {
-              stage: 'lost'
+              stage: 'lost',
+              orderValue: 0
             });
-            toast.info('Đã cập nhật trạng thái khách hàng sang: Thất bại (Từ chối)');
+            toast.info('Đã cập nhật trạng thái khách hàng sang: Thất bại (Từ chối) & Đặt giá trị đơn hàng về 0.');
           }
         }
       }
