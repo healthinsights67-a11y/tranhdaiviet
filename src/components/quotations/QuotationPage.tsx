@@ -16,7 +16,8 @@ import {
   ChevronRight,
   TrendingDown,
   Phone,
-  Package
+  Package,
+  XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -180,6 +181,20 @@ export function QuotationPage({ quotations, user, customers, members, products =
               stage: 'contracted'
             });
             toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng (Đã chốt)');
+          }
+        }
+      }
+
+      // Automatically update customer stage to 'lost' if quotation is rejected
+      if (status === 'rejected') {
+        const snap = await getDoc(quotationRef);
+        if (snap.exists()) {
+          const qData = snap.data() as Quotation;
+          if (qData.customerId) {
+            await updateDoc(doc(db, 'customers', qData.customerId), {
+              stage: 'lost'
+            });
+            toast.info('Đã cập nhật trạng thái khách hàng sang: Thất bại (Từ chối)');
           }
         }
       }
@@ -446,10 +461,30 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                     <MoreVertical className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-white/10">
-                                  <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(quotation.id, 'accepted')}>
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                    Chốt báo giá (Thành công)
-                                  </DropdownMenuItem>
+                                  {quotation.status !== 'accepted' && (
+                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(quotation.id, 'accepted')}>
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                      Chốt báo giá (Thành công)
+                                    </DropdownMenuItem>
+                                  )}
+                                  {quotation.status !== 'rejected' && (
+                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onClick={() => handleUpdateStatus(quotation.id, 'rejected')}>
+                                      <XCircle className="h-4 w-4 text-amber-500" />
+                                      Từ chối báo giá (Hủy)
+                                    </DropdownMenuItem>
+                                  )}
+                                  {quotation.status === 'draft' && (
+                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" onClick={() => handleUpdateStatus(quotation.id, 'sent')}>
+                                      <Clock className="h-4 w-4 text-blue-500" />
+                                      Đã gửi khách hàng
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(quotation.status === 'sent' || quotation.status === 'rejected') && (
+                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-gray-600" onClick={() => handleUpdateStatus(quotation.id, 'draft')}>
+                                      <Clock className="h-4 w-4 text-gray-500" />
+                                      Chuyển thành bản nháp
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator className="bg-card text-card-foreground/5 my-1" />
                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => {
                                     setSelectedQuotation(quotation);
