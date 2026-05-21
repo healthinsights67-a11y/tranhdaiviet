@@ -325,32 +325,6 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         status: newStatus
       });
 
-      // Automatically create design task if designer is selected
-      if (newStatus === 'completed' && freshItem.designAssigneeId && !freshItem.isPushedToDesign) {
-        const designTaskId = `DT-${Date.now()}`;
-        await setDoc(doc(db, 'tasks', designTaskId), {
-          id: designTaskId,
-          title: `Thiết kế cho KH: ${freshItem.customerName}`,
-          description: `Tự động tạo từ lịch đo đạc:\nĐịa chỉ: ${freshItem.address}\nSĐT: ${freshItem.phone}\nGhi chú: ${freshItem.notes || ''}`,
-          assigneeId: freshItem.designAssigneeId,
-          status: 'todo',
-          priority: 'medium',
-          type: 'design',
-          customerId: freshItem.customerId,
-          customerName: freshItem.customerName,
-          phone: freshItem.phone,
-          address: freshItem.address,
-          imageUrls: freshItem.imageUrls || [],
-          createdAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days default
-        });
-        
-        await updateDoc(scheduleRef, {
-          isPushedToDesign: true
-        });
-        toast.info('Đã tự động tạo việc cho thiết kế');
-      }
-
       queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
       
       let message = 'Đã cập nhật trạng thái';
