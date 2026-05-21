@@ -174,7 +174,7 @@ export function ImagePreviewDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black flex flex-col md:ml-64 transition-all duration-300"
+        className="fixed inset-0 z-[9999] bg-black flex flex-col md:ml-64 transition-all duration-300"
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -206,7 +206,7 @@ export function ImagePreviewDialog({
             <>
               {/* Nút bên trái */}
               <button 
-                className="absolute left-6 top-1/2 -translate-y-1/2 z-[101] h-12 w-12 rounded-full bg-gray-900/60 hover:bg-gray-800 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-sm shadow-lg active:scale-90"
+                className="absolute left-6 top-1/2 -translate-y-1/2 z-[10000] h-12 w-12 rounded-full bg-gray-900/60 hover:bg-gray-800 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-sm shadow-lg active:scale-90"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate((currentIdx - 1 + allImages.length) % allImages.length);
@@ -218,7 +218,7 @@ export function ImagePreviewDialog({
 
               {/* Nút bên phải */}
               <button 
-                className="absolute right-6 top-1/2 -translate-y-1/2 z-[101] h-12 w-12 rounded-full bg-gray-900/60 hover:bg-gray-800 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-sm shadow-lg active:scale-90"
+                className="absolute right-6 top-1/2 -translate-y-1/2 z-[10000] h-12 w-12 rounded-full bg-gray-900/60 hover:bg-gray-800 text-white flex items-center justify-center transition-all border border-white/10 backdrop-blur-sm shadow-lg active:scale-90"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate((currentIdx + 1) % allImages.length);
@@ -231,7 +231,7 @@ export function ImagePreviewDialog({
           )}
 
           {/* Nhóm nút điều khiển ở góc trên bên phải */}
-          <div className="absolute top-4 right-4 z-[102] flex items-center gap-2">
+          <div className="absolute top-4 right-4 z-[10000] flex items-center gap-2">
             <button 
               className="h-10 w-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 active:scale-90 hover:bg-black/80 transition-all"
               onClick={handleDownload}
@@ -259,7 +259,7 @@ export function ImagePreviewDialog({
         </div>
 
         {/* Thanh điều khiển ở phía dưới */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[101]">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
           <div className="bg-black/60 px-4 py-2 rounded-full text-white text-[10px] sm:text-xs border border-white/10 backdrop-blur-md">
             {currentIdx + 1} / {allImages.length} | KÉO ĐỂ DI CHUYỂN | CUỘN CHUỘT ĐỂ ZOOM
           </div>
