@@ -15,7 +15,6 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentUser, permissions }: MobileBottomNavProps) {
   const tabs = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'orders', label: 'Đơn hàng', icon: Repeat, permission: 'menuOrders' },
     { id: 'production', label: 'Sản xuất', icon: CalendarDays, permission: 'menuProduction' },
   ];
 

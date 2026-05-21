@@ -74,14 +74,13 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981', '#f43f5e', '#64748b'
 interface ReportPageProps {
   tasks: any[];
   members: any[];
-  orders: any[];
   customers: any[];
   quotations?: any[];
 }
 
 type DepartmentFilter = 'all' | 'SALE' | 'Thiết kế' | 'Sản xuất' | 'Kỹ thuật';
 
-export function ReportPage({ tasks, members, orders, customers, quotations = [] }: ReportPageProps) {
+export function ReportPage({ tasks, members, customers, quotations = [] }: ReportPageProps) {
   const [selectedMonth, setSelectedMonth] = React.useState<string>(() => getCurrentVNMonth());
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
@@ -109,7 +108,8 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
   };
 
   // Comprehensive Data Filtering
-  const filteredOrders = orders.filter(o => !selectedMonth || (o.orderDate && matchesTime(o.orderDate)));
+  const activeProjects = customers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
+  const filteredProjects = activeProjects.filter(o => !selectedMonth || (o.createdAt && matchesTime(o.createdAt)));
   const filteredCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
   const filteredTasks = tasks.filter(t => !selectedMonth || (t.completedAt && matchesTime(t.completedAt)));
 
@@ -120,7 +120,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       const memberWorkCustomers = customers.filter(c => c.assignedSaleId === member.id);
       const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
       
-      const memberOrders = filteredOrders.filter(o => memberCustomerNames.has(o.customerName));
+      const memberProjects = filteredProjects.filter(o => memberCustomerNames.has(o.name));
       const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || matchesTime(q.createdAt)));
       const revenue = memberQuotations.reduce((sum, q) => {
         if (q.status === 'deposit') return sum + (q.depositAmount || 0);
@@ -194,7 +194,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       const efficiency = totalPossibleKPI > 0 ? (totalKPI / totalPossibleKPI) * 100 : 0;
       
       const conversionRate = memberCustomers.length > 0 
-        ? (memberOrders.filter(o => o.status === 'completed').length / memberCustomers.length) * 100 
+        ? (memberProjects.filter(o => o.stage === 'completed').length / memberCustomers.length) * 100 
         : 0;
 
       return {
@@ -203,7 +203,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
         avatar: member.avatar,
         role: member.role,
         revenue,
-        orderCount: memberOrders.length,
+        orderCount: memberProjects.length,
         customerCount: memberCustomers.length,
         taskCount: completedTasks.length,
         totalTasks: memberTasks.length,
@@ -237,7 +237,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
   const completedTasksGlobal = filteredTasks.length;
   const overdueTasksGlobal = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
   const totalCustomers = filteredCustomers.length;
-  const totalConversions = filteredOrders.filter(o => o.status === 'completed').length;
+  const totalConversions = filteredProjects.filter(o => o.stage === 'completed').length;
   const overallConversionRate = totalCustomers > 0 ? (totalConversions / totalCustomers) * 100 : 0;
   
   const totalChecklistWork = memberStats.reduce((sum, s) => sum + s.checklistCount, 0);
@@ -270,21 +270,21 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
         daysInMonth[`${dayStr}/${month.toString().padStart(2, '0')}`] = 0;
       }
     } else {
-      // If no month selected, just use existing order dates
-      filteredOrders.forEach(o => {
-        if (o.orderDate) {
-          const date = o.orderDate.split('-').reverse().slice(0, 2).join('/');
+      filteredProjects.forEach(o => {
+        if (o.createdAt) {
+          const dateObj = new Date(o.createdAt);
+          const date = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
           daysInMonth[date] = 0;
         }
       });
     }
 
-    filteredOrders.forEach(o => {
-      if (o.orderDate) {
-        const dateParts = o.orderDate.split('-');
-        const dateKey = `${dateParts[2]}/${dateParts[1]}`;
+    filteredProjects.forEach(o => {
+      if (o.createdAt) {
+        const dateObj = new Date(o.createdAt);
+        const dateKey = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
         if (daysInMonth[dateKey] !== undefined) {
-          daysInMonth[dateKey] += (o.totalValue || 0) / 1000000;
+          daysInMonth[dateKey]++;
         }
       }
     });
@@ -306,7 +306,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
         const withQuotes = new Set(quotations.filter(q => !selectedMonth || matchesTime(q.createdAt)).map(q => q.customerName));
         return filteredCustomers.filter(c => ['surveying', 'contracted'].includes(c.stage) || withQuotes.has(c.name)).length;
       })(), icon: BarChart3, color: '#f59e0b' },
-    { name: 'Chốt đơn', value: filteredOrders.length, icon: Target, color: '#10b981' },
+    { name: 'Chốt đơn', value: filteredProjects.length, icon: Target, color: '#10b981' },
   ];
 
   const mainStats = [

@@ -1,7 +1,7 @@
 export type Priority = 'low' | 'medium' | 'high';
 export type Status = 'todo' | 'in-progress' | 'review' | 'done' | 'waiting_install' | 'archived';
-export type CustomerStage = 'consulting' | 'surveying' | 'contracted' | 'lost';
-export type OrderStatus = 'pending' | 'processing' | 'shipping' | 'completed' | 'cancelled';
+export type CustomerStage = 'consulting' | 'surveying' | 'contracted' | 'production' | 'installation' | 'completed' | 'lost';
+
 
 export interface MemberPermissions {
   viewPrice: boolean;
@@ -43,18 +43,6 @@ export interface Customer {
   createdAt: string;
   oneDriveLink?: string;
   furnitureCategory?: string;
-  workshop?: string;
-}
-
-export interface Order {
-  id: string;
-  customerName: string;
-  totalValue: number;
-  status: OrderStatus;
-  orderDate: string;
-  deliveryDate?: string;
-  completedAt?: string;
-  items: string;
   workshop?: string;
 }
 

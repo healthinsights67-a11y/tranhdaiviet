@@ -307,21 +307,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
             });
           }
 
-          // Complete the order if status is accepted
-          if (status === 'accepted' && prevData.customerName) {
-            const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-            const normalizedTitle = normalize(prevData.customerName);
-            const ordersRef = collection(db, 'orders');
-            const querySnapshot = await getDocs(query(ordersRef));
-            const matchingDoc = querySnapshot.docs.find(d => d.data().customerName && normalize(d.data().customerName) === normalizedTitle);
-            if (matchingDoc && matchingDoc.data().status !== 'completed') {
-              await updateDoc(matchingDoc.ref, { 
-                status: 'completed', 
-                completedAt: new Date().toISOString() 
-              });
-              queryClient.invalidateQueries({ queryKey: ['orders'] });
-              toast.success(`Đã tự động hoàn tất đơn hàng cho: ${prevData.customerName}`);
-            }
+          // Complete the customer stage if status is accepted
+          if (status === 'accepted' && prevData.customerId) {
+            await updateDoc(doc(db, 'customers', prevData.customerId), { 
+              stage: 'completed'
+            });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            toast.success(`Đã tự động hoàn tất dự án cho: ${prevData.customerName}`);
           }
         }
       }

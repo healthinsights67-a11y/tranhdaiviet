@@ -5,7 +5,7 @@ import { auth, db, onSnapshot, query, collection, orderBy, handleFirestoreError,
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoginForm } from './components/auth/LoginForm';
-import { fetchTasks, fetchCustomers, fetchOrders, fetchMembers, fetchFolders, fetchQuotations, fetchMeasurementSchedules, fetchProductLibrary, fetchInstallationSchedules } from './services/dataService';
+import { fetchTasks, fetchCustomers, fetchMembers, fetchFolders, fetchQuotations, fetchMeasurementSchedules, fetchProductLibrary, fetchInstallationSchedules } from './services/dataService';
 import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
@@ -13,7 +13,6 @@ const Dashboard = React.lazy(() => import('./components/dashboard/Dashboard').th
 const KanbanBoard = React.lazy(() => import('./components/kanban/KanbanBoard').then(module => ({ default: module.KanbanBoard })));
 const MemberPage = React.lazy(() => import('./components/members/MemberPage').then(module => ({ default: module.MemberPage })));
 const CustomerPage = React.lazy(() => import('./components/customers/CustomerPage').then(module => ({ default: module.CustomerPage })));
-const OrderPage = React.lazy(() => import('./components/orders/OrderPage').then(module => ({ default: module.OrderPage })));
 const AIRenderPage = React.lazy(() => import('./components/ai-render/AIRenderPage'));
 const ProductionCalendar = React.lazy(() => import('./components/production/ProductionCalendar').then(module => ({ default: module.ProductionCalendar })));
 const MediaLibrary = React.lazy(() => import('./components/media/MediaLibrary').then(module => ({ default: module.MediaLibrary })));
@@ -23,7 +22,7 @@ const InstallationPage = React.lazy(() => import('./components/installations/Ins
 const ReportPage = React.lazy(() => import('./components/reports/ReportPage').then(module => ({ default: module.ReportPage })));
 const UserManagement = React.lazy(() => import('./components/admin/UserManagement').then(module => ({ default: module.UserManagement })));
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
-import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_ORDERS, MOCK_QUOTATIONS } from './lib/mockData';
+import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import { NotificationManager } from './components/notifications/NotificationManager';
@@ -42,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, Customer, Order, Member, InstallationSchedule } from './types';
+import { Task, Customer, Member, InstallationSchedule } from './types';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
   return (
@@ -94,7 +93,6 @@ function AppContent() {
   const [tasksState, setTasks] = React.useState<Task[]>(MOCK_TASKS);
   const [customersState, setCustomers] = React.useState<Customer[]>(MOCK_CUSTOMERS);
   const [membersState, setMembers] = React.useState<Member[]>(MOCK_MEMBERS);
-  const [ordersState, setOrders] = React.useState<Order[]>(MOCK_ORDERS);
 
   const [localFolders, setFolders] = React.useState<any[]>([]);
 
@@ -118,14 +116,6 @@ function AppContent() {
       queryClient.setQueryData(['tasks'], data);
     }, (error) => {
       console.warn('Real-time sync (tasks) limited or delayed:', error.message);
-    });
-
-    const ordersQuery = query(collection(db, 'orders'), orderBy('orderDate', 'desc'));
-    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
-      queryClient.setQueryData(['orders'], data);
-    }, (error) => {
-      console.warn('Real-time sync (orders) limited or delayed:', error.message);
     });
 
     const membersQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
@@ -179,7 +169,6 @@ function AppContent() {
     return () => {
       unsubscribeCustomers();
       unsubscribeTasks();
-      unsubscribeOrders();
       unsubscribeMembers();
       unsubscribeFolders();
       unsubscribeQuotations();
@@ -199,12 +188,6 @@ function AppContent() {
   const { data: customersData, isLoading: isCustomersLoading } = useQuery({ 
     queryKey: ['customers'], 
     queryFn: fetchCustomers, 
-    enabled: !!user,
-    staleTime: Infinity 
-  });
-  const { data: ordersData, isLoading: isOrdersLoading } = useQuery({ 
-    queryKey: ['orders'], 
-    queryFn: fetchOrders, 
     enabled: !!user,
     staleTime: Infinity 
   });
@@ -247,7 +230,6 @@ function AppContent() {
 
   const tasks = user ? (tasksData || []) : MOCK_TASKS;
   const customers = user ? (customersData || []) : MOCK_CUSTOMERS;
-  const orders = user ? (ordersData || []) : MOCK_ORDERS;
   const members = user ? (membersData || []) : MOCK_MEMBERS;
   const quotations = user ? (quotationsData || []) : MOCK_QUOTATIONS;
   const folders = foldersData;
@@ -298,14 +280,6 @@ function AppContent() {
         (isWorkshopRestricted ? t.workshop === currentMember?.workshop : true)
       );
 
-  const filteredOrders = showAllData
-    ? (user ? orders : MOCK_ORDERS)
-    : orders.filter(o => {
-        const customer = (user ? customers : MOCK_CUSTOMERS).find(c => c.name === o.customerName);
-        return customer?.assignedSaleId === currentMember?.id || 
-               (isWorkshopRestricted ? (o.workshop || customer?.workshop) === currentMember?.workshop : true);
-      });
-
   React.useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -329,54 +303,50 @@ function AppContent() {
           : <ReportPage tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotationsData} />;
       case 'production':
         return redirect(perms.menuProduction)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <ProductionCalendar orders={filteredOrders} tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
-      case 'orders':
-        return redirect(perms.menuOrders)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <OrderPage orders={filteredOrders} customers={customers} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          : <ProductionCalendar tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
       case 'sale':
         return redirect(perms.menuSale)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={customers} currentUser={currentMember} />;
       case 'marketing':
         return redirect(perms.menuMarketing)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={customers} currentUser={currentMember} />;
       case 'design':
         return redirect(perms.menuDesign)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={customers} currentUser={currentMember} />;
       case 'employees':
         return redirect(perms.menuMembers)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} currentUser={currentMember} />;
       case 'media':
         return redirect(perms.menuMedia)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <MediaLibrary folders={folders} user={user} />;
       case 'quotations':
         return redirect(perms.menuQuotations)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
       case 'installations':
         return redirect(perms.menuOrders)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <InstallationPage schedules={installations} members={activeMembers} customers={customers} tasks={tasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} orders={orders} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':
         return redirect(perms.menuAi)
-          ? <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <AIRenderPage />;
       case 'users':
-        return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} orders={filteredOrders} customers={customers} quotations={quotations} currentUser={currentMember} />;
+        return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />;
       case 'trash':
         return <TrashPage currentUser={currentMember} />;
       default:

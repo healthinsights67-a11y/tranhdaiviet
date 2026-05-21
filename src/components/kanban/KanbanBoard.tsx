@@ -456,74 +456,23 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
           }
         }
         
-        // Automated Workflow: Production Review -> Order Shipping
+        // Automated Workflow: Production Review -> Installation Stage
         if (type === 'production' && newStatus === 'waiting_install' && task.status !== 'waiting_install') {
-          const projectTitle = task.title.replace('Sản xuất: ', '');
-          const ordersRef = collection(db, 'orders');
-          const q = query(ordersRef, where('customerName', '==', projectTitle), where('status', '==', 'processing'));
-          const querySnapshot = await getDocs(q);
-          
-          if (!querySnapshot.empty) {
-            const batch = writeBatch(db);
-            querySnapshot.forEach(docSnap => {
-              batch.update(docSnap.ref, { status: 'shipping' });
-            });
-            await batch.commit();
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
-            toast.success(`Đơn hàng ${projectTitle} chuyển sang Chờ Lắp Đặt!`);
-          }
-        }
-
-// Automated Workflow: Production Done -> Complete Order
-        if (type === 'production' && newStatus === 'done' && task.status !== 'done') {
-          console.log('Production task done, completing order...', task.title);
-          
-          const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-          
-          const projectTitle = task.title.replace('Sản xuất: ', '');
-          const normalizedProjectTitle = normalize(projectTitle);
-          
-          const ordersRef = collection(db, 'orders');
-          // Scan all orders to debug, then filter in memory if necessary
-          const q = query(ordersRef);
-          const querySnapshot = await getDocs(q);
-          
-          console.log('Orders scanned:', querySnapshot.size);
-          querySnapshot.docs.forEach(doc => console.log('Checking order:', doc.data().customerName, '| status:', doc.data().status));
-
-          const matchingDoc = querySnapshot.docs.find(doc => {
-            const customerName = doc.data().customerName;
-            return customerName && normalize(customerName) === normalizedProjectTitle;
-          });
-          
-          if (matchingDoc) {
-            console.log('Matching order found:', matchingDoc.id, matchingDoc.data().status);
-            await updateDoc(matchingDoc.ref, { 
-              status: 'completed', 
-              completedAt: new Date().toISOString() 
-            });
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
-            toast.success(`Đơn hàng ${projectTitle} (${matchingDoc.data().customerName}) đã hoàn tất!`);
-          } else {
-            console.log('No matching order found for title:', projectTitle);
-            toast.error(`Không tìm thấy đơn hàng cho: ${projectTitle}`);
+          if (task.customerId) {
+            await updateDoc(doc(db, 'customers', task.customerId), { stage: 'installation' });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            toast.success(`Dự án ${task.title.replace('Sản xuất: ', '')} chuyển sang Chờ Lắp Đặt!`);
           }
         }
         
-        // Automated Workflow: Design Done -> Production Order & Task
+        // Automated Workflow: Design Done -> Production Stage & Task
         if (type === 'design' && newStatus === 'done' && task.status !== 'done') {
           const projectTitle = task.title.replace('Thiết kế: ', '');
           
-          await addDoc(collection(db, 'orders'), {
-            customerName: projectTitle,
-            totalValue: linkedCustomer?.orderValue || 0,
-            status: 'processing',
-            orderDate: getCurrentVNDateString(),
-            deliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            items: linkedCustomer?.furnitureCategory ? `${linkedCustomer.furnitureCategory} - ${task.description}` : task.description,
-            workshop: task.workshop || linkedCustomer?.workshop || ''
-          });
-          queryClient.invalidateQueries({ queryKey: ['orders'] });
+          if (task.customerId) {
+            await updateDoc(doc(db, 'customers', task.customerId), { stage: 'production' });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+          }
 
           await addDoc(collection(db, 'tasks'), {
             title: `Sản xuất: ${projectTitle}`,

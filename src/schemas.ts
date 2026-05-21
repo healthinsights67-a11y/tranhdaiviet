@@ -20,8 +20,7 @@ const timestampSchema = z.union([
 
 export const PrioritySchema = z.enum(['low', 'medium', 'high']);
 export const StatusSchema = z.enum(['todo', 'in-progress', 'review', 'done', 'waiting_install', 'archived']);
-export const CustomerStageSchema = z.enum(['consulting', 'surveying', 'contracted', 'lost']);
-export const OrderStatusSchema = z.enum(['pending', 'processing', 'shipping', 'completed', 'cancelled']);
+export const CustomerStageSchema = z.enum(['consulting', 'surveying', 'contracted', 'production', 'installation', 'completed', 'lost']);
 
 export const MemberPermissionsSchema = z.object({
   viewPrice: z.boolean().optional().catch(true),
@@ -63,18 +62,6 @@ export const CustomerSchema = z.object({
   createdAt: timestampSchema,
   oneDriveLink: z.string().optional(),
   furnitureCategory: z.string().optional(),
-  workshop: z.string().optional(),
-});
-
-export const OrderSchema = z.object({
-  id: z.string(),
-  customerName: z.string(),
-  totalValue: z.number(),
-  status: OrderStatusSchema,
-  orderDate: z.string(),
-  deliveryDate: z.string().optional(),
-  completedAt: timestampSchema.optional(),
-  items: z.string(),
   workshop: z.string().optional(),
 });
 

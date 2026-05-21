@@ -78,7 +78,6 @@ interface CustomerPageProps {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   members: Member[];
-  orders: Order[];
   quotations: Quotation[];
   schedules: MeasurementSchedule[];
   user?: any;
@@ -88,11 +87,14 @@ interface CustomerPageProps {
 const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: any }> = {
   consulting: { label: 'Đã tư vấn', color: 'bg-yellow-50 text-yellow-600 border-yellow-200', icon: MessageSquare },
   surveying: { label: 'Đã đo đạc', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: MapPin },
-  contracted: { label: 'Đã chốt', color: 'bg-green-50 text-green-600 border-green-200', icon: ArrowRight },
-  lost: { label: 'Tạm dừng', color: 'bg-red-50 text-red-600 border-red-200', icon: Plus },
+  contracted: { label: 'Đã chốt', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: ArrowRight },
+  production: { label: 'Sản xuất', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Factory },
+  installation: { label: 'Lắp đặt', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: Package },
+  completed: { label: 'Hoàn thành', color: 'bg-green-50 text-green-600 border-green-200', icon: CheckCircle2 },
+  lost: { label: 'Tạm dừng', color: 'bg-red-50 text-red-600 border-red-200', icon: X },
 };
 
-export function CustomerPage({ customers, setCustomers, tasks, setTasks, members, orders, quotations, schedules, user, currentUser }: CustomerPageProps) {
+export function CustomerPage({ customers, setCustomers, tasks, setTasks, members, quotations, schedules, user, currentUser }: CustomerPageProps) {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
@@ -652,7 +654,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 md:gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
         {Object.entries(STAGE_CONFIG).map(([key, config]) => {
           const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
           return (
@@ -1027,14 +1029,6 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         files2D3D: t.files2D3D,
                         checklists: t.checklists,
                         materialList: t.materialList
-                      })),
-                      ...orders.filter(o => o.customerName === selectedCustomer.name).map(o => ({
-                        id: o.id,
-                        type: 'production' as const,
-                        timestamp: o.orderDate,
-                        action: `Đơn hàng: ${o.id}`,
-                        note: `Giá trị: ${o.totalValue.toLocaleString('vi-VN')} đ. Trạng thái: ${o.status}`,
-                        updatedBy: 'Hệ thống'
                       })),
                       ...quotations.filter(q => q.customerName === selectedCustomer.name).map(q => ({
                         id: q.id,

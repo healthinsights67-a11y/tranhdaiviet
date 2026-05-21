@@ -58,7 +58,6 @@ const navGroups = [
     items: [
       { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
       { id: 'quotations', label: 'Báo Giá', icon: FileText, permission: 'menuQuotations' },
-      { id: 'orders', label: 'Đơn hàng', icon: Package, permission: 'menuOrders' },
     ]
   },
   {

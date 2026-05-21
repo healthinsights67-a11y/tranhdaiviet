@@ -1,6 +1,6 @@
 import { db, collection, getDocs, handleFirestoreError, OperationType, deleteDoc } from '../lib/firebase';
-import { Task, Customer, Order, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule, TrashItem } from '../types';
-import { TaskSchema, CustomerSchema, OrderSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema, TrashItemSchema } from '../schemas';
+import { Task, Customer, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule, TrashItem } from '../types';
+import { TaskSchema, CustomerSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema, TrashItemSchema } from '../schemas';
 import { z } from 'zod';
 
 const validateData = <T>(schema: z.ZodSchema<T>, data: any): T => {
@@ -24,16 +24,6 @@ export const fetchCustomers = async (): Promise<Customer[]> => {
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'customers');
     throw new Error('Failed to fetch customers');
-  }
-};
-
-export const fetchOrders = async (): Promise<Order[]> => {
-  try {
-    const snapshot = await getDocs(collection(db, 'orders'));
-    return snapshot.docs.map(doc => validateData(OrderSchema, { ...doc.data(), id: doc.id }) as Order);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'orders');
-    throw new Error('Failed to fetch orders');
   }
 };
 

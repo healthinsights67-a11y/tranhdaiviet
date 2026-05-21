@@ -45,10 +45,9 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 import { CreditCard, DollarSign, Package, Bell } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
-export function Dashboard({ tasks, members, orders, customers, quotations, currentUser }: { tasks: any[], members: any[], orders?: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
+export function Dashboard({ tasks, members, customers, quotations, currentUser }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
-  const activeOrders = orders || [];
   const activeCustomers = customers || [];
   const [selectedMonth, setSelectedMonth] = React.useState<string>(''); // Default to all time
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
@@ -79,8 +78,8 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
   };
 
   const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt)) || (t.updatedAt && matchesTime(t.updatedAt)) || (t.completedAt && matchesTime(t.completedAt)) || !t.createdAt);
-  const filteredOrders = activeOrders.filter(o => !selectedMonth || (o.orderDate && matchesTime(o.orderDate)) || !o.orderDate);
   const filteredCustomers = activeCustomers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt);
+  const activeProjects = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
   const filteredQuotations = (quotations || []).filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)) || !q.createdAt);
 
   const statusData = [
@@ -142,7 +141,7 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
   const financialStats = [
     { label: 'Doanh thu thực tế', value: canViewRevenue ? `${(actualRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: DollarSign, color: 'text-emerald-600' },
     { label: 'Doanh thu dự kiến', value: canViewRevenue ? `${(expectedRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: CreditCard, color: 'text-yellow-600' },
-    { label: 'Tổng đơn hàng', value: filteredOrders.length, icon: Package, color: 'text-indigo-500' },
+    { label: 'Dự án triển khai', value: activeProjects.length, icon: Package, color: 'text-indigo-500' },
     { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-blue-500' },
   ];
 
@@ -357,34 +356,36 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
               <CardHeader className="p-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base font-bold">Đơn hàng gần đây</CardTitle>
-                    <CardDescription className="text-[10px]">5 đơn hàng mới nhất.</CardDescription>
+                    <CardTitle className="text-base font-bold">Dự án đang triển khai</CardTitle>
+                    <CardDescription className="text-[10px]">5 dự án gần nhất.</CardDescription>
                   </div>
                   <Package className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardHeader>
               <CardContent className="px-2 pb-4">
                 <div className="space-y-2">
-                  {filteredOrders.slice(0, 5).map((order: any) => (
-                    <div key={order.id} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors border-b border-border last:border-0 cursor-pointer bg-card text-card-foreground">
+                  {activeProjects.slice(0, 5).map((project: any) => (
+                    <div key={project.id} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors border-b border-border last:border-0 cursor-pointer bg-card text-card-foreground">
                        <div>
-                         <p className="text-xs font-bold">{(() => { const customer = activeCustomers.find(c => c.name === order.customerName); return customer?.code || 'KH - [Không xác định]'; })()} - {order.customerName}</p>
-                         <p className="text-[10px] text-muted-foreground mt-0.5">{order.productName || 'Sản phẩm'}</p>
+                         <p className="text-xs font-bold">{project.code || 'KH - [Không xác định]'} - {project.name}</p>
+                         <p className="text-[10px] text-muted-foreground mt-0.5">{project.furnitureCategory || 'Sản phẩm'}</p>
                          <p className="text-[10px] font-semibold text-primary mt-0.5">
-                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalValue || activeCustomers.find((c: any) => c.name === order.customerName)?.orderValue || 0) : '*** ₫'}
+                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(project.orderValue || 0) : '*** ₫'}
                          </p>
                        </div>
                        <div className="text-right">
-                         <Badge variant={order.status === 'completed' ? 'default' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
-                           {order.status === 'completed' ? 'Hoàn thành' : 'Đang xử lý'}
+                         <Badge variant={project.stage === 'completed' ? 'default' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
+                           {project.stage === 'completed' ? 'Hoàn thành' : 
+                            project.stage === 'installation' ? 'Lắp đặt' : 
+                            project.stage === 'production' ? 'Sản xuất' : 'Đã chốt'}
                          </Badge>
-                         <p className="text-[10px] font-mono mt-1 font-semibold">{formatVNTime(order.orderDate)}</p>
+                         <p className="text-[10px] font-mono mt-1 font-semibold">{formatVNTime(project.createdAt)}</p>
                        </div>
                     </div>
                   ))}
-                  {filteredOrders.length === 0 && (
+                  {activeProjects.length === 0 && (
                      <div className="text-center py-6 text-muted-foreground text-xs italic">
-                       Chưa có đơn hàng nào
+                       Chưa có dự án nào
                      </div>
                   )}
                 </div>
