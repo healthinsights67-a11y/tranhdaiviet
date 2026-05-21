@@ -679,7 +679,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
             <div className="flex items-center gap-6 relative z-10">
               <Avatar className="h-24 w-24 border-4 border-white p-1 shadow-2xl scale-110">
                 <AvatarImage src={selectedMemberStats?.avatar} />
-                <AvatarFallback className="text-3xl font-black bg-primary">{selectedMemberStats?.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="text-3xl font-black bg-primary">{selectedMemberStats?.name?.charAt(0) || '?'}</AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                 <DialogTitle className="text-3xl font-black tracking-tighter text-white">{selectedMemberStats?.name}</DialogTitle>
