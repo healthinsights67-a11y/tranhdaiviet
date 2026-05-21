@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType, collection, getDocs, query } from '@/src/lib/firebase';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { z } from 'zod';
 import { InstallationScheduleSchema } from '@/src/schemas';
@@ -181,14 +181,33 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         schedule.assigneeId
       );
 
-      // If completing directly, update linked task status
-      if (schedule.status === 'completed' && schedule.taskId) {
-        const taskRef = doc(db, 'tasks', schedule.taskId);
-        await updateDoc(taskRef, {
-          status: 'done',
-          completedAt: new Date().toISOString()
-        });
-        toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+      // If completing directly, update linked task status and order status
+      if (schedule.status === 'completed') {
+        if (schedule.taskId) {
+          const taskRef = doc(db, 'tasks', schedule.taskId);
+          await updateDoc(taskRef, {
+            status: 'done',
+            completedAt: new Date().toISOString()
+          });
+          toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+        }
+
+        // Complete the order
+        if (schedule.customerName) {
+          const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+          const normalizedTitle = normalize(schedule.customerName);
+          const ordersRef = collection(db, 'orders');
+          const querySnapshot = await getDocs(query(ordersRef));
+          const matchingDoc = querySnapshot.docs.find(d => d.data().customerName && normalize(d.data().customerName) === normalizedTitle);
+          if (matchingDoc && matchingDoc.data().status !== 'completed') {
+            await updateDoc(matchingDoc.ref, { 
+              status: 'completed', 
+              completedAt: new Date().toISOString() 
+            });
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            toast.success(`Đã tự động hoàn tất đơn hàng cho: ${schedule.customerName}`);
+          }
+        }
       }
 
       toast.success('Đã xếp lịch lắp đặt thành công');
@@ -258,14 +277,33 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
           date: new Date(editFormData.date!).toISOString()
         };
 
-        // If status changed to completed, update linked task status
-        if (updatedData.status === 'completed' && schedule.status !== 'completed' && updatedData.taskId) {
-          const taskRef = doc(db, 'tasks', updatedData.taskId);
-          await updateDoc(taskRef, {
-            status: 'done',
-            completedAt: new Date().toISOString()
-          });
-          toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+        // If status changed to completed, update linked task status and order status
+        if (updatedData.status === 'completed' && schedule.status !== 'completed') {
+          if (updatedData.taskId) {
+            const taskRef = doc(db, 'tasks', updatedData.taskId);
+            await updateDoc(taskRef, {
+              status: 'done',
+              completedAt: new Date().toISOString()
+            });
+            toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+          }
+
+          // Complete the order
+          if (updatedData.customerName) {
+            const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            const normalizedTitle = normalize(updatedData.customerName);
+            const ordersRef = collection(db, 'orders');
+            const querySnapshot = await getDocs(query(ordersRef));
+            const matchingDoc = querySnapshot.docs.find(d => d.data().customerName && normalize(d.data().customerName) === normalizedTitle);
+            if (matchingDoc && matchingDoc.data().status !== 'completed') {
+              await updateDoc(matchingDoc.ref, { 
+                status: 'completed', 
+                completedAt: new Date().toISOString() 
+              });
+              queryClient.invalidateQueries({ queryKey: ['orders'] });
+              toast.success(`Đã tự động hoàn tất đơn hàng cho: ${updatedData.customerName}`);
+            }
+          }
         }
 
         const { id, createdAt, ...dataToUpdate } = updatedData as any;
@@ -325,13 +363,32 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       });
 
       // Update linked task status if completed
-      if (newStatus === 'completed' && freshItem.taskId) {
-        const taskRef = doc(db, 'tasks', freshItem.taskId);
-        await updateDoc(taskRef, {
-          status: 'done',
-          completedAt: new Date().toISOString()
-        });
-        toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+      if (newStatus === 'completed') {
+        if (freshItem.taskId) {
+          const taskRef = doc(db, 'tasks', freshItem.taskId);
+          await updateDoc(taskRef, {
+            status: 'done',
+            completedAt: new Date().toISOString()
+          });
+          toast.info('Đã tự động chuyển trạng thái thẻ công việc sang: Hoàn thành');
+        }
+
+        // Complete the order
+        if (freshItem.customerName) {
+          const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+          const normalizedTitle = normalize(freshItem.customerName);
+          const ordersRef = collection(db, 'orders');
+          const querySnapshot = await getDocs(query(ordersRef));
+          const matchingDoc = querySnapshot.docs.find(d => d.data().customerName && normalize(d.data().customerName) === normalizedTitle);
+          if (matchingDoc && matchingDoc.data().status !== 'completed') {
+            await updateDoc(matchingDoc.ref, { 
+              status: 'completed', 
+              completedAt: new Date().toISOString() 
+            });
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            toast.success(`Đã tự động hoàn tất đơn hàng cho: ${freshItem.customerName}`);
+          }
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
