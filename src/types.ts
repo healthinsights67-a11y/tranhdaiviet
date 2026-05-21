@@ -203,7 +203,8 @@ export interface MeasurementSchedule {
   address: string;
   status: 'pending' | 'completed' | 'cancelled';
   assigneeId: string;
-  notes?: string;
+    assigneeIds?: string[];
+    notes?: string;
   createdAt: string;
   imageUrls?: string[];
   designAssigneeId?: string;

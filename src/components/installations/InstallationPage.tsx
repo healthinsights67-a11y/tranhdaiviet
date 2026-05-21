@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { uploadToImgBB } from '@/src/services/uploadService';
@@ -58,6 +59,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
     address: '',
     date: new Date().toISOString().slice(0, 16),
     assigneeId: '',
+    assigneeIds: [],
     notes: '',
     status: 'pending'
   });
@@ -98,8 +100,16 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
     }
   };
 
-  const handleInstallerSelect = (assigneeId: string) => {
-    setFormData(prev => ({ ...prev, assigneeId }));
+  const handleInstallerToggle = (assigneeId: string, type: 'create' | 'edit') => {
+    if (type === 'create') {
+      const current = formData.assigneeIds || [];
+      const newIds = current.includes(assigneeId) ? current.filter(id => id !== assigneeId) : [...current, assigneeId];
+      setFormData(prev => ({ ...prev, assigneeIds: newIds, assigneeId: newIds[0] || '' }));
+    } else {
+      const current = editFormData.assigneeIds || [];
+      const newIds = current.includes(assigneeId) ? current.filter(id => id !== assigneeId) : [...current, assigneeId];
+      setEditFormData(prev => ({ ...prev, assigneeIds: newIds, assigneeId: newIds[0] || '' }));
+    }
   };
 
   const taskOptions = [
@@ -153,6 +163,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         address: formData.address || '',
         status: formData.status as 'pending' | 'completed' | 'cancelled',
         assigneeId: formData.assigneeId || '',
+        assigneeIds: formData.assigneeIds || [],
         notes: formData.notes,
         createdAt: new Date().toISOString()
       };
@@ -190,6 +201,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         address: '',
         date: new Date().toISOString().slice(0, 16),
         assigneeId: '',
+        assigneeIds: [],
         status: 'pending',
         notes: ''
       });
@@ -216,7 +228,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
     setEditingId(schedule.id);
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
     const localISOTime = (new Date(new Date(schedule.date).getTime() - tzOffset)).toISOString().slice(0, 16);
-    setEditFormData({ ...schedule, date: localISOTime });
+    setEditFormData({ ...schedule, date: localISOTime, assigneeIds: schedule.assigneeIds || (schedule.assigneeId ? [schedule.assigneeId] : []) });
   };
 
   const handleCancelEdit = () => {
@@ -662,24 +674,40 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                   className="h-10 rounded-xl bg-gray-50 border-gray-200 cursor-pointer w-full dark:bg-zinc-800 dark:border-zinc-700"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex flex-col">
                 <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
-                <Select value={formData.assigneeId || undefined} onValueChange={handleInstallerSelect}>
-                  <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full dark:bg-zinc-800 dark:border-zinc-700">
-                    <SelectValue placeholder="Chọn thợ lắp đặt">
-                      {formData.assigneeId 
-                        ? (displayInstallerOptions.find(o => o.value === formData.assigneeId)?.label || formData.assigneeId) 
-                        : 'Chọn thợ lắp đặt'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-card">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full justify-start text-left font-normal dark:bg-zinc-800 dark:border-zinc-700">
+                      {(formData.assigneeIds && formData.assigneeIds.length > 0) 
+                        ? `${formData.assigneeIds.length} nhân viên được chọn` 
+                        : 'Chọn thợ lắp đặt (có thể chọn nhiều)'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
                     {displayInstallerOptions.map(m => (
-                      <SelectItem key={m.value} value={m.value}>
+                      <DropdownMenuCheckboxItem
+                        key={m.value}
+                        checked={(formData.assigneeIds || []).includes(m.value)}
+                        onCheckedChange={() => handleInstallerToggle(m.value, 'create')}
+                      >
                         {m.label}
-                      </SelectItem>
+                      </DropdownMenuCheckboxItem>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {(formData.assigneeIds && formData.assigneeIds.length > 0) && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {formData.assigneeIds.map(id => {
+                      const m = displayInstallerOptions.find(o => o.value === id);
+                      return m ? (
+                        <Badge key={id} variant="secondary" className="text-[10px] font-bold">
+                          {m.label.split(' (')[0]}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -758,25 +786,40 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                                   className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
                                 />
                               </div>
-                              <div className="space-y-1.5">
+                              <div className="space-y-1.5 flex flex-col">
                                 <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
-                                <Select 
-                                  value={editFormData.assigneeId || ''} 
-                                  onValueChange={(val) => setEditFormData({...editFormData, assigneeId: val})}
-                                >
-                                  <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card">
-                                    <SelectValue placeholder="Chọn nhân viên">
-                                      {editFormData.assigneeId 
-                                        ? (members.find(m => m.id === editFormData.assigneeId)?.name || editFormData.assigneeId) 
-                                        : 'Chọn nhân viên'}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-card z-50">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="h-10 rounded-xl border-gray-200 bg-card w-full justify-start text-left font-normal dark:border-zinc-700">
+                                      {(editFormData.assigneeIds && editFormData.assigneeIds.length > 0) 
+                                        ? `${editFormData.assigneeIds.length} nhân viên được chọn` 
+                                        : 'Chọn nhân viên (có thể chọn nhiều)'}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
                                     {members.map(m => (
-                                      <SelectItem key={m.id} value={m.id}>{m.name || 'Không xác định'}</SelectItem>
+                                      <DropdownMenuCheckboxItem
+                                        key={m.id}
+                                        checked={(editFormData.assigneeIds || []).includes(m.id)}
+                                        onCheckedChange={() => handleInstallerToggle(m.id, 'edit')}
+                                      >
+                                        {m.name || 'Không xác định'}
+                                      </DropdownMenuCheckboxItem>
                                     ))}
-                                  </SelectContent>
-                                </Select>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                {(editFormData.assigneeIds && editFormData.assigneeIds.length > 0) && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {editFormData.assigneeIds.map(id => {
+                                      const m = members.find(x => x.id === id);
+                                      return m ? (
+                                        <Badge key={id} variant="secondary" className="text-[10px] font-bold">
+                                          {m.name || 'Không xác định'}
+                                        </Badge>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                )}
                               </div>
                               <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-muted-foreground">Trạng thái</Label>
