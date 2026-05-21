@@ -12,8 +12,8 @@ import {
   Pie, 
   Cell,
   Legend,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
@@ -38,7 +38,10 @@ import {
   Clock,
   AlertCircle,
   BarChart3,
-  Filter
+  Filter,
+  Crown,
+  Zap,
+  Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -387,18 +390,26 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {mainStats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <Card className="border border-border shadow-sm overflow-hidden relative group bg-card text-card-foreground">
-              <CardContent className="p-5 flex flex-col gap-3 relative z-10">
-                <div className={cn("p-2 rounded-xl w-fit", stat.bg)}>
-                  <stat.icon className={cn("h-5 w-5", stat.color)} />
+            <Card className="border border-border/50 shadow-sm overflow-hidden relative group bg-card hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300", stat.bg.replace('/10', ''))} />
+              <CardContent className="p-5 flex flex-col gap-4 relative z-10">
+                <div className="flex justify-between items-start">
+                  <div className={cn("p-2.5 rounded-xl w-fit shadow-sm", stat.bg, "ring-1 ring-white/20")}>
+                    <stat.icon className={cn("h-5 w-5", stat.color)} />
+                  </div>
+                  <div className="bg-secondary/50 px-2 py-1 rounded-md text-[9px] font-bold text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-2.5 w-2.5" />
+                  </div>
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">{stat.label}</p>
-                  <div className="text-2xl font-black tracking-tight mt-0.5">{stat.value}</div>
-                  <p className="text-[10px] text-muted-foreground mt-1 font-bold flex items-center gap-1 opacity-70">
-                    <History className="h-3 w-3" />
-                    {stat.secondary}
-                  </p>
+                  <div className="text-2xl md:text-3xl font-black tracking-tighter mt-1">{stat.value}</div>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Badge variant="secondary" className="text-[9px] px-1.5 h-4 bg-secondary/50 text-muted-foreground border-none font-bold">
+                      <History className="h-2.5 w-2.5 mr-1" />
+                      {stat.secondary}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -419,50 +430,53 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border border-border shadow-sm bg-card text-card-foreground">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="lg:col-span-2 border border-border shadow-md bg-card text-card-foreground relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
             <div>
-              <CardTitle className="text-lg font-black">Tăng trưởng doanh thu</CardTitle>
+              <CardTitle className="text-lg md:text-xl font-black">Tăng trưởng doanh thu</CardTitle>
               <CardDescription className="text-xs font-medium">Biểu đồ tích lũy doanh thu theo ngày trong tháng.</CardDescription>
             </div>
-            <div className="bg-emerald-500/10 px-3 py-1 rounded-full flex items-center gap-2">
+            <div className="bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-500/20 shadow-sm">
               <TrendingUp className="h-3 w-3 text-emerald-500" />
               <span className="text-[10px] font-black uppercase text-emerald-600">Tăng trưởng</span>
             </div>
           </CardHeader>
-          <CardContent className="w-full min-w-0">
+          <CardContent className="w-full min-w-0 relative z-10">
             <div className="h-[320px] w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={growthData}>
+                <AreaChart data={growthData}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                   <XAxis 
                     dataKey="date" 
                     fontSize={10} 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontWeight: 800 }}
+                    tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }}
                     interval={Math.floor(growthData.length / 6)}
                   />
-                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800 }} />
+                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800 }}
+                    contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--primary))' }}
                   />
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Line 
+                  <Area 
                     type="monotone" 
                     dataKey="value" 
                     name="Doanh thu (M)"
                     stroke="hsl(var(--primary))" 
                     strokeWidth={4}
-                    dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "#white" }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)"
+                    activeDot={{ r: 8, strokeWidth: 0, fill: "hsl(var(--primary))" }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -528,6 +542,52 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {memberStats.length > 0 && (() => {
+          const topMember = memberStats[0];
+          return (
+            <Card className="lg:col-span-1 border border-amber-500/30 shadow-lg bg-gradient-to-br from-amber-500/10 via-background to-background text-card-foreground relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4">
+                 <Crown className="h-12 w-12 text-amber-500/20 group-hover:scale-110 transition-transform duration-500" />
+              </div>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-black uppercase tracking-widest text-[8px] px-2 border-none">
+                    <Award className="h-3 w-3 mr-1" />
+                    Nhân viên xuất sắc
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl font-black">Vinh danh tháng</CardTitle>
+                <CardDescription className="text-xs font-medium">Người dẫn đầu về doanh thu và hiệu suất.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 flex flex-col items-center text-center relative z-10">
+                <div className="relative mb-4">
+                  <div className="absolute inset-0 bg-amber-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-xl relative z-10">
+                    <AvatarImage src={topMember.avatar} />
+                    <AvatarFallback className="font-black text-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white">{topMember.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] font-black px-3 py-0.5 rounded-full shadow-md whitespace-nowrap border border-white/20 z-20">
+                    #1 TOP SALE
+                  </div>
+                </div>
+                <h3 className="text-xl font-black mt-2">{topMember.name}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{topMember.role}</p>
+                
+                <div className="grid grid-cols-2 gap-4 w-full mt-6">
+                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
+                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Doanh thu</p>
+                      <p className="text-sm font-black text-amber-600">{formatCurrency(topMember.revenue)}</p>
+                   </div>
+                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
+                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Điểm KPI</p>
+                      <p className="text-sm font-black text-primary">{topMember.kpi}</p>
+                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         <Card className="lg:col-span-2 border border-border shadow-sm bg-card text-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
@@ -544,44 +604,27 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={memberStats.map(s => ({ name: s.name.split(' ').pop(), "KPI": s.kpi }))}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800 }} />
-                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800 }} />
+                  <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
                   <Tooltip 
-                    cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.1 }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800 }}
+                    cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.2 }}
+                    contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--primary))' }}
                   />
-                  <Bar dataKey="KPI" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40} />
+                  <Bar dataKey="KPI" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40}>
+                     {memberStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? "url(#colorKpiTop)" : "hsl(var(--primary))"} fillOpacity={index === 0 ? 1 : 0.6} />
+                     ))}
+                  </Bar>
+                  <defs>
+                    <linearGradient id="colorKpiTop" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#d97706" stopOpacity={0.8}/>
+                    </linearGradient>
+                  </defs>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border shadow-sm bg-card text-card-foreground">
-          <CardHeader>
-            <CardTitle className="text-lg font-black">KPI Phòng Ban</CardTitle>
-            <CardDescription className="text-xs font-medium">Phân bổ hiệu suất hoạt động.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center pt-0 w-full min-w-0">
-             <div className="h-[300px] w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={deptRadarData}>
-                  <PolarGrid strokeOpacity={0.2} />
-                  <PolarAngleAxis dataKey="subject" fontSize={10} tick={{ fontWeight: 800 }} />
-                  <Radar name="Hiệu suất" dataKey="A" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
-                </RadarChart>
-              </ResponsiveContainer>
-             </div>
-             <div className="grid grid-cols-2 gap-4 w-full mt-4">
-                <div className="text-center">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Tốt nhất</p>
-                  <p className="text-sm font-black text-emerald-500">{bestDept.subject}</p>
-                </div>
-                <div className="text-center border-l">
-                   <p className="text-[10px] font-bold text-muted-foreground uppercase">Cần cải thiện</p>
-                  <p className="text-sm font-black text-amber-500">{worstDept.subject}</p>
-                </div>
-             </div>
           </CardContent>
         </Card>
       </div>
@@ -608,56 +651,60 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
               </thead>
               <tbody className="divide-y divide-border/50">
                 {memberStats.map((stat, i) => (
-                  <tr key={stat.id} className="group hover:bg-gray-50 transition-all cursor-pointer" onClick={() => setSelectedMemberId(stat.id)}>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
+                  <tr key={stat.id} className="group hover:bg-secondary/20 transition-all cursor-pointer relative" onClick={() => setSelectedMemberId(stat.id)}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
                         <div className="relative">
-                           <Avatar className="h-10 w-10 border-2 border-border/50 p-0.5">
+                           <Avatar className={cn("h-12 w-12 border-2 p-0.5 transition-all duration-300", i === 0 ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]" : i === 1 ? "border-slate-300" : i === 2 ? "border-amber-700" : "border-border/50")}>
                             <AvatarImage src={stat.avatar} />
-                            <AvatarFallback className="font-black text-sm">{stat.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className={cn("font-black text-sm", i === 0 ? "bg-amber-100 text-amber-700" : "")}>{stat.name.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div className={cn("absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-background", i === 0 ? "bg-amber-500" : "bg-slate-500")}>
+                          <div className={cn("absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-background shadow-md", i === 0 ? "bg-amber-500" : i === 1 ? "bg-slate-400" : i === 2 ? "bg-amber-700" : "bg-muted-foreground")}>
                             {i + 1}
                           </div>
                         </div>
                         <div>
-                          <p className="text-sm font-black leading-none group-hover:text-primary transition-colors">{stat.name}</p>
-                          <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-tighter">{stat.role}</p>
+                          <p className="text-sm md:text-base font-black leading-none group-hover:text-primary transition-colors flex items-center gap-2">
+                            {stat.name}
+                            {i === 0 && <Crown className="h-3 w-3 text-amber-500" />}
+                          </p>
+                          <p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1.5 uppercase tracking-wider bg-secondary w-fit px-2 py-0.5 rounded-md">{stat.role}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className={cn("text-sm font-black tabular-nums", stat.revenue > 0 ? "text-primary" : "text-muted-foreground/30")}>
+                    <td className="px-6 py-4 text-center">
+                      <span className={cn("text-base font-black tabular-nums", stat.revenue > 0 ? "text-primary drop-shadow-sm" : "text-muted-foreground/30")}>
                         {stat.revenue > 0 ? formatCurrency(stat.revenue) : '0 đ'}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-center">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary/30 rounded-full border border-border/20">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                        <span className="text-xs font-black tabular-nums">{stat.checklistCount}</span>
+                    <td className="px-6 py-4 text-center">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-sm font-black tabular-nums">{stat.checklistCount}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-center">
+                    <td className="px-6 py-4 text-center">
                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-xs font-black tabular-nums">{stat.taskCount}</span>
-                          <span className="text-[8px] font-bold text-muted-foreground uppercase">/ {stat.totalTasks} Done</span>
+                          <span className="text-base font-black tabular-nums text-foreground">{stat.taskCount}</span>
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase bg-secondary/50 px-2 py-0.5 rounded-full">/ {stat.totalTasks} Done</span>
                        </div>
                     </td>
-                    <td className="px-6 py-5 text-center">
-                       <Badge variant="outline" className="text-xs font-black px-4 h-7 border-2 border-primary/20 bg-primary/5 text-primary">
+                    <td className="px-6 py-4 text-center">
+                       <Badge variant="outline" className={cn("text-sm font-black px-4 h-8 border-2", i === 0 ? "border-amber-500/30 bg-amber-500/10 text-amber-600" : "border-primary/20 bg-primary/5 text-primary")}>
                         {stat.kpi}
                        </Badge>
                     </td>
-                    <td className="px-6 py-5">
-                      <div className="flex flex-col items-end gap-1.5 min-w-[100px]">
-                        <span className={cn("text-xs font-black tabular-nums", stat.efficiency >= 90 ? "text-emerald-500" : stat.efficiency >= 70 ? "text-amber-500" : "text-rose-500")}>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col items-end gap-2 min-w-[120px]">
+                        <span className={cn("text-sm font-black tabular-nums flex items-center gap-1", stat.efficiency >= 90 ? "text-emerald-500" : stat.efficiency >= 70 ? "text-amber-500" : "text-rose-500")}>
+                          {stat.efficiency >= 90 && <Zap className="h-3 w-3" />}
                           {stat.efficiency.toFixed(1)}%
                         </span>
-                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden border border-border/10">
+                        <div className="w-full h-2 bg-secondary rounded-full overflow-hidden border border-border/10">
                           <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(stat.efficiency, 100)}%` }}
-                            className={cn("h-full", stat.efficiency >= 90 ? "bg-emerald-500" : stat.efficiency >= 70 ? "bg-amber-500" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]")}
+                            className={cn("h-full", stat.efficiency >= 90 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : stat.efficiency >= 70 ? "bg-amber-500" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]")}
                           />
                         </div>
                       </div>
