@@ -61,7 +61,7 @@ import { QuotationForm } from './QuotationForm';
 import { QuotationPreview } from './QuotationPreview';
 import { ProductLibrary } from './ProductLibrary';
 import { QuotationTemplateConfig } from './QuotationTemplateConfig';
-import { db, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, query, where, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
@@ -188,6 +188,25 @@ export function QuotationPage({ quotations, user, customers, members, products =
     const phone = customer?.phone || '';
     const workshop = customer?.workshop || '';
 
+    let measurementImages: string[] = [];
+    if (customerId) {
+      try {
+        const q = query(
+          collection(db, 'measurement_schedules'),
+          where('customerId', '==', customerId)
+        );
+        const snap = await getDocs(q);
+        snap.forEach(doc => {
+          const data = doc.data();
+          if (data.imageUrls && Array.isArray(data.imageUrls)) {
+            measurementImages = [...measurementImages, ...data.imageUrls];
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching measurement images:", error);
+      }
+    }
+
     const newTaskData = {
       title: `Thiết kế: ${customerName}`,
       description: `Tiếp nhận thông tin từ báo giá chốt của khách hàng ${customerName}. Hạng mục: ${category}. Địa chỉ: ${address}. SĐT: ${phone}`,
@@ -196,6 +215,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       priority: 'medium' as const,
       assigneeId: targetDesignerId,
       customerId: customerId,
+      imageUrls: measurementImages,
       createdAt: new Date().toISOString(),
       workshop: workshop,
       dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
