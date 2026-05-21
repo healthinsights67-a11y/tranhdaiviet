@@ -89,6 +89,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null);
   const [pendingDesignTask, setPendingDesignTask] = React.useState<{ quotationId: string; customerId: string; customerName: string; } | null>(null);
   const [targetDesignerId, setTargetDesignerId] = React.useState<string>('');
+  const [depositDialog, setDepositDialog] = React.useState<{isOpen: boolean, quotationId: string, amount: string}>({isOpen: false, quotationId: '', amount: ''});
 
   const filteredQuotations = quotations.filter(q => {
     const matchesSearch = q.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -236,16 +237,21 @@ export function QuotationPage({ quotations, user, customers, members, products =
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: Quotation['status']) => {
+  const handleUpdateStatus = async (id: string, status: Quotation['status'], depositAmount?: number) => {
     try {
       const quotationRef = doc(db, 'quotations', id);
-      await updateDoc(quotationRef, {
+      const updateData: any = {
         status,
         updatedAt: new Date().toISOString()
-      });
+      };
+      if (depositAmount !== undefined) {
+        updateData.depositAmount = depositAmount;
+      }
+      
+      await updateDoc(quotationRef, updateData);
 
-      // Automatically update customer stage and order value if quotation is accepted
-      if (status === 'accepted') {
+      // Automatically update customer stage and order value if quotation is accepted or deposited
+      if (status === 'accepted' || status === 'deposit') {
         const snap = await getDoc(quotationRef);
         if (snap.exists()) {
           const qData = snap.data() as Quotation;
@@ -282,7 +288,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       }
 
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Đã chốt' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
+      toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Đã chốt' : status === 'deposit' ? 'Đã cọc' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
       
       // Update selected quotation if it's currently being previewed
       if (selectedQuotation && selectedQuotation.id === id) {
@@ -323,6 +329,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       case 'draft': return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 px-2.5 py-0.5">Bản nháp</Badge>;
       case 'sent': return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-2.5 py-0.5">Đã gửi</Badge>;
       case 'accepted': return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 px-2.5 py-0.5 font-bold">Chấp nhận</Badge>;
+      case 'deposit': return <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 px-2.5 py-0.5 font-bold">Đã cọc</Badge>;
       case 'rejected': return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 px-2.5 py-0.5">Từ chối</Badge>;
     }
   };
@@ -409,8 +416,8 @@ export function QuotationPage({ quotations, user, customers, members, products =
               {[
                 { label: 'Tổng báo giá', value: quotations.length, icon: FileText, color: 'bg-primary' },
                 { label: 'Đã chốt', value: quotations.filter(q => q.status === 'accepted').length, icon: CheckCircle2, color: 'bg-emerald-500' },
-                { label: 'Đang gửi', value: quotations.filter(q => q.status === 'sent').length, icon: Clock, color: 'bg-blue-500' },
-                { label: 'Doanh thu', value: `${(quotations.filter(q => q.status === 'accepted').reduce((acc, q) => acc + q.totalAmount, 0) / 1000000).toFixed(1)}M`, icon: TrendingDown, color: 'bg-amber-500' },
+                { label: 'Đã cọc', value: quotations.filter(q => q.status === 'deposit').length, icon: Clock, color: 'bg-purple-500' },
+                { label: 'Doanh thu', value: `${(quotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((acc, q) => acc + q.totalAmount, 0) / 1000000).toFixed(1)}M`, icon: TrendingDown, color: 'bg-amber-500' },
               ].map((stat, i) => (
                 <Card key={stat.label} className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
                    <div className={cn("absolute top-0 right-0 p-1.5 md:p-2 opacity-10 transition-opacity", stat.color)}>
@@ -460,6 +467,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                           <SelectItem value="draft">Bản nháp</SelectItem>
                           <SelectItem value="sent">Đã gửi</SelectItem>
                           <SelectItem value="accepted">Đã chốt</SelectItem>
+                          <SelectItem value="deposit">Đã cọc</SelectItem>
                           <SelectItem value="rejected">Từ chối</SelectItem>
                         </SelectContent>
                       </Select>
@@ -470,7 +478,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                 {/* Fast Filters - Scrollable on mobile */}
                 <div className="overflow-x-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none">
                   <div className="flex items-center gap-1.5 p-1 bg-secondary/20 rounded-xl w-max">
-                     {(['all', 'draft', 'sent', 'accepted', 'rejected'] as FilterStatus[]).map((status) => (
+                     {(['all', 'draft', 'sent', 'accepted', 'deposit', 'rejected'] as FilterStatus[]).map((status) => (
                         <button
                          key={status}
                          type="button"
@@ -485,7 +493,8 @@ export function QuotationPage({ quotations, user, customers, members, products =
                          {status === 'all' ? 'Tất cả hồ sơ' : 
                           status === 'draft' ? 'Bản nháp' :
                           status === 'sent' ? 'Đã gửi khách' :
-                          status === 'accepted' ? 'Đã chốt' : 'Từ chối'}
+                          status === 'accepted' ? 'Đã chốt' : 
+                          status === 'deposit' ? 'Đã cọc' : 'Từ chối'}
                         </button>
                      ))}
                   </div>
@@ -518,6 +527,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
                              <p className="font-black text-lg tabular-nums text-foreground">
                                {(quotation.totalAmount / 1000000).toFixed(1)}M
                              </p>
+                             {quotation.status === 'deposit' && quotation.depositAmount && (
+                               <p className="text-[10px] text-purple-600 font-bold mt-0.5">
+                                 Cọc: {(quotation.depositAmount / 1000000).toFixed(1)}M
+                               </p>
+                             )}
                            </div>
                         </div>
                       </CardContent>
@@ -550,7 +564,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                   {quotation.status !== 'accepted' && (
                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(quotation.id, 'accepted')}>
                                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                      Chốt báo giá (Thành công)
+                                      Chốt báo giá (Toàn bộ)
+                                    </DropdownMenuItem>
+                                  )}
+                                  {quotation.status !== 'deposit' && quotation.status !== 'accepted' && (
+                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: quotation.id, amount: '' })}>
+                                      <FileText className="h-4 w-4 text-purple-500" />
+                                      Chốt cọc (Một phần)
                                     </DropdownMenuItem>
                                   )}
                                   {quotation.status !== 'rejected' && (
@@ -688,6 +708,39 @@ export function QuotationPage({ quotations, user, customers, members, products =
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingDesignTask(null)}>Bỏ qua</Button>
             <Button onClick={handleCreateDesignTask} disabled={!targetDesignerId}>Giao việc</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={depositDialog.isOpen} onOpenChange={(open) => !open && setDepositDialog({isOpen: false, quotationId: '', amount: ''})}>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Nhập số tiền cọc</DialogTitle>
+            <DialogDescription>
+              Báo giá sẽ được chuyển sang trạng thái "Đã cọc" và nhiệm vụ thiết kế sẽ được khởi tạo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Số tiền cọc (VNĐ)</label>
+              <Input 
+                type="number" 
+                placeholder="Ví dụ: 10000000"
+                value={depositDialog.amount}
+                onChange={(e) => setDepositDialog(prev => ({ ...prev, amount: e.target.value }))}
+                className="h-11 rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDepositDialog({isOpen: false, quotationId: '', amount: ''})}>Hủy</Button>
+            <Button onClick={() => {
+              if (depositDialog.amount) {
+                handleUpdateStatus(depositDialog.quotationId, 'deposit', Number(depositDialog.amount));
+                setDepositDialog({isOpen: false, quotationId: '', amount: ''});
+              } else {
+                toast.error("Vui lòng nhập số tiền cọc");
+              }
+            }}>Chốt cọc</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

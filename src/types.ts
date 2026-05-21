@@ -174,7 +174,8 @@ export interface Quotation {
   };
   createdBy: string;
   createdAt: string;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'deposit';
+  depositAmount?: number;
   customerId?: string;
   imageUrls?: string[];
 }

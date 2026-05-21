@@ -97,7 +97,9 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
       
       const memberOrders = filteredOrders.filter(o => memberCustomerNames.has(o.customerName));
-      const revenue = memberOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+      const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || getVNMonth(q.createdAt) === selectedMonth));
+      const revenue = memberOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
+                      memberQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
       
       const memberTasks = filteredTasks.filter(t => t.assigneeId === member.id);
       const completedTasks = memberTasks.filter(t => t.status === 'done');
@@ -191,7 +193,10 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
 
   const selectedMemberStats = memberStats.find(s => s.id === selectedMemberId);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+  const filteredQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && getVNMonth(q.createdAt) === selectedMonth));
+  const totalRevenue = filteredOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
+                       filteredQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
+  const totalExpectedRevenue = filteredQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((sum, q) => sum + (q.totalAmount || 0), 0);
   const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && getVNMonth(t.createdAt) === selectedMonth)).length;
   const completedTasksGlobal = filteredTasks.length;
   const overdueTasksGlobal = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
@@ -269,7 +274,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
   ];
 
   const mainStats = [
-    { label: 'Doanh thu tháng', value: formatCurrency(totalRevenue), secondary: `${filteredOrders.length} đơn hàng`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { label: 'Doanh thu thực tế', value: formatCurrency(totalRevenue), secondary: `Dự kiến: ${formatCurrency(totalExpectedRevenue)}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
     { label: 'Tổng công việc', value: totalTasksCount + totalChecklistWork, secondary: 'Nhiệm vụ & Checklist', icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
     { label: 'Hoàn thành', value: completedTasksGlobal + totalChecklistWork, secondary: `${(((completedTasksGlobal + totalChecklistWork) / (totalTasksCount + totalChecklistWork || 1)) * 100).toFixed(1)}% tỉ lệ`, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
     { label: 'Trễ hạn', value: overdueTasksGlobal, secondary: 'Cần xử lý ngay', icon: AlertCircle, color: 'text-rose-500', bg: 'bg-rose-500/10' },

@@ -178,7 +178,8 @@ export const QuotationSchema = z.object({
   }),
   createdBy: z.string(),
   createdAt: timestampSchema,
-  status: z.enum(['draft', 'sent', 'accepted', 'rejected']),
+  status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'deposit']),
+  depositAmount: z.number().optional(),
   customerId: z.string().optional(),
 });
 

@@ -45,7 +45,7 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 import { CreditCard, DollarSign, Package, Bell } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
-export function Dashboard({ tasks, members, orders, customers, currentUser }: { tasks: any[], members: any[], orders?: any[], customers?: any[], currentUser?: any }) {
+export function Dashboard({ tasks, members, orders, customers, quotations, currentUser }: { tasks: any[], members: any[], orders?: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
   const activeOrders = orders || [];
@@ -99,10 +99,12 @@ export function Dashboard({ tasks, members, orders, customers, currentUser }: { 
     };
   }).sort((a, b) => b.count - a.count);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => {
+  const actualRevenue = filteredOrders.filter(o => o.status === 'completed').reduce((sum, o) => {
     const customer = activeCustomers.find(c => c.name === o.customerName);
     return sum + (o.totalValue || customer?.orderValue || 0);
-  }, 0);
+  }, 0) + (quotations || []).filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
+
+  const expectedRevenue = (quotations || []).filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((sum, q) => sum + (q.totalAmount || 0), 0);
 
   const stats = [
     { label: 'Tổng nhiệm vụ', value: filteredTasks.length, icon: CheckCircle2, color: 'text-blue-500' },
@@ -112,10 +114,10 @@ export function Dashboard({ tasks, members, orders, customers, currentUser }: { 
   ];
 
   const financialStats = [
-    { label: 'Doanh thu dự kiến', value: canViewRevenue ? `${(totalRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: DollarSign, color: 'text-yellow-600' },
+    { label: 'Doanh thu thực tế', value: canViewRevenue ? `${(actualRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: DollarSign, color: 'text-emerald-600' },
+    { label: 'Doanh thu dự kiến', value: canViewRevenue ? `${(expectedRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: CreditCard, color: 'text-yellow-600' },
     { label: 'Tổng đơn hàng', value: filteredOrders.length, icon: Package, color: 'text-indigo-500' },
-    { label: 'Đơn chờ xử lý', value: filteredOrders.filter(o => o.status === 'pending').length, icon: Clock, color: 'text-rose-500' },
-    { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-emerald-500' },
+    { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-blue-500' },
   ];
 
   return (
