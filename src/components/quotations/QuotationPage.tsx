@@ -657,7 +657,9 @@ export function QuotationPage({ quotations, user, customers, members, products =
                 </SelectTrigger>
                 <SelectContent>
                   {members.filter(m => m.role?.toLowerCase().includes('thiết kế') || m.role?.toLowerCase().includes('design')).map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name || m.email || 'Nhân viên (Chưa cập nhật tên)'}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
