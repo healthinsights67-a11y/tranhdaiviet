@@ -466,7 +466,9 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                 onValueChange={handleCustomerSelect}
               >
               <SelectTrigger className="h-10 bg-gray-50 border-gray-200 rounded-xl">
-                  <SelectValue placeholder="Chọn khách hàng hoặc nhập tay" />
+                  <SelectValue placeholder="Chọn khách hàng hoặc nhập tay">
+                    {customerOptions.find(o => o.value === (formData.customerId || 'manual'))?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {customerOptions.map(o => (
@@ -528,7 +530,9 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                   <Label>Phân công Sale *</Label>
                   <Select value={formData.assigneeId || undefined} onValueChange={handleSaleSelect}>
                     <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full">
-                      <SelectValue placeholder="Chọn Sale" />
+                      <SelectValue placeholder="Chọn Sale">
+                        {saleOptions.find(o => o.value === formData.assigneeId)?.label}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {saleOptions.map(m => (
