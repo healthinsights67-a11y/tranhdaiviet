@@ -122,8 +122,11 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       
       const memberOrders = filteredOrders.filter(o => memberCustomerNames.has(o.customerName));
       const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || matchesTime(q.createdAt)));
-      const revenue = memberOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
-                      memberQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
+      const revenue = memberQuotations.reduce((sum, q) => {
+        if (q.status === 'deposit') return sum + (q.depositAmount || 0);
+        if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+        return sum;
+      }, 0);
       
       const memberTasks = filteredTasks.filter(t => t.assigneeId === member.id);
       const completedTasks = memberTasks.filter(t => t.status === 'done');
@@ -221,9 +224,15 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
   const selectedMemberStats = memberStats.find(s => s.id === selectedMemberId);
 
   const filteredQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)));
-  const totalRevenue = filteredOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
-                       filteredQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
-  const totalExpectedRevenue = filteredQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((sum, q) => sum + (q.totalAmount || 0), 0);
+  const totalRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit') return sum + (q.depositAmount || 0);
+    if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
+  const totalExpectedRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit' || q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
   const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt))).length;
   const completedTasksGlobal = filteredTasks.length;
   const overdueTasksGlobal = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
