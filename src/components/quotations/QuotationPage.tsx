@@ -279,27 +279,33 @@ export function QuotationPage({ quotations, user, customers, members, products =
         updateData.depositAmount = depositAmount;
       }
       
+      // Fetch previous state before updating
+      const prevSnap = await getDoc(quotationRef);
+      const prevData = prevSnap.exists() ? prevSnap.data() as Quotation : null;
+      const prevStatus = prevData?.status;
+
       await updateDoc(quotationRef, updateData);
 
       // Automatically update customer stage and order value if quotation is accepted or deposited
       if (status === 'accepted' || status === 'deposit') {
-        const snap = await getDoc(quotationRef);
-        if (snap.exists()) {
-          const qData = snap.data() as Quotation;
-          if (qData.customerId) {
-            await updateDoc(doc(db, 'customers', qData.customerId), {
+        if (prevData) {
+          if (prevData.customerId) {
+            await updateDoc(doc(db, 'customers', prevData.customerId), {
               stage: 'contracted',
-              orderValue: qData.totalAmount
+              orderValue: prevData.totalAmount
             });
             toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng & Cập nhật giá trị đơn hàng.');
           }
           
-          // Show the assignment dialog whether or not there's a registered customerId
-          setPendingDesignTask({
-            quotationId: id,
-            customerId: qData.customerId || '',
-            customerName: qData.customerName || 'Khách lẻ'
-          });
+          // Only show the assignment dialog if we are moving to deposit, 
+          // or moving to accepted from a state other than deposit
+          if (status === 'deposit' || (status === 'accepted' && prevStatus !== 'deposit')) {
+            setPendingDesignTask({
+              quotationId: id,
+              customerId: prevData.customerId || '',
+              customerName: prevData.customerName || 'Khách lẻ'
+            });
+          }
         }
       }
 
@@ -763,7 +769,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
           <DialogHeader>
             <DialogTitle>Bàn giao thiết kế</DialogTitle>
             <DialogDescription>
-              Báo giá đã được chốt. Vui lòng chọn nhân sự thiết kế để tiếp tục quy trình.
+              Báo giá đã được chuyển sang trạng thái bắt đầu làm việc. Vui lòng chọn nhân sự thiết kế để tiếp tục quy trình.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
