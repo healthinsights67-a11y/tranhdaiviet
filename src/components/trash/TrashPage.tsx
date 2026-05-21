@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQuery, useQueryClient } from '@tanstack/query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Trash2, 
   RotateCcw, 
