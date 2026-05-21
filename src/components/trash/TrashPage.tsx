@@ -209,10 +209,10 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      <th className="p-4 pl-6">Tài liệu đã xóa</th>
-                      <th className="p-4">Phân loại</th>
-                      <th className="p-4">Người xóa</th>
-                      <th className="p-4">Thời gian</th>
+                      <th className="p-4 pl-6 w-[35%]">Tài liệu đã xóa</th>
+                      <th className="p-4 text-center">Phân loại</th>
+                      <th className="p-4 text-center">Người xóa</th>
+                      <th className="p-4 text-center">Thời gian</th>
                       <th className="p-4 text-right pr-6">Thao tác</th>
                     </tr>
                   </thead>
@@ -222,22 +222,21 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
                       return (
                         <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="p-4 pl-6">
-                            <div className="font-bold text-sm text-foreground line-clamp-1">{item.title}</div>
-                            <div className="text-[10px] font-mono text-muted-foreground mt-0.5">ID: {item.originalId}</div>
+                            <div className="font-bold text-sm text-foreground line-clamp-2">{item.title}</div>
                           </td>
-                          <td className="p-4">
+                          <td className="p-4 text-center">
                             <Badge variant="outline" className={cn("text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border", typeInfo.color)}>
                               {typeInfo.label}
                             </Badge>
                           </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-1.5 text-xs font-medium">
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5 text-xs font-medium">
                               <User className="h-3.5 w-3.5 text-muted-foreground" />
                               <span className="truncate max-w-[150px]">{item.deletedBy}</span>
                             </div>
                           </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground font-mono">
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground font-mono">
                               <Calendar className="h-3.5 w-3.5" />
                               <span>{new Date(item.deletedAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
@@ -285,7 +284,6 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-0.5">
                           <h4 className="text-sm font-bold text-foreground line-clamp-2">{item.title}</h4>
-                          <span className="text-[9px] font-mono text-muted-foreground block">ID: {item.originalId}</span>
                         </div>
                         <Badge variant="outline" className={cn("text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full shrink-0 border", typeInfo.color)}>
                           {typeInfo.label}
