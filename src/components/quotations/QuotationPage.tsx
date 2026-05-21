@@ -105,7 +105,26 @@ export function QuotationPage({ quotations, user, customers, members, products =
                          q.quotationNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
     
-    const matchesTime = !selectedMonth || (q.createdAt && getVNMonth(q.createdAt) === selectedMonth);
+    const matchesTime = (() => {
+      if (!selectedMonth || selectedMonth === 'all') return true;
+      if (!q.createdAt) return false;
+      const date = new Date(q.createdAt);
+      const now = new Date();
+      if (selectedMonth === 'today') {
+        return date.toDateString() === now.toDateString();
+      } else if (selectedMonth === 'week') {
+        const day = now.getDay() || 7; 
+        const firstDay = new Date(now);
+        firstDay.setHours(0, 0, 0, 0);
+        firstDay.setDate(now.getDate() - day + 1);
+        
+        const lastDay = new Date(firstDay);
+        lastDay.setDate(firstDay.getDate() + 6);
+        lastDay.setHours(23, 59, 59, 999);
+        return date >= firstDay && date <= lastDay;
+      }
+      return getVNMonth(q.createdAt) === selectedMonth;
+    })();
 
     return matchesSearch && matchesStatus && matchesTime;
   });
@@ -488,7 +507,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                         <PopoverTrigger className="inline-flex items-center justify-between min-w-[120px] h-10 md:h-11 text-xs font-medium border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground px-3 py-2 rounded-xl ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                            <div className="flex items-center gap-2">
                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                             {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Thời gian"}
+                             {selectedMonth === 'today' ? "Hôm nay" : selectedMonth === 'week' ? "Tuần này" : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Thời gian"}
                            </div>
                         </PopoverTrigger>
                         <PopoverContent className="w-[280px] p-2" align="start">
@@ -518,9 +537,15 @@ export function QuotationPage({ quotations, user, customers, members, products =
                               );
                             })}
                           </div>
-                          <div className="flex gap-2 mt-4 pt-4 border-t">
-                            <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                            <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                          <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                            <div className="grid grid-cols-2 gap-2">
+                               <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                               <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
+                              <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                            </div>
                           </div>
                         </PopoverContent>
                       </Popover>
