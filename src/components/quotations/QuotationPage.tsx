@@ -17,7 +17,8 @@ import {
   TrendingDown,
   Phone,
   Package,
-  XCircle
+  XCircle,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -77,6 +78,7 @@ interface QuotationPageProps {
 }
 
 type FilterStatus = Quotation['status'] | 'all';
+type TimeFilter = 'all' | 'today' | 'week' | 'month';
 type ViewMode = 'list' | 'library';
 
 export function QuotationPage({ quotations, user, customers, members, products = [] }: QuotationPageProps) {
@@ -84,6 +86,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
+  const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null);
@@ -95,7 +98,31 @@ export function QuotationPage({ quotations, user, customers, members, products =
     const matchesSearch = q.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          q.quotationNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    let matchesTime = true;
+    if (timeFilter !== 'all' && q.createdAt) {
+      const date = new Date(q.createdAt);
+      const now = new Date();
+      if (timeFilter === 'today') {
+        matchesTime = date.toDateString() === now.toDateString();
+      } else if (timeFilter === 'week') {
+        // Find start and end of current week (Monday to Sunday)
+        const day = now.getDay() || 7; 
+        const firstDay = new Date(now);
+        firstDay.setHours(0, 0, 0, 0);
+        firstDay.setDate(now.getDate() - day + 1);
+        
+        const lastDay = new Date(firstDay);
+        lastDay.setDate(firstDay.getDate() + 6);
+        lastDay.setHours(23, 59, 59, 999);
+        
+        matchesTime = date >= firstDay && date <= lastDay;
+      } else if (timeFilter === 'month') {
+        matchesTime = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesTime;
   });
 
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
@@ -456,19 +483,32 @@ export function QuotationPage({ quotations, user, customers, members, products =
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
+                    <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto scrollbar-none pb-1 md:pb-0">
                       <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FilterStatus)}>
-                        <SelectTrigger className="h-10 md:h-11 flex-1 md:w-[140px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
+                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
                            <Filter className="h-4 w-4 text-muted-foreground" />
                            <SelectValue placeholder="Trạng thái" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10">
-                          <SelectItem value="all">Tất cả</SelectItem>
+                          <SelectItem value="all">Tất cả trạng thái</SelectItem>
                           <SelectItem value="draft">Bản nháp</SelectItem>
                           <SelectItem value="sent">Đã gửi</SelectItem>
                           <SelectItem value="accepted">Đã chốt</SelectItem>
                           <SelectItem value="deposit">Đã cọc</SelectItem>
                           <SelectItem value="rejected">Từ chối</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={timeFilter} onValueChange={(value) => setTimeFilter(value as TimeFilter)}>
+                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
+                           <Calendar className="h-4 w-4 text-muted-foreground" />
+                           <SelectValue placeholder="Thời gian" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-white/10">
+                          <SelectItem value="all">Mọi lúc</SelectItem>
+                          <SelectItem value="today">Hôm nay</SelectItem>
+                          <SelectItem value="week">Tuần này</SelectItem>
+                          <SelectItem value="month">Tháng này</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
