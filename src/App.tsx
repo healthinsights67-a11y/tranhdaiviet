@@ -506,7 +506,7 @@ function AppContent() {
           currentUser={currentMember}
           permissions={perms}
         />
-        <Toaster />
+        <Toaster position="top-center" />
         <NotificationManager />
       </div>
     </ErrorBoundary>
