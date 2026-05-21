@@ -22,7 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { fetchTrash } from '@/src/services/dataService';
 import { restoreFromTrash, deletePermanently } from '@/src/services/trashService';
 import { TrashItem, Member } from '@/src/types';
