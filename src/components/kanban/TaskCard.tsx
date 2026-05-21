@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Task, Member, WORKSHOPS, Order, Status, getWorkshopName, Customer } from '@/src/types';
+import { Task, Member, WORKSHOPS, Status, getWorkshopName, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SDK_VERSION } from 'firebase/app';
@@ -365,7 +365,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
 
     // Optimistically update the UI caches
     if (isVirtual) {
-      queryClient.setQueryData(['orders'], (prevOrders: Order[] = []) => prevOrders.filter((o) => o.id !== actualId));
+      queryClient.setQueryData(['orders'], (prevOrders: any[] = []) => prevOrders.filter((o) => o.id !== actualId));
     } else {
       queryClient.setQueryData(['tasks'], (prevTasks: Task[] = []) => prevTasks.filter((t) => t.id !== task.id));
     }

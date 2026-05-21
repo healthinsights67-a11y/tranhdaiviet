@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Order, Quotation, MeasurementSchedule } from '@/src/types';
+import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import {
   Search, 
   Phone, 
   MapPin, 
-  MessageSquare, 
+  MessageSquare, CheckCircle2, 
   UserPlus,
   Filter,
   MoreHorizontal,
@@ -25,7 +25,7 @@ import {
   Calendar,
   ClipboardList, 
   Palette, 
-  Factory, 
+  Factory, Package, 
   UserCheck 
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';

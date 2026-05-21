@@ -209,6 +209,7 @@ export interface InstallationSchedule {
   address: string;
   status: 'pending' | 'completed' | 'cancelled';
   assigneeId: string;
+  assigneeIds?: string[];
   notes?: string;
   createdAt: string;
   imageUrls?: string[];

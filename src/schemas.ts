@@ -209,6 +209,7 @@ export const InstallationScheduleSchema = z.object({
   address: z.string(),
   status: z.enum(['pending', 'completed', 'cancelled']),
   assigneeId: z.string(),
+  assigneeIds: z.array(z.string()).optional(),
   notes: z.string().optional(),
   createdAt: timestampSchema,
   imageUrls: z.array(z.string()).optional(),

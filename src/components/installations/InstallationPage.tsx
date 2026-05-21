@@ -709,14 +709,12 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
               </div>
               <div className="space-y-1.5 flex flex-col">
                 <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-10 rounded-xl border-gray-200 bg-gray-50 w-full justify-start text-left font-normal dark:bg-zinc-800 dark:border-zinc-700">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="h-10 rounded-xl border border-gray-200 bg-gray-50 w-full justify-start text-left font-normal px-4 py-2 text-sm flex items-center dark:bg-zinc-800 dark:border-zinc-700">
                       {(formData.assigneeIds && formData.assigneeIds.length > 0) 
                         ? `${formData.assigneeIds.length} nhân viên được chọn` 
                         : 'Chọn thợ lắp đặt (có thể chọn nhiều)'}
-                    </Button>
-                  </DropdownMenuTrigger>
+                    </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
                     {displayInstallerOptions.map(m => (
                       <DropdownMenuCheckboxItem
@@ -822,12 +820,10 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                               <div className="space-y-1.5 flex flex-col">
                                 <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
                                 <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-10 rounded-xl border-gray-200 bg-card w-full justify-start text-left font-normal dark:border-zinc-700">
-                                      {(editFormData.assigneeIds && editFormData.assigneeIds.length > 0) 
-                                        ? `${editFormData.assigneeIds.length} nhân viên được chọn` 
-                                        : 'Chọn nhân viên (có thể chọn nhiều)'}
-                                    </Button>
+                                  <DropdownMenuTrigger className="h-10 rounded-xl border border-gray-200 bg-card w-full justify-start text-left font-normal px-4 py-2 text-sm flex items-center dark:border-zinc-700">
+                                    {(editFormData.assigneeIds && editFormData.assigneeIds.length > 0) 
+                                      ? `${editFormData.assigneeIds.length} nhân viên được chọn` 
+                                      : 'Chọn nhân viên (có thể chọn nhiều)'}
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
                                     {members.map(m => (

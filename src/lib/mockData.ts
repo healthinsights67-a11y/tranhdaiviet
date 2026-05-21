@@ -1,4 +1,4 @@
-import { Task, Member, Notification, Customer, Order, Quotation } from '../types';
+import { Task, Member, Notification, Customer, Quotation } from '../types';
 
 export const MOCK_QUOTATIONS: Quotation[] = [
   {
@@ -119,83 +119,6 @@ export const MOCK_MEMBERS: Member[] = [
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Dao',
     email: 'dao.tran@plastihome.vn',
     workshop: 'all',
-  },
-];
-
-export const MOCK_ORDERS: Order[] = [
-  {
-    id: 'ORD-001',
-    customerName: 'Anh Hùng - Vinhomes',
-    totalValue: 25000000,
-    status: 'processing',
-    orderDate: '2024-04-05',
-    items: 'Tủ bếp Ecoplast chữ L',
-  },
-  {
-    id: 'ORD-002',
-    customerName: 'Chị Lan - Quận 7',
-    totalValue: 12000000,
-    status: 'pending',
-    orderDate: '2024-04-10',
-    items: 'Tủ quần áo 4 cánh Chinhuei',
-  },
-  {
-    id: 'ORD-003',
-    customerName: 'Anh Minh - Bình Thạnh',
-    totalValue: 8500000,
-    status: 'completed',
-    orderDate: '2024-03-15',
-    deliveryDate: '2024-03-25',
-    items: 'Kệ tivi & Bàn trà',
-  },
-  {
-    id: 'ORD-004',
-    customerName: 'Chị Mai - Thủ Đức',
-    totalValue: 45000000,
-    status: 'processing',
-    orderDate: '2024-04-02',
-    items: 'Trọn gói nội thất căn hộ 2PN',
-  },
-  {
-    id: 'ORD-005',
-    customerName: 'Anh Tuấn - Tân Bình',
-    totalValue: 15000000,
-    status: 'completed',
-    orderDate: '2024-03-20',
-    deliveryDate: '2024-03-30',
-    items: 'Giường ngủ & Bàn trang điểm',
-  },
-  {
-    id: 'ORD-006',
-    customerName: 'Chị Thảo - Gò Vấp',
-    totalValue: 5000000,
-    status: 'shipping',
-    orderDate: '2024-04-08',
-    items: 'Tủ giày thông minh',
-  },
-  {
-    id: 'ORD-007',
-    customerName: 'Anh Hoàng - Quận 1',
-    totalValue: 32000000,
-    status: 'processing',
-    orderDate: '2024-04-12',
-    items: 'Tủ bếp Acrylic cao cấp',
-  },
-  {
-    id: 'ORD-008',
-    customerName: 'Chị Nga - Phú Nhuận',
-    totalValue: 18000000,
-    status: 'pending',
-    orderDate: '2024-04-15',
-    items: 'Combo phòng ngủ trẻ em',
-  },
-  {
-    id: 'ORD-009',
-    customerName: 'Anh Đức - Quận 10',
-    totalValue: 9000000,
-    status: 'processing',
-    orderDate: '2024-04-12',
-    items: 'Kệ sách & Bàn làm việc',
   },
 ];
 

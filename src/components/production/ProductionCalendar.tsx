@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Order, OrderStatus, Task, Member, Customer } from '@/src/types';
+import { Task, Member, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/src/components/kanban/KanbanBoard';
 
 interface ProductionCalendarProps {
-  orders: Order[];
+  
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   members: Member[];
@@ -35,7 +35,7 @@ interface ProductionCalendarProps {
   currentUser?: any;
 }
 
-const STATUS_ICONS: Record<OrderStatus, any> = {
+const STATUS_ICONS: Record<string, any> = {
   pending: Clock,
   processing: Package,
   shipping: Truck,
@@ -43,7 +43,7 @@ const STATUS_ICONS: Record<OrderStatus, any> = {
   cancelled: AlertCircle,
 };
 
-const STATUS_COLORS: Record<OrderStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
   processing: 'bg-blue-500/10 text-blue-600 border-blue-200',
   shipping: 'bg-purple-500/10 text-purple-600 border-purple-200',
@@ -51,7 +51,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   cancelled: 'bg-red-500/10 text-red-600 border-red-200',
 };
 
-const STATUS_LABELS: Record<OrderStatus, string> = {
+const STATUS_LABELS: Record<string, string> = {
   pending: 'Chờ xử lý',
   processing: 'Đang sản xuất',
   shipping: 'Đang vận chuyển',
@@ -59,7 +59,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: 'Đã hủy',
 };
 
-export function ProductionCalendar({ orders, tasks, setTasks, members, customers, user, currentUser }: ProductionCalendarProps) {
+export function ProductionCalendar({  tasks, setTasks, members, customers, user, currentUser }: ProductionCalendarProps) {
   const [currentDate, setCurrentDate] = React.useState(() => getCurrentVNDate());
   const [viewMode, setViewMode] = React.useState<'1d' | '7d' | '30d'>('30d');
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
@@ -105,10 +105,10 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
     else setCurrentDate(subMonths(currentDate, 1));
   };
 
-  const getOrdersForDay = (day: Date) => {
-    return orders.filter(order => {
-      const orderDate = new Date(order.orderDate);
-      return isSameDay(orderDate, day);
+  const getCustomersForDay = (day: Date) => {
+    return customers.filter(customer => {
+      const customerDate = new Date(customer.createdAt);
+      return isSameDay(customerDate, day);
     });
   };
 
@@ -119,24 +119,28 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
   const virtualProductionTasks: Task[] = React.useMemo(() => {
     const existingTitles = new Set(productionTasks.map(t => t.title.toLowerCase()));
     
-    const derivedTasks: Task[] = orders
-      .filter(order => !existingTitles.has(`sản xuất: ${order.customerName.toLowerCase()}`) && !existingTitles.has(order.customerName.toLowerCase()))
-      .map(order => ({
-        id: `virtual-${order.id}`,
-        title: order.customerName,
-        description: order.items,
-        status: order.status === 'completed' ? 'done' : 
-                order.status === 'shipping' ? 'review' :
-                order.status === 'pending' ? 'todo' : 'in-progress',
+    const derivedTasks: Task[] = customers
+      .filter(customer => 
+        (customer.stage === 'production' || customer.stage === 'installation' || customer.stage === 'completed') &&
+        !existingTitles.has(`sản xuất: ${customer.name.toLowerCase()}`) && 
+        !existingTitles.has(customer.name.toLowerCase())
+      )
+      .map(customer => ({
+        id: `virtual-${customer.id}`,
+        title: customer.name,
+        description: customer.notes || '',
+        status: customer.stage === 'completed' ? 'done' : 
+                customer.stage === 'installation' ? 'waiting_install' :
+                customer.stage === 'production' ? 'todo' : 'in-progress',
         type: 'production',
         priority: 'medium',
         assigneeId: '',
-        createdAt: order.orderDate,
-        dueDate: order.deliveryDate || order.orderDate
-      }));
+        createdAt: customer.createdAt,
+        dueDate: customer.createdAt,
+      } as Task));
       
     return [...productionTasks, ...derivedTasks];
-  }, [productionTasks, orders]);
+  }, [productionTasks, customers]);
 
   return (
     <div className="space-y-3 max-w-[1600px] mx-auto px-2">
@@ -157,7 +161,7 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
           <CardContent className="p-3 pt-0">
             <div className="flex items-center justify-between">
               <div className="text-2xl font-extrabold text-blue-600">
-                {orders.filter(o => o.status === 'processing').length}
+                {customers.filter(c => c.stage === 'production').length}
               </div>
               <Package className="h-5 w-5 text-blue-600/30" />
             </div>
@@ -192,9 +196,9 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
             <div className="flex items-center justify-between">
               <div className="text-2xl font-extrabold text-green-600">
                 {
-                  orders.filter(o => {
-                    if (o.status !== 'completed') return false;
-                    const date = o.completedAt ? new Date(o.completedAt) : new Date(o.orderDate);
+                  customers.filter(c => {
+                    if (c.stage !== 'completed') return false;
+                    const date = new Date(c.createdAt);
                     return date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear();
                   }).length + 
                   tasks.filter(t => {
@@ -265,7 +269,7 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
                   </div>
                   <div className="grid grid-cols-7 min-w-[700px] auto-rows-[minmax(100px,1fr)]">
                     {calendarDays.map((day, i) => {
-                      const dayOrders = getOrdersForDay(day);
+                      const dayCustomers = getCustomersForDay(day);
                       const isToday = isSameDay(day, getCurrentVNDate());
 
                       return (
@@ -288,27 +292,27 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
                           </div>
                           
                           <div className="flex-1 overflow-hidden flex flex-col space-y-1">
-                            {dayOrders.slice(0, 3).map((order) => {
-                              const StatusIcon = STATUS_ICONS[order.status];
+                            {dayCustomers.slice(0, 3).map((customer) => {
+                              const StatusIcon = STATUS_ICONS[customer.stage];
                               return (
                                 <div 
-                                  key={order.id}
+                                  key={customer.id}
                                   className={cn(
                                     "text-xs px-2 py-1 rounded truncate border shadow-sm",
-                                    STATUS_COLORS[order.status]
+                                    STATUS_COLORS[customer.stage]
                                   )}
-                                  title={order.customerName}
+                                  title={customer.name}
                                 >
                                   <div className="flex items-center gap-1">
                                           <StatusIcon className="h-3 w-3 shrink-0" />
-                                          <span className="font-bold uppercase tracking-tighter truncate">{customers.find(c => c.name === order.customerName)?.code || order.id}</span>
+                                          <span className="font-bold uppercase tracking-tighter truncate">{customers.find(c => c.name === customer.name)?.code || customer.id}</span>
                                   </div>
                                 </div>
                               );
                             })}
-                            {dayOrders.length > 3 && (
+                            {dayCustomers.length > 3 && (
                               <div className="text-xs text-muted-foreground text-center font-medium py-1">
-                                + {dayOrders.length - 3} đơn
+                                + {dayCustomers.length - 3} đơn
                               </div>
                             )}
                           </div>
@@ -360,17 +364,17 @@ export function ProductionCalendar({ orders, tasks, setTasks, members, customers
                 </Button>
               </div>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {getOrdersForDay(selectedDay).length === 0 ? (
+                {getCustomersForDay(selectedDay).length === 0 ? (
                   <p className="text-muted-foreground text-sm italic">Không có đơn hàng nào.</p>
                 ) : (
-                  getOrdersForDay(selectedDay).map(order => (
-                    <div key={order.id} className="p-3 border rounded-lg flex items-center justify-between">
+                  getCustomersForDay(selectedDay).map(customer => (
+                    <div key={customer.id} className="p-3 border rounded-lg flex items-center justify-between">
                       <div>
-                        <p className="font-bold">{order.customerName}</p>
-                        <p className="text-xs text-muted-foreground">{order.items}</p>
+                        <p className="font-bold">{customer.name}</p>
+                        <p className="text-xs text-muted-foreground">{customer.notes}</p>
                       </div>
-                      <Badge className={cn(STATUS_COLORS[order.status])}>
-                        {STATUS_LABELS[order.status]}
+                      <Badge className={cn(STATUS_COLORS[customer.stage])}>
+                        {STATUS_LABELS[customer.stage]}
                       </Badge>
                     </div>
                   ))
