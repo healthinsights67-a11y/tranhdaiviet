@@ -14,6 +14,7 @@ import {
   Filter,
   Copy,
   ChevronRight,
+  ChevronLeft,
   TrendingDown,
   Phone,
   Package,
@@ -41,6 +42,11 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -67,7 +73,7 @@ import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 import { toast } from 'sonner';
-import { cn } from '@/src/lib/utils';
+import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth } from '@/src/lib/utils';
 
 interface QuotationPageProps {
   quotations: Quotation[];
@@ -78,7 +84,6 @@ interface QuotationPageProps {
 }
 
 type FilterStatus = Quotation['status'] | 'all';
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
 type ViewMode = 'list' | 'library';
 
 export function QuotationPage({ quotations, user, customers, members, products = [] }: QuotationPageProps) {
@@ -86,7 +91,8 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
-  const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
+  const [selectedMonth, setSelectedMonth] = React.useState<string>('');
+  const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null);
@@ -99,28 +105,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                          q.quotationNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
     
-    let matchesTime = true;
-    if (timeFilter !== 'all' && q.createdAt) {
-      const date = new Date(q.createdAt);
-      const now = new Date();
-      if (timeFilter === 'today') {
-        matchesTime = date.toDateString() === now.toDateString();
-      } else if (timeFilter === 'week') {
-        // Find start and end of current week (Monday to Sunday)
-        const day = now.getDay() || 7; 
-        const firstDay = new Date(now);
-        firstDay.setHours(0, 0, 0, 0);
-        firstDay.setDate(now.getDate() - day + 1);
-        
-        const lastDay = new Date(firstDay);
-        lastDay.setDate(firstDay.getDate() + 6);
-        lastDay.setHours(23, 59, 59, 999);
-        
-        matchesTime = date >= firstDay && date <= lastDay;
-      } else if (timeFilter === 'month') {
-        matchesTime = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      }
-    }
+    const matchesTime = !selectedMonth || (q.createdAt && getVNMonth(q.createdAt) === selectedMonth);
 
     return matchesSearch && matchesStatus && matchesTime;
   });
@@ -499,18 +484,46 @@ export function QuotationPage({ quotations, user, customers, members, products =
                         </SelectContent>
                       </Select>
 
-                      <Select value={timeFilter} onValueChange={(value) => setTimeFilter(value as TimeFilter)}>
-                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
-                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                           <SelectValue placeholder="Thời gian" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-white/10">
-                          <SelectItem value="all">Mọi lúc</SelectItem>
-                          <SelectItem value="today">Hôm nay</SelectItem>
-                          <SelectItem value="week">Tuần này</SelectItem>
-                          <SelectItem value="month">Tháng này</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger className="inline-flex items-center justify-between min-w-[120px] h-10 md:h-11 text-xs font-medium border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground px-3 py-2 rounded-xl ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                           <div className="flex items-center gap-2">
+                             <Calendar className="h-4 w-4 text-muted-foreground" />
+                             {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Thời gian"}
+                           </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[280px] p-2" align="start">
+                          <div className="flex items-center justify-between bg-muted/50 rounded-md p-1 mb-2">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y - 1)}>
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-black">{pickerYear}</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y + 1)}>
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            {Array.from({ length: 12 }).map((_, i) => {
+                              const m = String(i + 1).padStart(2, '0');
+                              const val = `${pickerYear}-${m}`;
+                              const isSelected = selectedMonth === val;
+                              return (
+                                <Button
+                                  key={m}
+                                  variant={isSelected ? "default" : "ghost"}
+                                  className={cn("h-9 w-full text-[10px] font-black p-0", isSelected && "bg-primary text-primary-foreground")}
+                                  onClick={() => setSelectedMonth(val)}
+                                >
+                                  T{i + 1}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          <div className="flex gap-2 mt-4 pt-4 border-t">
+                            <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
+                            <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </div>
