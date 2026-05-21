@@ -55,7 +55,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
     status: 'pending'
   });
 
-  const consultingCustomers = customers.filter(c => c.stage === 'consulting');
+  const consultingCustomers = customers;
 
   const handleCustomerSelect = (customerId: string) => {
     if (customerId === 'manual') {
@@ -74,9 +74,9 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
       setFormData(prev => ({
         ...prev,
         customerId: customer.id,
-        customerName: customer.name,
-        phone: customer.phone,
-        address: customer.address
+        customerName: customer.name || '',
+        phone: customer.phone || '',
+        address: customer.address || ''
       }));
     }
   };
@@ -88,7 +88,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
   const customerOptions = [
     { label: '-- Nhập tay mới --', value: 'manual' },
     ...consultingCustomers.map(c => ({
-      label: `${c.code || 'KH...'} - ${c.name}`,
+      label: `${c.code || 'KH...'} - ${c.name || 'Khách chưa có tên'}`,
       value: c.id
     }))
   ];
@@ -96,16 +96,16 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
   if (formData.customerId && formData.customerId !== 'manual' && !customerOptions.find(o => o.value === formData.customerId)) {
     const c = customers.find(x => x.id === formData.customerId);
     customerOptions.push({
-      label: c ? `${c.code || 'KH...'} - ${c.name}` : formData.customerName || formData.customerId,
+      label: c ? `${c.code || 'KH...'} - ${c.name || 'Khách chưa có tên'}` : formData.customerName || formData.customerId,
       value: formData.customerId
     });
   }
 
-  const saleOptions = saleMembers.map(m => ({ label: m.name, value: m.id }));
+  const saleOptions = saleMembers.map(m => ({ label: m.name || m.email || 'Sale (chưa có tên)', value: m.id }));
   if (formData.assigneeId && !saleOptions.find(o => o.value === formData.assigneeId)) {
     const m = members.find(x => x.id === formData.assigneeId);
     saleOptions.push({
-      label: m ? m.name : formData.assigneeId,
+      label: m ? (m.name || m.email || 'Sale (chưa có tên)') : formData.assigneeId,
       value: formData.assigneeId
     });
   }
