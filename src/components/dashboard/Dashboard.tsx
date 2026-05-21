@@ -81,6 +81,7 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
   const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt)) || (t.updatedAt && matchesTime(t.updatedAt)) || (t.completedAt && matchesTime(t.completedAt)) || !t.createdAt);
   const filteredOrders = activeOrders.filter(o => !selectedMonth || (o.orderDate && matchesTime(o.orderDate)) || !o.orderDate);
   const filteredCustomers = activeCustomers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt);
+  const filteredQuotations = (quotations || []).filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)) || !q.createdAt);
 
   const statusData = [
     { name: 'Cần làm', value: filteredTasks.filter(t => t.status === 'todo').length },
@@ -120,12 +121,16 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
     };
   }).sort((a, b) => b.count - a.count);
 
-  const actualRevenue = filteredOrders.filter(o => o.status === 'completed').reduce((sum, o) => {
-    const customer = activeCustomers.find(c => c.name === o.customerName);
-    return sum + (o.totalValue || customer?.orderValue || 0);
-  }, 0) + (quotations || []).filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
+  const actualRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit') return sum + (q.depositAmount || 0);
+    if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
 
-  const expectedRevenue = (quotations || []).filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((sum, q) => sum + (q.totalAmount || 0), 0);
+  const expectedRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit' || q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
 
   const stats = [
     { label: 'Tổng nhiệm vụ', value: filteredTasks.length, icon: CheckCircle2, color: 'text-blue-500' },
