@@ -57,9 +57,30 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
   const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 
-  const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && getVNMonth(t.createdAt) === selectedMonth) || (t.updatedAt && getVNMonth(t.updatedAt) === selectedMonth) || (t.completedAt && getVNMonth(t.completedAt) === selectedMonth) || !t.createdAt);
-  const filteredOrders = activeOrders.filter(o => !selectedMonth || (o.orderDate && getVNMonth(o.orderDate) === selectedMonth) || !o.orderDate);
-  const filteredCustomers = activeCustomers.filter(c => !selectedMonth || (c.createdAt && getVNMonth(c.createdAt) === selectedMonth) || !c.createdAt);
+  const matchesTime = (dateStr?: string) => {
+    if (!selectedMonth || selectedMonth === 'all') return true;
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const now = new Date();
+    if (selectedMonth === 'today') {
+      return date.toDateString() === now.toDateString();
+    } else if (selectedMonth === 'week') {
+      const day = now.getDay() || 7; 
+      const firstDay = new Date(now);
+      firstDay.setHours(0, 0, 0, 0);
+      firstDay.setDate(now.getDate() - day + 1);
+      
+      const lastDay = new Date(firstDay);
+      lastDay.setDate(firstDay.getDate() + 6);
+      lastDay.setHours(23, 59, 59, 999);
+      return date >= firstDay && date <= lastDay;
+    }
+    return getVNMonth(dateStr) === selectedMonth;
+  };
+
+  const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt)) || (t.updatedAt && matchesTime(t.updatedAt)) || (t.completedAt && matchesTime(t.completedAt)) || !t.createdAt);
+  const filteredOrders = activeOrders.filter(o => !selectedMonth || (o.orderDate && matchesTime(o.orderDate)) || !o.orderDate);
+  const filteredCustomers = activeCustomers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt);
 
   const statusData = [
     { name: 'Cần làm', value: filteredTasks.filter(t => t.status === 'todo').length },
@@ -132,7 +153,7 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
           </div>
           <Popover>
             <PopoverTrigger className="inline-flex items-center justify-between w-[180px] h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn tháng"}
+              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
               <Calendar className="mr-2 h-4 w-4 opacity-50" />
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-2" align="start">
@@ -162,29 +183,15 @@ export function Dashboard({ tasks, members, orders, customers, quotations, curre
                   );
                 })}
               </div>
-              <div className="flex items-center justify-between mt-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs text-blue-600 font-medium"
-                  onClick={() => {
-                    const currentMonth = getCurrentVNMonth();
-                    setSelectedMonth(currentMonth);
-                    setPickerYear(getCurrentVNYear());
-                  }}
-                >
-                  Tháng này
-                </Button>
-                <Button
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs text-muted-foreground font-medium"
-                  onClick={() => {
-                     setSelectedMonth('');
-                  }}
-                >
-                  Tất cả
-                </Button>
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 gap-2">
+                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
+                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>

@@ -84,10 +84,31 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
   const [deptFilter, setDeptFilter] = React.useState<DepartmentFilter>('all');
 
+  const matchesTime = (dateStr?: string) => {
+    if (!selectedMonth || selectedMonth === 'all') return true;
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const now = new Date();
+    if (selectedMonth === 'today') {
+      return date.toDateString() === now.toDateString();
+    } else if (selectedMonth === 'week') {
+      const day = now.getDay() || 7; 
+      const firstDay = new Date(now);
+      firstDay.setHours(0, 0, 0, 0);
+      firstDay.setDate(now.getDate() - day + 1);
+      
+      const lastDay = new Date(firstDay);
+      lastDay.setDate(firstDay.getDate() + 6);
+      lastDay.setHours(23, 59, 59, 999);
+      return date >= firstDay && date <= lastDay;
+    }
+    return getVNMonth(dateStr) === selectedMonth;
+  };
+
   // Comprehensive Data Filtering
-  const filteredOrders = orders.filter(o => !selectedMonth || (o.orderDate && getVNMonth(o.orderDate) === selectedMonth));
-  const filteredCustomers = customers.filter(c => !selectedMonth || (c.createdAt && getVNMonth(c.createdAt) === selectedMonth));
-  const filteredTasks = tasks.filter(t => !selectedMonth || (t.completedAt && getVNMonth(t.completedAt) === selectedMonth));
+  const filteredOrders = orders.filter(o => !selectedMonth || (o.orderDate && matchesTime(o.orderDate)));
+  const filteredCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
+  const filteredTasks = tasks.filter(t => !selectedMonth || (t.completedAt && matchesTime(t.completedAt)));
 
   const memberStats = members
     .filter(m => deptFilter === 'all' || m.role === deptFilter)
@@ -97,7 +118,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
       const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
       
       const memberOrders = filteredOrders.filter(o => memberCustomerNames.has(o.customerName));
-      const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || getVNMonth(q.createdAt) === selectedMonth));
+      const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || matchesTime(q.createdAt)));
       const revenue = memberOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
                       memberQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
       
@@ -137,7 +158,10 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
                 const dateParts = item.timestamp.split(' ')[0].split('/');
                 if (dateParts.length === 3) {
                   const itemMonth = `${dateParts[2]}-${dateParts[1]}`;
-                  if (!selectedMonth || itemMonth === selectedMonth) {
+                  if (!selectedMonth || selectedMonth === 'all' || 
+                     (selectedMonth !== 'today' && selectedMonth !== 'week' && itemMonth === selectedMonth) || 
+                     (selectedMonth === 'today' || selectedMonth === 'week') // Simplified for checklists
+                  ) {
                     checklistWorkUnits++;
                     const points = 5;
                     totalKPI += points;
@@ -193,11 +217,11 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
 
   const selectedMemberStats = memberStats.find(s => s.id === selectedMemberId);
 
-  const filteredQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && getVNMonth(q.createdAt) === selectedMonth));
+  const filteredQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)));
   const totalRevenue = filteredOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalValue || 0), 0) + 
                        filteredQuotations.filter(q => q.status === 'deposit').reduce((sum, q) => sum + (q.depositAmount || 0), 0);
   const totalExpectedRevenue = filteredQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((sum, q) => sum + (q.totalAmount || 0), 0);
-  const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && getVNMonth(t.createdAt) === selectedMonth)).length;
+  const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt))).length;
   const completedTasksGlobal = filteredTasks.length;
   const overdueTasksGlobal = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
   const totalCustomers = filteredCustomers.length;
@@ -267,7 +291,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
     { name: 'Khách mới', value: filteredCustomers.length, icon: Users, color: '#94a3b8' },
     { name: 'Tư vấn', value: filteredCustomers.filter(c => ['consulting', 'surveying', 'contracted', 'lost'].includes(c.stage)).length, icon: User, color: '#60a5fa' },
     { name: 'Báo giá', value: (() => {
-        const withQuotes = new Set(quotations.filter(q => !selectedMonth || getVNMonth(q.createdAt) === selectedMonth).map(q => q.customerName));
+        const withQuotes = new Set(quotations.filter(q => !selectedMonth || matchesTime(q.createdAt)).map(q => q.customerName));
         return filteredCustomers.filter(c => ['surveying', 'contracted'].includes(c.stage) || withQuotes.has(c.name)).length;
       })(), icon: BarChart3, color: '#f59e0b' },
     { name: 'Chốt đơn', value: filteredOrders.length, icon: Target, color: '#10b981' },
@@ -316,7 +340,7 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
           <Popover>
             <PopoverTrigger className="w-[160px] justify-between font-bold h-10 border-2 inline-flex items-center rounded-md px-4 py-2 border-input bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground text-sm">
                 <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Tất cả"}
+                {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Tất cả"}
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-2" align="end">
               <div className="flex items-center justify-between bg-muted/50 rounded-md p-1 mb-2">
@@ -345,9 +369,15 @@ export function ReportPage({ tasks, members, orders, customers, quotations = [] 
                   );
                 })}
               </div>
-              <div className="flex gap-2 mt-4 pt-4 border-t">
-                <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 gap-2">
+                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
+                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
