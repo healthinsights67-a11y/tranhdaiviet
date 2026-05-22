@@ -386,9 +386,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
             <p className="text-muted-foreground text-[8px] md:text-sm font-medium">Hành trình khách hàng.</p>
           </div>
           <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-between w-[180px] h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hidden lg:flex">
+            <PopoverTrigger className="hidden lg:inline-flex items-center justify-between w-auto min-w-[180px] whitespace-nowrap h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-              <Calendar className="mr-2 h-4 w-4 opacity-50" />
+              <Calendar className="ml-2 h-4 w-4 opacity-50" />
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground" align="start">
               <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2">
