@@ -330,23 +330,30 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
     }
   };
 
-  const handleFileUpload = async (schedule: InstallationSchedule, file: File) => {
+  const handleFileUpload = async (schedule: InstallationSchedule, files: FileList) => {
     setIsUploading(schedule.id);
-    const toastId = toast.loading('Đang tải ảnh nghiệm thu lên ImgBB...');
+    const toastId = toast.loading(`Đang tải lên ${files.length} ảnh...`);
 
     try {
-      const newUrl = await uploadToImgBB(file);
-      if (!newUrl) {
-        toast.dismiss(toastId);
-        return;
+      let successCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const newUrl = await uploadToImgBB(file);
+        if (newUrl) {
+          await updateDoc(doc(db, 'installation_schedules', schedule.id), {
+            imageUrls: arrayUnion(newUrl)
+          });
+          successCount++;
+        }
       }
       
-      await updateDoc(doc(db, 'installation_schedules', schedule.id), {
-        imageUrls: arrayUnion(newUrl)
-      });
-
       queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
-      toast.success('Đã tải ảnh lên thành công', { id: toastId });
+      
+      if (successCount > 0) {
+        toast.success(`Đã tải lên ${successCount}/${files.length} ảnh thành công!`, { id: toastId });
+      } else {
+        toast.error('Không thể tải lên ảnh nào', { id: toastId });
+      }
     } catch (error) {
       console.error('Upload error:', error);
       toast.error('Lỗi khi tải ảnh: ' + (error instanceof Error ? error.message : 'Unknown'), { id: toastId });
@@ -1008,10 +1015,12 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                                       <Input 
                                         type="file" 
                                         accept="image/*"
+                                        multiple
                                         disabled={isUploading === schedule.id}
                                         onChange={(e) => {
                                           if (e.target.files?.length) {
-                                            handleFileUpload(schedule, e.target.files[0]);
+                                            handleFileUpload(schedule, e.target.files);
+                                            e.target.value = '';
                                           }
                                         }}
                                         className="h-9 text-xs file:text-xs file:h-full rounded-xl cursor-pointer"

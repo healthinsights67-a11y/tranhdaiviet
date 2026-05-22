@@ -192,30 +192,30 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
   const isUploadingRef = React.useRef(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     // Giới hạn 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File quá lớn (tối đa 10MB)");
-      return;
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File ${file.name} quá lớn (tối đa 10MB)`);
+        return;
+      }
     }
-
-    const isImage = file.type.startsWith('image/');
 
     setIsUploading(true);
     isUploadingRef.current = true;
+    const toastId = toast.loading(`Đang tải lên ${files.length} file...`);
     
     const timeoutId = setTimeout(() => {
       if (isUploadingRef.current) {
         setIsUploading(false);
         isUploadingRef.current = false;
-        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng.");
+        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng.", { id: toastId });
       }
-    }, 45000); 
+    }, 60000); 
 
     try {
-      let downloadURL = "";
       let customName = undefined;
         
       if (pendingTransition?.taskId) {
@@ -228,35 +228,53 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
          }
       }
 
-      if (isImage) {
-        const url = await uploadToImgBB(file, customName);
-        if (!url) {
-          setIsUploading(false);
-          isUploadingRef.current = false;
-          return;
+      const newUrls: string[] = [];
+      let successCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        if (!isUploadingRef.current) break;
+        const file = files[i];
+        const isImage = file.type.startsWith('image/');
+        let downloadURL = "";
+        
+        const fileName = files.length > 1 && customName ? `${customName}_${i+1}` : customName;
+
+        if (isImage) {
+          const url = await uploadToImgBB(file, fileName);
+          if (url) {
+            downloadURL = url;
+            successCount++;
+          }
+        } else {
+          const storageRef = ref(storage, `tasks/${Date.now()}_${file.name}`);
+          const uploadTask = await uploadBytes(storageRef, file);
+          downloadURL = await getDownloadURL(uploadTask.ref);
+          if (downloadURL) successCount++;
         }
-        downloadURL = url;
-      } else {
-        const storageRef = ref(storage, `tasks/${Date.now()}_${file.name}`);
-        const uploadTask = await uploadBytes(storageRef, file);
-        if (!isUploadingRef.current) return;
-        downloadURL = await getDownloadURL(uploadTask.ref);
+        
+        if (downloadURL) {
+          newUrls.push(downloadURL);
+        }
       }
       
       if (!isUploadingRef.current) return;
 
-      setPendingTransition(prev => prev ? ({ 
-        ...prev, 
-        fileLinks: [...(prev.fileLinks || []), downloadURL] 
-      }) : null);
+      if (newUrls.length > 0) {
+        setPendingTransition(prev => prev ? ({ 
+          ...prev, 
+          fileLinks: [...(prev.fileLinks || []), ...newUrls] 
+        }) : null);
+        toast.success(`Tải lên thành công ${successCount}/${files.length} file!`, { id: toastId });
+      } else {
+        toast.error("Không thể tải lên file nào.", { id: toastId });
+      }
       
       clearTimeout(timeoutId);
-      toast.success("Tải lên thành công!");
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (!isUploadingRef.current) return;
       console.error("Upload error:", error);
-      toast.error(error.message || "Không thể tải lên file.");
+      toast.error(error.message || "Không thể tải lên file.", { id: toastId });
     } finally {
       setIsUploading(false);
       isUploadingRef.current = false;
@@ -864,6 +882,7 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
                       <div className="flex gap-2">
                          <input 
                            type="file" 
+                           multiple
                            ref={fileInputRef} 
                            className="hidden" 
                            onChange={handleFileUpload}

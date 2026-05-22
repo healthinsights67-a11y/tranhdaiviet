@@ -109,30 +109,43 @@ export function MediaLibrary({ folders, user }: MediaLibraryProps) {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedCategory) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !selectedCategory) return;
 
     setIsUploading(true);
+    const toastId = toast.loading(`Đang tải lên ${files.length} ảnh...`);
+    let successCount = 0;
     try {
-      const imageUrl = await uploadToImgBB(file);
-      if (imageUrl) {
-        const categoryName = CATEGORIES.find(c => c.id === selectedCategory)?.name || 'KHAC';
-        const cleanCategoryName = categoryName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '_').toUpperCase();
-        const fileName = `${cleanCategoryName}_${getVNTimestamp()}`;
+      const categoryName = CATEGORIES.find(c => c.id === selectedCategory)?.name || 'KHAC';
+      const cleanCategoryName = categoryName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '_').toUpperCase();
 
-        await addDoc(collection(db, 'media_library'), {
-          url: imageUrl,
-          name: fileName,
-          categoryId: selectedCategory,
-          createdAt: new Date().toISOString(),
-          uploadedBy: user?.email || 'unknown'
-        });
-        toast.success("Đã tải ảnh lên thành công");
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageUrl = await uploadToImgBB(file);
+        if (imageUrl) {
+          const fileName = `${cleanCategoryName}_${getVNTimestamp()}_${i+1}`;
+          await addDoc(collection(db, 'media_library'), {
+            categoryId: selectedCategory,
+            url: imageUrl,
+            title: fileName,
+            createdAt: new Date().toISOString()
+          });
+          successCount++;
+        }
       }
-    } catch (error: any) {
-      toast.error("Lỗi: " + (error.message || "Không thể tải ảnh"));
+      toast.dismiss(toastId);
+      if (successCount > 0) {
+        toast.success(`Đã tải lên ${successCount}/${files.length} ảnh thành công!`);
+      } else {
+        toast.error('Không thể tải lên ảnh nào.');
+      }
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error('Có lỗi xảy ra khi tải ảnh lên');
     } finally {
       setIsUploading(false);
+      // Reset input
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -305,7 +318,7 @@ export function MediaLibrary({ folders, user }: MediaLibraryProps) {
             </>
           ) : (
             <div className="flex items-center gap-3">
-              <input type="file" id="image-upload" className="hidden" accept="image/*" onChange={handleFileUpload} />
+              <input type="file" id="image-upload" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
               <Button 
                 disabled={isUploading}
                 className="h-10 gap-2 px-6 rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100"

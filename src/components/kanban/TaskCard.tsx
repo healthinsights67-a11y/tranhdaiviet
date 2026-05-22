@@ -79,31 +79,31 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
   }, [isDetailOpen, task.description, task.title]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File quá lớn (tối đa 10MB)");
-      return;
+    // Check size limit for each file
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File ${file.name} quá lớn (tối đa 10MB)`);
+        return;
+      }
     }
-
-    const isImage = file.type.startsWith('image/');
 
     setIsUploading(true);
     isUploadingRef.current = true;
+    const toastId = toast.loading(`Đang tải lên ${files.length} file...`);
 
     const timeoutId = setTimeout(() => {
       if (isUploadingRef.current) {
         setIsUploading(false);
         isUploadingRef.current = false;
-        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng.");
+        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng.", { id: toastId });
       }
-    }, 45000);
+    }, 60000); // Tăng timeout cho nhiều file
 
     try {
-      let downloadURL = "";
       let customName = undefined;
-
       const c = customers.find(x => x.id === task.customerId);
       if (c) {
         const code = c.code || c.id.slice(0,6);
@@ -111,38 +111,56 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
         customName = `${code}_${c.name}_${cleanTitle}`;
       }
 
-      if (isImage) {
-        const url = await uploadToImgBB(file, customName);
-        if (!url) {
-          setIsUploading(false);
-          isUploadingRef.current = false;
-          return;
+      const newUrls: string[] = [];
+      let successCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        if (!isUploadingRef.current) break;
+        const file = files[i];
+        const isImage = file.type.startsWith('image/');
+        let downloadURL = "";
+        
+        const fileName = files.length > 1 && customName ? `${customName}_${i+1}` : customName;
+
+        if (isImage) {
+          const url = await uploadToImgBB(file, fileName);
+          if (url) {
+            downloadURL = url;
+            successCount++;
+          }
+        } else {
+          const storageRef = ref(storage, `tasks/${Date.now()}_${file.name}`);
+          const uploadTask = await uploadBytes(storageRef, file);
+          downloadURL = await getDownloadURL(uploadTask.ref);
+          if (downloadURL) successCount++;
         }
-        downloadURL = url;
-      } else {
-        const storageRef = ref(storage, `tasks/${Date.now()}_${file.name}`);
-        const uploadTask = await uploadBytes(storageRef, file);
-        if (!isUploadingRef.current) return;
-        downloadURL = await getDownloadURL(uploadTask.ref);
+        
+        if (downloadURL) {
+          newUrls.push(downloadURL);
+        }
       }
       
       if (!isUploadingRef.current) return;
 
-      const newFiles = [...(task.files2D3D || []), downloadURL];
-      
-      if (task.id.startsWith('virtual-')) {
-        // Activate virtual task
-        const { id, ...taskData } = task;
-        await addDoc(collection(db, 'tasks'), {
-          ...taskData,
-          files2D3D: newFiles,
-          title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
-        });
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        toast.success("Đã kích hoạt nhiệm vụ và lưu file");
+      if (newUrls.length > 0) {
+        const newFiles = [...(task.files2D3D || []), ...newUrls];
+        
+        if (task.id.startsWith('virtual-')) {
+          // Activate virtual task
+          const { id, ...taskData } = task;
+          await addDoc(collection(db, 'tasks'), {
+            ...taskData,
+            files2D3D: newFiles,
+            title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
+          });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          toast.success("Đã kích hoạt nhiệm vụ và lưu file", { id: toastId });
+        } else {
+          await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
+          toast.success(`Tải lên thành công ${successCount}/${files.length} file`, { id: toastId });
+        }
       } else {
-        await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
-        toast.success("Tải lên thành công");
+        toast.error("Không tải được file nào", { id: toastId });
       }
       
       clearTimeout(timeoutId);
@@ -150,7 +168,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
       clearTimeout(timeoutId);
       if (!isUploadingRef.current) return;
       console.error("Upload error:", error);
-      toast.error(error.message || "Lỗi khi tải lên file. Vui lòng thử lại.");
+      toast.error(error.message || "Lỗi khi tải lên file. Vui lòng thử lại.", { id: toastId });
       try { handleFirestoreError(error, OperationType.UPDATE, `tasks/${task.id}`); } catch(e) {}
     } finally {
       setIsUploading(false);
@@ -721,6 +739,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
                 <div className="flex gap-2">
                    <input 
                      type="file" 
+                     multiple
                      ref={fileInputRef} 
                      className="hidden" 
                      onChange={handleFileUpload}
