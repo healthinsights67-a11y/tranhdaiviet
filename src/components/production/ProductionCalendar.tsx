@@ -113,6 +113,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   const getCustomersForDay = (day: Date) => {
     return customers.filter(customer => {
+      const isValidStage = ['contracted', 'production', 'installation', 'completed'].includes(customer.stage);
+      if (!isValidStage) return false;
       const customerDate = new Date(customer.createdAt);
       return isSameDay(customerDate, day);
     });
