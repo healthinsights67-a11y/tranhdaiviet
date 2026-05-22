@@ -86,8 +86,11 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         toast.success('Thêm vật tư thành công');
       }
       setIsDialogOpen(false);
-    } catch (error) {
-      handleFirestoreError(error as Error, editingItem ? OperationType.UPDATE : OperationType.CREATE, 'Lưu vật tư');
+    } catch (error: any) {
+      toast.error('Lỗi khi lưu dữ liệu. Vui lòng kiểm tra kết nối mạng và quyền truy cập Firestore. Chi tiết: ' + (error?.message || ''));
+      try {
+        handleFirestoreError(error as Error, editingItem ? OperationType.UPDATE : OperationType.CREATE, 'Lưu vật tư');
+      } catch(e) {} // ignore the thrown error from handleFirestoreError
     }
   };
 
