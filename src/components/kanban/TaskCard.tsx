@@ -1016,7 +1016,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
       </Dialog>
 
       <Dialog open={isMaterialFormOpen} onOpenChange={setIsMaterialFormOpen}>
-        <DialogContent className="max-w-[98vw] lg:max-w-[1450px] h-[92vh] overflow-hidden flex flex-col p-0 rounded-2xl border-none shadow-2xl">
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[85vh] overflow-hidden flex flex-col p-0 rounded-2xl border-none shadow-2xl">
           <div className="flex-1 overflow-hidden h-full">
             <MaterialRequisitionForm 
               projectTitle={task.title}
@@ -1030,7 +1030,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
       </Dialog>
 
       <Dialog open={isProductionChecklistOpen} onOpenChange={setIsProductionChecklistOpen}>
-        <DialogContent className="max-w-[98vw] lg:max-w-[1550px] h-[95vh] overflow-hidden flex flex-col p-0 rounded-2xl border-none shadow-2xl">
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[90vh] overflow-hidden flex flex-col p-0 rounded-2xl border-none shadow-2xl">
           <div className="flex-1 overflow-hidden h-full">
             <ProductionChecklistForm 
               taskTitle={task.title}
