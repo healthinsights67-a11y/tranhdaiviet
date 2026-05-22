@@ -65,7 +65,7 @@ const navGroups = [
     items: [
       { id: 'measurements', label: 'Lịch Đo Đạc', icon: CalendarDays, permission: 'menuMeasurement' },
       { id: 'production', label: 'Lịch Sản Xuất', icon: CalendarDays, permission: 'menuProduction' },
-      { id: 'installations', label: 'Lịch Lắp Đặt', icon: CalendarDays, permission: 'menuOrders' },
+      { id: 'installations', label: 'Lịch Lắp Đặt', icon: CalendarDays, permission: 'menuInstallations' },
     ]
   },
   {

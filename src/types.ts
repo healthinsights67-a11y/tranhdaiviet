@@ -17,6 +17,7 @@ export interface MemberPermissions {
   menuMedia: boolean;
   menuMembers: boolean;
   menuCustomers: boolean;
+  menuInstallations: boolean;
   menuAi: boolean;
 }
 

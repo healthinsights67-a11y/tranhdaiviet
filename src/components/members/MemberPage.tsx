@@ -22,6 +22,7 @@ const DEFAULT_PERMISSIONS: MemberPermissions = {
   menuMedia: true,
   menuMembers: true,
   menuCustomers: true,
+  menuInstallations: true,
   menuAi: true,
 };
 
@@ -52,6 +53,7 @@ const PERMISSION_LABELS: { [K in keyof MemberPermissions]: string } = {
   menuMedia: "Thư viện ảnh",
   menuMembers: "Nhân viên",
   menuCustomers: "Khách hàng",
+  menuInstallations: "Lịch lắp đặt",
   menuAi: "Thiết kế AI",
 };
 import { useAuth } from '@/src/contexts/AuthContext';
