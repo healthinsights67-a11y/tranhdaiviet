@@ -313,7 +313,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                             id={`item-${item.id}-${opt}`}
                             checked={item.selectedOption === opt}
                             onCheckedChange={() => handleUpdateItem(item.id, 'selectedOption', opt)}
-                            className="h-3 w-3 rounded border-secondary/30 data-[state=checked]:border-primary"
+                            className="h-3.5 w-3.5 rounded border-muted-foreground/50 border-[1.5px] data-[state=checked]:border-primary"
                           />
                           <Label htmlFor={`item-${item.id}-${opt}`} className="text-[10px] cursor-pointer font-medium">{opt}</Label>
                         </div>
@@ -355,7 +355,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                             id={`item-${item.id}-${opt}`}
                             checked={item.selectedOption === opt}
                             onCheckedChange={() => handleUpdateItem(item.id, 'selectedOption', opt)}
-                            className="h-3 w-3 rounded border-secondary/30 data-[state=checked]:border-primary"
+                            className="h-3.5 w-3.5 rounded border-muted-foreground/50 border-[1.5px] data-[state=checked]:border-primary"
                           />
                           <Label htmlFor={`item-${item.id}-${opt}`} className="text-[10px] cursor-pointer font-medium">{opt}</Label>
                         </div>
