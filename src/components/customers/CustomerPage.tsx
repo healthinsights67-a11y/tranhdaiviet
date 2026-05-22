@@ -67,7 +67,7 @@ import {
 } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType, getDocs, query, where } from '@/src/lib/firebase';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 
@@ -301,10 +301,58 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         const customerToDelete = customers.find(c => c.id === id);
         const title = customerToDelete ? `${customerToDelete.code || 'KH'} - ${customerToDelete.name}` : id;
         await moveToTrash('customers', id, title, user.email || '');
+
+        if (customerToDelete) {
+          const deleterEmail = user.email || 'Unknown';
+          
+          // 1. Delete Measurement Schedules
+          try {
+            const mQuery = query(collection(db, 'measurement_schedules'), where('customerName', '==', customerToDelete.name));
+            const mSnapshot = await getDocs(mQuery);
+            for (const docSnap of mSnapshot.docs) {
+               await moveToTrash('measurement_schedules', docSnap.id, `Lịch đo đạc: ${customerToDelete.name}`, deleterEmail);
+            }
+          } catch (e) { console.error('Error cascade deleting measurement schedules:', e); }
+
+          // 2. Delete Installation Schedules
+          try {
+            const iQuery = query(collection(db, 'installation_schedules'), where('customerName', '==', customerToDelete.name));
+            const iSnapshot = await getDocs(iQuery);
+            for (const docSnap of iSnapshot.docs) {
+               await moveToTrash('installation_schedules', docSnap.id, `Lịch lắp đặt: ${customerToDelete.name}`, deleterEmail);
+            }
+          } catch (e) { console.error('Error cascade deleting installation schedules:', e); }
+
+          // 3. Delete Quotations
+          try {
+            const qQuery = query(collection(db, 'quotations'), where('customerName', '==', customerToDelete.name));
+            const qSnapshot = await getDocs(qQuery);
+            for (const docSnap of qSnapshot.docs) {
+               await moveToTrash('quotations', docSnap.id, `Báo giá: ${docSnap.data().quotationNumber} - ${customerToDelete.name}`, deleterEmail);
+            }
+          } catch (e) { console.error('Error cascade deleting quotations:', e); }
+
+          // 4. Delete Tasks (Design, Production...)
+          try {
+            const tSnapshot = await getDocs(collection(db, 'tasks'));
+            for (const docSnap of tSnapshot.docs) {
+              const tData = docSnap.data();
+              if (tData.title && tData.title.includes(customerToDelete.name)) {
+                 await moveToTrash('tasks', docSnap.id, `Công việc: ${tData.title}`, deleterEmail);
+              }
+            }
+          } catch (e) { console.error('Error cascade deleting tasks:', e); }
+
+          // Refresh React Query caches
+          queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
+          queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+          queryClient.invalidateQueries({ queryKey: ['quotations'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
       } else {
         setCustomers(customers.filter(c => c.id !== id));
       }
-      toast.success("Đã xóa khách hàng");
+      toast.success("Đã xóa khách hàng và các dữ liệu liên quan");
     } catch (error: any) {
       console.error("Error deleting customer:", error);
       toast.error("Lỗi khi xóa: " + (error.message || "Vui lòng thử lại"));
