@@ -65,7 +65,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       return;
     }
 
-    const finalPrice = Math.round(formData.unitPrice * (1 - formData.discountPercent / 100));
+    const finalPrice = Math.round((formData.unitPrice || 0) * (1 - (formData.discountPercent || 0) / 100));
 
     try {
       if (editingItem) {
@@ -247,10 +247,13 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Đơn giá</Label>
               <Input
-                type="number"
+                type="text"
                 className="col-span-3"
-                value={formData.unitPrice || ''}
-                onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                value={formData.unitPrice ? formData.unitPrice.toLocaleString('vi-VN') : ''}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, unitPrice: Number(rawValue) });
+                }}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -259,7 +262,10 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                 type="number"
                 className="col-span-3"
                 value={formData.discountPercent || ''}
-                onChange={(e) => setFormData({ ...formData, discountPercent: Number(e.target.value) })}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/,/g, '.');
+                  setFormData({ ...formData, discountPercent: Number(rawValue) || 0 });
+                }}
               />
             </div>
           </div>
