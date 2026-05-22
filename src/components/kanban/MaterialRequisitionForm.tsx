@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/src/lib/utils';
 import { Customer, Member } from '@/src/types';
+import { toast } from 'sonner';
 
 export interface MaterialItem {
   id: number;
@@ -90,11 +91,11 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
   };
 
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-    
     const win = window.open('', '_blank');
-    if (!win) return;
+    if (!win) {
+      toast.error('Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép popup.');
+      return;
+    }
 
     win.document.write(`
       <html>
