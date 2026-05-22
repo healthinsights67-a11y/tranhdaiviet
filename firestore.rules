@@ -222,6 +222,10 @@ service cloud.firestore {
     match /product_library/{document=**} {
       allow read, write: if isAuthenticated();
     }
+    
+    match /materialConfigs/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
 
     match /productTemplates/{document=**} {
       allow read, write: if isAuthenticated();
