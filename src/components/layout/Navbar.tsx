@@ -12,10 +12,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MOCK_NOTIFICATIONS } from '@/src/lib/mockData';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/src/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { db, collection, query, orderBy, onSnapshot, updateDoc, doc, arrayUnion } from '@/src/lib/firebase';
+import { formatDistanceToNow, parseISO } from 'date-fns';
+import { vi } from 'date-fns/locale';
+
+interface NotificationType {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  createdAt: string;
+  readBy: string[];
+  isGlobal: boolean;
+  userId?: string;
+}
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -26,11 +39,64 @@ interface NavbarProps {
 }
 
 export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: NavbarProps) {
-  const [notifications, setNotifications] = React.useState(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
+  const currentUserId = currentUser?.id || user?.uid || user?.email;
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  React.useEffect(() => {
+    if (!currentUserId) return;
+
+    // We fetch ALL notifications globally to simplify, since it's an internal app
+    // In production we would filter by userId or isGlobal
+    const q = query(
+      collection(db, 'notifications'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs: NotificationType[] = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.isGlobal || data.userId === currentUserId) {
+          notifs.push({
+            id: doc.id,
+            ...data
+          } as NotificationType);
+        }
+      });
+      setNotifications(notifs);
+    });
+
+    return () => unsubscribe();
+  }, [currentUserId]);
+
+  const unreadCount = notifications.filter(n => !(n.readBy || []).includes(currentUserId)).length;
+
+  const markAllAsRead = async () => {
+    if (!currentUserId) return;
+    
+    // Optimistically update UI
+    const unreadNotifs = notifications.filter(n => !(n.readBy || []).includes(currentUserId));
+    setNotifications(notifications.map(n => ({
+      ...n,
+      readBy: [...(n.readBy || []), currentUserId]
+    })));
+
+    // Update in DB
+    for (const notif of unreadNotifs) {
+      const notifRef = doc(db, 'notifications', notif.id);
+      await updateDoc(notifRef, {
+        readBy: arrayUnion(currentUserId)
+      });
+    }
+  };
+
+  const getRelativeTime = (isoString: string) => {
+    if (!isoString) return '';
+    try {
+      return formatDistanceToNow(parseISO(isoString), { addSuffix: true, locale: vi });
+    } catch {
+      return isoString;
+    }
   };
 
   return (
@@ -77,12 +143,12 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
                         <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-4 cursor-default focus:bg-secondary/50">
                           <div className="flex items-center justify-between w-full">
                             <span className="font-semibold text-sm">{n.title}</span>
-                            <span className="text-[10px] text-muted-foreground">{n.timestamp}</span>
+                            <span className="text-[10px] text-muted-foreground">{getRelativeTime(n.createdAt)}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
+                          <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
                             {n.message}
                           </p>
-                          {!n.read && <div className="w-2 h-2 rounded-full bg-primary mt-1" />}
+                          {!(n.readBy || []).includes(currentUserId) && <div className="w-2 h-2 rounded-full bg-primary mt-1" />}
                         </DropdownMenuItem>
                       ))
                     ) : (

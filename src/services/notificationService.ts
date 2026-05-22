@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, getDoc, query, where, auth, updateDoc, setDoc, arrayUnion, messaging, getToken } from '@/src/lib/firebase';
+import { db, collection, getDocs, doc, getDoc, query, where, auth, updateDoc, setDoc, addDoc, arrayUnion, messaging, getToken } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 
 export async function handleRequestNotification() {
@@ -240,6 +240,22 @@ export async function notifyAllMembers(title: string, body: string, data?: any) 
     });
 
     const uniqueTokens = [...new Set(tokens)].filter(t => !!t);
+
+    // Save notification to Firestore for UI display
+    try {
+      const notifRef = collection(db, 'notifications');
+      await addDoc(notifRef, {
+        title,
+        message: body,
+        type: 'announcement',
+        readBy: [], // Array of user IDs or emails who have read it
+        isGlobal: true, // Indicates it's for everyone
+        createdAt: new Date().toISOString(),
+        data: data || null
+      });
+    } catch (dbErr) {
+      console.error("Failed to save global notification to DB", dbErr);
+    }
 
     if (uniqueTokens.length === 0) {
       console.warn('No tokens found to send announcement.');
