@@ -118,3 +118,6 @@
   --color-border: var(--border);
   --color-ring: var(--ring);
 }
+
+* { -webkit-tap-highlight-color: transparent; }
+

@@ -166,11 +166,10 @@ export function ImagePreviewDialog({
     lastTouchDistance.current = null;
   };
 
-  if (!isOpen || !imageUrl) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
+      {isOpen && imageUrl && (
+        <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -266,6 +265,7 @@ export function ImagePreviewDialog({
           </div>
         </div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 }
