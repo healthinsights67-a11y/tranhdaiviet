@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SDK_VERSION } from 'firebase/app';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, MoreHorizontal, GripVertical, Clock, Package, Eye, CheckCircle2, FileText, User, Trash2, ChevronLeft, ChevronRight, Upload, Loader2, Save, Plus, Image } from 'lucide-react';
+import { Calendar, MoreHorizontal, GripVertical, Clock, Package, Eye, CheckCircle2, FileText, User, Trash2, ChevronLeft, ChevronRight, Upload, Loader2, Save, Plus, Image, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, getVNTimestamp } from '@/src/lib/utils';
 import { format } from 'date-fns';
@@ -69,6 +69,19 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
   // Remove storedImgbbKey state and useEffect as we use the service now
   const [isMaterialFormOpen, setIsMaterialFormOpen] = React.useState(false);
   const [isProductionChecklistOpen, setIsProductionChecklistOpen] = React.useState(false);
+
+  // Compute installation date
+  const actualId = task.id.startsWith('virtual-') ? task.id.replace('virtual-', '') : task.id;
+  const installationSchedules = queryClient.getQueryData<any[]>(['installation_schedules']) || [];
+  const schedule = React.useMemo(() => {
+    return installationSchedules.find(s => 
+      s.taskId === actualId || 
+      s.customerId === actualId || 
+      (task.customerId && s.customerId === task.customerId)
+    );
+  }, [installationSchedules, actualId, task.customerId]);
+  
+  const installDate = task.waiting_install_at || task.productionChecklist?.installationDate || schedule?.date;
 
   // Update editable fields when task changes or modal opens
   React.useEffect(() => {
@@ -484,11 +497,22 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
           )}
           
           <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-1.5 text-slate-500 bg-card text-card-foreground px-2 py-0.5 rounded-full border border-slate-200 shadow-sm shrink-0">
-              <Calendar className="h-2.5 w-2.5 text-primary/60" />
-              <span className="text-[8px] md:text-[9px] font-bold font-mono">
-                {format(new Date(task.dueDate), 'dd/MM/yy')}
-              </span>
+            <div className="flex gap-1 flex-wrap">
+              <div className="flex items-center gap-1.5 text-slate-500 bg-card text-card-foreground px-2 py-0.5 rounded-full border border-slate-200 shadow-sm shrink-0" title="Ngày dự kiến">
+                <Calendar className="h-2.5 w-2.5 text-primary/60" />
+                <span className="text-[8px] md:text-[9px] font-bold font-mono">
+                  {format(new Date(task.dueDate), 'dd/MM/yy')}
+                </span>
+              </div>
+              
+              {installDate && (
+                <div className="flex items-center gap-1.5 text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200 shadow-sm shrink-0" title="Ngày lắp đặt">
+                  <Wrench className="h-2.5 w-2.5" />
+                  <span className="text-[8px] md:text-[9px] font-bold font-mono">
+                    {format(new Date(installDate), 'dd/MM/yy')}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center -space-x-1.5 shrink-0">
