@@ -103,37 +103,41 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
           <title>Phiếu lĩnh NVL - ${projectTitle}</title>
           <style>
              @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
-            body { font-family: 'Times New Roman', serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-            th, td { border: 1px solid black; padding: 4px; text-align: left; }
-            th { text-align: center; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-            .logo { width: 150px; }
-            .title { text-align: center; flex: 1; }
-            .title h1 { margin: 0; font-size: 18px; text-decoration: underline; }
-            .info-block { margin-bottom: 10px; font-size: 13px; }
-            .info-line { margin: 4px 0; border-bottom: 1px dotted #ccc; display: inline-block; min-width: 300px; }
-            .footer { display: flex; justify-content: space-around; margin-top: 40px; font-weight: bold; }
-            .date { text-align: right; margin-top: 20px; font-style: italic; }
-            .split-container { display: flex; gap: 20px; }
-            .split-col { flex: 1; }
+            @media print {
+              @page { margin: 8mm; size: landscape; }
+              body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+            body { font-family: 'Times New Roman', serif; padding: 0; margin: 0; color: black; box-sizing: border-box; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }
+            th, td { border: 1px solid black; padding: 2px 4px; text-align: left; line-height: 1.1; height: 18px; }
+            th { text-align: center; font-weight: bold; background-color: #f8f8f8; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+            .logo { width: 130px; }
+            .title { text-align: center; flex: 1; margin-top: -5px; }
+            .title h1 { margin: 0 0 5px 0; font-size: 18px; text-decoration: underline; text-transform: uppercase; }
+            .title-info { display: flex; flex-direction: column; align-items: flex-start; margin-left: auto; margin-right: auto; width: fit-content; text-align: left; font-size: 13px; line-height: 1.2; }
+            .footer { display: flex; justify-content: space-around; margin-top: 10px; font-weight: bold; font-size: 12px; }
+            .date { text-align: right; margin-top: 5px; margin-bottom: 5px; font-style: italic; font-size: 11px; }
+            .split-container { display: flex; gap: 10px; width: 100%; }
+            .split-col { flex: 1; min-width: 0; }
             .checkbox-group { display: flex; gap: 5px; }
-            .checkbox { border: 1px solid black; width: 10px; height: 10px; display: inline-block; margin-right: 2px; }
+            .checkbox { border: 1px solid black; width: 8px; height: 8px; display: inline-block; margin-right: 3px; position: relative; top: 1px; }
             .checkbox.checked { background: black; }
+            p { margin: 0; }
           </style>
         </head>
         <body>
           <div class="header">
             <div class="logo">
-               <h2 style="color: #e11d48; margin: 0;">I<span style="color: #f59e0b;"> NỘI </span>THẤT</h2>
-               <p style="font-size: 10px; margin: 0;">Kiến tạo không gian</p>
+               <h2 style="color: #e11d48; margin: 0; font-size: 18px;">I<span style="color: #f59e0b;"> NỘI </span>THẤT</h2>
+               <p style="font-size: 11px; margin: 0; font-style: italic;">Kiến tạo không gian</p>
             </div>
             <div class="title">
               <h1>PHIẾU LĨNH NVL - CCDC</h1>
-              <div style="margin-top: 15px; text-align: left; margin-left: 50px;">
+              <div class="title-info">
                 <p>Công trình: <strong>${projectTitle}</strong></p>
-                <p>Họ tên người nhận: ${receiver}</p>
-                <p>Bộ phận: ${department}</p>
+                <p>Họ tên người nhận: <strong>${receiver}</strong></p>
+                <p>Bộ phận: <strong>${department}</strong></p>
               </div>
             </div>
           </div>
