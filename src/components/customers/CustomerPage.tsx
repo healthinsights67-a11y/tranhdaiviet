@@ -9,7 +9,7 @@ import {
   Search, 
   Phone, 
   MapPin, 
-  MessageSquare, CheckCircle2, 
+  MessageSquare, CheckCircle2, TrendingUp, CreditCard, 
   UserPlus,
   Filter,
   MoreHorizontal,
@@ -354,6 +354,22 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
+  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
+
+  const filteredQuotations = quotations.filter(q => filteredCustomers.some(c => c.id === q.customerId));
+  
+  const actualRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit') return sum + (q.depositAmount || 0);
+    if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
+
+  const expectedRevenue = filteredQuotations.reduce((sum, q) => {
+    if (q.status === 'deposit' || q.status === 'accepted') return sum + (q.totalAmount || 0);
+    return sum;
+  }, 0);
+
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
       {/* Header Section */}
@@ -654,21 +670,52 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         </div>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
-        {Object.entries(STAGE_CONFIG).map(([key, config]) => {
-          const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
-          return (
-            <Card key={key} className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
-               <div className={cn("absolute top-0 right-0 p-1", config.color.split(' ')[1])}>
-                  <config.icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
+      <div className="flex flex-col gap-3">
+        {/* Revenue Cards */}
+        {canViewRevenue && (
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg relative overflow-hidden group border-0">
+               <div className="absolute top-0 right-0 p-3 opacity-20">
+                  <DollarSign className="h-16 w-16 md:h-20 md:w-20" />
                </div>
-               <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
-                  <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{config.label}</p>
-                  <h3 className="text-base md:text-xl font-black tabular-nums">{count}</h3>
+               <CardContent className="p-3 md:p-5 flex flex-col justify-center min-h-[70px] md:min-h-[90px] relative z-10">
+                  <p className="text-[10px] md:text-[12px] uppercase font-black tracking-widest text-emerald-100 mb-1 drop-shadow-sm">Doanh thu thực tế</p>
+                  <h3 className="text-xl md:text-3xl font-black tabular-nums drop-shadow-md">
+                    {formatCurrency(actualRevenue)}
+                  </h3>
                </CardContent>
             </Card>
-          );
-        })}
+            <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg relative overflow-hidden group border-0">
+               <div className="absolute top-0 right-0 p-3 opacity-20">
+                  <TrendingUp className="h-16 w-16 md:h-20 md:w-20" />
+               </div>
+               <CardContent className="p-3 md:p-5 flex flex-col justify-center min-h-[70px] md:min-h-[90px] relative z-10">
+                  <p className="text-[10px] md:text-[12px] uppercase font-black tracking-widest text-amber-100 mb-1 drop-shadow-sm">Doanh thu dự kiến</p>
+                  <h3 className="text-xl md:text-3xl font-black tabular-nums drop-shadow-md">
+                    {formatCurrency(expectedRevenue)}
+                  </h3>
+               </CardContent>
+            </Card>
+          </div>
+        )}
+        
+        {/* Stages Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
+          {Object.entries(STAGE_CONFIG).map(([key, config]) => {
+            const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
+            return (
+              <Card key={key} className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
+                 <div className={cn("absolute top-0 right-0 p-1", config.color.split(' ')[1])}>
+                    <config.icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
+                 </div>
+                 <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
+                    <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{config.label}</p>
+                    <h3 className="text-base md:text-xl font-black tabular-nums">{count}</h3>
+                 </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Customers Grid */}
