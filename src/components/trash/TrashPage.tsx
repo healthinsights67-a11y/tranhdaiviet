@@ -33,6 +33,8 @@ interface TrashPageProps {
   currentUser: Member | null;
 }
 
+import { useAuth } from '@/src/contexts/AuthContext';
+
 const COLLECTION_MAP: Record<string, { label: string; color: string }> = {
   customers: { label: 'Khách hàng', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   quotations: { label: 'Báo giá', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
@@ -55,15 +57,18 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
     refetchOnWindowFocus: false,
   });
 
+  const { isAdmin } = useAuth();
+
   // Kiểm tra quyền quản lý hoặc admin
   const isManager = React.useMemo(() => {
+    if (isAdmin) return true;
     if (!currentUser) return false;
     const roleLower = currentUser.role?.toLowerCase() || '';
     return roleLower.includes('quản lý') || 
            roleLower.includes('giám đốc') || 
            roleLower === 'admin' || 
            roleLower === 'chủ sở hữu';
-  }, [currentUser]);
+  }, [currentUser, isAdmin]);
 
   const handleRestore = async (item: TrashItem) => {
     try {
