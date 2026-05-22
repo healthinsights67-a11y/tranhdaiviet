@@ -217,24 +217,38 @@ export async function notifyManagers(
   }
 }
 
-export async function notifyAllMembers(title: string, body: string, data?: any) {
+export type TargetGroup = 'all' | 'managers' | 'designers' | 'installers' | 'sales';
+
+export async function notifyCustomMembers(title: string, body: string, targetGroup: TargetGroup = 'all', data?: any) {
   try {
     const tokens: string[] = [];
     
+    const matchRole = (role?: string) => {
+      if (!role) return false;
+      const r = role.toLowerCase();
+      switch (targetGroup) {
+        case 'managers': return r.includes('quản lý') || r.includes('giám đốc') || r.includes('trợ lý');
+        case 'designers': return r.includes('thiết kế');
+        case 'installers': return r.includes('thi công') || r.includes('lắp đặt') || r.includes('kỹ thuật');
+        case 'sales': return r.includes('kinh doanh') || r.includes('khảo sát');
+        default: return true;
+      }
+    };
+
     // Get tokens from all members
     const membersSnap = await getDocs(collection(db, 'members'));
     membersSnap.forEach(doc => {
       const member = doc.data();
-      if (member.fcmTokens && Array.isArray(member.fcmTokens)) {
+      if ((targetGroup === 'all' || matchRole(member.role)) && member.fcmTokens && Array.isArray(member.fcmTokens)) {
         tokens.push(...member.fcmTokens);
       }
     });
 
-    // Get tokens from all users
+    // Get tokens from all users (fallback for admin/managers if their role is in users or we just broadcast)
     const usersSnap = await getDocs(collection(db, 'users'));
     usersSnap.forEach(doc => {
       const user = doc.data();
-      if (user.fcmTokens && Array.isArray(user.fcmTokens)) {
+      if ((targetGroup === 'all' || matchRole(user.role)) && user.fcmTokens && Array.isArray(user.fcmTokens)) {
         tokens.push(...user.fcmTokens);
       }
     });
@@ -249,7 +263,9 @@ export async function notifyAllMembers(title: string, body: string, data?: any) 
         message: body,
         type: 'announcement',
         readBy: [], // Array of user IDs or emails who have read it
-        isGlobal: true, // Indicates it's for everyone
+        isGlobal: targetGroup === 'all', 
+        targetGroup, // Save the target group to filter in Navbar
+
         createdAt: new Date().toISOString(),
         data: data || null
       });

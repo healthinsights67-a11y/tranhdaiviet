@@ -43,7 +43,7 @@ import {
 const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 
 import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
-import { notifyCurrentUser, handleRequestNotification, notifyAllMembers } from '@/src/services/notificationService';
+import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
 export function Dashboard({ tasks, members, customers, quotations, currentUser }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
@@ -52,6 +52,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
   const [selectedMonth, setSelectedMonth] = React.useState<string>(''); // Default to all time
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [announcementText, setAnnouncementText] = React.useState('');
+  const [announcementTarget, setAnnouncementTarget] = React.useState<TargetGroup>('all');
   const [isSendingAnnouncement, setIsSendingAnnouncement] = React.useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
 
@@ -631,6 +632,21 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
+                      <Label>Đối tượng nhận thông báo</Label>
+                      <Select value={announcementTarget} onValueChange={(val: any) => setAnnouncementTarget(val)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Chọn người nhận" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả mọi người</SelectItem>
+                          <SelectItem value="managers">Quản lý / Giám đốc</SelectItem>
+                          <SelectItem value="designers">Bộ phận Thiết kế</SelectItem>
+                          <SelectItem value="installers">Bộ phận Kỹ thuật / Thi công</SelectItem>
+                          <SelectItem value="sales">Bộ phận Kinh doanh</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="message">Nội dung thông báo</Label>
                       <Textarea
                         id="message"
@@ -653,8 +669,8 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
                         }
                         try {
                           setIsSendingAnnouncement(true);
-                          await notifyAllMembers("📢 Thông báo từ Quản lý", announcementText.trim());
-                          toast.success("Thông báo nội bộ đã được gửi tới toàn bộ nhân sự!");
+                          await notifyCustomMembers("📢 Thông báo từ Quản lý", announcementText.trim(), announcementTarget);
+                          toast.success("Thông báo nội bộ đã được gửi thành công!");
                           setAnnouncementText(''); // Clear on success
                           setIsAnnouncementOpen(false); // Close dialog
                         } catch (error) {

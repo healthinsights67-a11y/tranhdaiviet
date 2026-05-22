@@ -28,6 +28,7 @@ interface NotificationType {
   readBy: string[];
   isGlobal: boolean;
   userId?: string;
+  targetGroup?: string;
 }
 
 interface NavbarProps {
@@ -87,13 +88,29 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
       orderBy('createdAt', 'desc')
     );
 
+    const checkIsTargetedToMe = (data: any) => {
+      if (data.isGlobal) return true;
+      if (data.userId === currentUserId) return true;
+      if (data.targetGroup && currentUser?.role) {
+        const r = currentUser.role.toLowerCase();
+        switch (data.targetGroup) {
+          case 'managers': return r.includes('quản lý') || r.includes('giám đốc') || r.includes('trợ lý');
+          case 'designers': return r.includes('thiết kế');
+          case 'installers': return r.includes('thi công') || r.includes('lắp đặt') || r.includes('kỹ thuật');
+          case 'sales': return r.includes('kinh doanh') || r.includes('khảo sát');
+          default: return false;
+        }
+      }
+      return false;
+    };
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifs: NotificationType[] = [];
       let shouldPlaySound = false;
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        if (data.isGlobal || data.userId === currentUserId) {
+        if (checkIsTargetedToMe(data)) {
           notifs.push({
             id: doc.id,
             ...data
@@ -106,7 +123,7 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
           if (change.type === 'added') {
             const data = change.doc.data();
             const isUnread = !(data.readBy || []).includes(currentUserId);
-            if (isUnread && (data.isGlobal || data.userId === currentUserId)) {
+            if (isUnread && checkIsTargetedToMe(data)) {
               shouldPlaySound = true;
             }
           }
