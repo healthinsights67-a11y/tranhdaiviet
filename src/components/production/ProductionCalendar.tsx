@@ -36,27 +36,33 @@ interface ProductionCalendarProps {
 }
 
 const STATUS_ICONS: Record<string, any> = {
-  pending: Clock,
-  processing: Package,
-  shipping: Truck,
+  consulting: Clock,
+  surveying: Clock,
+  contracted: Clock,
+  production: Package,
+  installation: Truck,
   completed: CheckCircle2,
-  cancelled: AlertCircle,
+  lost: AlertCircle,
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
-  processing: 'bg-blue-500/10 text-blue-600 border-blue-200',
-  shipping: 'bg-purple-500/10 text-purple-600 border-purple-200',
+  consulting: 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
+  surveying: 'bg-purple-500/10 text-purple-600 border-purple-200',
+  contracted: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+  production: 'bg-blue-500/10 text-blue-600 border-blue-200',
+  installation: 'bg-orange-500/10 text-orange-600 border-orange-200',
   completed: 'bg-green-500/10 text-green-600 border-green-200',
-  cancelled: 'bg-red-500/10 text-red-600 border-red-200',
+  lost: 'bg-red-500/10 text-red-600 border-red-200',
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Chờ xử lý',
-  processing: 'Đang sản xuất',
-  shipping: 'Đang vận chuyển',
+  consulting: 'Đã tư vấn',
+  surveying: 'Đã đo đạc',
+  contracted: 'Đã chốt',
+  production: 'Sản xuất',
+  installation: 'Lắp đặt',
   completed: 'Hoàn thành',
-  cancelled: 'Đã hủy',
+  lost: 'Tạm dừng',
 };
 
 export function ProductionCalendar({  tasks, setTasks, members, customers, user, currentUser }: ProductionCalendarProps) {
