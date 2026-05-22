@@ -418,8 +418,17 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           <p className="text-[10px] md:text-xs text-muted-foreground">Quản lý lịch hẹn khảo sát, đo đạc</p>
         </div>
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-           <div className="text-sm font-semibold w-[120px] text-center hidden sm:block">
-             Tháng {format(currentMonth, 'MM/yyyy')}
+           <div className="text-sm font-semibold w-[140px] text-center hidden sm:block relative">
+             <input 
+               type="month"
+               value={format(currentMonth, 'yyyy-MM')}
+               onChange={(e) => {
+                 if (e.target.value) {
+                   setCurrentMonth(parseISO(e.target.value + '-01'));
+                 }
+               }}
+               className="bg-transparent border-none outline-none font-semibold text-center w-full cursor-pointer hover:bg-gray-100 rounded px-2 py-1"
+             />
            </div>
            <div className="flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200 shadow-sm">
             <Button variant="ghost" size="icon" onClick={prevMonth} className="h-7 w-7">
