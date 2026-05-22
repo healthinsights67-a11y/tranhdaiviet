@@ -120,13 +120,13 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
     }
 
     try {
-      const snapshot = await getDocs(collection(db, 'trash'));
-      const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+      const promises = trashItems.map(item => deletePermanently(item.id));
       await Promise.all(promises);
       toast.success('Đã dọn sạch thùng rác thành công!');
       queryClient.invalidateQueries({ queryKey: ['trash'] });
-    } catch (error) {
-      toast.error('Lỗi khi dọn sạch thùng rác');
+    } catch (error: any) {
+      console.error('Empty trash error:', error);
+      toast.error('Lỗi khi dọn sạch thùng rác: ' + (error.message || ''));
     }
   };
 
