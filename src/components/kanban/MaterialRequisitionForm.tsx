@@ -7,8 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/src/lib/utils';
-import { Customer, Member } from '@/src/types';
+import { Customer, Member, MaterialConfig } from '@/src/types';
 import { toast } from 'sonner';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase';
 
 export interface MaterialItem {
   id: number;
@@ -84,7 +86,15 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
   const [customerName, setCustomerName] = React.useState(data?.customerName || customerInfo?.name || '');
   const [address, setAddress] = React.useState(data?.address || customerInfo?.address || '');
   const [items, setItems] = React.useState<MaterialItem[]>(data?.items || DEFAULT_MATERIALS);
+  const [materialConfigs, setMaterialConfigs] = React.useState<MaterialConfig[]>([]);
   const printRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'materialConfigs'), (snap) => {
+      setMaterialConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MaterialConfig));
+    });
+    return () => unsub();
+  }, []);
 
   const handleUpdateItem = (id: number, field: keyof MaterialItem, value: any) => {
     setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -240,6 +250,12 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
           </div>
         </div>
 
+        <datalist id="material-list">
+          {materialConfigs.map(m => (
+            <option key={m.id} value={`${m.code} - ${m.name}`} />
+          ))}
+        </datalist>
+
         <div className="grid grid-cols-1 gap-2">
           <div className="flex gap-2">
             <Input 
@@ -322,8 +338,9 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                 )}
                 {!item.options && (
                   <Input 
+                    list="material-list"
                     className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                    placeholder="Loại/Khổ..."
+                    placeholder="Loại/Khổ... (Nhập mã vật tư)"
                     value={item.type || ''}
                     onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
                   />
@@ -364,8 +381,9 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                 )}
                 {!item.options && (
                   <Input 
+                    list="material-list"
                     className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                    placeholder="Loại/Khổ..."
+                    placeholder="Loại/Khổ... (Nhập mã vật tư)"
                     value={item.type || ''}
                     onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
                   />

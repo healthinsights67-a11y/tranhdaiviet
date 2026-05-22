@@ -22,6 +22,7 @@ const InstallationPage = React.lazy(() => import('./components/installations/Ins
 const ReportPage = React.lazy(() => import('./components/reports/ReportPage').then(module => ({ default: module.ReportPage })));
 const UserManagement = React.lazy(() => import('./components/admin/UserManagement').then(module => ({ default: module.UserManagement })));
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
+const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
@@ -347,6 +348,8 @@ function AppContent() {
           : <AIRenderPage />;
       case 'users':
         return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />;
+      case 'materials':
+        return <MaterialConfigPage tasks={tasks} quotations={quotations} />;
       case 'trash':
         return <TrashPage currentUser={currentMember} />;
       default:

@@ -159,6 +159,10 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    match /trash/{trashId} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /tasks/{taskId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();

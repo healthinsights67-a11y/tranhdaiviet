@@ -80,6 +80,7 @@ const navGroups = [
   {
     title: 'Hệ thống',
     items: [
+      { id: 'materials', label: 'Bảng giá vật tư', icon: Package, permission: 'viewPrice' },
       { id: 'media', label: 'Thư viện ảnh', icon: Image, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },

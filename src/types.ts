@@ -225,3 +225,23 @@ export interface TrashItem {
   deletedAt: string;
   deletedBy: string;
 }
+
+export interface MaterialConfig {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  unitPrice: number;
+  discountPercent: number;
+  finalPrice: number;
+}
+
+export interface ProfitAnalysis {
+  taskId: string;
+  taskTitle: string;
+  customerName?: string;
+  quotationValue: number;
+  materialCost: number;
+  profit: number;
+  completedAt: string;
+}
