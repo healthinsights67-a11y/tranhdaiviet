@@ -102,9 +102,17 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
 
     try {
       let downloadURL = "";
+      let customName = undefined;
+
+      const c = customers.find(x => x.id === task.customerId);
+      if (c) {
+        const code = c.code || c.id.slice(0,6);
+        const cleanTitle = task.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '');
+        customName = `${code}_${c.name}_${cleanTitle}`;
+      }
 
       if (isImage) {
-        const url = await uploadToImgBB(file);
+        const url = await uploadToImgBB(file, customName);
         if (!url) {
           setIsUploading(false);
           isUploadingRef.current = false;

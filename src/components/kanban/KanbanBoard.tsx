@@ -94,7 +94,7 @@ const MARKETING_COLUMNS: { id: Status; title: string }[] = [
   { id: 'done', title: 'Đo lường & Tối ưu' },
 ];
 
-export function KanbanBoard({ tasks, setTasks, members, type = 'production', hideChecklist = false, user, currentUser, ...props }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, setTasks, members, customers, type = 'production', hideChecklist = false, user, currentUser, ...props }: KanbanBoardProps) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
@@ -216,9 +216,20 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
 
     try {
       let downloadURL = "";
+      let customName = undefined;
+        
+      if (pendingTransition?.taskId) {
+         const t = tasks.find(x => x.id === pendingTransition.taskId);
+         const c = customers?.find(x => x.id === t?.customerId);
+         if (t && c) {
+           const code = c.code || c.id.slice(0,6);
+           const cleanTitle = t.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '');
+           customName = `${code}_${c.name}_${cleanTitle}`;
+         }
+      }
 
       if (isImage) {
-        const url = await uploadToImgBB(file);
+        const url = await uploadToImgBB(file, customName);
         if (!url) {
           setIsUploading(false);
           isUploadingRef.current = false;
@@ -376,7 +387,7 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
     }
 
     // Find linked customer for automation data
-    const linkedCustomer = props.customers?.find(c => c.id === task.customerId);
+    const linkedCustomer = customers?.find(c => c.id === task.customerId);
     const targetMember = members.find(m => m.id === (preSelectedAssigneeId || task.assigneeId || ''));
     const assigneeName = targetMember ? targetMember.name : 'Chưa gán';
 
@@ -970,7 +981,7 @@ export function KanbanBoard({ tasks, setTasks, members, type = 'production', hid
                 title={col.title}
                 tasks={filteredTasksByMonth.filter((t) => t.status === col.id)}
                 members={members}
-                customers={props.customers}
+                customers={customers}
                 type={type}
                 columns={columns}
                 onMoveTask={handleStatusChange}

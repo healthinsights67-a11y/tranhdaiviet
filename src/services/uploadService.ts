@@ -1,7 +1,7 @@
 import { db, doc, getDoc } from '../lib/firebase';
 import { toast } from 'sonner';
 
-export const uploadToImgBB = async (file: File): Promise<string | null> => {
+export const uploadToImgBB = async (file: File, customName?: string): Promise<string | null> => {
   try {
     // 1. Try to get from Firestore
     let activeKey: string | null = null;
@@ -26,7 +26,8 @@ export const uploadToImgBB = async (file: File): Promise<string | null> => {
     formData.append('image', file);
     
     // Use a clean filename
-    const cleanName = file.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '_').toUpperCase();
+    const baseName = customName || file.name.split('.')[0];
+    const cleanName = baseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/gi, '_').toUpperCase();
     formData.append('name', cleanName);
     
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${activeKey}`, {
