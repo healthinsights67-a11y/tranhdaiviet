@@ -174,7 +174,7 @@ export function ImagePreviewDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] bg-black flex flex-col md:ml-64 transition-all duration-300"
+        className="fixed inset-0 z-[9999] bg-black flex flex-col lg:ml-64"
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -194,7 +194,8 @@ export function ImagePreviewDialog({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             src={imageUrl}
             alt="Preview"
-            className="max-h-full max-w-full object-contain pointer-events-none select-none shadow-2xl"
+            className="max-h-full max-w-full object-contain select-none shadow-2xl"
+            draggable={false}
             style={{ transform: 'translateZ(0)' }}
             referrerPolicy="no-referrer"
             onDragStart={() => setIsDragging(true)}
