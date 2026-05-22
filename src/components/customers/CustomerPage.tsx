@@ -26,7 +26,7 @@ import {
   ClipboardList, 
   Palette, 
   Factory, Package, 
-  UserCheck 
+  UserCheck, Users, Target 
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
 import { Input } from '@/components/ui/input';
@@ -370,6 +370,10 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     return sum;
   }, 0);
 
+  const totalCustomers = filteredCustomers.length;
+  const wonCustomers = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+  const winRate = totalCustomers > 0 ? Math.round((wonCustomers / totalCustomers) * 100) : 0;
+
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
       {/* Header Section */}
@@ -700,7 +704,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         )}
         
         {/* Stages Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-1.5 md:gap-3">
+          <Card className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-1 text-primary">
+                <Users className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
+             </div>
+             <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
+                <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">Tổng KH</p>
+                <h3 className="text-base md:text-xl font-black tabular-nums text-primary">{totalCustomers}</h3>
+             </CardContent>
+          </Card>
+          
           {Object.entries(STAGE_CONFIG).map(([key, config]) => {
             const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
             return (
@@ -715,6 +729,16 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               </Card>
             );
           })}
+
+          <Card className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-1 text-pink-500">
+                <Target className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
+             </div>
+             <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
+                <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">Tỉ lệ chốt</p>
+                <h3 className="text-base md:text-xl font-black tabular-nums text-pink-500">{winRate}%</h3>
+             </CardContent>
+          </Card>
         </div>
       </div>
 
