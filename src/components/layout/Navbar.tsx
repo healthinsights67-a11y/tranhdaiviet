@@ -38,9 +38,44 @@ interface NavbarProps {
   currentUser?: any;
 }
 
+const playNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // First high note (A5)
+    const osc1 = audioContext.createOscillator();
+    const gain1 = audioContext.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880.00, audioContext.currentTime);
+    gain1.gain.setValueAtTime(0, audioContext.currentTime);
+    gain1.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+    gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+    osc1.connect(gain1);
+    gain1.connect(audioContext.destination);
+    osc1.start();
+    osc1.stop(audioContext.currentTime + 0.3);
+
+    // Second higher note (E6)
+    const osc2 = audioContext.createOscillator();
+    const gain2 = audioContext.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1318.51, audioContext.currentTime + 0.1);
+    gain2.gain.setValueAtTime(0, audioContext.currentTime + 0.1);
+    gain2.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+    osc2.connect(gain2);
+    gain2.connect(audioContext.destination);
+    osc2.start(audioContext.currentTime + 0.1);
+    osc2.stop(audioContext.currentTime + 0.5);
+  } catch (err) {
+    console.warn("Could not play notification sound", err);
+  }
+};
+
 export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: NavbarProps) {
   const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
   const currentUserId = currentUser?.id || user?.uid || user?.email;
+  const isInitialLoad = React.useRef(true);
 
   React.useEffect(() => {
     if (!currentUserId) return;
@@ -54,6 +89,8 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifs: NotificationType[] = [];
+      let shouldPlaySound = false;
+
       snapshot.forEach(doc => {
         const data = doc.data();
         if (data.isGlobal || data.userId === currentUserId) {
@@ -63,7 +100,25 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
           } as NotificationType);
         }
       });
+
+      if (!isInitialLoad.current) {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            const isUnread = !(data.readBy || []).includes(currentUserId);
+            if (isUnread && (data.isGlobal || data.userId === currentUserId)) {
+              shouldPlaySound = true;
+            }
+          }
+        });
+        
+        if (shouldPlaySound) {
+          playNotificationSound();
+        }
+      }
+
       setNotifications(notifs);
+      isInitialLoad.current = false;
     });
 
     return () => unsubscribe();
