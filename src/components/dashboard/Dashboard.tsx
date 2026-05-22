@@ -639,20 +639,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
                     <DialogClose 
                         render={<Button variant="outline">Hủy</Button>} 
                       />
-                      <DialogClose 
-                        render={
-                          <Button 
-                            onClick={async () => {
-                              toast.info("Đang xóa dữ liệu...");
-                              await clearAllAppData();
-                              toast.success("Đã xóa dữ liệu thành công!");
-                            }}
-                            variant="destructive"
-                          >
-                            Xóa dữ liệu
-                          </Button>
-                        } 
-                      />
+
                       <DialogClose 
                         render={
                           <Button 
