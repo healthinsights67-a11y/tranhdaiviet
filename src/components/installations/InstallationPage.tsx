@@ -67,7 +67,13 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   // Filter tasks waiting for installation that don't have an active installation schedule
   const unscheduledTasksList = tasks.filter(t => 
     t.status === 'waiting_install' && 
-    !schedules.some(s => s.taskId === t.id && s.status !== 'cancelled')
+    !schedules.some(s => {
+      if (s.status === 'cancelled') return false;
+      if (s.taskId === t.id) return true;
+      if (s.customerId && t.customerId && s.customerId === t.customerId) return true;
+      if (s.customerName && (t.customerName || t.title) && s.customerName.toLowerCase() === (t.customerName || t.title).replace(/^sản xuất:\s*/i, '').trim().toLowerCase()) return true;
+      return false;
+    })
   ).map(t => ({
     id: t.id,
     type: 'task',
@@ -81,8 +87,13 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
 
   const unscheduledCustomersList = customers.filter(c => 
     (['contracted', 'production'].includes(c.stage)) && 
-    !schedules.some(s => s.customerId === c.id && s.status !== 'cancelled') &&
-    !unscheduledTasksList.some(t => t.rawTask?.customerId === c.id) // Avoid duplicates
+    !schedules.some(s => {
+      if (s.status === 'cancelled') return false;
+      if (s.customerId === c.id) return true;
+      if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
+      return false;
+    }) &&
+    !unscheduledTasksList.some(t => t.rawTask?.customerId === c.id || (t.rawTask?.customerName && t.rawTask.customerName.toLowerCase() === c.name.toLowerCase())) // Avoid duplicates
   ).map(c => ({
     id: c.id,
     type: 'customer',
