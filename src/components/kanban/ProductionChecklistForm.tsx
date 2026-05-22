@@ -20,31 +20,18 @@ export interface ProductionChecklistItem {
 }
 
 const ROLES = [
-  { id: 'KD', label: 'Kinh Doanh' },
-  { id: 'TK', label: 'Thiết Kế' },
   { id: 'KT', label: 'Kế Toán' },
   { id: 'SX', label: 'Nhóm SX' },
   { id: 'LD', label: 'Đội Lắp Đặt' },
-  { id: 'QL', label: 'Quản Lý' },
 ];
 
 const DEFAULT_ITEMS: ProductionChecklistItem[] = [
-  // Kinh Doanh
-  { id: 'kd-1', department: 'Kinh Doanh', stt: 1, description: 'Đo đạc thực tế tại công trình (Đúng thông số)', roles: ['KD'] },
-  { id: 'kd-2', department: 'Kinh Doanh', stt: 2, description: 'Chốt mã màu nhựa cuối cùng (Gửi mẫu đối chiếu)', roles: ['KD'] },
-  { id: 'kd-3', department: 'Kinh Doanh', stt: 3, description: 'Bàn giao đủ thông tin nhu cầu khách cho Thiết kế', roles: ['KD'] },
-  { id: 'kd-4', department: 'Kinh Doanh', stt: 4, description: 'Chốt hợp đồng', roles: ['KD'] },
-  { id: 'kd-5', department: 'Kinh Doanh', stt: 5, description: 'Thu tiền đặt cọc', roles: ['KD'] },
-  { id: 'kd-6', department: 'Kinh Doanh', stt: 6, description: 'Thu Tiền Công Trình', roles: ['KD'] },
-  
-  // Thiết Kế
-  { id: 'tk-1', department: 'Thiết Kế', stt: 1, description: 'Khách hàng ký duyệt bản vẽ phối cảnh 3D cuối cùng', roles: ['TK'] },
-  { id: 'tk-2', department: 'Thiết Kế', stt: 2, description: 'Xuất bản vẽ 2D kỹ thuật (Đúng cấu tạo nhựa)', roles: ['TK'] },
-  { id: 'tk-3', department: 'Thiết Kế', stt: 3, description: 'Lập bảng định mức vật tư (BOM) chuẩn', roles: ['TK'] },
-  
-  // Quản Lý & Kế Toán
-  { id: 'ql-1', department: 'Quản Lý', stt: 1, description: 'Kiểm tra đủ hồ sơ (Hợp đồng, 3D, 2D, Bảng vật tư)', roles: ['QL', 'KT'] },
-  { id: 'ql-2', department: 'Quản Lý', stt: 2, description: 'Duyệt hồ sơ & Phân công Đội thi công', roles: ['QL'] },
+  // Kế Toán
+  { id: 'kt-1', department: 'Kế Toán', stt: 1, description: 'Nhập vật tư', roles: ['KT'] },
+  { id: 'kt-2', department: 'Kế Toán', stt: 2, description: 'Xuất vật tư khung cánh (Lần 1)', roles: ['KT'] },
+  { id: 'kt-3', department: 'Kế Toán', stt: 3, description: 'Xuất vật tư: bản lề, ray, tay nắm (Lần 2)', roles: ['KT'] },
+  { id: 'kt-4', department: 'Kế Toán', stt: 4, description: 'Phiếu xuất kho', roles: ['KT'] },
+  { id: 'kt-5', department: 'Kế Toán', stt: 5, description: 'Hóa đơn bán hàng', roles: ['KT'] },
   { id: 'kt-1', department: 'Kế Toán', stt: 3, description: 'Nhập vật tư', roles: ['KT'] },
   { id: 'kt-2', department: 'Kế Toán', stt: 4, description: 'Xuất vật tư khung cánh (Lần 1)', roles: ['KT'] },
   { id: 'kt-3', department: 'Kế Toán', stt: 5, description: 'Xuất vật tư: bản lề, ray, tay nắm (Lần 2)', roles: ['KT'] },
@@ -75,11 +62,10 @@ const DEFAULT_ITEMS: ProductionChecklistItem[] = [
   { id: 'ld-6', department: 'Đội Lắp Đặt', stt: 6, description: 'Vệ sinh sạch sẽ sản phẩm & mặt bằng bàn giao', roles: ['LD'] },
   { id: 'ld-7', department: 'Đội Lắp Đặt', stt: 7, description: 'Chụp ảnh & Quay video', roles: ['LD'] },
   
-  // Nghiệm thu (Trưởng Đội/Thiết Kế/QL/KT)
-  { id: 'nt-1', department: 'Nghiệm thu', stt: 1, description: 'KHÁCH HÀNG KÝ BIÊN BẢN NGHIỆM THU', roles: ['QL'] },
-  { id: 'nt-2', department: 'Nghiệm thu', stt: 2, description: 'Kỹ xác nhận sản phẩm đúng bản vẽ thiết kế', roles: ['TK'] },
-  { id: 'nt-3', department: 'Nghiệm thu', stt: 3, description: 'Kỹ xác nhận sản phẩm đạt tiêu chuẩn kỹ thuật', roles: ['QL'] },
-  { id: 'nt-4', department: 'Nghiệm thu', stt: 4, description: 'Đối soát hồ sơ đủ chữ ký & ĐÓNG DỰ ÁN', roles: ['KT', 'QL'] },
+  // Nghiệm thu
+  { id: 'nt-1', department: 'Nghiệm thu', stt: 1, description: 'KHÁCH HÀNG KÝ BIÊN BẢN NGHIỆM THU', roles: ['LD'] },
+  { id: 'nt-2', department: 'Nghiệm thu', stt: 2, description: 'Xác nhận sản phẩm đúng bản vẽ thiết kế & tiêu chuẩn', roles: ['LD', 'KT'] },
+  { id: 'nt-4', department: 'Nghiệm thu', stt: 3, description: 'Đối soát hồ sơ đủ chữ ký & ĐÓNG DỰ ÁN', roles: ['KT'] },
 ];
 
 const DEPARTMENT_CONFIG: Record<string, { color: string; bg: string; border: string; lightBg: string }> = {
@@ -100,6 +86,10 @@ interface ProductionChecklistFormProps {
 }
 
 export function ProductionChecklistForm({ taskTitle, data, onSave, customerInfo }: ProductionChecklistFormProps) {
+  const filteredDefaultItems = React.useMemo(() => {
+    return DEFAULT_ITEMS;
+  }, []);
+
   const [formData, setFormData] = React.useState({
     customerName: data?.customerName || customerInfo?.name || '',
     customerId: data?.customerId || customerInfo?.code || '',
@@ -109,7 +99,9 @@ export function ProductionChecklistForm({ taskTitle, data, onSave, customerInfo 
     colorCode: data?.colorCode || '',
     productionDate: data?.productionDate || '',
     installationDate: data?.installationDate || '',
-    items: data?.items || DEFAULT_ITEMS
+    items: data?.items 
+      ? data.items.filter((i: any) => !['Kinh Doanh', 'Thiết Kế', 'Quản Lý'].includes(i.department))
+      : filteredDefaultItems
   });
 
   const handleUpdateItem = (id: string, updates: Partial<ProductionChecklistItem>) => {
@@ -156,8 +148,82 @@ export function ProductionChecklistForm({ taskTitle, data, onSave, customerInfo 
 
   const handlePrint = () => {
     const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`<html><body onload="window.print()"><pre>${JSON.stringify(formData, null, 2)}</pre></body></html>`);
+    if (!win) {
+      toast.error('Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép popup.');
+      return;
+    }
+    
+    let rowsHtml = '';
+    
+    Object.entries(groupedItems).forEach(([dept, deptItems]) => {
+      rowsHtml += `
+        <tr style="background-color: #f8f9fa;">
+          <td colspan="6" style="font-weight: bold; font-size: 14px; text-transform: uppercase;">📌 ${dept}</td>
+        </tr>
+      `;
+      deptItems.forEach((item: any) => {
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center;">${item.stt}</td>
+            <td>${item.description}</td>
+            <td style="text-align: center; font-weight: bold;">${item.roles?.join(', ') || ''}</td>
+            <td style="text-align: center; color: ${item.confirmedBy ? 'green' : '#666'};">${item.confirmedBy ? 'DONE' : 'Chờ'}</td>
+            <td style="text-align: center;">${item.confirmedBy || ''}</td>
+            <td>${item.notes || ''}</td>
+          </tr>
+        `;
+      });
+    });
+
+    const html = `
+      <html>
+        <head>
+          <title>Bản Tiến Độ - ${formData.projectName || formData.customerName}</title>
+          <style>
+            @media print {
+              @page { margin: 10mm; size: landscape; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 13px; color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px 10px; }
+            th { background-color: #f0f0f0; font-weight: bold; text-align: center; font-size: 12px; text-transform: uppercase; }
+            .header { text-align: center; margin-bottom: 25px; }
+            h2 { margin: 0 0 10px 0; font-size: 24px; text-transform: uppercase; color: #111; }
+            .info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+            .info-item { font-size: 14px; }
+          </style>
+        </head>
+        <body onload="setTimeout(() => window.print(), 500);">
+          <div class="header">
+            <h2>BẢN TIẾN ĐỘ THI CÔNG - QUY TRÌNH CHUẨN HÓA</h2>
+          </div>
+          <div class="info">
+            <div class="info-item"><strong>Khách hàng:</strong> ${formData.customerName || '...'}</div>
+            <div class="info-item"><strong>Công trình:</strong> ${formData.projectName || '...'}</div>
+            <div class="info-item"><strong>Mã KH:</strong> ${formData.customerId || '...'}</div>
+            <div class="info-item"><strong>Mã màu:</strong> ${formData.colorCode || '...'}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Nội dung công việc</th>
+                <th style="width: 100px;">Phụ Trách</th>
+                <th style="width: 80px;">Trạng thái</th>
+                <th style="width: 160px;">Người xác nhận</th>
+                <th style="width: 250px;">Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    
+    win.document.write(html);
     win.document.close();
   };
 
