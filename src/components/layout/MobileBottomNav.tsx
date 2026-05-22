@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/src/lib/utils';
-import { LayoutDashboard, CalendarDays, Repeat, Menu } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Repeat, Menu, Contact } from 'lucide-react';
 
 import { Member } from '@/src/types';
 
@@ -15,6 +15,7 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentUser, permissions }: MobileBottomNavProps) {
   const tabs = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
     { id: 'production', label: 'Sản xuất', icon: CalendarDays, permission: 'menuProduction' },
   ];
 
