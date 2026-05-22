@@ -27,14 +27,15 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
 
   const profitData = useMemo(() => {
     return completedTasks.map(task => {
-      // Find corresponding quotation. A task has customerId, quotation has customerId or name.
-      // We assume one quotation per customer, or matched by some ID. For MVP, we match by customer ID if available, or just name.
-      const quotation = quotations.find(q => 
-        (q.customerName === task.customerName) || 
-        // fallback logic if customer IDs were linked
-        false
+      // Find corresponding quotation. Prefer accepted quotations.
+      const possibleQuotations = quotations.filter(q => 
+        (q.customerName && task.customerName && q.customerName === task.customerName) ||
+        (q.customerName && task.title.toLowerCase().includes(q.customerName.toLowerCase())) ||
+        ((q as any).customerId && task.customerId && (q as any).customerId === task.customerId)
       );
-
+      
+      const quotation = possibleQuotations.find(q => q.status === 'accepted') || possibleQuotations[0];
+      const resolvedCustomerName = task.customerName || quotation?.customerName;
       const quotationValue = quotation?.totalAmount || 0;
 
       // Calculate material cost
@@ -66,7 +67,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       return {
         taskId: task.id,
         taskTitle: task.title,
-        customerName: task.customerName,
+        customerName: resolvedCustomerName,
         quotationValue,
         materialCost,
         profit,
