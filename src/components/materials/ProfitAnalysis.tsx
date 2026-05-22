@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BadgeDollarSign, TrendingUp, TrendingDown, Package, CheckCircle2 } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { TaskCard } from '../kanban/TaskCard';
 
 interface ProfitAnalysisProps {
   tasks: Task[];
@@ -70,6 +71,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
         materialCost,
         profit,
         date: task.createdAt,
+        task: task,
       };
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [completedTasks, materialConfigs, quotations]);
@@ -135,7 +137,9 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
               ) : (
                 profitData.map((data) => (
                   <tr key={data.taskId} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3 font-medium text-primary">{data.taskTitle}</td>
+                    <td className="px-6 py-3 font-medium text-primary">
+                      <TaskCard task={data.task} renderAsTextOnly={true} />
+                    </td>
                     <td className="px-6 py-3">{data.customerName || 'N/A'}</td>
                     <td className="px-6 py-3 text-right text-muted-foreground">
                       {new Date(data.date).toLocaleDateString('vi-VN')}

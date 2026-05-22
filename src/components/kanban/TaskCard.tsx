@@ -38,6 +38,7 @@ interface TaskCardProps {
   columns?: { id: Status; title: string }[];
   onMoveTask?: (taskId: string, newStatus: Status, preSelectedAssigneeId?: string, fileLinks?: string[]) => void;
   hideChecklist?: boolean;
+  renderAsTextOnly?: boolean;
   key?: React.Key;
 }
 
@@ -54,7 +55,7 @@ const PRIORITY_ACCENTS = {
   'low': 'before:bg-blue-500',
 };
 
-export const TaskCard = React.memo(({ task, assignee, members = [], customers = [], columns = [], onMoveTask, hideChecklist = false }: TaskCardProps) => {
+export const TaskCard = React.memo(({ task, assignee, members = [], customers = [], columns = [], onMoveTask, hideChecklist = false, renderAsTextOnly = false }: TaskCardProps) => {
   const queryClient = useQueryClient();
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = React.useState(false);
@@ -432,6 +433,14 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
 
   return (
     <>
+      {renderAsTextOnly ? (
+        <span 
+          onClick={() => setIsDetailOpen(true)}
+          className="cursor-pointer hover:underline text-primary font-medium"
+        >
+          {task.title}
+        </span>
+      ) : (
       <Card
         ref={setNodeRef}
         style={style}
@@ -576,6 +585,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
           </div>
         </CardContent>
       </Card>
+      )}
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-[500px] gap-0 p-0 overflow-hidden outline-none border-none shadow-2xl">
