@@ -216,3 +216,53 @@ export async function notifyManagers(
     toast.error('Gửi thông báo thất bại: ' + (error instanceof Error ? error.message : String(error)));
   }
 }
+
+export async function notifyAllMembers(title: string, body: string, data?: any) {
+  try {
+    const tokens: string[] = [];
+    
+    // Get tokens from all members
+    const membersSnap = await getDocs(collection(db, 'members'));
+    membersSnap.forEach(doc => {
+      const member = doc.data();
+      if (member.fcmTokens && Array.isArray(member.fcmTokens)) {
+        tokens.push(...member.fcmTokens);
+      }
+    });
+
+    // Get tokens from all users
+    const usersSnap = await getDocs(collection(db, 'users'));
+    usersSnap.forEach(doc => {
+      const user = doc.data();
+      if (user.fcmTokens && Array.isArray(user.fcmTokens)) {
+        tokens.push(...user.fcmTokens);
+      }
+    });
+
+    const uniqueTokens = [...new Set(tokens)].filter(t => !!t);
+
+    if (uniqueTokens.length === 0) {
+      console.warn('No tokens found to send announcement.');
+      return;
+    }
+
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokens: uniqueTokens,
+        title,
+        body,
+        data,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send announcement notification');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error in notifyAllMembers:', error);
+    throw error;
+  }
+}

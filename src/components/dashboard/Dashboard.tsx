@@ -42,8 +42,8 @@ import {
 
 const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 
-import { CreditCard, DollarSign, Package, Bell } from 'lucide-react';
-import { notifyCurrentUser, handleRequestNotification } from '@/src/services/notificationService';
+import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
+import { notifyCurrentUser, handleRequestNotification, notifyAllMembers } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
 export function Dashboard({ tasks, members, customers, quotations, currentUser }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
@@ -51,6 +51,9 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
   const activeCustomers = customers || [];
   const [selectedMonth, setSelectedMonth] = React.useState<string>(''); // Default to all time
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
+  const [announcementText, setAnnouncementText] = React.useState('');
+  const [isSendingAnnouncement, setIsSendingAnnouncement] = React.useState(false);
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
 
   const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
@@ -594,63 +597,77 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
         <Card className="border border-border shadow-md bg-primary text-primary-foreground">
           <CardHeader>
             <CardTitle className="text-lg font-bold tracking-tight">Hỗ trợ nhanh</CardTitle>
-            <CardDescription className="text-xs text-primary-foreground/70">Liên hệ kỹ thuật hoặc sale manager.</CardDescription>
+            <CardTitle className="text-lg font-bold tracking-tight">Thông báo nhanh</CardTitle>
+            <CardDescription className="text-xs text-primary-foreground/70">Gửi thông báo tới toàn bộ nhân sự.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 rounded-2xl bg-primary-foreground/10 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-white" />
+                  <Megaphone className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold">Kỹ thuật AI Studio</p>
-                  <p className="text-[10px] opacity-70 italic">Hỗ trợ 24/7</p>
+                  <p className="text-xs font-bold">Thông báo nội bộ</p>
+                  <p className="text-[10px] opacity-70 italic">Gửi tới tất cả nhân sự</p>
                 </div>
               </div>
-              <Dialog>
+              <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
                 <DialogTrigger 
                   render={
                     <Button 
                       variant="secondary" 
                       className="w-full rounded-xl h-10 font-bold text-xs bg-card text-card-foreground text-primary hover:bg-gray-50"
                     >
-                      Gửi yêu cầu hỗ trợ
+                      Gửi thông báo nội bộ
                     </Button>
-                  } 
+                  }
                 />
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Gửi yêu cầu hỗ trợ</DialogTitle>
+                    <DialogTitle>Tạo thông báo nội bộ</DialogTitle>
                     <DialogDescription>
-                      Vui lòng mô tả chi tiết vấn đề bạn đang gặp phải. Đội ngũ AI Studio sẽ phản hồi sớm nhất.
+                      Tin nhắn này sẽ được đẩy dưới dạng thông báo (Push Notification) tới tất cả điện thoại và máy tính của các nhân sự đã cho phép thông báo.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="message">Nội dung hỗ trợ</Label>
+                      <Label htmlFor="message">Nội dung thông báo</Label>
                       <Textarea
                         id="message"
-                        placeholder="Nhập nội dung cần hỗ trợ..."
+                        value={announcementText}
+                        onChange={(e) => setAnnouncementText(e.target.value)}
+                        placeholder="Nhập nội dung thông báo..."
                         className="min-h-[120px] resize-none"
                       />
                     </div>
                   </div>
                   <DialogFooter className="flex gap-2 sm:justify-end">
                     <DialogClose 
-                        render={<Button variant="outline">Hủy</Button>} 
-                      />
-
-                      <DialogClose 
-                        render={
-                          <Button 
-                            onClick={() => {
-                              toast.success("Yêu cầu hỗ trợ đã được gửi thành công!");
-                            }}
-                          >
-                            Gửi yêu cầu
-                          </Button>
-                        } 
-                      />
+                      render={<Button variant="outline">Hủy</Button>}
+                    />
+                    <Button 
+                      onClick={async () => {
+                        if (!announcementText.trim()) {
+                          toast.error("Vui lòng nhập nội dung thông báo");
+                          return;
+                        }
+                        try {
+                          setIsSendingAnnouncement(true);
+                          await notifyAllMembers("📢 Thông báo từ Quản lý", announcementText.trim());
+                          toast.success("Thông báo nội bộ đã được gửi tới toàn bộ nhân sự!");
+                          setAnnouncementText(''); // Clear on success
+                          setIsAnnouncementOpen(false); // Close dialog
+                        } catch (error) {
+                          toast.error("Có lỗi khi gửi thông báo.");
+                        } finally {
+                          setIsSendingAnnouncement(false);
+                        }
+                      }}
+                      className="bg-primary hover:bg-primary/90 text-white"
+                      disabled={isSendingAnnouncement}
+                    >
+                      {isSendingAnnouncement ? "Đang gửi..." : "Gửi thông báo"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
