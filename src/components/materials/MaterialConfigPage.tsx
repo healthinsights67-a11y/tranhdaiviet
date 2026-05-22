@@ -120,10 +120,10 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         </div>
       </div>
 
-      <Tabs defaultValue="config" className="flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="profit" className="flex-1 flex flex-col min-h-0">
         <TabsList className="w-full md:w-auto self-start bg-secondary/50 p-1 rounded-xl">
-          <TabsTrigger value="config" className="rounded-lg">Cấu hình Giá</TabsTrigger>
           <TabsTrigger value="profit" className="rounded-lg">Phân tích Lãi Thực</TabsTrigger>
+          <TabsTrigger value="config" className="rounded-lg">Cấu hình Giá</TabsTrigger>
         </TabsList>
         
         <TabsContent value="config" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
