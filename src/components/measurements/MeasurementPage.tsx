@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MeasurementSchedule, Member, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -19,6 +19,7 @@ import { MeasurementScheduleSchema } from '@/src/schemas';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, getCurrentVNDate, getVNTimestamp } from '@/src/lib/utils';
 import { notifyManagers } from '@/src/services/notificationService';
+import { moveToTrash } from '@/src/services/trashService';
 
 interface MeasurementPageProps {
   schedules: MeasurementSchedule[];
@@ -342,6 +343,27 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'measurement_schedules');
       toast.error('Có lỗi xảy ra');
+    }
+  };
+
+  const handleDelete = async (schedule: MeasurementSchedule) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa lịch đo đạc của khách hàng "${schedule.customerName}"?`)) {
+      return;
+    }
+
+    try {
+      await moveToTrash(
+        'measurement_schedules',
+        schedule.id,
+        `Lịch đo đạc: ${schedule.customerName}`,
+        user?.email || 'Unknown'
+      );
+      toast.success('Đã chuyển lịch vào thùng rác');
+      queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
+      setDetailsOpen(false);
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast.error('Có lỗi xảy ra khi xóa lịch');
     }
   };
 
@@ -853,6 +875,11 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                               {schedule.status === 'cancelled' && isManager && (
                                 <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(schedule, 'pending')} className="text-blue-500 hover:text-blue-600 hover:bg-blue-50">
                                   Khôi phục lịch
+                                </Button>
+                              )}
+                              {isManager && (
+                                <Button variant="outline" size="sm" onClick={() => handleDelete(schedule)} className="text-red-500 hover:text-red-600 hover:bg-red-50" title="Xóa lịch">
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
                               )}
                             </div>
