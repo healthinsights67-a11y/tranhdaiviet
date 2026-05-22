@@ -282,47 +282,93 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
         </div>
       </div>
 
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-        {items.map((item) => (
-          <div key={item.id} className="bg-card p-3 rounded-xl border border-secondary/20 shadow-sm flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-foreground/80">{item.id}. {item.name}</span>
-              <div className="flex items-center gap-1 w-20">                
-                <Input 
-                  className="h-8 text-center text-xs font-black bg-secondary/10 border-0 rounded-lg"
-                  value={item.quantity}
-                  onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
-                  placeholder="0"
-                />
-                <span className="text-[10px] text-muted-foreground font-bold w-10 shrink-0">{item.unit}</span>
+      <div className="flex-1 p-3 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+          <div className="space-y-2">
+            {items.slice(0, 20).map((item) => (
+              <div key={item.id} className="bg-card p-2.5 rounded-xl border border-secondary/20 shadow-sm flex flex-col gap-1.5 hover:border-primary/30 transition-colors">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-foreground/80">{item.id}. {item.name}</span>
+                  <div className="flex items-center gap-1 w-20">                
+                    <Input 
+                      className="h-7 text-center text-xs font-black bg-secondary/10 hover:bg-secondary/20 focus:bg-primary/5 border-0 rounded-lg transition-colors"
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className="text-[10px] text-muted-foreground font-bold w-10 shrink-0">{item.unit}</span>
+                  </div>
+                </div>
+                
+                {item.options && (
+                  <div className="flex flex-wrap gap-2 pt-1.5 border-t border-secondary/10 mt-0.5">
+                      {item.options.map(opt => (
+                        <div key={opt} className="flex items-center gap-1.5 bg-secondary/5 px-2 py-0.5 rounded-md hover:bg-secondary/10 transition-colors">
+                          <Checkbox 
+                            id={`item-${item.id}-${opt}`}
+                            checked={item.selectedOption === opt}
+                            onCheckedChange={() => handleUpdateItem(item.id, 'selectedOption', opt)}
+                            className="h-3 w-3 rounded border-secondary/30 data-[state=checked]:border-primary"
+                          />
+                          <Label htmlFor={`item-${item.id}-${opt}`} className="text-[10px] cursor-pointer font-medium">{opt}</Label>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {!item.options && (
+                  <Input 
+                    className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
+                    placeholder="Loại/Khổ..."
+                    value={item.type || ''}
+                    onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
+                  />
+                )}
               </div>
-            </div>
-            
-            {item.options && (
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t">
-                  {item.options.map(opt => (
-                    <div key={opt} className="flex items-center gap-1">
-                      <Checkbox 
-                        id={`item-${item.id}-${opt}`}
-                        checked={item.selectedOption === opt}
-                        onCheckedChange={() => handleUpdateItem(item.id, 'selectedOption', opt)}
-                        className="h-3 w-3 rounded border"
-                      />
-                      <Label htmlFor={`item-${item.id}-${opt}`} className="text-[10px] cursor-pointer">{opt}</Label>
-                    </div>
-                  ))}
-              </div>
-            )}
-            {!item.options && (
-               <Input 
-                 className="h-7 text-[10px] bg-secondary/10 border-0 rounded-lg px-2"
-                 placeholder="Loại/Khổ..."
-                 value={item.type || ''}
-                 onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
-               />
-            )}
+            ))}
           </div>
-        ))}
+          <div className="space-y-2">
+            {items.slice(20, 40).map((item) => (
+              <div key={item.id} className="bg-card p-2.5 rounded-xl border border-secondary/20 shadow-sm flex flex-col gap-1.5 hover:border-primary/30 transition-colors">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-foreground/80">{item.id}. {item.name}</span>
+                  <div className="flex items-center gap-1 w-20">                
+                    <Input 
+                      className="h-7 text-center text-xs font-black bg-secondary/10 hover:bg-secondary/20 focus:bg-primary/5 border-0 rounded-lg transition-colors"
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
+                      placeholder="0"
+                    />
+                    <span className="text-[10px] text-muted-foreground font-bold w-10 shrink-0">{item.unit}</span>
+                  </div>
+                </div>
+                
+                {item.options && (
+                  <div className="flex flex-wrap gap-2 pt-1.5 border-t border-secondary/10 mt-0.5">
+                      {item.options.map(opt => (
+                        <div key={opt} className="flex items-center gap-1.5 bg-secondary/5 px-2 py-0.5 rounded-md hover:bg-secondary/10 transition-colors">
+                          <Checkbox 
+                            id={`item-${item.id}-${opt}`}
+                            checked={item.selectedOption === opt}
+                            onCheckedChange={() => handleUpdateItem(item.id, 'selectedOption', opt)}
+                            className="h-3 w-3 rounded border-secondary/30 data-[state=checked]:border-primary"
+                          />
+                          <Label htmlFor={`item-${item.id}-${opt}`} className="text-[10px] cursor-pointer font-medium">{opt}</Label>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {!item.options && (
+                  <Input 
+                    className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
+                    placeholder="Loại/Khổ..."
+                    value={item.type || ''}
+                    onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       
       {/* Sticky Bottom Actions */}
