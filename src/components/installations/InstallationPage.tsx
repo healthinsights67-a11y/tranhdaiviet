@@ -65,10 +65,36 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   });
 
   // Filter tasks waiting for installation that don't have an active installation schedule
-  const unscheduledTasks = tasks.filter(t => 
+  const unscheduledTasksList = tasks.filter(t => 
     t.status === 'waiting_install' && 
     !schedules.some(s => s.taskId === t.id && s.status !== 'cancelled')
-  );
+  ).map(t => ({
+    id: t.id,
+    type: 'task',
+    name: t.customerName || t.title,
+    workshop: t.workshop,
+    address: t.address,
+    phone: t.phone,
+    rawTask: t,
+    rawCustomer: undefined
+  }));
+
+  const unscheduledCustomersList = customers.filter(c => 
+    (['contracted', 'production'].includes(c.stage)) && 
+    !schedules.some(s => s.customerId === c.id && s.status !== 'cancelled') &&
+    !unscheduledTasksList.some(t => t.rawTask?.customerId === c.id) // Avoid duplicates
+  ).map(c => ({
+    id: c.id,
+    type: 'customer',
+    name: c.name,
+    workshop: undefined,
+    address: c.address,
+    phone: c.phone,
+    rawTask: undefined,
+    rawCustomer: c
+  }));
+
+  const unscheduledTasks = [...unscheduledTasksList, ...unscheduledCustomersList];
 
   const handleTaskSelect = (taskId: string) => {
     if (taskId === 'manual') {
@@ -115,7 +141,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   const taskOptions = [
     { label: '-- Nhập tay / Không liên kết thẻ --', value: 'manual' },
     ...unscheduledTasks.map(t => ({
-      label: `${t.customerName || t.title} (${t.address || 'Không có địa chỉ'})`,
+      label: `${t.name} (${t.address || 'Không có địa chỉ'})`,
       value: t.id
     }))
   ];
@@ -381,6 +407,19 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
     }
   };
 
+  const handleDeleteSchedule = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa lịch lắp đặt này không?')) return;
+    try {
+      await deleteDoc(doc(db, 'installation_schedules', id));
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      toast.success('Đã xóa lịch lắp đặt');
+      setDetailsOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'installation_schedules');
+      toast.error('Có lỗi xảy ra khi xóa');
+    }
+  };
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -586,30 +625,63 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
               </div>
             ) : (
               <div className="space-y-2">
-                {unscheduledTasks.map((task) => (
-                  <Card key={task.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                {unscheduledTasks.map((item) => (
+                  <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
-                          {task.customerName || task.title}
+                          {item.name}
                         </span>
-                        <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none capitalize">
-                          {task.workshop || 'Cơ sở 1'}
-                        </Badge>
+                        {item.workshop ? (
+                          <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none capitalize">
+                            {item.workshop}
+                          </Badge>
+                        ) : (
+                          <Badge className="text-[8px] scale-90 px-1 py-0 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-none">
+                            KH mới
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{task.address || 'Chưa cập nhật địa chỉ'}</span>
+                        <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
                       </p>
                       <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
                         <Phone className="h-3 w-3 shrink-0" />
-                        <span>{task.phone || 'Chưa cập nhật SĐT'}</span>
+                        <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
                       </p>
                       
                       <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
                         <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
                         <Button 
-                          onClick={() => handleQuickSchedule(task)} 
+                          onClick={() => {
+                            if (item.type === 'task') {
+                              const task = item.rawTask!;
+                              const customer = task.customerId 
+                                ? customers.find(c => c.id === task.customerId) 
+                                : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+
+                              setFormData(prev => ({
+                                ...prev,
+                                taskId: task.id,
+                                customerId: customer?.id || task.customerId || '',
+                                customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+                                phone: customer?.phone || task.phone || '',
+                                address: customer?.address || task.address || ''
+                              }));
+                            } else {
+                              const customer = item.rawCustomer!;
+                              setFormData(prev => ({
+                                ...prev,
+                                taskId: '',
+                                customerId: customer.id,
+                                customerName: customer.name,
+                                phone: customer.phone || '',
+                                address: customer.address || ''
+                              }));
+                            }
+                            setIsOpen(true);
+                          }}
                           size="sm" 
                           className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold"
                         >
@@ -994,6 +1066,14 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
                                 </div>
                                 
                                 <div className="flex gap-1.5">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="rounded-xl h-8 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                    onClick={() => handleDeleteSchedule(schedule.id)}
+                                  >
+                                    Xóa lịch
+                                  </Button>
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
