@@ -24,10 +24,16 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
 
   const [formData, setFormData] = useState({
     code: '',
-    name: '',
-    unit: '',
-    unitPrice: 0,
-    discountPercent: 0,
+    width: '',
+    thickness: '',
+    length: '',
+    itemsPerBox: '',
+    unit: 'Hộp',
+    preTaxMeterPrice: 0,
+    preTaxBoxPrice: 0,
+    listedMeterPrice: 0,
+    listedBoxPrice: 0,
+    category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST'
   });
 
   useEffect(() => {
@@ -47,25 +53,34 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       setEditingItem(item);
       setFormData({
         code: item.code,
-        name: item.name,
+        width: item.width || '',
+        thickness: item.thickness || '',
+        length: item.length || '',
+        itemsPerBox: item.itemsPerBox || '',
         unit: item.unit,
-        unitPrice: item.unitPrice,
-        discountPercent: item.discountPercent,
+        preTaxMeterPrice: item.preTaxMeterPrice || 0,
+        preTaxBoxPrice: item.preTaxBoxPrice || 0,
+        listedMeterPrice: item.listedMeterPrice || 0,
+        listedBoxPrice: item.listedBoxPrice || 0,
+        category: item.category || 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST'
       });
     } else {
       setEditingItem(null);
-      setFormData({ code: '', name: '', unit: '', unitPrice: 0, discountPercent: 0 });
+      setFormData({ 
+        code: '', width: '', thickness: '', length: '', itemsPerBox: '', unit: 'Hộp', 
+        preTaxMeterPrice: 0, preTaxBoxPrice: 0, listedMeterPrice: 0, listedBoxPrice: 0, 
+        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST' 
+      });
     }
     setIsDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.code || !formData.name || !formData.unit) {
-      toast.error('Vui lòng nhập đủ mã, tên và đơn vị tính');
+    if (!formData.code || !formData.unit) {
+      toast.error('Vui lòng nhập đủ mã hàng và đơn vị tính');
       return;
     }
-
-    const finalPrice = Math.round((formData.unitPrice || 0) * (1 - (formData.discountPercent || 0) / 100));
+    const finalPrice = formData.preTaxBoxPrice || 0;
 
     try {
       if (editingItem) {
@@ -106,7 +121,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
 
   const filteredMaterials = materials.filter(m => 
     m.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (m.width || '').toLowerCase().includes(searchTerm.toLowerCase()) || (m.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -152,44 +167,54 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-muted-foreground uppercase bg-muted/50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-4 font-semibold w-16 text-center">STT</th>
-                    <th className="px-6 py-4 font-semibold">Mã hàng</th>
-                    <th className="px-6 py-4 font-semibold">Tên quy cách</th>
-                    <th className="px-6 py-4 font-semibold text-center">ĐVT</th>
-                    <th className="px-6 py-4 font-semibold text-right">Đơn giá</th>
-                    <th className="px-6 py-4 font-semibold text-center">% CK</th>
-                    <th className="px-6 py-4 font-semibold text-right">Thành tiền</th>
-                    <th className="px-6 py-4 font-semibold text-right">Thao tác</th>
+                    <th className="px-4 py-4 font-semibold w-12 text-center" rowSpan={2}>STT</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" colSpan={3}>TÊN SẢN PHẨM</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>MÃ HÀNG HOÁ</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>SỐ TẤM / 1 HỘP</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>ĐVT</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" colSpan={2}>Đơn giá trước thuế</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" colSpan={2}>Đơn giá niêm yết</th>
+                    <th className="px-4 py-4 font-semibold text-right border-l" rowSpan={2}>Thao tác</th>
+                  </tr>
+                  <tr>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Chiều rộng</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Độ dày (Cm)</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Chiều dài (Cm)</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Mét dài</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Giá hộp</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Mét dài</th>
+                    <th className="px-2 py-2 font-semibold text-center border-t border-l">Giá hộp</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filteredMaterials.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                      <td colSpan={12} className="px-6 py-12 text-center text-muted-foreground">
                         Không tìm thấy vật tư nào
                       </td>
                     </tr>
                   ) : (
                     filteredMaterials.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-3 text-center font-medium text-muted-foreground">{index + 1}</td>
-                        <td className="px-6 py-3 font-semibold">
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors border-b">
+                        <td className="px-4 py-3 text-center font-medium text-muted-foreground">{index + 1}</td>
+                        <td className="px-2 py-3 text-center border-l">{item.width || '-'}</td>
+                        <td className="px-2 py-3 text-center border-l">{item.thickness || '-'}</td>
+                        <td className="px-2 py-3 text-center border-l">{item.length || '-'}</td>
+                        <td className="px-4 py-3 font-semibold text-center border-l">
                           <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs font-mono">
                             {item.code}
                           </span>
                         </td>
-                        <td className="px-6 py-3">{item.name}</td>
-                        <td className="px-6 py-3 text-center font-medium">{item.unit}</td>
-                        <td className="px-6 py-3 text-right font-medium">{item.unitPrice.toLocaleString('vi-VN')}</td>
-                        <td className="px-6 py-3 text-center">
-                          <span className="inline-flex items-center justify-center bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full text-xs font-bold">
-                            {item.discountPercent}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-right font-bold text-green-600 dark:text-green-400">
-                          {item.finalPrice.toLocaleString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-3 text-right">
+                        <td className="px-4 py-3 text-center font-medium border-l">{item.itemsPerBox || '-'}</td>
+                        <td className="px-4 py-3 text-center font-medium border-l">{item.unit || '-'}</td>
+                        
+                        <td className="px-4 py-3 text-right font-medium border-l">{(item.preTaxMeterPrice || 0).toLocaleString('vi-VN')}</td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-700 border-l">{(item.preTaxBoxPrice || 0).toLocaleString('vi-VN')}</td>
+                        
+                        <td className="px-4 py-3 text-right font-medium text-muted-foreground border-l">{(item.listedMeterPrice || 0).toLocaleString('vi-VN')}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400 border-l">{(item.listedBoxPrice || 0).toLocaleString('vi-VN')}</td>
+                        
+                        <td className="px-4 py-3 text-right border-l">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleOpenDialog(item)}>
                               <Pencil className="h-4 w-4" />
@@ -214,63 +239,132 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-w-[800px] h-[90vh] md:h-auto overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Sửa thông tin vật tư' : 'Thêm vật tư mới'}</DialogTitle>
-            <DialogDescription>Nhập thông tin giá và chiết khấu cho vật tư.</DialogDescription>
+            <DialogDescription>Nhập thông tin sản phẩm và giá (Nhựa Ecoplast, Luxury, v.v.).</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Mã hàng</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 py-4">
+            
+            <div className="col-span-1 md:col-span-2 space-y-2">
+              <Label>Hạng mục (Tên Loại Nhựa)</Label>
               <Input
-                className="col-span-3"
-                placeholder="VD: AT"
+                placeholder="VD: HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value.toUpperCase() })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mã Hàng Hoá</Label>
+              <Input
+                placeholder="VD: 1425"
                 value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Tên quy cách</Label>
+
+            <div className="space-y-2">
+              <Label>Số tấm / 1 hộp</Label>
               <Input
-                className="col-span-3"
-                placeholder="VD: Alu tấm 3mm"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="VD: 20"
+                value={formData.itemsPerBox}
+                onChange={(e) => setFormData({ ...formData, itemsPerBox: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">ĐVT</Label>
+
+            <div className="space-y-2">
+              <Label>Đơn vị tính (ĐVT)</Label>
               <Input
-                className="col-span-3"
-                placeholder="VD: Tấm, Thanh, Cái"
+                placeholder="VD: Hộp"
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Đơn giá</Label>
+
+            <div className="col-span-1 md:col-span-2 mt-2">
+               <h4 className="font-semibold text-sm text-primary border-b pb-2">Thông số (TÊN SẢN PHẨM)</h4>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Chiều rộng</Label>
+              <Input
+                placeholder="VD: 140"
+                value={formData.width}
+                onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Độ dày (Cm)</Label>
+              <Input
+                placeholder="VD: 1.5"
+                value={formData.thickness}
+                onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Chiều dài (Cm)</Label>
+              <Input
+                placeholder="VD: 2.5"
+                value={formData.length}
+                onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+              />
+            </div>
+            
+            <div className="col-span-1 md:col-span-2 mt-2">
+               <h4 className="font-semibold text-sm text-primary border-b pb-2">Báo giá (VNĐ)</h4>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Đơn giá trước thuế (Mét dài)</Label>
               <Input
                 type="text"
-                className="col-span-3"
-                value={formData.unitPrice ? formData.unitPrice.toLocaleString('vi-VN') : ''}
+                value={formData.preTaxMeterPrice ? formData.preTaxMeterPrice.toLocaleString('vi-VN') : ''}
                 onChange={(e) => {
                   const rawValue = e.target.value.replace(/\D/g, '');
-                  setFormData({ ...formData, unitPrice: Number(rawValue) });
+                  setFormData({ ...formData, preTaxMeterPrice: Number(rawValue) });
                 }}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Phần trăm CK</Label>
+
+            <div className="space-y-2">
+              <Label>Đơn giá trước thuế (Giá hộp)</Label>
               <Input
-                type="number"
-                className="col-span-3"
-                value={formData.discountPercent || ''}
+                type="text"
+                value={formData.preTaxBoxPrice ? formData.preTaxBoxPrice.toLocaleString('vi-VN') : ''}
                 onChange={(e) => {
-                  const rawValue = e.target.value.replace(/,/g, '.');
-                  setFormData({ ...formData, discountPercent: Number(rawValue) || 0 });
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, preTaxBoxPrice: Number(rawValue) });
                 }}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Đơn giá niêm yết (Mét dài)</Label>
+              <Input
+                type="text"
+                value={formData.listedMeterPrice ? formData.listedMeterPrice.toLocaleString('vi-VN') : ''}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, listedMeterPrice: Number(rawValue) });
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Đơn giá niêm yết (Giá hộp)</Label>
+              <Input
+                type="text"
+                value={formData.listedBoxPrice ? formData.listedBoxPrice.toLocaleString('vi-VN') : ''}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, listedBoxPrice: Number(rawValue) });
+                }}
+              />
+            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Hủy</Button>

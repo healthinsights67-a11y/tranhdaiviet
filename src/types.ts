@@ -228,12 +228,23 @@ export interface TrashItem {
 
 export interface MaterialConfig {
   id: string;
+  category?: string;
   code: string;
-  name: string;
+  width?: string;
+  thickness?: string;
+  length?: string;
+  itemsPerBox?: string;
   unit: string;
-  unitPrice: number;
-  discountPercent: number;
-  finalPrice: number;
+  preTaxMeterPrice?: number;
+  preTaxBoxPrice?: number;
+  listedMeterPrice?: number;
+  listedBoxPrice?: number;
+  
+  // Keep legacy fields for backward compatibility during transition
+  name?: string;
+  unitPrice?: number;
+  discountPercent?: number;
+  finalPrice?: number;
 }
 
 export interface ProfitAnalysis {
