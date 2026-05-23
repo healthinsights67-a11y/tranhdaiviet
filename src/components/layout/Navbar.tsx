@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/src/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { db, collection, query, orderBy, onSnapshot, updateDoc, doc, arrayUnion } from '@/src/lib/firebase';
@@ -75,6 +76,7 @@ const playNotificationSound = () => {
 
 export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: NavbarProps) {
   const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
+  const [showPopup, setShowPopup] = React.useState(false);
   const currentUserId = currentUser?.id || user?.uid || user?.email;
   const isInitialLoad = React.useRef(true);
 
@@ -143,6 +145,20 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
 
   const unreadCount = notifications.filter(n => !(n.readBy || []).includes(currentUserId)).length;
 
+  React.useEffect(() => {
+    if (unreadCount > 0) {
+      const dismissedCount = sessionStorage.getItem('notif_dismissed_count');
+      if (dismissedCount !== unreadCount.toString()) {
+        setShowPopup(true);
+      }
+    }
+  }, [unreadCount]);
+
+  const handleDismissPopup = () => {
+    setShowPopup(false);
+    sessionStorage.setItem('notif_dismissed_count', unreadCount.toString());
+  };
+
   const markAllAsRead = async () => {
     if (!currentUserId) return;
     
@@ -208,61 +224,50 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
                       </Button>
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <ScrollArea className="h-80">
-                    {notifications.length > 0 ? (
-                      notifications.map((n) => (
-                        <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-4 cursor-default focus:bg-secondary/50">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-semibold text-sm">{n.title}</span>
-                            <span className="text-[10px] text-muted-foreground">{getRelativeTime(n.createdAt)}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                            {n.message}
-                          </p>
-                          {!(n.readBy || []).includes(currentUserId) && <div className="w-2 h-2 rounded-full bg-primary mt-1" />}
-                        </DropdownMenuItem>
-                      ))
-                    ) : (
-                      <div className="p-8 text-center text-muted-foreground text-sm">
-                        Không có thông báo mới
-                      </div>
-                    )}
-                  </ScrollArea>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost" }), "relative h-9 w-9 rounded-full p-0 overflow-hidden")}>
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={currentUser?.avatar || user.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"} />
-                    <AvatarFallback>{currentUser?.name?.charAt(0) || user.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user?.email || 'No email'}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => console.log('Profile clicked')}>Hồ sơ</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Settings clicked')}>Cài đặt</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive" onClick={() => { console.log('Logout clicked'); onLogout?.(); }}>Đăng xuất</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
-            <Button size="sm" onClick={onLogin}>Đăng nhập</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={onLogin} className="hidden sm:inline-flex">Đăng nhập</Button>
+            </div>
           )}
         </div>
       </div>
+      
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Bạn có {unreadCount} thông báo mới!
+            </DialogTitle>
+            <DialogDescription>
+              Hãy cập nhật các thông báo quan trọng dưới đây.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+             {notifications.filter(n => !(n.readBy || []).includes(currentUserId)).map((n) => (
+                <div key={n.id} className="flex flex-col items-start gap-1 p-4 rounded-xl bg-secondary/50 border">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-semibold text-sm">{n.title}</span>
+                    <span className="text-[10px] text-muted-foreground">{getRelativeTime(n.createdAt)}</span>
+                  </div>
+                  <p className="text-xs text-foreground mt-1 leading-relaxed whitespace-pre-wrap">
+                    {n.message}
+                  </p>
+                </div>
+              ))}
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+             <Button variant="outline" onClick={handleDismissPopup}>Đóng</Button>
+             <Button onClick={() => {
+               markAllAsRead();
+               handleDismissPopup();
+             }}>Đã xem tất cả</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
