@@ -582,9 +582,6 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Đại diện Công ty</p>
                     <p className="text-sm font-bold text-black uppercase">NGƯỜI LẬP BIỂU</p>
                     <div className="h-16 flex items-center justify-center relative">
-                       <div className="w-20 h-20 border-2 border-dashed border-red-200 rounded-full flex items-center justify-center text-[7px] font-bold text-red-200 uppercase rotate-[-15deg] absolute">
-                          ĐÃ ĐÓNG DẤU HỢP LỆ
-                       </div>
                     </div>
                     <p className="font-bold text-gray-950 text-sm border-t border-gray-200 pt-1 px-4">
                        {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : 'BAN QUẢN TRỊ')}
