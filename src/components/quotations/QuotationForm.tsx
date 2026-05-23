@@ -706,15 +706,6 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     <DialogDescription className="font-medium">Chọn sản phẩm từ thư viện để thêm vào bản báo giá hiện tại</DialogDescription>
                   </div>
                 </div>
-                <Button 
-                  type="button"
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute right-4 top-4 rounded-full h-8 w-8"
-                  onClick={() => setIsProductPickerOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </DialogHeader>
               
               <div className="p-6 border-b bg-gray-50/50 flex flex-col md:flex-row gap-4">
