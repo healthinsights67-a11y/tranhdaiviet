@@ -93,55 +93,59 @@ export const ProductDocuments = () => {
   };
 
   const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) {
         resolve(file);
         return;
       }
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const MAX_WIDTH = 1920;
-          const MAX_HEIGHT = 1920;
+      
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 1920;
+        const MAX_HEIGHT = 1920;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
           }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
 
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              resolve(file);
-            }
-          }, 'image/jpeg', 0.8); // 80% quality
-        };
-        img.onerror = () => resolve(file);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.8);
       };
-      reader.onerror = () => resolve(file);
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      
+      img.src = objectUrl;
     });
   };
 
@@ -152,11 +156,13 @@ export const ProductDocuments = () => {
     setIsUploading(true);
     let successCount = 0;
     try {
-      // Create a function to process a single file
-      const uploadFile = async (file: File) => {
+      const uploadFile = async (file: File, index: number) => {
         try {
           const processedFile = file.type.startsWith('image/') ? await compressImage(file) : file;
-          const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${Date.now()}_${processedFile.name}`);
+          // Use a random string + index to ensure uniqueness even if Date.now() is identical
+          const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9) + '_' + index;
+          const safeName = processedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${uniqueId}_${safeName}`);
           await uploadBytes(fileRef, processedFile);
           const url = await getDownloadURL(fileRef);
           
@@ -175,11 +181,10 @@ export const ProductDocuments = () => {
         }
       };
 
-      // Upload in chunks of 5 to avoid memory/network issues
-      const chunkSize = 5;
+      const chunkSize = 3; // Reduced chunk size to 3 for stability on weaker devices
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
-        const results = await Promise.all(chunk.map(f => uploadFile(f)));
+        const results = await Promise.all(chunk.map((f, idx) => uploadFile(f, i + idx)));
         successCount += results.filter(Boolean).length;
       }
       
