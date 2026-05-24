@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, collection, addDoc, onSnapshot, query, deleteDoc, doc, storage, ref, uploadBytes, getDownloadURL, deleteObject, orderBy, where, serverTimestamp } from '@/src/lib/firebase';
 import { 
-  Folder, Plus, File, FileText, Image as ImageIcon, Trash2, X, Download, UploadCloud, ChevronLeft, Search, Loader2
+  Folder, Plus, File as FileIcon, FileText, Image as ImageIcon, Trash2, X, Download, UploadCloud, ChevronLeft, Search, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +92,59 @@ export const ProductDocuments = () => {
     }
   };
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1920;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.8); // 80% quality
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !selectedFolder) return;
@@ -99,22 +152,42 @@ export const ProductDocuments = () => {
     setIsUploading(true);
     let successCount = 0;
     try {
-      for (const file of files) {
-        const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${Date.now()}_${file.name}`);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
-        
-        await addDoc(collection(db, 'product_documents'), {
-          folderId: selectedFolder.id,
-          name: file.name,
-          url,
-          type: file.type,
-          size: file.size,
-          createdAt: serverTimestamp()
-        });
-        successCount++;
+      // Create a function to process a single file
+      const uploadFile = async (file: File) => {
+        try {
+          const processedFile = file.type.startsWith('image/') ? await compressImage(file) : file;
+          const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${Date.now()}_${processedFile.name}`);
+          await uploadBytes(fileRef, processedFile);
+          const url = await getDownloadURL(fileRef);
+          
+          await addDoc(collection(db, 'product_documents'), {
+            folderId: selectedFolder.id,
+            name: processedFile.name,
+            url,
+            type: processedFile.type,
+            size: processedFile.size,
+            createdAt: serverTimestamp()
+          });
+          return true;
+        } catch (err) {
+          console.error("Error uploading file:", err);
+          return false;
+        }
+      };
+
+      // Upload in chunks of 5 to avoid memory/network issues
+      const chunkSize = 5;
+      for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = files.slice(i, i + chunkSize);
+        const results = await Promise.all(chunk.map(f => uploadFile(f)));
+        successCount += results.filter(Boolean).length;
       }
-      toast.success(`Đã tải lên thành công ${successCount} tài liệu`);
+      
+      if (successCount > 0) {
+        toast.success(`Đã tải lên thành công ${successCount}/${files.length} tài liệu`);
+      } else {
+        toast.error('Không thể tải lên tài liệu nào');
+      }
     } catch (error: any) {
       toast.error('Lỗi tải file: ' + error.message);
     } finally {
@@ -146,7 +219,7 @@ export const ProductDocuments = () => {
   const renderFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="h-10 w-10 text-blue-500" />;
     if (type.includes('pdf')) return <FileText className="h-10 w-10 text-red-500" />;
-    return <File className="h-10 w-10 text-gray-500" />;
+    return <FileIcon className="h-10 w-10 text-gray-500" />;
   };
 
   return (
