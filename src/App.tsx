@@ -16,6 +16,7 @@ const CustomerPage = React.lazy(() => import('./components/customers/CustomerPag
 const AIRenderPage = React.lazy(() => import('./components/ai-render/AIRenderPage'));
 const ProductionCalendar = React.lazy(() => import('./components/production/ProductionCalendar').then(module => ({ default: module.ProductionCalendar })));
 const MediaLibrary = React.lazy(() => import('./components/media/MediaLibrary').then(module => ({ default: module.MediaLibrary })));
+const ProductDocuments = React.lazy(() => import('./components/documents/ProductDocuments').then(module => ({ default: module.ProductDocuments })));
 const QuotationPage = React.lazy(() => import('./components/quotations/QuotationPage').then(module => ({ default: module.QuotationPage })));
 const MeasurementPage = React.lazy(() => import('./components/measurements/MeasurementPage').then(module => ({ default: module.MeasurementPage })));
 const InstallationPage = React.lazy(() => import('./components/installations/InstallationPage').then(module => ({ default: module.InstallationPage })));
@@ -326,6 +327,10 @@ function AppContent() {
         return redirect(perms.menuMedia)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
           : <MediaLibrary folders={folders} user={user} />;
+      case 'documents':
+        return redirect(perms.menuMedia)
+          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          : <ProductDocuments />;
       case 'quotations':
         return redirect(perms.menuQuotations)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />

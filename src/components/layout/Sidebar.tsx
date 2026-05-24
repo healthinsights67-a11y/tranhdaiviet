@@ -22,7 +22,8 @@ import {
   Package,
   ShieldAlert,
   ChevronDown,
-  Trash2
+  Trash2,
+  Folder
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,7 @@ const navGroups = [
     items: [
       { id: 'materials', label: 'Bảng giá vật tư', icon: Package, permission: 'viewPrice' },
       { id: 'media', label: 'Thư viện ảnh', icon: Image, permission: 'menuMedia' },
+        { id: 'documents', label: 'Tài liệu Sản Phẩm', icon: Folder, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },
       { id: 'trash', label: 'Thùng rác', icon: Trash2 },
