@@ -231,5 +231,13 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /product_document_folders/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /product_documents/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }
