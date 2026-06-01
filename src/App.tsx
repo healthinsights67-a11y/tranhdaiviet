@@ -302,7 +302,7 @@ function AppContent() {
       case 'reports':
         return redirect(perms.menuReports)
           ? <Dashboard tasks={tasks} members={activeMembers}  customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <ReportPage tasks={tasks} members={activeMembers}  customers={customers} quotations={quotationsData} />;
+          : <ReportPage tasks={tasks} members={activeMembers}  customers={customers} quotations={quotations} />;
       case 'production':
         return redirect(perms.menuProduction)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
@@ -334,7 +334,7 @@ function AppContent() {
       case 'quotations':
         return redirect(perms.menuQuotations)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <QuotationPage quotations={quotationsData} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
+          : <QuotationPage quotations={quotations} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
@@ -346,7 +346,7 @@ function AppContent() {
       case 'customers':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} quotations={quotationsData} schedules={schedulesData} user={user} currentUser={currentMember} />;
+          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} quotations={quotations} schedules={schedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':
         return redirect(perms.menuAi)
           ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
