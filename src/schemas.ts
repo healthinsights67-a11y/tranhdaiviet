@@ -63,6 +63,7 @@ export const CustomerSchema = z.object({
   oneDriveLink: z.string().optional(),
   furnitureCategory: z.string().optional(),
   workshop: z.string().optional(),
+  consultedAt: timestampSchema,
 });
 
 export const TaskSchema = z.object({
@@ -168,6 +169,7 @@ export const QuotationSchema = z.object({
   status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'deposit']),
   depositAmount: z.number().optional(),
   customerId: z.string().optional(),
+  consultedAt: timestampSchema,
 });
 
 export const ProductLibraryItemSchema = z.object({

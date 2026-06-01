@@ -45,6 +45,7 @@ export interface Customer {
   oneDriveLink?: string;
   furnitureCategory?: string;
   workshop?: string;
+  consultedAt?: string;
 }
 
 export interface Task {
@@ -167,6 +168,7 @@ export interface Quotation {
   depositAmount?: number;
   customerId?: string;
   imageUrls?: string[];
+  consultedAt?: string;
 }
 
 export interface ProductLibraryItem {

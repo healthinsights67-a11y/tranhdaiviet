@@ -149,9 +149,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
           toast.success("Đã cập nhật báo giá");
         } else {
           // Add new
+          const nowStr = new Date().toISOString();
           await addDoc(collection(db, 'quotations'), {
             ...data,
-            createdAt: new Date().toISOString()
+            createdAt: nowStr,
+            consultedAt: data.consultedAt || nowStr
           });
 
           // Automatically update customer order value
@@ -184,11 +186,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
   };
 
   const handleDuplicate = (quotation: Quotation) => {
+    const nowStr = new Date().toISOString();
     const duplicateData: Quotation = {
       ...quotation,
       id: Math.random().toString(36).substr(2, 9),
       quotationNumber: `${quotation.quotationNumber}-COPY`,
-      createdAt: new Date().toISOString(),
+      createdAt: nowStr,
+      consultedAt: nowStr,
       status: 'draft'
     };
     setSelectedQuotation(duplicateData);
@@ -284,17 +288,43 @@ export function QuotationPage({ quotations, user, customers, members, products =
       const prevData = prevSnap.exists() ? prevSnap.data() as Quotation : null;
       const prevStatus = prevData?.status;
 
+      // If transitioning to accepted or deposit from a non-final status, push quotation to current month
+      if ((status === 'accepted' || status === 'deposit') && prevStatus !== 'accepted' && prevStatus !== 'deposit') {
+        const nowStr = new Date().toISOString();
+        updateData.consultedAt = prevData?.consultedAt || prevData?.createdAt || nowStr;
+        updateData.createdAt = nowStr;
+      }
+
       await updateDoc(quotationRef, updateData);
 
       // Automatically update customer stage and order value if quotation is accepted or deposited
       if (status === 'accepted' || status === 'deposit') {
         if (prevData) {
           if (prevData.customerId) {
-            await updateDoc(doc(db, 'customers', prevData.customerId), {
-              stage: 'contracted',
+            const customerRef = doc(db, 'customers', prevData.customerId);
+            const customerSnap = await getDoc(customerRef);
+            const customerData = customerSnap.exists() ? customerSnap.data() : null;
+            const customerStage = customerData?.stage;
+
+            const customerUpdate: any = {
+              stage: status === 'accepted' ? 'completed' : 'contracted',
               orderValue: prevData.totalAmount
-            });
-            toast.info('Đã cập nhật trạng thái khách hàng sang: Đã ký hợp đồng & Cập nhật giá trị đơn hàng.');
+            };
+
+            // Push customer to current month if transitioning from a non-final stage to contracted/completed
+            if (customerStage !== 'contracted' && customerStage !== 'completed') {
+              const nowStr = new Date().toISOString();
+              customerUpdate.consultedAt = customerData?.consultedAt || customerData?.createdAt || nowStr;
+              customerUpdate.createdAt = nowStr;
+            }
+
+            await updateDoc(customerRef, customerUpdate);
+            toast.info(`Đã cập nhật trạng thái khách hàng sang: ${status === 'accepted' ? 'Hoàn thành' : 'Đã ký hợp đồng'} & Cập nhật giá trị đơn hàng.`);
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+
+            if (status === 'accepted') {
+              toast.success(`Đã tự động hoàn tất dự án cho: ${prevData.customerName}`);
+            }
           }
           
           // Only show the assignment dialog if we are moving to deposit, 
@@ -305,15 +335,6 @@ export function QuotationPage({ quotations, user, customers, members, products =
               customerId: prevData.customerId || '',
               customerName: prevData.customerName || 'Khách lẻ'
             });
-          }
-
-          // Complete the customer stage if status is accepted
-          if (status === 'accepted' && prevData.customerId) {
-            await updateDoc(doc(db, 'customers', prevData.customerId), { 
-              stage: 'completed'
-            });
-            queryClient.invalidateQueries({ queryKey: ['customers'] });
-            toast.success(`Đã tự động hoàn tất dự án cho: ${prevData.customerName}`);
           }
         }
       }

@@ -148,10 +148,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     const codeIndex = String(customers.length + 1).padStart(3, '0');
     const customerCode = `KH${codeIndex}_${newCustomer.name}`;
 
+    const nowStr = new Date().toISOString();
     const customerData = {
       ...newCustomer,
       code: customerCode,
-      createdAt: new Date().toISOString(),
+      createdAt: nowStr,
+      consultedAt: nowStr,
     };
 
     try {
@@ -223,7 +225,18 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         const existingCustomer = customers.find(c => c.id === id);
         const existingStage = existingCustomer?.stage;
 
-        await updateDoc(doc(db, 'customers', id), data);
+        const updateData: any = { ...data };
+        if ((selectedCustomer.stage === 'contracted' || selectedCustomer.stage === 'completed') && 
+            existingStage !== 'contracted' && existingStage !== 'completed') {
+          const nowStr = new Date().toISOString();
+          updateData.consultedAt = existingCustomer?.consultedAt || existingCustomer?.createdAt || nowStr;
+          updateData.createdAt = nowStr;
+          
+          selectedCustomer.consultedAt = updateData.consultedAt;
+          selectedCustomer.createdAt = updateData.createdAt;
+        }
+
+        await updateDoc(doc(db, 'customers', id), updateData);
 
         // Automated Workflow: Contracted -> Show Assignment Dialog
         if (selectedCustomer.stage === 'contracted' && existingStage !== 'contracted') {
@@ -235,6 +248,13 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       } else {
         const existingCustomer = customers.find(c => c.id === selectedCustomer.id);
         const existingStage = existingCustomer?.stage;
+
+        if ((selectedCustomer.stage === 'contracted' || selectedCustomer.stage === 'completed') && 
+            existingStage !== 'contracted' && existingStage !== 'completed') {
+          const nowStr = new Date().toISOString();
+          selectedCustomer.consultedAt = existingCustomer?.consultedAt || existingCustomer?.createdAt || nowStr;
+          selectedCustomer.createdAt = nowStr;
+        }
 
         setCustomers(customers.map(c => c.id === selectedCustomer.id ? selectedCustomer : c));
 
@@ -814,9 +834,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         <stage.icon className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 inline" />
                         {stage.label}
                       </Badge>
-                      <div className="flex items-center gap-1 text-[7px] md:text-[9px] text-muted-foreground/60 font-semibold pl-0.5">
-                        <Clock className="h-2 w-2 md:h-2.5 md:w-2.5 opacity-60" />
-                        <span>{formatVNTime(customer.createdAt)}</span>
+                      <div className="flex flex-col gap-0.5 text-[7px] md:text-[9px] text-muted-foreground/60 font-semibold pl-0.5">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-2 w-2 md:h-2.5 md:w-2.5 opacity-60" />
+                          <span>Chốt/Cọc: {formatVNTime(customer.createdAt)}</span>
+                        </div>
+                        {customer.consultedAt && customer.consultedAt !== customer.createdAt && (
+                          <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-amber-600 font-semibold">
+                            <Clock className="h-2 w-2 opacity-60" />
+                            <span>Tư vấn: {formatVNTime(customer.consultedAt)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <DropdownMenu>
@@ -1067,7 +1095,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-1">{selectedCustomer.name}</h2>
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-primary-foreground/80 text-[10px] sm:text-xs">
                       <span className="flex items-center gap-1.5"><Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {selectedCustomer.phone}</span>
-                      <span className="flex items-center gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {formatVNTime(selectedCustomer.createdAt)}</span>
+                      <span className="flex items-center gap-1.5"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Chốt/Cọc: {formatVNTime(selectedCustomer.createdAt)}</span>
+                      {selectedCustomer.consultedAt && selectedCustomer.consultedAt !== selectedCustomer.createdAt && (
+                        <span className="flex items-center gap-1.5 text-amber-200 font-bold">
+                          <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Tư vấn: {formatVNTime(selectedCustomer.consultedAt)}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1.5 font-bold text-white"><DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {formatCurrency(selectedCustomer.orderValue)}</span>
                     </div>
                   </div>
@@ -1152,7 +1185,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       ...quotations.filter(q => q.customerName === selectedCustomer.name).map(q => ({
                         id: q.id,
                         type: 'sale' as const,
-                        timestamp: q.date,
+                        timestamp: q.consultedAt || q.createdAt || q.date,
                         action: `Báo giá: ${q.quotationNumber}`,
                         note: `Tổng tiền: ${q.totalAmount.toLocaleString('vi-VN')} đ`,
                         updatedBy: q.createdBy || 'Hệ thống',
