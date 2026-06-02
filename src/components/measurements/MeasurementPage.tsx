@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MeasurementSchedule, Member, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Trash2, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -57,6 +57,15 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
   });
 
   const consultingCustomers = customers;
+  const unscheduledMeasurements = customers.filter(c => 
+    c.stage === 'consulting' && 
+    !schedules.some(s => {
+      if (s.status === 'cancelled') return false;
+      if (s.customerId === c.id) return true;
+      if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
+      return false;
+    })
+  );
 
   const handleCustomerSelect = (customerId: string) => {
     if (customerId === 'manual') {
@@ -175,6 +184,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         status: 'pending',
         notes: ''
       });
+      queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error('Vui lòng điền đầy đủ và đúng định dạng');
@@ -574,77 +584,153 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         </DialogContent>
       </Dialog>
 
-      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
-        <div className="grid grid-cols-7 border-b bg-gray-50 shrink-0">
-          {weekDays.map((day, idx) => (
-            <div key={idx} className="py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-muted-foreground">
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 overflow-auto min-h-0 bg-card text-card-foreground">
-          <div className="grid grid-cols-7 min-w-[700px] auto-rows-[minmax(80px,1fr)] sm:auto-rows-[minmax(100px,1fr)] md:auto-rows-[minmax(120px,1fr)] min-h-full">
-            {days.map((day, dayIdx) => {
-            const daySchedules = getSchedulesForDay(day);
-            const isCurrentMonth = isSameMonth(day, monthStart);
-            const isDayToday = isSameDay(day, getCurrentVNDate());
-
-            return (
-              <div
-                key={day.toString()}
-                onClick={() => openDayDetails(day)}
-                className={`
-                  min-h-[70px] sm:min-h-[100px] md:min-h-[120px] p-1 sm:p-2 border-b border-r transition-colors cursor-pointer hover:bg-gray-50 group relative
-                  ${!isCurrentMonth ? "bg-gray-100 text-muted-foreground" : "bg-card text-card-foreground text-card-foreground"}
-                  ${dayIdx % 7 === 6 ? "border-r-0" : ""}
-                `}
-              >
-                <div className="flex justify-between items-start mb-1 sm:mb-2">
-                  <span className={`inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-sm font-medium
-                    ${isDayToday ? "bg-primary text-primary-foreground shadow-sm" : ""}
-                  `}>
-                    {format(day, dateFormat)}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openAddForDate(day);
-                    }}
-                  >
-                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex-1 overflow-hidden flex flex-col space-y-0.5 sm:space-y-1">
-                  {daySchedules.slice(0, 3).map((schedule) => (
-                    <div 
-                      key={schedule.id}
-                      className={`text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 rounded truncate border !bg-card text-card-foreground ${
-                        schedule.status === 'completed' ? 'text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300' :
-                        schedule.status === 'cancelled' ? 'text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300' :
-                        'text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300'
-                      }`}
-                      title={schedule.customerName}
-                    >
-                      <span className="font-medium mr-1 hidden sm:inline">{format(parseISO(schedule.date), 'HH:mm')}</span>
-                      {schedule.customerName}
-                    </div>
-                  ))}
-                  {daySchedules.length > 3 && (
-                    <div className="text-[9px] sm:text-xs text-muted-foreground text-center font-medium py-0.5 sm:py-1">
-                      + {daySchedules.length - 3} lịch
-                    </div>
-                  )}
-                </div>
+      <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1">
+        {/* Left Column: Calendar */}
+        <Card className="flex-1 flex flex-col min-h-[400px] overflow-hidden shadow-sm border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card text-card-foreground">
+          <div className="grid grid-cols-7 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
+            {weekDays.map((day, idx) => (
+              <div key={idx} className="py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-muted-foreground">
+                {day}
               </div>
-            );
-          })}
+            ))}
           </div>
-        </div>
-      </Card>
+          <div className="flex-1 overflow-auto min-h-0 bg-card text-card-foreground">
+            <div className="grid grid-cols-7 min-w-[700px] auto-rows-[minmax(80px,1fr)] sm:auto-rows-[minmax(100px,1fr)] md:auto-rows-[minmax(120px,1fr)] min-h-full">
+              {days.map((day, dayIdx) => {
+                const daySchedules = getSchedulesForDay(day);
+                const isCurrentMonth = isSameMonth(day, monthStart);
+                const isDayToday = isSameDay(day, getCurrentVNDate());
+
+                return (
+                  <div
+                    key={day.toString()}
+                    onClick={() => openDayDetails(day)}
+                    className={`
+                      min-h-[70px] sm:min-h-[100px] md:min-h-[120px] p-1 sm:p-2 border-b border-r transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-850 group relative
+                      ${!isCurrentMonth ? "bg-gray-100/50 text-muted-foreground dark:bg-zinc-900/40" : "bg-card text-card-foreground"}
+                      ${dayIdx % 7 === 6 ? "border-r-0" : ""}
+                    `}
+                  >
+                    <div className="flex justify-between items-start mb-1 sm:mb-2">
+                      <span className={`inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-sm font-medium
+                        ${isDayToday ? "bg-primary text-primary-foreground shadow-sm" : ""}
+                      `}>
+                        {format(day, dateFormat)}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddForDate(day);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-hidden flex flex-col space-y-0.5 sm:space-y-1">
+                      {daySchedules.slice(0, 3).map((schedule) => (
+                        <div 
+                          key={schedule.id}
+                          className={`text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 rounded truncate border !bg-card text-card-foreground ${
+                            schedule.status === 'completed' ? 'text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300' :
+                            schedule.status === 'cancelled' ? 'text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300' :
+                            'text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300'
+                          }`}
+                          title={schedule.customerName}
+                        >
+                          <span className="font-medium mr-1 hidden sm:inline">{format(parseISO(schedule.date), 'HH:mm')}</span>
+                          {schedule.customerName}
+                        </div>
+                      ))}
+                      {daySchedules.length > 3 && (
+                        <div className="text-[9px] sm:text-xs text-muted-foreground text-center font-medium py-0.5 sm:py-1">
+                          + {daySchedules.length - 3} lịch
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+
+        {/* Right Column: Unscheduled measurements list */}
+        <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0">
+          <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
+            <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+              <ClipboardList className="h-4.5 w-4.5 text-primary" />
+              Chờ xếp lịch đo đạc
+              {unscheduledMeasurements.length > 0 && (
+                <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
+                  {unscheduledMeasurements.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription className="text-[10px]">
+              Danh sách khách hàng đang tư vấn chưa có lịch đo đạc
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-3 flex-1 overflow-y-auto">
+            {unscheduledMeasurements.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                <CalendarIcon className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                <p className="text-xs font-semibold">Tất cả khách hàng đã xếp lịch</p>
+                <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có dự án nào đang chờ xếp lịch đo đạc.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {unscheduledMeasurements.map((item) => (
+                  <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
+                          {item.name}
+                        </span>
+                        <Badge className="text-[8px] scale-90 px-1 py-0 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-none">
+                          Tư vấn
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                        <Phone className="h-3 w-3 shrink-0" />
+                        <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
+                      </p>
+                      
+                      <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                        <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                        <Button 
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              customerId: item.id,
+                              customerName: item.name,
+                              phone: item.phone || '',
+                              address: item.address || '',
+                              date: new Date().toISOString().slice(0, 16)
+                            }));
+                            setIsOpen(true);
+                          }}
+                          size="sm" 
+                          className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
+                        >
+                          Xếp lịch
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden">

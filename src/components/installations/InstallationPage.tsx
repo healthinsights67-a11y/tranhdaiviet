@@ -254,6 +254,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         notes: ''
       });
       queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch (error) {
       console.error("Lỗi khi xếp lịch lắp đặt:", error);
       if (error instanceof z.ZodError) {
@@ -333,6 +334,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         setEditingId(null);
         setEditFormData({});
         queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, 'installation_schedules');
         toast.error('Lỗi khi lưu thay đổi');
