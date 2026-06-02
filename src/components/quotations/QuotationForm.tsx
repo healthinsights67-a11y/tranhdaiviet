@@ -104,18 +104,34 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const [isProductPickerOpen, setIsProductPickerOpen] = React.useState(false);
   const [pickerSearchTerm, setPickerSearchTerm] = React.useState('');
   const [pickerUnitFilter, setPickerUnitFilter] = React.useState('all');
+  const [pickerCategoryFilter, setPickerCategoryFilter] = React.useState('all');
+
+  const uniqueCategories = React.useMemo(() => {
+    const cats = new Set<string>();
+    products.forEach(p => {
+      if (p.category) {
+        cats.add(p.category.trim());
+      }
+    });
+    const list = Array.from(cats).filter(Boolean);
+    if (list.length === 0) {
+      return ["Phòng bếp", "Phòng ngủ", "Phòng khách", "Phòng thờ", "Khác"];
+    }
+    return list;
+  }, [products]);
 
   const filteredLibraryProducts = products.filter(p => {
     const matchesSearch = p.productName.toLowerCase().includes(pickerSearchTerm.toLowerCase()) || 
-                         p.description.toLowerCase().includes(pickerSearchTerm.toLowerCase());
+                          p.description.toLowerCase().includes(pickerSearchTerm.toLowerCase());
     const matchesUnit = pickerUnitFilter === 'all' || p.unit === pickerUnitFilter;
-    return matchesSearch && matchesUnit;
+    const matchesCategory = pickerCategoryFilter === 'all' || p.category === pickerCategoryFilter;
+    return matchesSearch && matchesUnit && matchesCategory;
   });
 
   const handleSelectFromLibrary = (product: ProductLibraryItem) => {
     const newItem: QuotationItem = {
       id: Math.random().toString(36).substr(2, 9),
-      category: 'Khác',
+      category: product.category || 'Khác',
       name: product.productName,
       description: product.description,
       unit: product.unit,
@@ -798,6 +814,19 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     ))}
                   </SelectContent>
                 </Select>
+
+                <Select value={pickerCategoryFilter} onValueChange={setPickerCategoryFilter}>
+                  <SelectTrigger className="w-full md:w-[180px] h-11 bg-card text-card-foreground border-gray-200 rounded-xl font-medium">
+                    <SelectValue placeholder="Hạng mục" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                    <SelectItem value="all" className="rounded-lg font-medium">Tất cả hạng mục</SelectItem>
+                    <SelectSeparator />
+                    {uniqueCategories.map(cat => (
+                      <SelectItem key={cat} value={cat} className="rounded-lg font-medium">{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex-1 overflow-y-auto w-full p-8 bg-card text-card-foreground">
@@ -826,10 +855,15 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                             <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/40 transition-colors flex items-center justify-center">
                               <Plus className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100 drop-shadow-lg" />
                             </div>
-                            <div className="absolute top-2 right-2">
+                            <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                               <Badge className="bg-black/40 backdrop-blur-md border-none text-[9px] h-5 px-1.5 font-bold">
                                 {product.unit}
                               </Badge>
+                              {product.category && (
+                                <Badge className="bg-blue-600/70 backdrop-blur-md border-none text-[8px] h-4.5 px-1 font-bold">
+                                  {product.category}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <div className="p-4 space-y-2 flex-1 flex flex-col">
