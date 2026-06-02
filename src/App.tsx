@@ -239,9 +239,6 @@ function AppContent() {
   
   const handleLogout = signOut;
 
-  // Use real members if available, only fallback to mock for preview (not logged in)
-  const activeMembers = user ? members : MOCK_MEMBERS;
-
   // Find current member profile based on logged in user's email
   const currentMember = user ? (
     members.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()) || 
@@ -265,22 +262,88 @@ function AppContent() {
     ? DEFAULT_PERMS
     : { ...DEFAULT_PERMS, ...(currentMember.permissions || {}) };
 
-  // Filtered data based on role
-  const isWorkshopRestricted = !isManager && currentMember && currentMember.workshop && currentMember.workshop !== 'all';
-  
-  const filteredCustomers = showAllData 
-    ? (user ? customers : MOCK_CUSTOMERS)
-    : customers.filter(c => 
-        c.assignedSaleId === currentMember?.id || 
-        (isWorkshopRestricted ? c.workshop === currentMember?.workshop : true)
-      );
+  // Filtered data based on role and workshop
+  const isWorkshopRestricted = !!(currentMember && currentMember.workshop && currentMember.workshop !== 'all');
+  const userWorkshop = currentMember?.workshop;
 
-  const filteredTasks = showAllData 
-    ? (user ? tasks : MOCK_TASKS)
-    : tasks.filter(t => 
-        t.assigneeId === currentMember?.id || 
-        (isWorkshopRestricted ? t.workshop === currentMember?.workshop : true)
-      );
+  // Filtered members list
+  const activeMembers = React.useMemo(() => {
+    const raw = user ? members : MOCK_MEMBERS;
+    if (isWorkshopRestricted) {
+      return raw.filter(m => m.workshop === userWorkshop || m.workshop === 'all' || !m.workshop);
+    }
+    return raw;
+  }, [user, members, isWorkshopRestricted, userWorkshop]);
+
+  const filteredCustomers = React.useMemo(() => {
+    if (!user) return MOCK_CUSTOMERS;
+    return customers.filter(c => {
+      if (isWorkshopRestricted && c.workshop !== userWorkshop) {
+        return false;
+      }
+      if (!isManager && !isWorkshopRestricted) {
+        return c.assignedSaleId === currentMember?.id;
+      }
+      return true;
+    });
+  }, [user, customers, isWorkshopRestricted, userWorkshop, isManager, currentMember]);
+
+  const filteredTasks = React.useMemo(() => {
+    if (!user) return MOCK_TASKS;
+    return tasks.filter(t => {
+      if (isWorkshopRestricted) {
+        if (t.workshop && t.workshop !== userWorkshop) return false;
+        if (!t.workshop && t.customerId) {
+          const cust = customers.find(c => c.id === t.customerId);
+          if (cust && cust.workshop !== userWorkshop) return false;
+        }
+      }
+      if (!isManager && !isWorkshopRestricted) {
+        return t.assigneeId === currentMember?.id;
+      }
+      return true;
+    });
+  }, [user, tasks, customers, isWorkshopRestricted, userWorkshop, isManager, currentMember]);
+
+  const filteredQuotations = React.useMemo(() => {
+    if (!user) return MOCK_QUOTATIONS;
+    return quotations.filter(q => {
+      if (isWorkshopRestricted) {
+        if (q.workshop && q.workshop !== userWorkshop) return false;
+        if (!q.workshop && q.customerId) {
+          const cust = customers.find(c => c.id === q.customerId);
+          if (cust && cust.workshop !== userWorkshop) return false;
+        }
+      }
+      return true;
+    });
+  }, [user, quotations, customers, isWorkshopRestricted, userWorkshop]);
+
+  const filteredSchedulesData = React.useMemo(() => {
+    if (!user) return [];
+    return schedulesData.filter(s => {
+      if (isWorkshopRestricted) {
+        if (s.customerId) {
+          const cust = customers.find(c => c.id === s.customerId);
+          if (cust && cust.workshop !== userWorkshop) return false;
+        }
+      }
+      return true;
+    });
+  }, [user, schedulesData, customers, isWorkshopRestricted, userWorkshop]);
+
+  const filteredInstallations = React.useMemo(() => {
+    if (!user) return [];
+    return installations.filter(s => {
+      if (isWorkshopRestricted) {
+        if (s.customerId) {
+          const cust = customers.find(c => c.id === s.customerId);
+          if (cust && cust.workshop !== userWorkshop) return false;
+        }
+      }
+      return true;
+    });
+  }, [user, installations, customers, isWorkshopRestricted, userWorkshop]);
 
   React.useEffect(() => {
     if (isDarkMode) {
@@ -298,63 +361,63 @@ function AppContent() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard tasks={tasks} members={activeMembers}  customers={customers} quotations={quotations} currentUser={currentMember} />;
+        return <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />;
       case 'reports':
         return redirect(perms.menuReports)
-          ? <Dashboard tasks={tasks} members={activeMembers}  customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <ReportPage tasks={tasks} members={activeMembers}  customers={customers} quotations={quotations} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <ReportPage tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} />;
       case 'production':
         return redirect(perms.menuProduction)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <ProductionCalendar tasks={tasks} setTasks={setTasks} members={activeMembers} user={user} customers={customers} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'sale':
         return redirect(perms.menuSale)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={customers} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'marketing':
         return redirect(perms.menuMarketing)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={customers} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'design':
         return redirect(perms.menuDesign)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={customers} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'employees':
         return redirect(perms.menuMembers)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <MemberPage members={activeMembers} setMembers={setMembers} tasks={tasks} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <MemberPage members={activeMembers} setMembers={setMembers} tasks={filteredTasks} user={user} currentUser={currentMember} />;
       case 'media':
         return redirect(perms.menuMedia)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <MediaLibrary folders={folders} user={user} />;
       case 'documents':
         return redirect(perms.menuMedia)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <ProductDocuments />;
       case 'quotations':
         return redirect(perms.menuQuotations)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <QuotationPage quotations={quotations} user={user} customers={customers} members={activeMembers} products={productLibraryData} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <QuotationPage quotations={filteredQuotations} user={user} customers={filteredCustomers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <MeasurementPage schedules={schedulesData} members={activeMembers} customers={customers} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <MeasurementPage schedules={filteredSchedulesData} members={activeMembers} customers={filteredCustomers} user={user} currentUser={currentMember} />;
       case 'installations':
         return redirect(perms.menuOrders)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <InstallationPage schedules={installations} members={activeMembers} customers={customers} tasks={tasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <InstallationPage schedules={filteredInstallations} members={activeMembers} customers={filteredCustomers} tasks={filteredTasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
-          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={tasks} setTasks={setTasks} members={activeMembers} quotations={quotations} schedules={schedulesData} user={user} currentUser={currentMember} />;
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={filteredTasks} setTasks={setTasks} members={activeMembers} quotations={filteredQuotations} schedules={filteredSchedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':
         return redirect(perms.menuAi)
-          ? <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <AIRenderPage />;
       case 'users':
-        return isAdmin ? <UserManagement /> : <Dashboard tasks={tasks} members={activeMembers} customers={customers} quotations={quotations} currentUser={currentMember} />;
+        return isAdmin ? <UserManagement /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />;
       case 'materials':
-        return <MaterialConfigPage tasks={tasks} quotations={quotations} />;
+        return <MaterialConfigPage tasks={filteredTasks} quotations={filteredQuotations} />;
       case 'trash':
         return <TrashPage currentUser={currentMember} />;
       default:

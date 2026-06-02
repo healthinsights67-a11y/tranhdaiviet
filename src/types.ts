@@ -170,6 +170,7 @@ export interface Quotation {
   customerId?: string;
   imageUrls?: string[];
   consultedAt?: string;
+  workshop?: string;
 }
 
 export interface ProductLibraryItem {

@@ -105,7 +105,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     createdAt: initialData?.createdAt || new Date().toISOString(),
     status: initialData?.status || 'draft',
     customerId: initialData?.customerId || '',
-    imageUrls: initialData?.imageUrls || []
+    imageUrls: initialData?.imageUrls || [],
+    workshop: initialData?.workshop || ''
   });
 
   const [isProductPickerOpen, setIsProductPickerOpen] = React.useState(false);
@@ -287,7 +288,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         phone: customer.phone,
         address: customer.address,
         quotationNumber: newQuotationNumber,
-        constructionType: customer.workshop ? `Thi công ${customer.workshop}` : formData.constructionType
+        constructionType: customer.workshop ? `Thi công ${customer.workshop}` : formData.constructionType,
+        workshop: customer.workshop || ''
       });
     }
   };

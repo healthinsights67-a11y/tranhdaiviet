@@ -110,17 +110,17 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
       return;
     }
 
-    if (trashItems.length === 0) {
+    if (filteredTrash.length === 0) {
       toast.error('Thùng rác hiện đang trống!');
       return;
     }
 
-    if (!confirm(`CẢNH BÁO: Bạn đang thực hiện dọn sạch thùng rác (${trashItems.length} mục). Tất cả sẽ bị XÓA VĨNH VIỄN và KHÔNG thể khôi phục! Bạn vẫn muốn tiếp tục?`)) {
+    if (!confirm(`CẢNH BÁO: Bạn đang thực hiện dọn sạch thùng rác (${filteredTrash.length} mục). Tất cả sẽ bị XÓA VĨNH VIỄN và KHÔNG thể khôi phục! Bạn vẫn muốn tiếp tục?`)) {
       return;
     }
 
     try {
-      const promises = trashItems.map(item => deletePermanently(item.id));
+      const promises = filteredTrash.map(item => deletePermanently(item.id));
       await Promise.all(promises);
       toast.success('Đã dọn sạch thùng rác thành công!');
       queryClient.invalidateQueries({ queryKey: ['trash'] });
@@ -130,14 +130,26 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
     }
   };
 
+  const isWorkshopRestricted = !!(currentUser && currentUser.workshop && currentUser.workshop !== 'all');
+  const userWorkshop = currentUser?.workshop;
+
   const filteredTrash = React.useMemo(() => {
     return trashItems.filter(item => {
+      // 1. Workshop filtering
+      if (isWorkshopRestricted) {
+        const itemWorkshop = item.data?.workshop || '';
+        // If the item has a workshop, it must match user's workshop.
+        if (itemWorkshop && itemWorkshop !== userWorkshop) {
+          return false;
+        }
+      }
+
       const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             (item.deletedBy && item.deletedBy.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesFilter = selectedFilter === 'all' || item.collection === selectedFilter;
       return matchesSearch && matchesFilter;
     }).sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
-  }, [trashItems, searchQuery, selectedFilter]);
+  }, [trashItems, searchQuery, selectedFilter, isWorkshopRestricted, userWorkshop]);
 
   if (isLoading) {
     return (
@@ -156,7 +168,7 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
             Danh sách các tài liệu đã bị xóa. Chỉ có Quản lý hoặc Giám đốc mới có quyền xóa vĩnh viễn hoặc dọn dẹp.
           </p>
         </div>
-        {isManager && trashItems.length > 0 && (
+        {isManager && filteredTrash.length > 0 && (
           <Button 
             variant="destructive" 
             onClick={handleEmptyTrash} 
