@@ -142,6 +142,7 @@ export const QuotationItemSchema = z.object({
   total: z.number(),
   width: z.number().optional(),
   height: z.number().optional(),
+  cornerL: z.number().optional(),
   imageUrl: z.string().optional(),
 });
 

@@ -140,6 +140,7 @@ export interface QuotationItem {
   total: number;
   width?: number;
   height?: number;
+  cornerL?: number;
   imageUrl?: string;
 }
 

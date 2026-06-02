@@ -182,14 +182,32 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
           }
         }
 
+        // Tự động gán/xóa Góc L dựa trên việc nhập Cạnh 2 (height) cho đơn vị 'md'
+        if (updated.unit === 'md') {
+          if (updates.height !== undefined) {
+            if (updates.height > 0) {
+              if (updated.cornerL === undefined || updated.cornerL === 0) {
+                updated.cornerL = 0.3;
+              }
+            } else {
+              updated.cornerL = 0;
+            }
+          }
+        }
+
         // Tính toán số lượng dựa trên kích thước (nếu có)
         if (updated.unit === 'm2') {
           if (updated.width && updated.height) {
             updated.quantity = Number((updated.width * updated.height).toFixed(2));
           }
         } else if (updated.unit === 'md') {
-          if (updated.width) {
-            updated.quantity = updated.width;
+          const c1 = updated.width || 0;
+          const c2 = updated.height || 0;
+          const corner = updated.cornerL !== undefined ? updated.cornerL : 0;
+          
+          if (c1 > 0 || c2 > 0) {
+            updated.quantity = Number((c1 + c2 - corner).toFixed(2));
+            if (updated.quantity < 0) updated.quantity = 0;
           }
         }
 
@@ -513,23 +531,35 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                             />
                         </div>
                         <div className="w-full space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">Kích thước (R x S x C)</Label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <Label className="text-xs font-semibold text-slate-700">
+                              {item.unit === 'md' ? 'Kích thước (Cạnh 1 | Cạnh 2 | Trừ Góc L)' : 'Kích thước (R x S x C)'}
+                            </Label>
+                            <div className={cn("grid gap-2", item.unit === 'md' ? "grid-cols-3" : "grid-cols-2")}>
                                 <Input 
                                     type="number"
-                                    placeholder="Dài"
+                                    placeholder={item.unit === 'md' ? "Cạnh 1" : "Dài"}
                                     className="h-9 bg-background font-bold text-center text-xs"
                                     value={item.width || 0}
                                     onChange={(e) => updateItem(item.id, { width: parseFloat(e.target.value) || 0 })}
                                 />
                                 <Input 
                                   type="number"
-                                  placeholder="Rộng"
+                                  placeholder={item.unit === 'md' ? "Cạnh 2" : "Rộng"}
                                   className="h-9 bg-background font-bold text-center text-xs"
-                                  disabled={item.unit !== 'm2'}
+                                  disabled={item.unit !== 'm2' && item.unit !== 'md'}
                                   value={item.height || 0}
                                   onChange={(e) => updateItem(item.id, { height: parseFloat(e.target.value) || 0 })}
                                 />
+                                {item.unit === 'md' && (
+                                  <Input 
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="Góc L (0.3)"
+                                    className="h-9 bg-background font-bold text-center text-xs text-purple-600 border-purple-200"
+                                    value={item.cornerL !== undefined ? item.cornerL : 0}
+                                    onChange={(e) => updateItem(item.id, { cornerL: parseFloat(e.target.value) || 0 })}
+                                  />
+                                )}
                             </div>
                         </div>
                         <div className="w-full space-y-1">
