@@ -129,10 +129,60 @@ export function QuotationPage({ quotations, user, customers, members, products =
     return matchesSearch && matchesStatus && matchesTime;
   });
 
+  const [activeQuotationIds, setActiveQuotationIds] = React.useState<Record<string, string>>({});
+
+  // Group quotations by phone (or customer name if phone is not present)
+  const groupedQuotations = React.useMemo(() => {
+    const groups: Record<string, Quotation[]> = {};
+    filteredQuotations.forEach(q => {
+      const key = q.phone || q.customerName || 'unknown';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(q);
+    });
+
+    // Map to array and sort chronologically (Lần 1, Lần 2, ...)
+    return Object.values(groups).map(groupQuotes => {
+      const sorted = [...groupQuotes].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      return {
+        phone: sorted[0].phone,
+        customerName: sorted[0].customerName,
+        quotations: sorted
+      };
+    });
+  }, [filteredQuotations]);
+
+  const getActiveQuotation = (group: { phone: string; customerName: string; quotations: Quotation[] }) => {
+    const selectedId = activeQuotationIds[group.phone];
+    if (selectedId) {
+      const found = group.quotations.find(q => q.id === selectedId);
+      if (found) return found;
+    }
+    // Default to the latest quotation in the group (the last one in the sorted list)
+    return group.quotations[group.quotations.length - 1];
+  };
+
+  const handleCreateNewVersion = (quotation: Quotation) => {
+    const nowStr = new Date().toISOString();
+    const cleanNumber = `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    const newVersionData: Quotation = {
+      ...quotation,
+      id: Math.random().toString(36).substr(2, 9),
+      quotationNumber: cleanNumber,
+      createdAt: nowStr,
+      consultedAt: nowStr,
+      status: 'draft'
+    };
+    setSelectedQuotation(newVersionData);
+    setIsFormOpen(true);
+  };
+
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
     try {
       if (user) {
-        if (selectedQuotation && isFormOpen && !data.quotationNumber.includes('COPY')) {
+        const isEditingExisting = selectedQuotation && quotations.some(q => q.id === selectedQuotation.id);
+        if (isEditingExisting && isFormOpen) {
           // Update existing
           await updateDoc(doc(db, 'quotations', (selectedQuotation as any).id), {
             ...data,
@@ -524,7 +574,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                   <CardTitle className="text-lg md:text-xl font-bold flex items-center gap-2">
                       Hồ sơ lưu trữ
                       <Badge variant="secondary" className="rounded-full h-5 text-[10px] px-2 bg-blue-50 text-primary border border-blue-100 shrink-0">
-                         {filteredQuotations.length} {filteredQuotations.length > 1 ? 'kết quả' : 'hồ sơ'}
+                         {groupedQuotations.length} tệp khách hàng
                       </Badge>
                   </CardTitle>
 
@@ -631,127 +681,188 @@ export function QuotationPage({ quotations, user, customers, members, products =
               </CardHeader>
               
               <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredQuotations.map((quotation) => (
-                    <Card key={quotation.id} className={cn("rounded-2xl transition-all cursor-pointer", getCardStyle(quotation.status))}>
-                      <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
-                         <span className="font-mono font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md text-[10px]">{quotation.quotationNumber}</span>
-                         {getStatusBadge(quotation.status)}
-                      </CardHeader>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                             <div className={cn(
-                               "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm border border-slate-100",
-                               quotation.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/30' :
-                               quotation.status === 'deposit' ? 'bg-purple-50 text-purple-600 border border-purple-100/30' :
-                               quotation.status === 'sent' ? 'bg-blue-50 text-blue-600 border border-blue-100/30' :
-                               quotation.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100/30' :
-                               'bg-slate-50 text-slate-600 border border-slate-200/30'
-                             )}>
-                               {quotation.customerName ? quotation.customerName.charAt(0).toUpperCase() : 'K'}
-                             </div>
-                             <div className="min-w-0 flex-1">
-                               <h4 className="font-bold text-base text-slate-850 truncate">{quotation.customerName || 'Khách hàng'}</h4>
-                               <div className="flex items-center gap-2 text-muted-foreground mt-1 text-[10px]">
-                                 <span className="flex items-center gap-0.5 font-medium shrink-0">
-                                    <Phone className="h-3 w-3" /> {quotation.phone}
-                                 </span>
-                                 <span>•</span>
-                                 <span className="font-medium truncate">
-                                    {format(new Date(quotation.createdAt), 'dd/MM/yy')}
-                                 </span>
+                  {groupedQuotations.map((group) => {
+                    const activeQuotation = getActiveQuotation(group);
+                    return (
+                      <Card 
+                        key={group.phone || group.customerName} 
+                        className={cn("rounded-2xl transition-all cursor-pointer hover:scale-[1.01]", getCardStyle(activeQuotation.status))}
+                        onClick={() => {
+                          setSelectedQuotation(activeQuotation);
+                          setIsPreviewOpen(true);
+                        }}
+                      >
+                        <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
+                           <span className="font-mono font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md text-[10px]">{activeQuotation.quotationNumber}</span>
+                           {getStatusBadge(activeQuotation.status)}
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                             <div className="flex items-center gap-3 min-w-0 flex-1">
+                               <div className={cn(
+                                 "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm border border-slate-100",
+                                 activeQuotation.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/30' :
+                                 activeQuotation.status === 'deposit' ? 'bg-purple-50 text-purple-600 border border-purple-100/30' :
+                                 activeQuotation.status === 'sent' ? 'bg-blue-50 text-blue-600 border border-blue-100/30' :
+                                 activeQuotation.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100/30' :
+                                 'bg-slate-50 text-slate-600 border border-slate-200/30'
+                               )}>
+                                 {activeQuotation.customerName ? activeQuotation.customerName.charAt(0).toUpperCase() : 'K'}
+                               </div>
+                               <div className="min-w-0 flex-1">
+                                 <h4 className="font-bold text-base text-slate-850 truncate">{activeQuotation.customerName || 'Khách hàng'}</h4>
+                                 <div className="flex items-center gap-2 text-muted-foreground mt-1 text-[10px]">
+                                   <span className="flex items-center gap-0.5 font-medium shrink-0">
+                                      <Phone className="h-3 w-3" /> {activeQuotation.phone}
+                                   </span>
+                                   <span>•</span>
+                                   <span className="font-medium truncate">
+                                      {format(new Date(activeQuotation.createdAt), 'dd/MM/yy')}
+                                   </span>
+                                 </div>
                                </div>
                              </div>
-                           </div>
-                           
-                           <div className="text-right shrink-0">
-                             <p className="text-[10px] text-muted-foreground font-medium mb-0.5">Tổng cộng</p>
-                             <p className="font-black text-base md:text-lg tabular-nums text-slate-800">
-                               {(quotation.totalAmount / 1000000).toFixed(1)}M
-                             </p>
-                             {quotation.status === 'deposit' && quotation.depositAmount && (
-                               <p className="text-[9px] text-purple-600 font-bold mt-0.5">
-                                 Cọc: {(quotation.depositAmount / 1000000).toFixed(1)}M
+                             
+                             <div className="text-right shrink-0">
+                               <p className="text-[10px] text-muted-foreground font-medium mb-0.5">Tổng cộng</p>
+                               <p className="font-black text-base md:text-lg tabular-nums text-slate-800">
+                                 {(activeQuotation.totalAmount / 1000000).toFixed(1)}M
                                </p>
-                             )}
+                               {activeQuotation.status === 'deposit' && activeQuotation.depositAmount && (
+                                 <p className="text-[9px] text-purple-600 font-bold mt-0.5">
+                                   Cọc: {(activeQuotation.depositAmount / 1000000).toFixed(1)}M
+                                 </p>
+                               )}
+                             </div>
+                          </div>
+
+                          {/* Version switcher */}
+                          {group.quotations.length > 1 && (
+                            <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-slate-100/60 mt-1">
+                              <span className="text-[9px] text-muted-foreground font-bold mr-1 uppercase">Bản:</span>
+                              {group.quotations.map((q, idx) => {
+                                const isActive = q.id === activeQuotation.id;
+                                return (
+                                  <button
+                                    key={q.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveQuotationIds(prev => ({ ...prev, [group.phone]: q.id }));
+                                    }}
+                                    className={cn(
+                                      "px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer transition-all border",
+                                      isActive 
+                                        ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                    )}
+                                  >
+                                    Lần {idx + 1}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                        <div className="p-4 pt-0 flex items-center justify-between border-t border-white/5 pt-3">
+                           <div className="flex items-center gap-1">
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-8 px-2 text-[10px] font-bold text-muted-foreground" 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleDuplicate(activeQuotation);
+                               }}
+                             >
+                               <Copy className="h-3.5 w-3.5 mr-1" />
+                               Sao chép
+                             </Button>
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-8 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50" 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleCreateNewVersion(activeQuotation);
+                               }}
+                             >
+                               <Plus className="h-3.5 w-3.5 mr-1" />
+                               Bản mới
+                             </Button>
+                           </div>
+                           <div className='flex items-center gap-2'>
+                               <Button 
+                                 variant="secondary" 
+                                 size="sm" 
+                                 className="h-8 px-3 gap-1.5 font-bold text-[10px] rounded-lg"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setSelectedQuotation(activeQuotation);
+                                   setIsPreviewOpen(true);
+                                 }}
+                               >
+                                 <Eye className="h-3.5 w-3.5" />
+                                 Xem
+                               </Button>
+                               <DropdownMenu>
+                                 <DropdownMenuTrigger 
+                                   className="h-8 w-8 rounded-lg hover:bg-secondary/50 flex items-center justify-center"
+                                   onClick={(e) => e.stopPropagation()}
+                                 >
+                                     <MoreVertical className="h-4 w-4" />
+                                 </DropdownMenuTrigger>
+                                 <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-white/10" onClick={(e) => e.stopPropagation()}>
+                                   {activeQuotation.status !== 'accepted' && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(activeQuotation.id, 'accepted')}>
+                                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                       Chốt báo giá (Toàn bộ)
+                                     </DropdownMenuItem>
+                                   )}
+                                   {activeQuotation.status !== 'deposit' && activeQuotation.status !== 'accepted' && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: '' })}>
+                                       <FileText className="h-4 w-4 text-purple-500" />
+                                       Chốt cọc (Một phần)
+                                     </DropdownMenuItem>
+                                   )}
+                                   {activeQuotation.status !== 'rejected' && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onClick={() => handleUpdateStatus(activeQuotation.id, 'rejected')}>
+                                       <XCircle className="h-4 w-4 text-amber-500" />
+                                       Từ chối báo giá (Hủy)
+                                     </DropdownMenuItem>
+                                   )}
+                                   {activeQuotation.status === 'draft' && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" onClick={() => handleUpdateStatus(activeQuotation.id, 'sent')}>
+                                       <Clock className="h-4 w-4 text-blue-500" />
+                                       Đã gửi khách hàng
+                                     </DropdownMenuItem>
+                                   )}
+                                   {(activeQuotation.status === 'sent' || activeQuotation.status === 'rejected') && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-gray-600" onClick={() => handleUpdateStatus(activeQuotation.id, 'draft')}>
+                                       <Clock className="h-4 w-4 text-gray-500" />
+                                       Chuyển thành bản nháp
+                                     </DropdownMenuItem>
+                                   )}
+                                   <DropdownMenuSeparator className="bg-card text-card-foreground/5 my-1" />
+                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => {
+                                     setSelectedQuotation(activeQuotation);
+                                     setIsFormOpen(true);
+                                   }}>
+                                     <FileText className="h-4 w-4 text-blue-500" />
+                                     Sửa chi tiết
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3 font-bold text-destructive" onClick={() => handleDeleteQuotation(activeQuotation.id)}>
+                                     <Trash2 className="h-4 w-4" />
+                                     Xóa hồ sơ
+                                   </DropdownMenuItem>
+                                 </DropdownMenuContent>
+                               </DropdownMenu>
                            </div>
                         </div>
-                      </CardContent>
-                      <div className="p-4 pt-0 flex items-center justify-between border-t border-white/5 pt-3">
-                         <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold text-muted-foreground" onClick={(e) => {
-                           e.stopPropagation();
-                           handleDuplicate(quotation);
-                         }}>
-                           <Copy className="h-3.5 w-3.5 mr-1.5" />
-                           Sao chép
-                         </Button>
-                         <div className='flex items-center gap-2'>
-                              <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                className="h-8 px-3 gap-1.5 font-bold text-[10px] rounded-lg"
-                                onClick={() => {
-                                  setSelectedQuotation(quotation);
-                                  setIsPreviewOpen(true);
-                                }}
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Xem
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger className="h-8 w-8 rounded-lg hover:bg-secondary/50 flex items-center justify-center">
-                                    <MoreVertical className="h-4 w-4" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-white/10">
-                                  {quotation.status !== 'accepted' && (
-                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(quotation.id, 'accepted')}>
-                                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                      Chốt báo giá (Toàn bộ)
-                                    </DropdownMenuItem>
-                                  )}
-                                  {quotation.status !== 'deposit' && quotation.status !== 'accepted' && (
-                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: quotation.id, amount: '' })}>
-                                      <FileText className="h-4 w-4 text-purple-500" />
-                                      Chốt cọc (Một phần)
-                                    </DropdownMenuItem>
-                                  )}
-                                  {quotation.status !== 'rejected' && (
-                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onClick={() => handleUpdateStatus(quotation.id, 'rejected')}>
-                                      <XCircle className="h-4 w-4 text-amber-500" />
-                                      Từ chối báo giá (Hủy)
-                                    </DropdownMenuItem>
-                                  )}
-                                  {quotation.status === 'draft' && (
-                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" onClick={() => handleUpdateStatus(quotation.id, 'sent')}>
-                                      <Clock className="h-4 w-4 text-blue-500" />
-                                      Đã gửi khách hàng
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(quotation.status === 'sent' || quotation.status === 'rejected') && (
-                                    <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-gray-600" onClick={() => handleUpdateStatus(quotation.id, 'draft')}>
-                                      <Clock className="h-4 w-4 text-gray-500" />
-                                      Chuyển thành bản nháp
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator className="bg-card text-card-foreground/5 my-1" />
-                                  <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => {
-                                    setSelectedQuotation(quotation);
-                                    setIsFormOpen(true);
-                                  }}>
-                                    <FileText className="h-4 w-4 text-blue-500" />
-                                    Sửa chi tiết
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="py-2.5 rounded-lg gap-3 font-bold text-destructive" onClick={() => handleDeleteQuotation(quotation.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                    Xóa hồ sơ
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                         </div>
-                      </div>
-                    </Card>
-                  ))}
-                  {filteredQuotations.length === 0 && (
+                      </Card>
+                    );
+                  })}
+                  {groupedQuotations.length === 0 && (
                     <div className="col-span-full h-80 flex flex-col items-center justify-center gap-4 opacity-50 px-8 text-center">
                        <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center">
                           <Search className="h-10 w-10" />
@@ -811,6 +922,16 @@ export function QuotationPage({ quotations, user, customers, members, products =
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
             quotation={selectedQuotation}
+            siblingQuotations={quotations
+              .filter(q => {
+                if (selectedQuotation.phone && q.phone) {
+                  return q.phone === selectedQuotation.phone;
+                }
+                return q.customerName === selectedQuotation.customerName;
+              })
+              .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())}
+            onSwitchQuotation={(q) => setSelectedQuotation(q)}
+            onCreateNewVersion={handleCreateNewVersion}
             member={members.find(m => m.id === selectedQuotation.createdBy)}
             user={user}
             onUpdateStatus={(status) => handleUpdateStatus(selectedQuotation.id, status)}

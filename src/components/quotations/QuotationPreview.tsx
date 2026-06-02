@@ -26,18 +26,33 @@ import { jsPDF } from 'jspdf';
 import { toCanvas } from 'html-to-image';
 import { toast } from 'sonner';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
+import { cn } from '@/src/lib/utils';
 
 interface QuotationPreviewProps {
   isOpen: boolean;
   onClose: () => void;
   quotation: Quotation;
+  siblingQuotations?: Quotation[];
+  onSwitchQuotation?: (quotation: Quotation) => void;
+  onCreateNewVersion?: (quotation: Quotation) => void;
   member?: Member;
   user: any;
   onUpdateStatus?: (status: Quotation['status']) => void;
   onEdit?: () => void;
 }
 
-export function QuotationPreview({ isOpen, onClose, quotation, member, user, onUpdateStatus, onEdit }: QuotationPreviewProps) {
+export function QuotationPreview({ 
+  isOpen, 
+  onClose, 
+  quotation, 
+  siblingQuotations = [], 
+  onSwitchQuotation, 
+  onCreateNewVersion, 
+  member, 
+  user, 
+  onUpdateStatus, 
+  onEdit 
+}: QuotationPreviewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = React.useState(false);
   const [template, setTemplate] = React.useState<QuotationTemplate>(defaultTemplate);
@@ -305,16 +320,56 @@ export function QuotationPreview({ isOpen, onClose, quotation, member, user, onU
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-card text-card-foreground border border-gray-200 shadow-2xl">
         <DialogHeader className="p-3 md:p-6 border-b bg-gray-50 flex flex-row items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-50 flex items-center justify-center text-primary">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-50 flex items-center justify-center text-primary shrink-0">
               <Eye className="h-4 w-4 md:h-6 md:w-6" />
             </div>
             <div className="flex flex-col">
               <DialogTitle className="text-sm md:text-xl font-bold">Xem trước báo giá</DialogTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{quotation.quotationNumber}</span>
+              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                <span className="text-[8px] md:text-[10px] font-bold text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">{quotation.quotationNumber}</span>
                 {quotation.status === 'accepted' && (
-                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[8px] md:text-[9px] h-3 md:h-4">Đã chốt</Badge>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[8px] md:text-[9px] h-3.5 md:h-4">Đã chốt</Badge>
+                )}
+                {quotation.status === 'deposit' && (
+                  <Badge className="bg-purple-500 hover:bg-purple-600 text-[8px] md:text-[9px] h-3.5 md:h-4">Đã cọc</Badge>
+                )}
+                
+                {siblingQuotations && siblingQuotations.length > 0 && (
+                  <div className="flex items-center gap-1 ml-2 border-l pl-2 border-slate-200">
+                    <span className="text-[9px] text-slate-500 font-black uppercase mr-1">Bản:</span>
+                    {siblingQuotations.map((sibling, idx) => {
+                      const isActive = sibling.id === quotation.id;
+                      return (
+                        <button
+                          key={sibling.id}
+                          type="button"
+                          onClick={() => onSwitchQuotation && onSwitchQuotation(sibling)}
+                          className={cn(
+                            "px-2 py-0.5 text-[9.5px] font-black rounded-md cursor-pointer transition-all border",
+                            isActive 
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                          )}
+                        >
+                          Lần {idx + 1}
+                        </button>
+                      );
+                    })}
+                    {onCreateNewVersion && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onCreateNewVersion(quotation);
+                        }}
+                        className="px-2 py-0.5 text-[9.5px] font-black rounded-md cursor-pointer bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all flex items-center"
+                        title="Tạo bản báo giá mới (Lần tiếp theo) dựa trên bản này"
+                      >
+                        + Bản Mới
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
