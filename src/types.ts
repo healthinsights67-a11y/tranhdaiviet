@@ -138,9 +138,9 @@ export interface QuotationItem {
   quantity: number;
   unitPrice: number;
   total: number;
-  width?: number;
-  height?: number;
-  cornerL?: number;
+  width?: number | string;
+  height?: number | string;
+  cornerL?: number | string;
   imageUrl?: string;
 }
 

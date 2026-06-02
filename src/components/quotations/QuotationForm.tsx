@@ -71,6 +71,11 @@ const DEFAULT_ITEMS: QuotationItem[] = [
 ];
 
 export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialData, products = [] }: QuotationFormProps) {
+  const getDisplayValue = (val: any) => {
+    if (val === undefined || val === null || val === 0 || val === '0') return '';
+    return String(val).replace('.', ',');
+  };
+
   const [formData, setFormData] = React.useState<Omit<Quotation, 'id'>>({
     quotationNumber: initialData?.quotationNumber || `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
     customerName: initialData?.customerName || '',
@@ -182,11 +187,20 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
           }
         }
 
+        const parseNumber = (val: any): number => {
+          if (val === undefined || val === null || val === '') return 0;
+          if (typeof val === 'number') return val;
+          const normalized = String(val).replace(/,/g, '.');
+          const parsed = parseFloat(normalized);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
         // Tự động gán/xóa Góc L dựa trên việc nhập Cạnh 2 (height) cho đơn vị 'md'
         if (updated.unit === 'md') {
           if (updates.height !== undefined) {
-            if (updates.height > 0) {
-              if (updated.cornerL === undefined || updated.cornerL === 0) {
+            const hVal = parseNumber(updates.height);
+            if (hVal > 0) {
+              if (updated.cornerL === undefined || parseNumber(updated.cornerL) === 0) {
                 updated.cornerL = 0.3;
               }
             } else {
@@ -197,13 +211,15 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
         // Tính toán số lượng dựa trên kích thước (nếu có)
         if (updated.unit === 'm2') {
-          if (updated.width && updated.height) {
-            updated.quantity = Number((updated.width * updated.height).toFixed(2));
+          const w = parseNumber(updated.width);
+          const h = parseNumber(updated.height);
+          if (w && h) {
+            updated.quantity = Number((w * h).toFixed(2));
           }
         } else if (updated.unit === 'md') {
-          const c1 = updated.width || 0;
-          const c2 = updated.height || 0;
-          const corner = updated.cornerL !== undefined ? updated.cornerL : 0;
+          const c1 = parseNumber(updated.width);
+          const c2 = parseNumber(updated.height);
+          const corner = updated.cornerL !== undefined ? parseNumber(updated.cornerL) : 0;
           
           if (c1 > 0 || c2 > 0) {
             updated.quantity = Number((c1 + c2 - corner).toFixed(2));
@@ -516,7 +532,17 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           </div>
                           <div className="col-span-1 space-y-1">
                             <Label className="text-xs font-semibold text-slate-700">S.lượng</Label>
-                            <Input type="number" className="h-9 text-sm w-full text-center p-1" placeholder="1" value={item.quantity} onChange={(e) => updateItem(item.id, { quantity: Number(e.target.value) })} />
+                            <Input 
+                              type="text" 
+                              className="h-9 text-sm w-full text-center p-1" 
+                              placeholder="1" 
+                              value={getDisplayValue(item.quantity)} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+                                const parsed = parseFloat(val);
+                                updateItem(item.id, { quantity: isNaN(parsed) ? 0 : parsed });
+                              }} 
+                            />
                           </div>
                         </div>
                             
@@ -536,28 +562,36 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                             </Label>
                             <div className={cn("grid gap-2", item.unit === 'md' ? "grid-cols-3" : "grid-cols-2")}>
                                 <Input 
-                                    type="number"
+                                    type="text"
                                     placeholder={item.unit === 'md' ? "Cạnh 1" : "Dài"}
                                     className="h-9 bg-background font-bold text-center text-xs"
-                                    value={item.width || 0}
-                                    onChange={(e) => updateItem(item.id, { width: parseFloat(e.target.value) || 0 })}
+                                    value={getDisplayValue(item.width)}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                      updateItem(item.id, { width: val });
+                                    }}
                                 />
                                 <Input 
-                                  type="number"
+                                  type="text"
                                   placeholder={item.unit === 'md' ? "Cạnh 2" : "Rộng"}
                                   className="h-9 bg-background font-bold text-center text-xs"
                                   disabled={item.unit !== 'm2' && item.unit !== 'md'}
-                                  value={item.height || 0}
-                                  onChange={(e) => updateItem(item.id, { height: parseFloat(e.target.value) || 0 })}
+                                  value={getDisplayValue(item.height)}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                    updateItem(item.id, { height: val });
+                                  }}
                                 />
                                 {item.unit === 'md' && (
                                   <Input 
-                                    type="number"
-                                    step="0.01"
+                                    type="text"
                                     placeholder="Góc L (0.3)"
                                     className="h-9 bg-background font-bold text-center text-xs text-purple-600 border-purple-200"
-                                    value={item.cornerL !== undefined ? item.cornerL : 0}
-                                    onChange={(e) => updateItem(item.id, { cornerL: parseFloat(e.target.value) || 0 })}
+                                    value={getDisplayValue(item.cornerL)}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                      updateItem(item.id, { cornerL: val });
+                                    }}
                                   />
                                 )}
                             </div>
@@ -578,10 +612,13 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                 <Label className="text-xs font-semibold text-slate-700">Đơn giá</Label>
                                 <div className="relative">
                                   <Input 
-                                    type="number"
+                                    type="text"
                                     className="h-9 font-mono font-black text-right pr-7 text-xs bg-secondary/5"
-                                    value={item.unitPrice} 
-                                    onChange={(e) => updateItem(item.id, { unitPrice: parseInt(e.target.value) || 0 })}
+                                    value={item.unitPrice !== undefined && item.unitPrice !== 0 ? item.unitPrice : ''} 
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/[^0-9]/g, '');
+                                      updateItem(item.id, { unitPrice: val === '' ? 0 : parseInt(val) });
+                                    }}
                                   />
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-muted-foreground uppercase">đ</span>
                                 </div>
@@ -655,11 +692,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     <span className="text-muted-foreground font-medium shrink-0">Chiết khấu:</span>
                     <div className="flex items-center gap-2 flex-1 justify-end max-w-[120px]">
                       <Input 
-                        type="number" 
+                        type="text" 
                         className="h-8 text-right font-mono font-bold text-destructive bg-destructive/5 text-xs"
-                        value={formData.discount}
+                        value={formData.discount !== undefined && formData.discount !== 0 ? formData.discount : ''}
                         onChange={(e) => {
-                          const discount = parseInt(e.target.value) || 0;
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          const discount = val === '' ? 0 : parseInt(val);
                           setFormData({ ...formData, discount, totalAmount: formData.subTotal - discount });
                         }}
                       />
