@@ -876,11 +876,25 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   </div>
                   <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5">
                     <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5 opacity-50" /> {customer.phone}</span>
-                    {customer.orderValue !== undefined && customer.orderValue > 0 && (currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
-                      <span className="font-black text-primary/80">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(customer.orderValue)}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end">
+                      {customer.orderValue !== undefined && customer.orderValue > 0 && (currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                        <span className="font-black text-primary/80">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(customer.orderValue)}
+                        </span>
+                      )}
+                      {(() => {
+                        const customerQuotation = quotations.find(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
+                        const depositAmount = (customerQuotation?.status === 'deposit' || customerQuotation?.depositAmount) ? customerQuotation.depositAmount : undefined;
+                        if (depositAmount !== undefined && depositAmount > 0 && (currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false)) {
+                          return (
+                            <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
+                              Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(depositAmount)}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-2.5 md:p-5 pt-0 md:pt-0 space-y-2 md:space-y-4">
@@ -1102,6 +1116,18 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         </span>
                       )}
                       <span className="flex items-center gap-1.5 font-bold text-white"><DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {formatCurrency(selectedCustomer.orderValue)}</span>
+                      {(() => {
+                        const customerQuotation = quotations.find(q => q.customerId === selectedCustomer.id || (q.customerName === selectedCustomer.name && q.phone === selectedCustomer.phone));
+                        const depositAmount = (customerQuotation?.status === 'deposit' || customerQuotation?.depositAmount) ? customerQuotation.depositAmount : undefined;
+                        if (depositAmount !== undefined && depositAmount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 font-bold text-purple-200">
+                              <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Cọc: {formatCurrency(depositAmount)}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                   <Button 
@@ -1187,7 +1213,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         type: 'sale' as const,
                         timestamp: q.consultedAt || q.createdAt || q.date,
                         action: `Báo giá: ${q.quotationNumber}`,
-                        note: `Tổng tiền: ${q.totalAmount.toLocaleString('vi-VN')} đ`,
+                        note: `Tổng tiền: ${q.totalAmount.toLocaleString('vi-VN')} đ${q.depositAmount ? ` (Cọc: ${q.depositAmount.toLocaleString('vi-VN')} đ)` : ''}`,
                         updatedBy: q.createdBy || 'Hệ thống',
                         files2D3D: q.imageUrls,
                         quotationItems: q.items.map(item => ({
