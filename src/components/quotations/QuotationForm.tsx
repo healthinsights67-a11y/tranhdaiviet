@@ -76,6 +76,13 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     return String(val).replace('.', ',');
   };
 
+  const formatMoneyInput = (val: any) => {
+    if (val === undefined || val === null || val === 0 || val === '0' || val === '') return '';
+    const num = typeof val === 'number' ? val : parseInt(String(val).replace(/[^0-9]/g, ''));
+    if (isNaN(num)) return '';
+    return num.toLocaleString('vi-VN');
+  };
+
   const [formData, setFormData] = React.useState<Omit<Quotation, 'id'>>({
     quotationNumber: initialData?.quotationNumber || `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
     customerName: initialData?.customerName || '',
@@ -217,7 +224,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
             const hVal = parseNumber(updates.height);
             if (hVal > 0) {
               if (updated.cornerL === undefined || parseNumber(updated.cornerL) === 0) {
-                updated.cornerL = 0.3;
+                updated.cornerL = 0;
               }
             } else {
               updated.cornerL = 0;
@@ -601,7 +608,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                 {item.unit === 'md' && (
                                   <Input 
                                     type="text"
-                                    placeholder="Góc L (0.3)"
+                                    placeholder="Góc L (0)"
                                     className="h-9 bg-background font-bold text-center text-xs text-purple-600 border-purple-200"
                                     value={getDisplayValue(item.cornerL)}
                                     onChange={(e) => {
@@ -630,7 +637,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                   <Input 
                                     type="text"
                                     className="h-9 font-mono font-black text-right pr-7 text-xs bg-secondary/5"
-                                    value={item.unitPrice !== undefined && item.unitPrice !== 0 ? item.unitPrice : ''} 
+                                    value={formatMoneyInput(item.unitPrice)} 
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/[^0-9]/g, '');
                                       updateItem(item.id, { unitPrice: val === '' ? 0 : parseInt(val) });
@@ -710,7 +717,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                       <Input 
                         type="text" 
                         className="h-8 text-right font-mono font-bold text-destructive bg-destructive/5 text-xs"
-                        value={formData.discount !== undefined && formData.discount !== 0 ? formData.discount : ''}
+                        value={formatMoneyInput(formData.discount)}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
                           const discount = val === '' ? 0 : parseInt(val);
