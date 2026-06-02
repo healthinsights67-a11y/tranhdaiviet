@@ -30,7 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const LESSONS = [
   {
     id: 1,
-    title: "1. Tổng quan Ngành vật liệu & Xu hướng Nhựa rỗng",
+    title: "1. Giới thiệu Ngành vật liệu & Xu hướng Nhựa rỗng",
     icon: Layers,
     content: `Trong ngành thiết kế và thi công nội thất hiện đại, việc lựa chọn chất liệu đóng vai trò quyết định đến độ bền, thẩm mỹ và chi phí của công trình. Dưới đây là bức tranh toàn cảnh về các nhóm vật liệu phổ biến:
 
@@ -40,7 +40,7 @@ const LESSONS = [
 
 **2. Gỗ công nghiệp (MDF, HDF, Plywood):**
 - *Đặc điểm:* Khắc phục phần nào tình trạng co ngót của gỗ tự nhiên, bề mặt phẳng mịn phủ Melamine, Acrylic hiện đại.
-- *Hạn chế:* Gặp nước lâu ngày dễ bị hút ẩm gây trương nở, nứt cạnh hoặc ẩm mốc. Đặc biệt, quá trình sản xuất gỗ công nghiệp sử dụng lượng lớn keo hóa chất chứa **Formaldehyde** - một chất khí độc hại có thể gây kích ứng đường hô hấp và ảnh hưởng xấu đến sức khỏe nếu nồng độ cao trong phòng kín.
+- *Hạn chế:* Gặp nước lâu ngày dễ bị hút ẩm gây trương nở, nứt cạnh hoặc ẩm mốc. Quá trình sản xuất gỗ công nghiệp sử dụng lượng lớn keo hóa chất chứa **Formaldehyde** - một chất khí độc hại có thể gây kích ứng đường hô hấp và ảnh hưởng xấu đến sức khỏe nếu nồng độ cao trong phòng kín.
 - *Đơn vị dẫn đầu:* Hãng cung cấp gỗ công nghiệp hàng đầu Việt Nam hiện nay là **An Cường** (thành lập từ năm 1994, với hơn 30 năm hình thành và phát triển vững chắc).
 
 **3. Nhựa rỗng cao cấp (Ecoplast):**
@@ -49,75 +49,132 @@ const LESSONS = [
   },
   {
     id: 2,
-    title: "2. Cấu tạo tấm nhựa Ecoplast & Quy cách độ dày chuẩn",
+    title: "2. Cấu tạo Chi tiết Tấm nhựa Ecoplast",
     icon: Info,
-    content: `Tấm nội thất Ecoplast được sản xuất trên dây chuyền công nghệ đùn ép tiên tiến, tạo ra sản phẩm nhựa rỗng với hệ xương chịu lực dày bên trong:
+    content: `Tấm nội thất Ecoplast được sản xuất trên dây chuyền công nghệ đùn ép tiên tiến, tạo ra cấu trúc nhựa rỗng với hệ xương chịu lực dày bên trong:
 
-**Thành phần hóa lý:**
-- **Bột nhựa PVC nguyên sinh (Polyvinyl Chloride):** Chất nền tạo liên kết dẻo dai, chống va đập.
-- **Bột đá siêu mịn (CaCO3):** Tăng cường độ cứng bề mặt, chịu lực nén tốt và giảm thiểu sự co ngót nhiệt.
-- **Chất phụ gia chuyên dụng:** Chất ổn định nhiệt chống lão hóa, phụ gia chống tia UV giúp giữ màu màng film, và chất chống cháy lan.
+**Thành phần cấu tạo chính:**
+- **Bột nhựa PVC nguyên sinh (Polyvinyl Chloride):** Chiếm tỷ lệ lớn, đóng vai trò liên kết nền, tạo độ dẻo dai và tính đàn hồi tốt trước va đập.
+- **Bột đá siêu mịn (CaCO3):** Tăng độ cứng bề mặt, tăng khả năng chịu nén và giảm co ngót nhiệt.
+- **Chất phụ gia chuyên dụng:** Chất ổn định nhiệt chống lão hóa, phụ gia chống tia UV giúp bảo vệ bề mặt màng film, và chất chống cháy lan.
 
-**Quy cách phân bổ độ dày theo công năng tủ:**
-- **Cánh tủ & Mặt hộc kéo (15mm):** Được khuyên dùng làm cánh tủ áo, mặt hộc ngăn kéo, phào tủ để đảm bảo cánh tủ nhẹ nhàng, giảm tải trọng uốn cho bản lề, tránh xệ cánh theo thời gian.
-- **Khung thùng & Vách chịu lực (20mm):** Sử dụng làm khung xương, vách ngăn đứng, đợt tủ ngang chịu tải, thùng tủ bếp, vách tủ quần áo. Độ dày 20mm mang lại độ cứng vững, kết cấu chịu tải tuyệt vời cho toàn bộ sản phẩm.
-- **Mặt giường & Mặt bàn chịu lực (25mm - 30mm):** Dùng cho giường ngủ, mặt bàn làm việc hoặc các tấm vách lớn chịu lực uốn nén trực tiếp từ trọng lượng cơ thể.`
+**Quy cách độ dày chuẩn theo công năng:**
+- **Độ dày 15mm (Cánh tủ & Ngăn kéo):** Dùng làm cánh tủ quần áo, mặt hộc ngăn kéo, phào tủ. Giúp cánh tủ nhẹ nhàng, giảm tải trọng uốn cho bản lề, tránh xệ cánh theo thời gian.
+- **Độ dày 20mm (Khung thùng & Vách chịu lực):** Sử dụng làm khung xương, vách đứng, đợt tủ ngang chịu tải, thùng tủ bếp. Mang lại kết cấu cứng vững cao cho toàn bộ sản phẩm.
+- **Độ dày 25mm - 30mm (Mặt giường & Mặt bàn):** Dùng cho giường ngủ, mặt bàn học, bàn làm việc chịu tải trọng động và tĩnh rất lớn.`
   },
   {
     id: 3,
-    title: "3. Hệ thống phụ kiện & Kỹ thuật liên kết CNC/Mộng",
-    icon: ShieldCheck,
-    content: `Khác với gia công thô sơ bắt ke góc kim loại lộ ra ngoài gây mất thẩm mỹ, kỹ thuật sản xuất nhựa Ecoplast tại I-Nội-Thất áp dụng các quy chuẩn kỹ thuật chuyên nghiệp:
+    title: "3. Hệ thống Phụ kiện Chuyên dụng đi kèm",
+    icon: BookMarked,
+    content: `Để hoàn thiện sản phẩm nhựa Ecoplast cao cấp, hệ thống phụ kiện chuyên dụng đi kèm đóng vai trò cực kỳ quan trọng:
 
-**Hệ thống phụ kiện chuyên dụng:**
-- **Thanh tăng cường bằng nhựa (Composite/Nhựa đặc):** Đây là thanh tăng cứng dạng hộp bằng nhựa đặc/composite thiết kế vừa khít để nhét vào các khoang rỗng bên trong tấm nhựa Ecoplast tại vị trí bắt vít bản lề hoặc khu vực chịu lực uốn chính. Thanh tăng cường bằng nhựa giúp vít bám chặt, thay thế hoàn toàn chốt gỗ truyền thống để đồng nhất vật liệu, không bị ẩm mốc hay co nở theo thời gian.
-- **Nẹp viền chỉ PVC:** Che phủ các đầu cắt xương rỗng của tấm nhựa, bảo vệ lõi rỗng và tạo thẩm mỹ tuyệt đối.
-- **Bản lề giảm chấn & Vít ren sâu:** Bản lề inox 304 chống rỉ kết hợp với vít ren xoắn sâu bám cực chắc vào phần xương nhựa và thanh tăng cường nhựa.
+**1. Thanh tăng cường bằng nhựa (Composite/Nhựa đặc):**
+- Đây là thanh tăng cứng dạng hộp bằng nhựa đặc/composite thiết kế vừa khít để nhét vào các khoang rỗng bên trong tấm nhựa Ecoplast tại vị trí bắt vít bản lề hoặc khu vực chịu lực uốn chính.
+- Thanh tăng cường bằng nhựa giúp vít bám chặt, thay thế hoàn toàn chốt gỗ truyền thống để đồng nhất vật liệu nhựa, không lo bị ẩm mốc, mối mọt hay co nở theo thời gian.
 
-**Kỹ thuật gia công tiên tiến:**
-- **CNC tự động:** Bản vẽ được thiết kế trên máy tính và tấm nhựa được cắt tỉ mỉ bằng máy CNC tự động tại xưởng. Đường cắt sắc nét, không bị xơ tua, định vị chuẩn xác 100% các lỗ mộng và vị trí phụ kiện.
-- **Liên kết Mộng nhựa che vít:** Sử dụng kỹ thuật phay mộng liên kết âm dương thông minh để giấu các đầu vít vào bên trong kết cấu. Tủ khi hoàn thiện phẳng phiu, sang trọng và có độ vuông vắn tuyệt đối.`
+**2. Nẹp chỉ viền PVC:**
+- Được dán bo kín các đầu cắt hở của xương nhựa bằng keo chuyên dụng, giúp che lõi rỗng và tăng độ thẩm mỹ.
+
+**3. Bản lề giảm chấn & Vít ren sâu:**
+- Bản lề inox 304 kháng rỉ kết hợp vít xoắn ren sâu bám chặt vào lớp nhựa dày và thanh tăng cứng, chống lỏng lẻo bản lề.`
   },
   {
     id: 4,
-    title: "4. Tính an toàn, Giá thành & Thời gian thi công",
-    icon: Droplet,
-    content: `Khi tư vấn khách hàng, Sales cần nêu bật các giá trị thực tế sau về an toàn sức khỏe, tài chính và tiến độ thi công:
+    title: "4. Cách thức Liên kết (Mộng & CNC)",
+    icon: ShieldCheck,
+    content: `Quy trình chế tác nhựa Ecoplast tại I-Nội-Thất áp dụng các công nghệ cơ khí chính xác:
 
-**1. Tính an toàn tuyệt đối:**
-- Sản phẩm đạt tiêu chuẩn **Lead-free** (hoàn toàn không chứa kim loại nặng như chì), và **Formaldehyde-free** (không phát thải khí hóa chất gây hại hô hấp).
-- Phù hợp với mọi gia đình, đặc biệt là các gia đình có trẻ sơ sinh, phụ nữ mang thai hoặc người cao tuổi.
+**1. Công nghệ cắt CNC tự động:**
+- Bản vẽ tủ được thiết kế lập trình sẵn trên máy tính và tấm nhựa được cắt tự động bằng máy CNC chuyên dụng tại xưởng.
+- Đường cắt cực kỳ sắc nét, phẳng mịn, không bị xơ tua, định vị chuẩn xác 100% các vị trí mộng liên kết và lỗ bắt vít bản lề.
 
-**2. So sánh giá thành:**
-- *So với nhựa Đài Loan giá rẻ:* Nhựa Ecoplast có giá cao hơn do độ dày xương chịu lực gấp 2 - 3 lần và phủ film thẩm mỹ cao, nhưng tuổi thọ bền bỉ hơn gấp nhiều lần.
-- *So với gỗ công nghiệp MDF An Cường:* Giá thành thi công trọn gói của nhựa Ecoplast tiết kiệm hơn từ **15% - 30%** do bỏ qua được công đoạn dán cạnh acrylic/melamine phức tạp và gia công nhanh hơn.
-- *So với gỗ tự nhiên:* Chỉ bằng **1/3 đến 1/2** chi phí của gỗ tự nhiên nhóm tốt, trong khi khả năng chống nước và chống mối mọt vượt trội hơn hẳn.
-
-**3. Thời gian thi công tối ưu:**
-- Nhờ công nghệ cắt CNC lập trình sẵn tại xưởng và liên kết mộng nhựa lắp ráp nhanh, thời gian thi công tại công trình được rút ngắn **30% - 50%** so với gỗ công nghiệp truyền thống.
-- Trung bình chỉ mất **2 - 3 ngày** là có thể hoàn thiện bàn giao trọn bộ tủ bếp hoặc hệ tủ phòng ngủ.`
+**2. Liên kết mộng nhựa liên kết âm/dương:**
+- Thay vì bắt ke góc sắt thô sơ và mất thẩm mỹ, các tấm nhựa được phay mộng rãnh âm dương ăn khớp hoàn hảo với nhau.
+- Các đầu vít liên kết được che giấu khéo léo vào bên trong thùng tủ, giúp kết cấu tủ vững chãi, vuông vắn tuyệt đối và sang trọng.`
   },
   {
     id: 5,
-    title: "5. Màu sắc, Độ bền & Cẩm nang chốt Sales đỉnh cao",
-    icon: BookMarked,
-    content: `Màu sắc đa dạng và độ bền vượt trội là thế mạnh giúp chốt sales dễ dàng:
+    title: "5. Tính An toàn Sức khỏe của Vật liệu",
+    icon: Droplet,
+    content: `Nhựa Ecoplast là vật liệu an toàn tuyệt đối với sức khỏe con người và thân thiện với môi trường nhờ các kiểm định nghiêm ngặt:
 
-**Bảng màu sắc phong phú (Hơn 20 mã màu):**
-- Gồm các vân gỗ ấm áp, sang trọng: Vân gỗ Sồi sáng (Oak), Vân gỗ óc chó đậm châu Âu (Walnut), Vân gỗ đỏ truyền thống.
-- Các màu đơn sắc hiện đại: Trắng bóng ngọc trai (A8), Xám ghi thời thượng, Kem sữa thanh lịch.
-- Các mã màu phổ biến: A8 (Trắng ngọc trai), A9 (Vân sồi sáng), A10 (Sồi nâu ấm), A11 (Óc chó đậm), A12 (Gỗ đỏ hoàng gia).
-- Bề mặt phủ film cao cấp chống bay màu dưới ánh sáng tự nhiên và chống trầy xước nhẹ.
+**1. Tiêu chuẩn Lead-free (Không chì):**
+- Trong quá trình đúc ép, Ecoplast hoàn toàn không sử dụng các chất ổn định chứa chì, loại bỏ nguy cơ nhiễm độc kim loại nặng.
 
-**Độ bền kết cấu:**
-- Tuổi thọ vật liệu cam kết **trên 20 - 30 năm**.
-- Chịu lực nén cực kỳ tốt, xe tải có thể cán qua phôi tấm mà không bị vỡ nát nhờ tính đàn hồi dẻo của nhựa nguyên sinh kết hợp xương chịu lực dày dọc tấm.
+**2. Tiêu chuẩn Formaldehyde-free (Không hóa chất độc hại):**
+- Hoàn toàn không chứa formaldehyde như gỗ công nghiệp truyền thống (loại gỗ dùng nhiều keo hóa chất dán bột gỗ). Do đó, sản phẩm không có mùi hắc khó chịu khi lắp phòng kín.
 
-**Cẩm nang chốt Sales và Xử lý phản đối:**
-- *Khách lo lắng: "Nhựa rỗng dễ ọp ẹp và lỏng lẻo vít?"*
-  -> Sales tư vấn: "Dạ chị, nhựa Ecoplast có độ dày xương gấp 3 lần nhựa thường. Hơn nữa, tại I-Nội-Thất, ở mọi điểm liên kết bản lề chịu tải, chúng em đều lắp thêm thanh tăng cường bằng nhựa đặc chuyên dụng để vít xoắn bám chặt vào nhựa đặc chứ không bắt vào khoảng rỗng, bản lề chắc chắn gấp đôi gỗ công nghiệp và không bao giờ xệ cánh."
-- *Khách lo lắng: "Bị võng khi để đồ nặng ở ngăn tủ dài?"*
-  -> Sales tư vấn: "Các đợt ngăn tủ dài trên 70-80cm đều được chúng em thiết kế chèn thanh tăng cứng bằng nhựa chịu lực chạy dọc bên dưới và vách đỡ ngăn tủ dọc để phân phối lực đều, cam kết không bị võng hay xệ tấm."`
+**3. Đối tượng sử dụng:**
+- Cực kỳ an toàn cho trẻ sơ sinh, trẻ nhỏ, phụ nữ mang thai và người cao tuổi. Vật liệu có khả năng tái chế 100%, góp phần bảo vệ tài nguyên rừng.`
+  },
+  {
+    id: 6,
+    title: "6. So sánh Giá thành của Nhựa Ecoplast",
+    icon: TrendingUp,
+    content: `Giá thành của nhựa Ecoplast tối ưu và hiệu quả về mặt kinh tế lâu dài:
+
+**1. So với nhựa Đài Loan giá rẻ:**
+- Nhựa Ecoplast có giá thành cao hơn nhựa Đài Loan thông thường, nhưng chất lượng vượt trội hoàn toàn nhờ độ dày xương chịu tải gấp 2 - 3 lần và bề mặt film sắc nét, độ bền gấp 5 - 10 lần.
+
+**2. So với gỗ công nghiệp MDF An Cường chống ẩm:**
+- Giá thành thi công trọn gói của nhựa Ecoplast tiết kiệm hơn từ **15% - 30%** do cấu tạo phôi tấm nhẹ hơn, thời gian thi công nhanh hơn và bỏ qua công đoạn dán cạnh melamine/acrylic đắt đỏ.
+
+**3. So với gỗ tự nhiên:**
+- Chỉ bằng **1/3 đến 1/2** chi phí của gỗ tự nhiên chất lượng tốt, trong khi độ bền kháng ẩm, kháng mối mọt và tính thẩm mỹ hiện đại vượt trội hơn hẳn.`
+  },
+  {
+    id: 7,
+    title: "7. Thời gian Sản xuất & Thi công Lắp đặt",
+    icon: Clock,
+    content: `Ưu thế lớn của tấm nội thất nhựa Ecoplast là tốc độ sản xuất và thi công cực kỳ nhanh chóng:
+
+**1. Rút ngắn thời gian gia công:**
+- Nhờ công nghệ cắt CNC lập trình sẵn tại xưởng và liên kết mộng nhựa lắp ráp nhanh, thời gian thi công tại công trình được rút ngắn **30% - 50%** so với gỗ công nghiệp truyền thống.
+
+**2. Tiến độ thực tế:**
+- Một căn phòng ngủ gồm hệ tủ quần áo, giường ngủ và bàn trang điểm nhựa Ecoplast có thể thi công trọn gói tại xưởng chỉ trong **1 ngày** và lắp đặt hoàn thiện tại công trình trong vòng **4 - 6 giờ**.
+- Trung bình chỉ mất **2 - 3 ngày** để hoàn thiện trọn bộ tủ bếp cho khách hàng.`
+  },
+  {
+    id: 8,
+    title: "8. Màu sắc, Mã màu & Số lượng Màu sắc",
+    icon: BookOpen,
+    content: `Nhựa Ecoplast mang lại sự đa dạng về mặt thẩm mỹ với hơn 20 mã màu sắc phong phú, phù hợp mọi phong cách nội thất từ cổ điển đến hiện đại:
+
+**Các tông màu thịnh hành nhất:**
+- **Màu đơn sắc hiện đại:** Trắng bóng ngọc trai (**A8**), Xám ghi thời thượng, Kem sữa thanh lịch.
+- **Tông vân gỗ ấm áp:** Vân gỗ Sồi sáng (**A9**), Vân sồi nâu ấm (**A10**), Óc chó đậm châu Âu (**A11**), Gỗ đỏ truyền thống (**A12**).
+
+**Đặc tính lớp film phủ:**
+- Bề mặt phủ film PVC chất lượng cao chịu được ánh nắng trực tiếp, chống bay màu, kháng ẩm bám và chống trầy xước nhẹ. Bề mặt nhẵn bóng giúp việc lau chùi bụi bẩn vô cùng dễ dàng chỉ bằng khăn ẩm.`
+  },
+  {
+    id: 9,
+    title: "9. Độ bền của Nhựa Ecoplast",
+    icon: Flame,
+    content: `Nhựa Ecoplast được đánh giá là một trong những vật liệu nội thất có độ bền kết cấu tốt nhất hiện nay:
+
+**1. Tuổi thọ sử dụng:**
+- Độ bền vật liệu cam kết trên **20 - 30 năm** trong điều kiện sử dụng thông thường.
+
+**2. Khả năng chịu lực nén cực kỳ cao:**
+- Nhờ cấu trúc xương chịu lực dọc dày dặn kết hợp với độ đàn hồi cao của nhựa PVC nguyên sinh, tấm nhựa Ecoplast chịu tải trọng uốn nén rất tốt (xe tải cán qua phôi tấm mà không bị nứt vỡ).
+
+**3. Kháng nước tuyệt đối 100% & Kháng mối mọt hoàn toàn:**
+- Không lo bị ngập nước gây phồng rộp, nấm mốc hay xệ mục. Mối mọt hoàn toàn không ăn mòn được vật liệu polyme.`
+  },
+  {
+    id: 10,
+    title: "10. Cẩm nang chốt Sales & Kỹ năng xử lý từ chối",
+    icon: Award,
+    content: `Dành cho Sales khi làm việc trực tiếp với khách hàng để xóa tan nghi ngại về nhựa rỗng:
+
+**1. Khách bảo: "Tủ nhựa rỗng ọp ẹp lắm, dùng một thời gian sẽ bung bản lề"**
+- *Tư vấn:* "Dạ chị, nhựa rỗng Ecoplast có độ dày xương gấp 3 lần nhựa Đài Loan thông thường. Đặc biệt, tại I-Nội-Thất, ở mọi điểm liên kết bản lề chịu tải, chúng em đều lắp thêm thanh tăng cường bằng nhựa đặc chuyên dụng để vít xoắn bám chặt vào nhựa đặc chứ không bắt vào khoảng rỗng. Bản lề sẽ vô cùng chắc chắn và không bao giờ lo bị xệ cánh."
+
+**2. Khách bảo: "Mặt đợt ngang dài thế kia để đồ nặng sẽ bị võng"**
+- *Tư vấn:* "Đối với các đợt ngăn tủ dài trên 70-80cm, chúng em đều thiết kế chèn thanh tăng cứng bằng nhựa composite chịu lực chạy dọc bên dưới và vách đỡ ngăn tủ dọc để phân phối lực đều, cam kết không bị võng nứt."`
   }
 ];
 
