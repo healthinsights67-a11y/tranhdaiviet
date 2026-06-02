@@ -34,6 +34,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { db, doc, getDoc } from '@/src/lib/firebase';
 import { toast } from 'sonner';
@@ -89,11 +96,22 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
   const [formPrice, setFormPrice] = React.useState(0);
   const [formUnit, setFormUnit] = React.useState('');
   const [formDescription, setFormDescription] = React.useState('');
+  const [formCategory, setFormCategory] = React.useState('');
 
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  const categories = ['all', ...Array.from(new Set(productList.map(p => p.category)))];
+  const availableCategories = React.useMemo(() => {
+    const list = new Set(["Phòng khách", "Phòng ngủ", "Phòng bếp", "Phòng thờ", "Khác"]);
+    productList.forEach(p => {
+      if (p.category) {
+        list.add(p.category.trim());
+      }
+    });
+    return Array.from(list).filter(Boolean);
+  }, [productList]);
+
+  const categories = ['all', ...availableCategories];
 
   const filteredProducts = productList.filter(p => {
     const matchesSearch = p.productName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -135,7 +153,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       unit: formUnit,
       description: formDescription,
       imageUrl: previewUrl || '',
-      category: editingProduct.category,
+      category: formCategory,
       userId: user?.uid || 'anonymous'
     };
 
@@ -154,6 +172,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
     setFormPrice(product.unitPrice || 0);
     setFormUnit(product.unit || '');
     setFormDescription(product.description || '');
+    setFormCategory(product.category || 'Phòng khách');
   };
 
   const handleAddNew = () => {
@@ -403,7 +422,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-price" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Giá niêm yết (VNĐ)</Label>
                     <div className="relative group">
@@ -412,7 +431,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                         type="number" 
                         value={formPrice}
                         onChange={(e) => setFormPrice(Number(e.target.value))}
-                        className="h-14 rounded-2xl bg-emerald-50/30 border-emerald-100/50 focus:bg-card text-card-foreground focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-mono font-black text-emerald-600 text-lg px-5 pr-12" 
+                        className="h-14 w-full rounded-2xl bg-emerald-50/30 border-emerald-100/50 focus:bg-card text-card-foreground focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all font-mono font-black text-emerald-600 text-lg px-5 pr-12" 
                       />
                       <Tag className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-300" />
                     </div>
@@ -423,8 +442,21 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                       id="edit-unit" 
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
-                      className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-slate-800 text-center px-5 uppercase" 
+                      className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-slate-800 text-center px-5 uppercase" 
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-category" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Danh mục</Label>
+                    <Select value={formCategory} onValueChange={setFormCategory}>
+                      <SelectTrigger id="edit-category" className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold px-5">
+                        <SelectValue placeholder="Chọn danh mục" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                        {availableCategories.map(cat => (
+                          <SelectItem key={cat} value={cat} className="rounded-lg font-medium">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
