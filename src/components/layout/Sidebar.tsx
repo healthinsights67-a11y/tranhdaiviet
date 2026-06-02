@@ -23,7 +23,8 @@ import {
   ShieldAlert,
   ChevronDown,
   Trash2,
-  Folder
+  Folder,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ const navGroups = [
       { id: 'design', label: 'Thiết kế', icon: Briefcase, permission: 'menuDesign' },
       { id: 'marketing', label: 'Marketing', icon: Megaphone, permission: 'menuMarketing' },
       { id: 'ai-render', label: 'Thiết kế AI', icon: Sparkles, permission: 'menuAi' },
+      { id: 'ecoplast-learning', label: 'Học tập Ecoplast', icon: BookOpen, permission: 'menuSale' },
     ]
   },
   {
