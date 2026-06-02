@@ -422,7 +422,21 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Danh mục</Label>
+                  <Select value={formCategory} onValueChange={setFormCategory}>
+                    <SelectTrigger id="edit-category" className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold px-5">
+                      <SelectValue placeholder="Chọn danh mục" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                      {availableCategories.map(cat => (
+                        <SelectItem key={cat} value={cat} className="rounded-lg font-medium">{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-price" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Giá niêm yết (VNĐ)</Label>
                     <div className="relative group">
@@ -444,19 +458,6 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                       onChange={(e) => setFormUnit(e.target.value)}
                       className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-slate-800 text-center px-5 uppercase" 
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-category" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Danh mục</Label>
-                    <Select value={formCategory} onValueChange={setFormCategory}>
-                      <SelectTrigger id="edit-category" className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold px-5">
-                        <SelectValue placeholder="Chọn danh mục" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                        {availableCategories.map(cat => (
-                          <SelectItem key={cat} value={cat} className="rounded-lg font-medium">{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
 
