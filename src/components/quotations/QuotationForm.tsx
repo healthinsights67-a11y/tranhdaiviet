@@ -268,12 +268,25 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const handleCustomerSelect = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);
     if (customer) {
+      let newQuotationNumber = formData.quotationNumber;
+      if (customer.code) {
+        const baseCode = customer.code.split('-')[0].trim();
+        let finalCode = baseCode;
+        if (baseCode.startsWith('K') && !baseCode.startsWith('KH')) {
+          finalCode = baseCode.replace(/^K/, 'KH');
+        } else if (!baseCode.startsWith('KH')) {
+          finalCode = `KH${baseCode}`;
+        }
+        newQuotationNumber = `BG-${finalCode}`;
+      }
+
       setFormData({
         ...formData,
         customerId: customer.id,
         customerName: customer.name,
         phone: customer.phone,
         address: customer.address,
+        quotationNumber: newQuotationNumber,
         constructionType: customer.workshop ? `Thi công ${customer.workshop}` : formData.constructionType
       });
     }

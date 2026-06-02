@@ -165,7 +165,23 @@ export function QuotationPage({ quotations, user, customers, members, products =
 
   const handleCreateNewVersion = (quotation: Quotation) => {
     const nowStr = new Date().toISOString();
-    const cleanNumber = `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    const customer = customers.find(c => c.id === quotation.customerId);
+    const customerCode = customer?.code;
+    
+    let cleanNumber = '';
+    if (customerCode) {
+      const baseCode = customerCode.split('-')[0].trim();
+      let finalCode = baseCode;
+      if (baseCode.startsWith('K') && !baseCode.startsWith('KH')) {
+        finalCode = baseCode.replace(/^K/, 'KH');
+      } else if (!baseCode.startsWith('KH')) {
+        finalCode = `KH${baseCode}`;
+      }
+      cleanNumber = `BG-${finalCode}`;
+    } else {
+      cleanNumber = `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    }
+
     const newVersionData: Quotation = {
       ...quotation,
       id: Math.random().toString(36).substr(2, 9),
