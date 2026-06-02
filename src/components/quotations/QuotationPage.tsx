@@ -401,6 +401,21 @@ export function QuotationPage({ quotations, user, customers, members, products =
     }
   };
 
+  const getCardStyle = (status: Quotation['status']) => {
+    switch (status) {
+      case 'accepted':
+        return 'border-l-4 border-l-emerald-500 bg-white hover:border-emerald-300 shadow-sm hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 border border-slate-100';
+      case 'deposit':
+        return 'border-l-4 border-l-purple-500 bg-white hover:border-purple-300 shadow-sm hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300 border border-slate-100';
+      case 'sent':
+        return 'border-l-4 border-l-blue-500 bg-white hover:border-blue-300 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 border border-slate-100';
+      case 'rejected':
+        return 'border-l-4 border-l-red-500 bg-white hover:border-red-300 shadow-sm hover:shadow-xl hover:shadow-red-500/5 transition-all duration-300 border border-slate-100';
+      default: // draft
+        return 'border-l-4 border-l-slate-400 bg-white hover:border-slate-300 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100';
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -617,32 +632,45 @@ export function QuotationPage({ quotations, user, customers, members, products =
               
               <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredQuotations.map((quotation) => (
-                    <Card key={quotation.id} className="rounded-2xl border-none shadow-sm hover:shadow-md transition-all">
+                    <Card key={quotation.id} className={cn("rounded-2xl transition-all cursor-pointer", getCardStyle(quotation.status))}>
                       <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
                          <span className="font-mono font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md text-[10px]">{quotation.quotationNumber}</span>
                          {getStatusBadge(quotation.status)}
                       </CardHeader>
                       <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between gap-4">
-                           <div className="min-w-0 flex-1">
-                             <h4 className="font-bold text-base truncate">{quotation.customerName}</h4>
-                             <div className="flex items-center gap-3 text-muted-foreground mt-1 text-[10px]">
-                               <span className="flex items-center gap-1 font-medium shrink-0">
-                                  <Phone className="h-3 w-3" /> {quotation.phone}
-                               </span>
-                               <span className="font-medium truncate">
-                                  {format(new Date(quotation.createdAt), 'dd/MM/yy')}
-                               </span>
+                        <div className="flex items-start justify-between gap-3">
+                           <div className="flex items-center gap-3 min-w-0 flex-1">
+                             <div className={cn(
+                               "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm border border-slate-100",
+                               quotation.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/30' :
+                               quotation.status === 'deposit' ? 'bg-purple-50 text-purple-600 border border-purple-100/30' :
+                               quotation.status === 'sent' ? 'bg-blue-50 text-blue-600 border border-blue-100/30' :
+                               quotation.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100/30' :
+                               'bg-slate-50 text-slate-600 border border-slate-200/30'
+                             )}>
+                               {quotation.customerName ? quotation.customerName.charAt(0).toUpperCase() : 'K'}
+                             </div>
+                             <div className="min-w-0 flex-1">
+                               <h4 className="font-bold text-base text-slate-850 truncate">{quotation.customerName || 'Khách hàng'}</h4>
+                               <div className="flex items-center gap-2 text-muted-foreground mt-1 text-[10px]">
+                                 <span className="flex items-center gap-0.5 font-medium shrink-0">
+                                    <Phone className="h-3 w-3" /> {quotation.phone}
+                                 </span>
+                                 <span>•</span>
+                                 <span className="font-medium truncate">
+                                    {format(new Date(quotation.createdAt), 'dd/MM/yy')}
+                                 </span>
+                               </div>
                              </div>
                            </div>
                            
-                           <div className="text-right">
+                           <div className="text-right shrink-0">
                              <p className="text-[10px] text-muted-foreground font-medium mb-0.5">Tổng cộng</p>
-                             <p className="font-black text-lg tabular-nums text-foreground">
+                             <p className="font-black text-base md:text-lg tabular-nums text-slate-800">
                                {(quotation.totalAmount / 1000000).toFixed(1)}M
                              </p>
                              {quotation.status === 'deposit' && quotation.depositAmount && (
-                               <p className="text-[10px] text-purple-600 font-bold mt-0.5">
+                               <p className="text-[9px] text-purple-600 font-bold mt-0.5">
                                  Cọc: {(quotation.depositAmount / 1000000).toFixed(1)}M
                                </p>
                              )}
