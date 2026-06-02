@@ -39,6 +39,7 @@ interface QuotationPreviewProps {
   user: any;
   onUpdateStatus?: (status: Quotation['status']) => void;
   onEdit?: () => void;
+  onDeleteQuotation?: (id: string) => Promise<void>;
 }
 
 export function QuotationPreview({ 
@@ -51,7 +52,8 @@ export function QuotationPreview({
   member, 
   user, 
   onUpdateStatus, 
-  onEdit 
+  onEdit,
+  onDeleteQuotation
 }: QuotationPreviewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = React.useState(false);
@@ -336,24 +338,43 @@ export function QuotationPreview({
                 )}
                 
                 {siblingQuotations && siblingQuotations.length > 0 && (
-                  <div className="flex items-center gap-1 ml-2 border-l pl-2 border-slate-200">
+                  <div className="flex items-center gap-1.5 ml-2 border-l pl-2 border-slate-200">
                     <span className="text-[9px] text-slate-500 font-black uppercase mr-1">Bản:</span>
                     {siblingQuotations.map((sibling, idx) => {
                       const isActive = sibling.id === quotation.id;
                       return (
-                        <button
-                          key={sibling.id}
-                          type="button"
-                          onClick={() => onSwitchQuotation && onSwitchQuotation(sibling)}
-                          className={cn(
-                            "px-2 py-0.5 text-[9.5px] font-black rounded-md cursor-pointer transition-all border",
-                            isActive 
-                              ? "bg-primary text-primary-foreground border-primary shadow-sm" 
-                              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        <div key={sibling.id} className="inline-flex items-stretch rounded-md overflow-hidden border border-slate-200 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => onSwitchQuotation && onSwitchQuotation(sibling)}
+                            className={cn(
+                              "px-2 py-0.5 text-[9.5px] font-black cursor-pointer transition-all border-none rounded-none flex items-center",
+                              isActive 
+                                ? "bg-primary text-primary-foreground" 
+                                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                            )}
+                          >
+                            Lần {idx + 1}
+                          </button>
+                          {onDeleteQuotation && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteQuotation(sibling.id);
+                              }}
+                              className={cn(
+                                "px-1.5 py-0.5 text-[9.5px] font-bold cursor-pointer transition-all border-none rounded-none border-l flex items-center justify-center",
+                                isActive 
+                                  ? "bg-primary text-primary-foreground/80 hover:bg-red-600 hover:text-white border-primary-foreground/20" 
+                                  : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-red-50 hover:text-red-600"
+                              )}
+                              title={`Xóa Lần ${idx + 1}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
                           )}
-                        >
-                          Lần {idx + 1}
-                        </button>
+                        </div>
                       );
                     })}
                     {onCreateNewVersion && (

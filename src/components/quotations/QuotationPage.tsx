@@ -19,6 +19,7 @@ import {
   Phone,
   Package,
   XCircle,
+  X,
   Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -275,6 +276,25 @@ export function QuotationPage({ quotations, user, customers, members, products =
       }
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
       toast.success("Đã xóa báo giá");
+
+      // Auto switch or close preview if the deleted quotation is currently selected
+      if (selectedQuotation && selectedQuotation.id === id) {
+        const siblings = quotations.filter(q => {
+          if (selectedQuotation.phone && q.phone) {
+            return q.phone === selectedQuotation.phone;
+          }
+          return q.customerName === selectedQuotation.customerName;
+        });
+        const remaining = siblings.filter(q => q.id !== id);
+        if (remaining.length > 0) {
+          // Switch to the latest remaining version
+          const sorted = [...remaining].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          setSelectedQuotation(sorted[sorted.length - 1]);
+        } else {
+          setIsPreviewOpen(false);
+          setSelectedQuotation(null);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `quotations/${id}`);
     }
@@ -395,7 +415,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
           
           // Only show the assignment dialog if we are moving to deposit, 
           // or moving to accepted from a state other than deposit
-          if (status === 'deposit' || (status === 'accepted' && prevStatus !== 'deposit')) {
+          if ((status === 'deposit' && prevStatus !== 'deposit') || (status === 'accepted' && prevStatus !== 'deposit')) {
             setPendingDesignTask({
               quotationId: id,
               customerId: prevData.customerId || '',
@@ -421,7 +441,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
       }
 
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Đã chốt' : status === 'deposit' ? 'Đã cọc' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
+      if (status === 'deposit' && prevStatus === 'deposit') {
+        toast.success("Đã cập nhật số tiền cọc");
+      } else {
+        toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Đã chốt' : status === 'deposit' ? 'Đã cọc' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
+      }
       
       // Update selected quotation if it's currently being previewed
       if (selectedQuotation && selectedQuotation.id === id) {
@@ -754,27 +778,47 @@ export function QuotationPage({ quotations, user, customers, members, products =
 
                           {/* Version switcher */}
                           {group.quotations.length > 1 && (
-                            <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-slate-100/60 mt-1">
+                            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100/60 mt-1">
                               <span className="text-[9px] text-muted-foreground font-bold mr-1 uppercase">Bản:</span>
                               {group.quotations.map((q, idx) => {
                                 const isActive = q.id === activeQuotation.id;
                                 return (
-                                  <button
-                                    key={q.id}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveQuotationIds(prev => ({ ...prev, [group.phone]: q.id }));
-                                    }}
-                                    className={cn(
-                                      "px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer transition-all border",
-                                      isActive 
-                                        ? "bg-primary text-primary-foreground border-primary shadow-sm" 
-                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                                    )}
+                                  <div 
+                                    key={q.id} 
+                                    className="inline-flex items-stretch rounded-md overflow-hidden border border-slate-200 shadow-sm"
                                   >
-                                    Lần {idx + 1}
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveQuotationIds(prev => ({ ...prev, [group.phone]: q.id }));
+                                      }}
+                                      className={cn(
+                                        "px-2 py-0.5 text-[9px] font-black cursor-pointer transition-all border-none rounded-none flex items-center",
+                                        isActive 
+                                          ? "bg-primary text-primary-foreground" 
+                                          : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                      )}
+                                    >
+                                      Lần {idx + 1}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteQuotation(q.id);
+                                      }}
+                                      className={cn(
+                                        "px-1.5 py-0.5 text-[9px] font-bold cursor-pointer transition-all border-none rounded-none border-l flex items-center justify-center",
+                                        isActive 
+                                          ? "bg-primary text-primary-foreground/80 hover:bg-red-600 hover:text-white border-primary-foreground/20" 
+                                          : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-red-50 hover:text-red-600"
+                                      )}
+                                      title={`Xóa Lần ${idx + 1}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -839,6 +883,12 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                      <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: '' })}>
                                        <FileText className="h-4 w-4 text-purple-500" />
                                        Chốt cọc (Một phần)
+                                     </DropdownMenuItem>
+                                   )}
+                                   {activeQuotation.status === 'deposit' && (
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: String(activeQuotation.depositAmount || '') })}>
+                                        <FileText className="h-4 w-4 text-purple-500" />
+                                        Sửa tiền cọc
                                      </DropdownMenuItem>
                                    )}
                                    {activeQuotation.status !== 'rejected' && (
@@ -955,6 +1005,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
               setIsPreviewOpen(false);
               setIsFormOpen(true);
             }}
+            onDeleteQuotation={handleDeleteQuotation}
           />
         )}
       </AnimatePresence>
@@ -993,9 +1044,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
       <Dialog open={depositDialog.isOpen} onOpenChange={(open) => !open && setDepositDialog({isOpen: false, quotationId: '', amount: ''})}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Nhập số tiền cọc</DialogTitle>
+            <DialogTitle>{depositDialog.quotationId && quotations.find(q => q.id === depositDialog.quotationId)?.status === 'deposit' ? "Sửa số tiền cọc" : "Nhập số tiền cọc"}</DialogTitle>
             <DialogDescription>
-              Báo giá sẽ được chuyển sang trạng thái "Đã cọc" và nhiệm vụ thiết kế sẽ được khởi tạo.
+              {depositDialog.quotationId && quotations.find(q => q.id === depositDialog.quotationId)?.status === 'deposit' 
+                ? "Nhập số tiền cọc mới cho báo giá này." 
+                : "Báo giá sẽ được chuyển sang trạng thái \"Đã cọc\" và nhiệm vụ thiết kế sẽ được khởi tạo."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1019,7 +1072,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
               } else {
                 toast.error("Vui lòng nhập số tiền cọc");
               }
-            }}>Chốt cọc</Button>
+            }}>{depositDialog.quotationId && quotations.find(q => q.id === depositDialog.quotationId)?.status === 'deposit' ? "Cập nhật" : "Chốt cọc"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
