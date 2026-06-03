@@ -1266,6 +1266,22 @@ export function EcoplastLearningPage() {
 
   const [activeTab, setActiveTab] = React.useState<string>('theory');
   const [expandedLesson, setExpandedLesson] = React.useState<number | null>(1);
+
+  // Smooth scroll to expanded lesson card
+  React.useEffect(() => {
+    if (expandedLesson !== null) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`lesson-card-${expandedLesson}`);
+        if (element) {
+          const yOffset = -80; // offset to account for sticky headers
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [expandedLesson]);
+
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingLesson, setEditingLesson] = React.useState<LessonType | null>(null);
@@ -1671,7 +1687,7 @@ export function EcoplastLearningPage() {
                   const Icon = ICON_MAP[lesson.iconName] || BookOpen;
                   const isExpanded = expandedLesson === lesson.id;
                   return (
-                    <Card key={lesson.id} className="border border-border/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <Card key={lesson.id} id={`lesson-card-${lesson.id}`} className="border border-border/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       <div className="w-full p-4 flex items-center justify-between bg-gray-50/50 hover:bg-gray-50 dark:hover:bg-zinc-800/40 text-left transition-colors border-b border-border/30">
                         <button
                           onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}
