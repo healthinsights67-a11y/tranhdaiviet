@@ -1144,62 +1144,75 @@ export function EcoplastLearningPage() {
 
       {/* Admin Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="sm:max-w-[800px] bg-white dark:bg-zinc-950 border-border/60 shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+          <DialogHeader className="px-6 py-5 border-b border-border/40 bg-muted/20">
+            <DialogTitle className="text-xl font-black text-blue-700 dark:text-blue-400">
               {editingLesson ? "Chỉnh sửa bài học" : "Thêm bài học mới"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-6 p-6 overflow-y-auto flex-1">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-xs font-bold">Tiêu đề bài học</Label>
+              <Label htmlFor="title" className="text-sm font-bold text-foreground">Tiêu đề bài học</Label>
               <Input 
                 id="title" 
                 placeholder="Ví dụ: 1. Giới thiệu Ecoplast" 
                 value={titleField} 
-                onChange={(e) => setTitleField(e.target.value)} 
+                onChange={(e) => setTitleField(e.target.value)}
+                className="h-11 font-semibold text-base"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="order" className="text-xs font-bold">Thứ tự hiển thị (Order)</Label>
+                <Label htmlFor="order" className="text-sm font-bold text-foreground">Thứ tự hiển thị (Order)</Label>
                 <Input 
                   id="order" 
                   type="number" 
                   value={orderField} 
                   onChange={(e) => setOrderField(Number(e.target.value))} 
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="iconName" className="text-xs font-bold">Chọn Icon đại diện</Label>
+                <Label htmlFor="iconName" className="text-sm font-bold text-foreground">Chọn Icon đại diện</Label>
                 <Select value={iconNameField} onValueChange={setIconNameField}>
-                  <SelectTrigger id="iconName">
+                  <SelectTrigger id="iconName" className="h-11 font-semibold">
                     <SelectValue placeholder="Chọn icon" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.keys(ICON_MAP).map((name) => (
-                      <SelectItem key={name} value={name}>{name}</SelectItem>
-                    ))}
+                    {Object.keys(ICON_MAP).map((name) => {
+                      const IconComponent = ICON_MAP[name];
+                      return (
+                        <SelectItem key={name} value={name}>
+                          <div className="flex items-center gap-2">
+                            <IconComponent className="h-4 w-4 text-muted-foreground" />
+                            <span>{name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="content" className="text-xs font-bold">Nội dung bài học (Markdown/Text)</Label>
+            <div className="space-y-2 flex-1 flex flex-col">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="content" className="text-sm font-bold text-foreground">Nội dung bài học (Markdown/Text)</Label>
+                <Badge variant="outline" className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground bg-muted/30">Hỗ trợ Markdown</Badge>
+              </div>
               <Textarea 
                 id="content" 
                 placeholder="Nhập nội dung chi tiết bài học..." 
-                className="min-h-[200px] text-sm"
+                className="min-h-[350px] font-mono text-[13px] leading-relaxed resize-y border-border/60 focus:border-blue-500/50 p-4 rounded-xl"
                 value={contentField} 
                 onChange={(e) => setContentField(e.target.value)} 
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <DialogFooter className="px-6 py-4 border-t border-border/40 bg-muted/20">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="font-bold">
               Hủy
             </Button>
-            <Button onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700">
+            <Button onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700 font-bold px-8 shadow-sm">
               Lưu lại
             </Button>
           </DialogFooter>
