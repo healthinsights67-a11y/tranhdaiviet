@@ -47,6 +47,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { where } from 'firebase/firestore';
+import { uploadToImgBB } from '@/src/services/uploadService';
 
 // Theory content structure
 const lessonSchema = z.object({
@@ -876,7 +877,7 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
           </div>
           <p className="text-xs text-muted-foreground leading-normal">
             {isCompleted 
-              ? "Tuyệt vời! Bạn đã hoàn thành 2 phút đọc tài liệu. Hệ thống đã lưu trữ tiến độ học của bạn."
+              ? `Tuyệt vời! Bạn đã hoàn thành ${REQUIRED_STUDY_TIME % 60 === 0 ? `${REQUIRED_STUDY_TIME / 60} phút` : `${Math.floor(REQUIRED_STUDY_TIME / 60)} phút ${REQUIRED_STUDY_TIME % 60} giây`} đọc tài liệu. Hệ thống đã lưu trữ tiến độ học của bạn.`
               : isAutoClickerDetected 
               ? "Phát hiện sự kiện mô phỏng từ phần mềm hoặc tool tự động (untrusted event). Trình ghi nhận thời gian đã bị khóa."
               : !isTabVisible 
@@ -885,14 +886,14 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
               ? "⚠️ Tạm dừng đếm giờ do mất tiêu điểm màn hình. Hãy nhấp chuột vào nội dung bài học."
               : isIdle 
               ? "⚠️ Bạn đang treo máy? Tạm dừng tính giờ do không tương tác (quá 20s). Hãy cuộn hoặc di chuyển chuột."
-              : "Vui lòng giữ tiêu điểm và đọc kỹ tài liệu. Thời gian yêu cầu tối thiểu: 2 phút."}
+              : `Vui lòng giữ tiêu điểm và đọc kỹ tài liệu. Thời gian yêu cầu tối thiểu: ${REQUIRED_STUDY_TIME % 60 === 0 ? `${REQUIRED_STUDY_TIME / 60} phút` : `${Math.floor(REQUIRED_STUDY_TIME / 60)} phút ${REQUIRED_STUDY_TIME % 60} giây`}.`}
           </p>
         </div>
         
         <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
           <div className="text-right">
             <div className="text-sm font-black font-mono">
-              {Math.floor(seconds / 60)}m {seconds % 60}s / 2m 00s
+              {Math.floor(seconds / 60)}m {(seconds % 60).toString().padStart(2, '0')}s / {Math.floor(REQUIRED_STUDY_TIME / 60)}m {(REQUIRED_STUDY_TIME % 60).toString().padStart(2, '0')}s
             </div>
             <div className="text-[10px] text-muted-foreground font-bold uppercase mt-0.5">
               Tiến độ: {progressPercent}%
@@ -1438,11 +1439,13 @@ export function EcoplastLearningPage() {
 
     setIsUploadingImage(true);
     try {
-      const storageRef = ref(storage, `ecoplast_lessons/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
-      setImageUrlField(url);
-      toast.success("Tải ảnh lên thành công!");
+      const url = await uploadToImgBB(file);
+      if (url) {
+        setImageUrlField(url);
+        toast.success("Tải ảnh lên thành công!");
+      } else {
+        toast.error("Không thể tải ảnh lên ImgBB");
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(`Lỗi khi tải ảnh lên: ${err.message}`);
