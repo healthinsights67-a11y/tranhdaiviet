@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType, collection, query, where, getDocs, addDoc } from '@/src/lib/firebase';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { z } from 'zod';
 import { MeasurementScheduleSchema } from '@/src/schemas';
@@ -36,6 +36,59 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
   const filteredSchedules = isManager 
     ? schedules 
     : schedules.filter(s => s.assigneeId === currentUser?.id);
+
+  const syncMeasurementToDesignTask = async (schedule: MeasurementSchedule, customImageUrls?: string[]) => {
+    if (!schedule.customerId) return;
+    
+    try {
+      const q = query(collection(db, 'tasks'), where('customerId', '==', schedule.customerId), where('type', '==', 'design'));
+      const querySnapshot = await getDocs(q);
+      
+      const urlsToSync = customImageUrls || schedule.imageUrls || [];
+      
+      if (!querySnapshot.empty) {
+        for (const taskDoc of querySnapshot.docs) {
+          const taskData = taskDoc.data();
+          const updateData: any = {
+            imageUrls: urlsToSync
+          };
+          
+          if (schedule.designAssigneeId && taskData.assigneeId !== schedule.designAssigneeId) {
+            updateData.assigneeId = schedule.designAssigneeId;
+          }
+          
+          await updateDoc(doc(db, 'tasks', taskDoc.id), updateData);
+        }
+      } else if (schedule.designAssigneeId) {
+        let workshop = '';
+        const customerRef = doc(db, 'customers', schedule.customerId);
+        const customerSnap = await getDoc(customerRef);
+        if (customerSnap.exists()) {
+          workshop = (customerSnap.data() as Customer).workshop || '';
+        }
+
+        await addDoc(collection(db, 'tasks'), {
+          title: `Thiết kế: ${schedule.customerName}`,
+          description: schedule.notes || `Tiếp nhận thông tin đo đạc của khách hàng ${schedule.customerName}`,
+          status: 'todo',
+          type: 'design',
+          priority: 'medium',
+          assigneeId: schedule.designAssigneeId,
+          customerId: schedule.customerId,
+          workshop: workshop,
+          createdAt: new Date().toISOString(),
+          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          files2D3D: [],
+          imageUrls: urlsToSync,
+          checklists: [],
+          materialList: [],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (error) {
+      console.error("Error syncing to design task:", error);
+    }
+  };
 
   const saleMembers = members.filter(m => m.role.toLowerCase().includes('sale'));
   const designMembers = members.filter(m => m.role.toLowerCase().includes('design') || m.role.toLowerCase().includes('thiết kế'));
@@ -282,15 +335,25 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
 
     try {
       let successCount = 0;
+      const uploadedUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const newUrl = await uploadToImgBB(file);
         if (newUrl) {
-          await updateDoc(doc(db, 'measurement_schedules', schedule.id), {
-            imageUrls: arrayUnion(newUrl)
-          });
+          uploadedUrls.push(newUrl);
           successCount++;
         }
+      }
+
+      if (uploadedUrls.length > 0) {
+        const docRef = doc(db, 'measurement_schedules', schedule.id);
+        await updateDoc(docRef, {
+          imageUrls: arrayUnion(...uploadedUrls)
+        });
+
+        const freshSnap = await getDoc(docRef);
+        const freshSchedule = freshSnap.exists() ? { ...schedule, ...freshSnap.data() } as MeasurementSchedule : schedule;
+        await syncMeasurementToDesignTask(freshSchedule);
       }
 
       queryClient.invalidateQueries({ queryKey: [ 'measurement_schedules' ] });
@@ -908,9 +971,17 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                                           <button 
                                             onClick={async () => {
                                               if (!window.confirm('Xóa ảnh này?')) return;
-                                              await updateDoc(doc(db, 'measurement_schedules', schedule.id), {
+                                              const docRef = doc(db, 'measurement_schedules', schedule.id);
+                                              await updateDoc(docRef, {
                                                 imageUrls: arrayRemove(url)
                                               });
+
+                                              const freshSnap = await getDoc(docRef);
+                                              if (freshSnap.exists()) {
+                                                const freshSchedule = { ...schedule, ...freshSnap.data() } as MeasurementSchedule;
+                                                await syncMeasurementToDesignTask(freshSchedule);
+                                              }
+
                                               queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
                                               toast.success('Đã xóa ảnh');
                                             }}
@@ -932,10 +1003,12 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                                   <Select 
                                     value={schedule.designAssigneeId || ""} 
                                     onValueChange={async (v) => {
-                                      await setDoc(doc(db, 'measurement_schedules', schedule.id), {
+                                      const updatedSchedule = {
                                         ...schedule,
                                         designAssigneeId: v
-                                      });
+                                      };
+                                      await setDoc(doc(db, 'measurement_schedules', schedule.id), updatedSchedule);
+                                      await syncMeasurementToDesignTask(updatedSchedule);
                                       toast.success('Đã chọn người thiết kế');
                                     }}
                                     disabled={schedule.isPushedToDesign}
