@@ -37,7 +37,10 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
 
   const filteredSchedules = isManager 
     ? schedules 
-    : schedules.filter(s => s.assigneeId === currentUser?.id);
+    : schedules.filter(s => 
+        s.assigneeId === currentUser?.id || 
+        (s.assigneeIds && currentUser?.id && s.assigneeIds.includes(currentUser.id))
+      );
 
   const installerMembers = members.filter(m => 
     m.role.toLowerCase().includes('thi công') || 
