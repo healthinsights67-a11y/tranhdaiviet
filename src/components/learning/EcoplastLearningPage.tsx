@@ -28,6 +28,8 @@ import {
   Upload,
   X,
   User,
+  Users,
+  ShieldAlert,
   MessageSquare,
   Check,
   Sparkles
@@ -44,6 +46,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { where } from 'firebase/firestore';
 
 // Theory content structure
 // Zod schema for validation
@@ -57,6 +60,19 @@ const lessonSchema = z.object({
 });
 
 type LessonType = z.infer<typeof lessonSchema>;
+
+const userProgressSchema = z.object({
+  userId: z.string(),
+  userEmail: z.string(),
+  userName: z.string(),
+  lessonId: z.number().int().positive(),
+  lessonTitle: z.string(),
+  studyTime: z.number().nonnegative(),
+  isCompleted: z.boolean(),
+  updatedAt: z.string()
+});
+
+type UserProgressType = z.infer<typeof userProgressSchema>;
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Layers,
@@ -650,6 +666,274 @@ const SWATCH_COLORS = [
   { code: 'E6', name: 'Hồng đất ấm pastel', type: 'Eco+ (Eco Plus)', style: 'bg-[#e0b0ff] text-zinc-800' }
 ];
 
+interface LessonStudyTrackerProps {
+  lessonId: number;
+  lessonTitle: string;
+  onProgressUpdated: () => void;
+}
+
+function LessonStudyTracker({ lessonId, lessonTitle, onProgressUpdated }: LessonStudyTrackerProps) {
+  const { user, userProfile } = useAuth();
+  const REQUIRED_STUDY_TIME = 120; // 120 seconds = 2 minutes
+  
+  const [seconds, setSeconds] = React.useState(0);
+  const [isTabVisible, setIsTabVisible] = React.useState(true);
+  const [isWindowFocused, setIsWindowFocused] = React.useState(true);
+  const [isIdle, setIsIdle] = React.useState(false);
+  const [isAutoClickerDetected, setIsAutoClickerDetected] = React.useState(false);
+  const [lastInteraction, setLastInteraction] = React.useState(Date.now());
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  // Load initial progress
+  React.useEffect(() => {
+    let initialSeconds = 0;
+    
+    // Always check localStorage first
+    const stored = localStorage.getItem(`ecoplast_study_progress_${lessonId}`);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        initialSeconds = parsed.studyTime || 0;
+      } catch (e) {}
+    }
+    setSeconds(initialSeconds);
+
+    if (user) {
+      // Fetch from Firestore in background
+      const getProgress = async () => {
+        try {
+          const q = query(
+            collection(db, 'ecoplast_user_progress'), 
+            where('userId', '==', user.uid), 
+            where('lessonId', '==', lessonId)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const data = snap.docs[0].data();
+            const dbSeconds = data.studyTime || 0;
+            if (dbSeconds > initialSeconds) {
+              setSeconds(dbSeconds);
+            }
+          }
+        } catch (e) {
+          console.warn("Firestore progress load failed, using local storage: ", e);
+        }
+      };
+      getProgress();
+    }
+  }, [lessonId, user]);
+
+  // Anti-cheat Event Handlers
+  React.useEffect(() => {
+    const handleActivity = (e: Event) => {
+      // Check if event is trusted
+      if (e.isTrusted === false) {
+        setIsAutoClickerDetected(true);
+        return;
+      }
+      setLastInteraction(Date.now());
+      setIsIdle(false);
+    };
+
+    const handleVisibility = () => {
+      setIsTabVisible(document.visibilityState === 'visible');
+    };
+
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  const saveProgress = async (timeToSave: number) => {
+    setIsSaving(true);
+    try {
+      const isCompleted = timeToSave >= REQUIRED_STUDY_TIME;
+      const progressData = {
+        userId: user ? user.uid : 'mock_user',
+        userEmail: user ? (user.email || "") : 'guest@example.com',
+        userName: userProfile?.name || user?.email || "Khách hàng thử nghiệm",
+        lessonId,
+        lessonTitle,
+        studyTime: timeToSave,
+        isCompleted,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Zod validation
+      userProgressSchema.parse(progressData);
+
+      // Always cache to localStorage
+      localStorage.setItem(`ecoplast_study_progress_${lessonId}`, JSON.stringify(progressData));
+
+      if (user) {
+        try {
+          await setDoc(doc(db, 'ecoplast_user_progress', `${user.uid}_${lessonId}`), progressData);
+        } catch (dbError) {
+          console.warn("Firestore save failed, progress was successfully saved locally:", dbError);
+        }
+      }
+      onProgressUpdated();
+    } catch (e) {
+      console.error("Error saving progress:", e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Timer Tick and Inactivity Check
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      
+      // Idle check: 20 seconds of no interactions
+      if (now - lastInteraction > 20000) {
+        setIsIdle(true);
+      } else {
+        setIsIdle(false);
+      }
+
+      // Check current visibility and focus states
+      const tabVisible = document.visibilityState === 'visible';
+      const windowFocused = document.hasFocus();
+      setIsTabVisible(tabVisible);
+      setIsWindowFocused(windowFocused);
+
+      // Accumulate time if active
+      if (tabVisible && windowFocused && !(now - lastInteraction > 20000) && !isAutoClickerDetected && seconds < REQUIRED_STUDY_TIME) {
+        setSeconds(prev => {
+          const next = prev + 1;
+          // Auto save every 10 seconds or when completed
+          if (next % 10 === 0 || next >= REQUIRED_STUDY_TIME) {
+            saveProgress(next);
+          }
+          return next;
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [seconds, lastInteraction, isAutoClickerDetected, lessonId, user, userProfile]);
+
+  const isCompleted = seconds >= REQUIRED_STUDY_TIME;
+  const progressPercent = Math.min(100, Math.round((seconds / REQUIRED_STUDY_TIME) * 100));
+
+  // Determine active/warning states
+  const isActive = isTabVisible && isWindowFocused && !isIdle && !isAutoClickerDetected && !isCompleted;
+
+  return (
+    <div className={cn(
+      "p-4 rounded-2xl border transition-all duration-300 shadow-xs mb-6",
+      isCompleted 
+        ? "bg-emerald-50/30 border-emerald-200 dark:bg-emerald-950/10 dark:border-emerald-900/30 text-emerald-900 dark:text-emerald-200"
+        : isAutoClickerDetected
+        ? "bg-rose-50 border-rose-200 text-rose-900 animate-pulse dark:bg-rose-950/20 dark:border-rose-900/30"
+        : !isActive
+        ? "bg-amber-50/50 border-amber-200 text-amber-900 dark:bg-amber-950/15 dark:border-amber-900/30 dark:text-amber-200"
+        : "bg-blue-50/30 border-blue-200 text-blue-900 dark:bg-blue-950/10 dark:border-blue-900/30 dark:text-blue-200"
+    )}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5 flex-1">
+          <div className="flex items-center gap-2">
+            {isCompleted ? (
+              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : isAutoClickerDetected ? (
+              <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 animate-bounce" />
+            ) : !isActive ? (
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            ) : (
+              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
+            )}
+            <span className="font-extrabold text-sm tracking-tight">
+              {isCompleted 
+                ? "Đã đạt đủ thời gian học tối thiểu!" 
+                : isAutoClickerDetected 
+                ? "Cảnh báo phát hiện gian lận tự động!" 
+                : !isActive 
+                ? "Đã tạm dừng đếm giờ học" 
+                : "Hệ thống đang tích lũy thời gian học..."}
+            </span>
+            {isSaving && <span className="text-[10px] text-muted-foreground animate-pulse font-medium">(Đang lưu...)</span>}
+          </div>
+          <p className="text-xs text-muted-foreground leading-normal">
+            {isCompleted 
+              ? "Tuyệt vời! Bạn đã hoàn thành 2 phút đọc tài liệu. Hệ thống đã lưu trữ tiến độ học của bạn."
+              : isAutoClickerDetected 
+              ? "Phát hiện sự kiện mô phỏng từ phần mềm hoặc tool tự động (untrusted event). Trình ghi nhận thời gian đã bị khóa."
+              : !isTabVisible 
+              ? "⚠️ Tạm dừng đếm giờ do bạn đã chuyển sang tab khác. Hãy quay lại trang để tiếp tục."
+              : !isWindowFocused 
+              ? "⚠️ Tạm dừng đếm giờ do mất tiêu điểm màn hình. Hãy nhấp chuột vào nội dung bài học."
+              : isIdle 
+              ? "⚠️ Bạn đang treo máy? Tạm dừng tính giờ do không tương tác (quá 20s). Hãy cuộn hoặc di chuyển chuột."
+              : "Vui lòng giữ tiêu điểm và đọc kỹ tài liệu. Thời gian yêu cầu tối thiểu: 2 phút."}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
+          <div className="text-right">
+            <div className="text-sm font-black font-mono">
+              {Math.floor(seconds / 60)}m {seconds % 60}s / 2m 00s
+            </div>
+            <div className="text-[10px] text-muted-foreground font-bold uppercase mt-0.5">
+              Tiến độ: {progressPercent}%
+            </div>
+          </div>
+          
+          <div className="w-14 h-14 relative flex items-center justify-center shrink-0">
+            {/* Circular Progress Ring */}
+            <svg className="w-full h-full transform -rotate-90">
+              <circle 
+                cx="28" cy="28" r="24" 
+                className="stroke-muted fill-none" 
+                strokeWidth="3.5" 
+              />
+              <circle 
+                cx="28" cy="28" r="24" 
+                className={cn(
+                  "fill-none transition-all duration-300",
+                  isCompleted 
+                    ? "stroke-emerald-500" 
+                    : isAutoClickerDetected
+                    ? "stroke-rose-500"
+                    : !isActive
+                    ? "stroke-amber-500"
+                    : "stroke-blue-600"
+                )}
+                strokeWidth="3.5" 
+                strokeDasharray={2 * Math.PI * 24}
+                strokeDashoffset={2 * Math.PI * 24 * (1 - progressPercent / 100)}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute text-[11px] font-black font-mono">
+              {progressPercent}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface BeautifulLessonRendererProps {
   content: string;
   lessonId: number;
@@ -894,8 +1178,92 @@ function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererP
 
 export function EcoplastLearningPage() {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { user, userProfile, isAdmin } = useAuth();
+  const isManager = isAdmin || (userProfile?.role?.toLowerCase().includes('quản lý') || userProfile?.role?.toLowerCase().includes('manager'));
   
+  // Load progress list for current user
+  const { data: userProgressList = [], refetch: refetchUserProgress } = useQuery<UserProgressType[]>({
+    queryKey: ['ecoplast_user_progress', user?.uid],
+    queryFn: async () => {
+      if (!user) {
+        // Load mock progress from localStorage
+        const list: UserProgressType[] = [];
+        for (let i = 1; i <= 20; i++) {
+          const stored = localStorage.getItem(`ecoplast_study_progress_${i}`);
+          if (stored) {
+            try {
+              list.push(JSON.parse(stored));
+            } catch (e) {}
+          }
+        }
+        return list;
+      }
+      const q = query(
+        collection(db, 'ecoplast_user_progress'),
+        where('userId', '==', user.uid)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => doc.data() as UserProgressType);
+    }
+  });
+
+  // Load all progress reports (Admins and Managers only)
+  const { data: allProgressList = [], isLoading: isLoadingAllProgress, refetch: refetchAllProgress } = useQuery<UserProgressType[]>({
+    queryKey: ['all_ecoplast_progress'],
+    queryFn: async () => {
+      const q = collection(db, 'ecoplast_user_progress');
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => {
+        try {
+          return userProgressSchema.parse(doc.data());
+        } catch (e) {
+          console.error("Invalid progress doc:", doc.id, e);
+          return null;
+        }
+      }).filter(Boolean) as UserProgressType[];
+    },
+    enabled: !!(isAdmin || isManager)
+  });
+
+  const progressMap = React.useMemo(() => new Map(userProgressList.map(p => [p.lessonId, p])), [userProgressList]);
+
+  const salesProgressReport = React.useMemo(() => {
+    const userGroups: Record<string, {
+      userId: string;
+      userName: string;
+      userEmail: string;
+      lessons: Record<number, { studyTime: number; isCompleted: boolean; updatedAt: string }>;
+      totalStudyTime: number;
+      completedCount: number;
+    }> = {};
+
+    allProgressList.forEach(item => {
+      if (!userGroups[item.userId]) {
+        userGroups[item.userId] = {
+          userId: item.userId,
+          userName: item.userName || item.userEmail || "Nhân viên",
+          userEmail: item.userEmail || "",
+          lessons: {},
+          totalStudyTime: 0,
+          completedCount: 0
+        };
+      }
+      
+      userGroups[item.userId].lessons[item.lessonId] = {
+        studyTime: item.studyTime,
+        isCompleted: item.isCompleted,
+        updatedAt: item.updatedAt
+      };
+      
+      userGroups[item.userId].totalStudyTime += item.studyTime;
+      if (item.isCompleted) {
+        userGroups[item.userId].completedCount += 1;
+      }
+    });
+
+    return Object.values(userGroups);
+  }, [allProgressList]);
+
   const [activeTab, setActiveTab] = React.useState<string>('theory');
   const [expandedLesson, setExpandedLesson] = React.useState<number | null>(1);
   const [isEditMode, setIsEditMode] = React.useState(false);
@@ -1200,7 +1568,10 @@ export function EcoplastLearningPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 rounded-xl h-12 p-1.5 bg-gray-100 dark:bg-zinc-800 border border-border/50">
+        <TabsList className={cn(
+          "grid w-full rounded-xl h-12 p-1.5 bg-gray-100 dark:bg-zinc-800 border border-border/50",
+          isAdmin || isManager ? "grid-cols-3" : "grid-cols-2"
+        )}>
           <TabsTrigger value="theory" className="rounded-lg font-bold text-sm flex items-center gap-2">
             <BookOpen className="h-4.5 w-4.5" />
             Lý thuyết Sản phẩm
@@ -1209,6 +1580,12 @@ export function EcoplastLearningPage() {
             <HelpCircle className="h-4.5 w-4.5" />
             Thi Luyện tập (Đề 30 câu)
           </TabsTrigger>
+          {(isAdmin || isManager) && (
+            <TabsTrigger value="sales-progress" className="rounded-lg font-bold text-sm flex items-center gap-2">
+              <Users className="h-4.5 w-4.5" />
+              Tiến độ Nhân viên
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab 1: Theory */}
@@ -1303,28 +1680,55 @@ export function EcoplastLearningPage() {
                           <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
                             <Icon className="h-5 w-5" />
                           </div>
-                          <span className="font-bold text-base text-foreground leading-none">{lesson.title}</span>
+                          <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                            <span className="font-bold text-base text-foreground leading-none">{lesson.title}</span>
+                            {(() => {
+                              const prog = progressMap.get(lesson.id);
+                              if (prog?.isCompleted) {
+                                return (
+                                  <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-none font-bold text-[10px] py-0.5 px-2">
+                                    Đã hoàn thành học (2m)
+                                  </Badge>
+                                );
+                              } else if (prog && prog.studyTime > 0) {
+                                const pct = Math.min(99, Math.round((prog.studyTime / 120) * 100));
+                                return (
+                                  <Badge className="bg-blue-500/15 text-blue-600 hover:bg-blue-500/20 border-none font-bold text-[10px] py-0.5 px-2">
+                                    Đang học ({pct}%)
+                                  </Badge>
+                                );
+                              } else {
+                                return (
+                                  <Badge variant="outline" className="text-muted-foreground font-bold text-[10px] py-0.5 px-2">
+                                    Chưa học
+                                  </Badge>
+                                );
+                              }
+                            })()}
+                          </div>
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2" onClick={(e) => e.stopPropagation()}>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30" 
-                                onClick={() => handleOpenEditDialog(lesson)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-950/30" 
-                                onClick={() => handleDelete(lesson.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            {isAdmin && (
+                              <div className="flex items-center gap-1.5 mr-2" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30" 
+                                  onClick={() => handleOpenEditDialog(lesson)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-950/30" 
+                                  onClick={() => handleDelete(lesson.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           <button onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}>
                             <ChevronRight className={cn(
                               "h-5 w-5 text-muted-foreground/50 transition-transform duration-200",
@@ -1351,6 +1755,11 @@ export function EcoplastLearningPage() {
                                   />
                                 </div>
                               )}
+                              <LessonStudyTracker 
+                                lessonId={lesson.id} 
+                                lessonTitle={lesson.title} 
+                                onProgressUpdated={() => refetchUserProgress()} 
+                              />
                               <BeautifulLessonRenderer content={lesson.content} lessonId={lesson.id} />
                             </CardContent>
                           </motion.div>
@@ -1362,14 +1771,16 @@ export function EcoplastLearningPage() {
               )}
               
               {/* Add New Section Button */}
-              <Button 
-                variant="outline"
-                className="w-full py-6 border-dashed border-2 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 flex flex-col gap-2 h-auto"
-                onClick={handleOpenAddDialog}
-              >
-                <Plus className="h-6 w-6" />
-                <span className="font-bold">Thêm phần thông tin mới</span>
-              </Button>
+              {isAdmin && (
+                <Button 
+                  variant="outline"
+                  className="w-full py-6 border-dashed border-2 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 flex flex-col gap-2 h-auto"
+                  onClick={handleOpenAddDialog}
+                >
+                  <Plus className="h-6 w-6" />
+                  <span className="font-bold">Thêm phần thông tin mới</span>
+                </Button>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -1647,6 +2058,126 @@ export function EcoplastLearningPage() {
             </div>
           )}
         </TabsContent>
+        {(isAdmin || isManager) && (
+          <TabsContent value="sales-progress" className="outline-none space-y-6">
+            <Card className="border border-border/80 shadow-md bg-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-extrabold flex items-center gap-2 text-primary">
+                    <Users className="h-5.5 w-5.5" />
+                    Báo cáo Tiến độ Học tập của Đội ngũ Sales
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Theo dõi chi tiết thời lượng tích lũy thực tế và phòng chống gian lận cho từng nhân viên.
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => refetchAllProgress()}
+                  className="font-bold text-xs flex items-center gap-1.5"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Làm mới
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoadingAllProgress ? (
+                  <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    <p className="text-xs text-muted-foreground font-bold">Đang tải dữ liệu tiến độ...</p>
+                  </div>
+                ) : salesProgressReport.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm font-bold text-muted-foreground">Chưa ghi nhận tiến độ học tập nào từ nhân viên sales.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-border/40 bg-muted/30 text-xs font-black uppercase text-muted-foreground">
+                          <th className="p-4 pl-6">Nhân viên</th>
+                          <th className="p-4">Số bài hoàn thành</th>
+                          <th className="p-4">Tổng thời gian học</th>
+                          <th className="p-4 pr-6">Chi tiết tiến trình</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 text-sm">
+                        {salesProgressReport.map((grp) => {
+                          const lessonsCompleted = grp.completedCount;
+                          const totalLessons = lessons.length || 11;
+                          const totalPct = Math.min(100, Math.round((lessonsCompleted / totalLessons) * 100));
+                          
+                          return (
+                            <tr key={grp.userId} className="hover:bg-muted/10 transition-colors group">
+                              <td className="p-4 pl-6">
+                                <div className="font-extrabold text-foreground flex items-center gap-2">
+                                  <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                    {grp.userName.substring(0, 2)}
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span>{grp.userName}</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium lowercase mt-0.5">{grp.userEmail}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="space-y-1.5 max-w-[150px]">
+                                  <div className="flex items-center justify-between text-xs font-bold">
+                                    <span>{lessonsCompleted} / {totalLessons} bài</span>
+                                    <span className="text-primary">{totalPct}%</span>
+                                  </div>
+                                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                    <div 
+                                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                                      style={{ width: `${totalPct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <span className="font-mono font-bold text-sm bg-muted/60 px-2 py-1 rounded">
+                                  {Math.floor(grp.totalStudyTime / 60)} phút {grp.totalStudyTime % 60} giây
+                                </span>
+                              </td>
+                              <td className="p-4 pr-6">
+                                <div className="flex flex-wrap gap-1.5 max-w-sm">
+                                  {lessons.map(lesson => {
+                                    const lessonProg = grp.lessons[lesson.id];
+                                    const isDone = lessonProg?.isCompleted;
+                                    const time = lessonProg?.studyTime || 0;
+                                    
+                                    return (
+                                      <Badge 
+                                        key={lesson.id} 
+                                        variant="outline" 
+                                        className={cn(
+                                          "text-[10px] py-0.5 px-2 border font-bold",
+                                          isDone 
+                                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                                            : time > 0 
+                                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                            : "bg-muted text-muted-foreground border-transparent"
+                                        )}
+                                        title={`${lesson.title}: ${Math.floor(time / 60)}m ${time % 60}s study time`}
+                                      >
+                                        Bài {lesson.id}: {isDone ? "Đạt" : time > 0 ? `${time}s` : "Chưa"}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Admin Add/Edit Dialog */}

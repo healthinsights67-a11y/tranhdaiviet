@@ -243,5 +243,9 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /ecoplast_user_progress/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }
