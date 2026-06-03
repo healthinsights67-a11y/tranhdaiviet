@@ -86,9 +86,21 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
 
   const measurementSchedules = queryClient.getQueryData<any[]>(['measurement_schedules']) || [];
   const linkedMeasurement = React.useMemo(() => {
-    if (!task.customerId) return null;
-    return measurementSchedules.find(s => s.customerId === task.customerId && s.status === 'completed');
-  }, [task.customerId, measurementSchedules]);
+    const cleanPhone = task.phone?.trim()?.replace(/\D/g, '') || 
+                       task.description?.replace(/\D/g, '').slice(-10);
+    const cleanTitle = task.title?.toLowerCase()?.replace('thiết kế:', '')?.trim();
+    
+    return measurementSchedules.find(s => {
+      if (task.customerId && s.customerId === task.customerId) return true;
+      
+      const sPhone = s.phone?.trim()?.replace(/\D/g, '');
+      if (cleanPhone && sPhone && (cleanPhone.includes(sPhone) || sPhone.includes(cleanPhone))) return true;
+      
+      if (cleanTitle && s.customerName?.toLowerCase()?.trim()?.includes(cleanTitle)) return true;
+      
+      return false;
+    });
+  }, [task.customerId, task.phone, task.description, task.title, measurementSchedules]);
 
   const allMeasurementImages = React.useMemo(() => {
     const urls = new Set([...(task.imageUrls || []), ...(linkedMeasurement?.imageUrls || [])]);

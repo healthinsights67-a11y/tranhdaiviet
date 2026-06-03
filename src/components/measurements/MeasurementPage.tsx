@@ -38,20 +38,39 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
     : schedules.filter(s => s.assigneeId === currentUser?.id);
 
   const syncMeasurementToDesignTask = async (schedule: MeasurementSchedule, customImageUrls?: string[]) => {
-    if (!schedule.customerId) return;
-    
     try {
-      const q = query(collection(db, 'tasks'), where('customerId', '==', schedule.customerId), where('type', '==', 'design'));
+      const q = query(collection(db, 'tasks'), where('type', '==', 'design'));
       const querySnapshot = await getDocs(q);
       
       const urlsToSync = customImageUrls || schedule.imageUrls || [];
+      const cleanPhone = schedule.phone?.trim()?.replace(/\D/g, '');
+      const cleanName = schedule.customerName?.toLowerCase()?.trim()?.replace('thiết kế:', '')?.trim();
       
-      if (!querySnapshot.empty) {
-        for (const taskDoc of querySnapshot.docs) {
+      let matchedDocs = querySnapshot.docs.filter(doc => {
+        const taskData = doc.data();
+        if (schedule.customerId && taskData.customerId === schedule.customerId) return true;
+        
+        const taskPhone = taskData.phone?.trim()?.replace(/\D/g, '') || 
+                          taskData.description?.replace(/\D/g, '').slice(-10);
+        if (cleanPhone && taskPhone && (cleanPhone.includes(taskPhone) || taskPhone.includes(cleanPhone))) return true;
+        
+        const taskTitle = taskData.title?.toLowerCase()?.replace('thiết kế:', '')?.trim();
+        if (cleanName && taskTitle && (taskTitle.includes(cleanName) || cleanName.includes(taskTitle))) return true;
+        
+        return false;
+      });
+      
+      if (matchedDocs.length > 0) {
+        for (const taskDoc of matchedDocs) {
           const taskData = taskDoc.data();
           const updateData: any = {
             imageUrls: urlsToSync
           };
+          
+          if (schedule.customerId && !taskData.customerId) updateData.customerId = schedule.customerId;
+          if (schedule.phone && !taskData.phone) updateData.phone = schedule.phone;
+          if (schedule.address && !taskData.address) updateData.address = schedule.address;
+          if (schedule.customerName && !taskData.customerName) updateData.customerName = schedule.customerName;
           
           if (schedule.designAssigneeId && taskData.assigneeId !== schedule.designAssigneeId) {
             updateData.assigneeId = schedule.designAssigneeId;
@@ -61,10 +80,12 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         }
       } else if (schedule.designAssigneeId) {
         let workshop = '';
-        const customerRef = doc(db, 'customers', schedule.customerId);
-        const customerSnap = await getDoc(customerRef);
-        if (customerSnap.exists()) {
-          workshop = (customerSnap.data() as Customer).workshop || '';
+        if (schedule.customerId) {
+          const customerRef = doc(db, 'customers', schedule.customerId);
+          const customerSnap = await getDoc(customerRef);
+          if (customerSnap.exists()) {
+            workshop = (customerSnap.data() as Customer).workshop || '';
+          }
         }
 
         await addDoc(collection(db, 'tasks'), {
@@ -74,7 +95,10 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           type: 'design',
           priority: 'medium',
           assigneeId: schedule.designAssigneeId,
-          customerId: schedule.customerId,
+          customerId: schedule.customerId || '',
+          phone: schedule.phone || '',
+          address: schedule.address || '',
+          customerName: schedule.customerName || '',
           workshop: workshop,
           createdAt: new Date().toISOString(),
           dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
