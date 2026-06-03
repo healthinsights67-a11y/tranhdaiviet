@@ -49,14 +49,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { where } from 'firebase/firestore';
 
 // Theory content structure
-// Zod schema for validation
 const lessonSchema = z.object({
   id: z.number().int().positive(),
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(1, "Nội dung không được để trống"),
   order: z.number().int().nonnegative(),
   iconName: z.string().min(1, "Vui lòng chọn Icon đại diện"),
-  imageUrl: z.string().optional().default("")
+  imageUrl: z.string().optional().default(""),
+  requiredStudyTime: z.number().int().positive().optional().default(360)
 });
 
 type LessonType = z.infer<typeof lessonSchema>;
@@ -669,12 +669,13 @@ const SWATCH_COLORS = [
 interface LessonStudyTrackerProps {
   lessonId: number;
   lessonTitle: string;
+  requiredStudyTime?: number;
   onProgressUpdated: () => void;
 }
 
-function LessonStudyTracker({ lessonId, lessonTitle, onProgressUpdated }: LessonStudyTrackerProps) {
+function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, onProgressUpdated }: LessonStudyTrackerProps) {
   const { user, userProfile } = useAuth();
-  const REQUIRED_STUDY_TIME = 120; // 120 seconds = 2 minutes
+  const REQUIRED_STUDY_TIME = requiredStudyTime;
   
   const [seconds, setSeconds] = React.useState(0);
   const [isTabVisible, setIsTabVisible] = React.useState(true);
@@ -1292,6 +1293,7 @@ export function EcoplastLearningPage() {
   const [orderField, setOrderField] = React.useState<number>(0);
   const [iconNameField, setIconNameField] = React.useState('BookOpen');
   const [imageUrlField, setImageUrlField] = React.useState('');
+  const [requiredStudyTimeField, setRequiredStudyTimeField] = React.useState<number>(6);
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
   const [selectedPhaseId, setSelectedPhaseId] = React.useState<string>('all');
   const [selectedQuizCategory, setSelectedQuizCategory] = React.useState<string>('all');
@@ -1357,7 +1359,8 @@ export function EcoplastLearningPage() {
             content: data.content || '',
             order: data.order ?? 999,
             iconName: data.iconName || 'BookOpen',
-            imageUrl: data.imageUrl || ''
+            imageUrl: data.imageUrl || '',
+            requiredStudyTime: data.requiredStudyTime
           });
         } catch (err) {
           console.error(`Error parsing lesson ${doc.id}:`, err);
@@ -1414,6 +1417,7 @@ export function EcoplastLearningPage() {
     setOrderField(maxOrder + 1);
     setIconNameField('BookOpen');
     setImageUrlField('');
+    setRequiredStudyTimeField(6); // Default to 6 minutes
     setIsDialogOpen(true);
   };
 
@@ -1424,6 +1428,7 @@ export function EcoplastLearningPage() {
     setOrderField(lesson.order);
     setIconNameField(lesson.iconName);
     setImageUrlField(lesson.imageUrl || '');
+    setRequiredStudyTimeField(Math.round((lesson.requiredStudyTime || 360) / 60));
     setIsDialogOpen(true);
   };
 
@@ -1455,7 +1460,8 @@ export function EcoplastLearningPage() {
         content: contentField.trim(),
         order: Number(orderField),
         iconName: iconNameField,
-        imageUrl: imageUrlField
+        imageUrl: imageUrlField,
+        requiredStudyTime: Number(requiredStudyTimeField) * 60
       };
       
       // Zod validation
@@ -1700,14 +1706,16 @@ export function EcoplastLearningPage() {
                             <span className="font-bold text-base text-foreground leading-none">{lesson.title}</span>
                             {(() => {
                               const prog = progressMap.get(lesson.id);
+                              const reqTime = lesson.requiredStudyTime || 360;
+                              const reqMins = Math.round(reqTime / 60);
                               if (prog?.isCompleted) {
                                 return (
                                   <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-none font-bold text-[10px] py-0.5 px-2">
-                                    Đã hoàn thành học (2m)
+                                    Đã hoàn thành học ({reqMins}p)
                                   </Badge>
                                 );
                               } else if (prog && prog.studyTime > 0) {
-                                const pct = Math.min(99, Math.round((prog.studyTime / 120) * 100));
+                                const pct = Math.min(99, Math.round((prog.studyTime / reqTime) * 100));
                                 return (
                                   <Badge className="bg-blue-500/15 text-blue-600 hover:bg-blue-500/20 border-none font-bold text-[10px] py-0.5 px-2">
                                     Đang học ({pct}%)
@@ -1716,7 +1724,7 @@ export function EcoplastLearningPage() {
                               } else {
                                 return (
                                   <Badge variant="outline" className="text-muted-foreground font-bold text-[10px] py-0.5 px-2">
-                                    Chưa học
+                                    Chưa học ({reqMins}p)
                                   </Badge>
                                 );
                               }
@@ -1774,6 +1782,7 @@ export function EcoplastLearningPage() {
                               <LessonStudyTracker 
                                 lessonId={lesson.id} 
                                 lessonTitle={lesson.title} 
+                                requiredStudyTime={lesson.requiredStudyTime}
                                 onProgressUpdated={() => refetchUserProgress()} 
                               />
                               <BeautifulLessonRenderer content={lesson.content} lessonId={lesson.id} />
@@ -2298,6 +2307,20 @@ export function EcoplastLearningPage() {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="requiredStudyTime" className="text-sm font-bold text-foreground">Thời gian học tối thiểu (Phút)</Label>
+              <Input 
+                id="requiredStudyTime" 
+                type="number" 
+                min={1}
+                max={60}
+                value={requiredStudyTimeField} 
+                onChange={(e) => setRequiredStudyTimeField(Number(e.target.value))} 
+                className="h-11 font-semibold"
+                placeholder="Ví dụ: 6"
+              />
+              <p className="text-[10px] text-muted-foreground font-medium">Hệ thống sẽ đếm ngược và yêu cầu học viên đọc tài liệu trong đúng khoảng thời gian này trước khi ghi nhận hoàn thành.</p>
             </div>
             <div className="space-y-2 flex-1 flex flex-col">
               <div className="flex items-center justify-between">
