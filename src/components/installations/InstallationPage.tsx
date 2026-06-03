@@ -35,7 +35,14 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   const queryClient = useQueryClient();
   const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
 
-  const filteredSchedules = isManager 
+  const isInstaller = currentUser?.role?.toLowerCase().includes('thi công') || 
+                      currentUser?.role?.toLowerCase().includes('lắp đặt') || 
+                      currentUser?.role?.toLowerCase().includes('sản xuất') ||
+                      currentUser?.role?.toLowerCase().includes('kỹ thuật');
+  
+  const canViewAll = isManager || !isInstaller;
+
+  const filteredSchedules = canViewAll 
     ? schedules 
     : schedules.filter(s => 
         s.assigneeId === currentUser?.id || 
