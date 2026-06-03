@@ -24,7 +24,9 @@ import {
   Ruler,
   Plus,
   Edit2,
-  Trash2
+  Trash2,
+  Upload,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
@@ -32,7 +34,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { z } from 'zod';
-import { db, collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from '../../lib/firebase';
+import { db, collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, storage, ref, uploadBytes, getDownloadURL } from '../../lib/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,7 +48,8 @@ const lessonSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(1, "Nội dung không được để trống"),
   order: z.number().int().nonnegative(),
-  iconName: z.string().min(1, "Vui lòng chọn Icon đại diện")
+  iconName: z.string().min(1, "Vui lòng chọn Icon đại diện"),
+  imageUrl: z.string().optional().default("")
 });
 
 type LessonType = z.infer<typeof lessonSchema>;
@@ -309,6 +312,7 @@ interface Question {
   options: string[];
   answer: number;
   explanation: string;
+  category: 'kĩ-thuật-chế-tác' | 'ưu-thế-vật-liệu' | 'kĩ-năng-chốt-sales' | 'đo-đạc-khảo-sát';
 }
 
 // Programmatic 300 Questions Generation Function
@@ -326,7 +330,8 @@ const generateQuestionBank = (): Question[] => {
         "Hạt nhựa HDPE tái sinh sấy nóng."
       ],
       answer: 0,
-      explanation: "Nhựa Ecoplast được sản xuất từ bột nhựa PVC nguyên sinh cao cấp, bột đá CaCO3 siêu mịn và phụ gia để tăng độ đàn hồi, chịu lực."
+      explanation: "Nhựa Ecoplast được sản xuất từ bột nhựa PVC nguyên sinh cao cấp, bột đá CaCO3 siêu mịn và phụ gia để tăng độ đàn hồi, chịu lực.",
+      category: "ưu-thế-vật-liệu"
     },
     {
       question: "Độ dày nào của tấm nhựa Ecoplast thường dùng để thi công cánh tủ quần áo chuẩn nhất?",
@@ -337,7 +342,8 @@ const generateQuestionBank = (): Question[] => {
         "25mm"
       ],
       answer: 1,
-      explanation: "Độ dày 15mm là tiêu chuẩn tối ưu giúp cánh tủ bền nhẹ, chống xệ bản lề; trong khi khung và vách thùng tủ sử dụng độ dày 20mm để đảm bảo kết cấu cứng vững."
+      explanation: "Độ dày 15mm là tiêu chuẩn tối ưu giúp cánh tủ bền nhẹ, chống xệ bản lề; trong khi khung và vách thùng tủ sử dụng độ dày 20mm để đảm bảo kết cấu cứng vững.",
+      category: "kĩ-thuật-chế-tác"
     },
     {
       question: "Độ dày nào của tấm nhựa Ecoplast thường dùng để thi công khung thùng tủ bếp và vách chịu lực?",
@@ -348,7 +354,8 @@ const generateQuestionBank = (): Question[] => {
         "30mm"
       ],
       answer: 1,
-      explanation: "Quy cách chuẩn cho khung thùng, vách ngăn đứng và các vách chịu lực của tủ nhựa Ecoplast là độ dày 20mm để đảm bảo độ cứng vững."
+      explanation: "Quy cách chuẩn cho khung thùng, vách ngăn đứng và các vách chịu lực của tủ nhựa Ecoplast là độ dày 20mm để đảm bảo độ cứng vững.",
+      category: "kĩ-thuật-chế-tác"
     },
     {
       question: "Ưu điểm nổi bật nhất của nhựa Ecoplast so với gỗ MDF chống ẩm là gì?",
@@ -359,7 +366,8 @@ const generateQuestionBank = (): Question[] => {
         "Dễ dàng phun phủ sơn dầu móng tay trực tiếp lên bề mặt."
       ],
       answer: 0,
-      explanation: "Ưu điểm cốt lõi của Ecoplast là khả năng chống nước hoàn hảo 100% và không bị mối mọt tấn công, điều mà gỗ MDF không làm được."
+      explanation: "Ưu điểm cốt lõi của Ecoplast là khả năng chống nước hoàn hảo 100% và không bị mối mọt tấn công, điều mà gỗ MDF không làm được.",
+      category: "ưu-thế-vật-liệu"
     },
     {
       question: "Khi bắt vít gắn bản lề lên cánh nhựa rỗng Ecoplast, thợ kỹ thuật xử lý thế nào để bản lề không bị bung tuột?",
@@ -370,7 +378,8 @@ const generateQuestionBank = (): Question[] => {
         "Chỉ cần bôi keo 502 trực tiếp lên vít rồi bắn qua."
       ],
       answer: 0,
-      explanation: "Phương pháp gia cố nhét thanh tăng cường bằng nhựa đặc chuyên dụng vào khoang rỗng giúp vít bám cực kỳ chắc chắn, đồng nhất chất liệu nhựa và không lo ẩm mốc."
+      explanation: "Phương pháp gia cố nhét thanh tăng cường bằng nhựa đặc chuyên dụng vào khoang rỗng giúp vít bám cực kỳ chắc chắn, đồng nhất chất liệu nhựa và không lo ẩm mốc.",
+      category: "kĩ-thuật-chế-tác"
     },
     {
       question: "Hãng nào hiện đang dẫn đầu thị trường Việt Nam về sản xuất và cung ứng gỗ công nghiệp (MDF, HDF)?",
@@ -381,7 +390,8 @@ const generateQuestionBank = (): Question[] => {
         "Viglacera"
       ],
       answer: 0,
-      explanation: "An Cường là thương hiệu số 1 Việt Nam về gỗ công nghiệp với hơn 30 năm hình thành và phát triển (thành lập từ năm 1994)."
+      explanation: "An Cường là thương hiệu số 1 Việt Nam về gỗ công nghiệp với hơn 30 năm hình thành và phát triển (thành lập từ năm 1994).",
+      category: "ưu-thế-vật-liệu"
     },
     {
       question: "Thương hiệu nào đứng đầu ngành nhựa rỗng nội thất cao cấp tại thị trường Việt Nam hiện nay?",
@@ -392,7 +402,8 @@ const generateQuestionBank = (): Question[] => {
         "An Cường"
       ],
       answer: 0,
-      explanation: "Ecoplast của công ty Nhựa Đại Việt là thương hiệu dẫn đầu ngành nhựa rỗng cao cấp, hình thành từ năm 2015 với hơn 9 năm phát triển."
+      explanation: "Ecoplast của công ty Nhựa Đại Việt là thương hiệu dẫn đầu ngành nhựa rỗng cao cấp, hình thành từ năm 2015 với hơn 9 năm phát triển.",
+      category: "ưu-thế-vật-liệu"
     },
     {
       question: "Đặc tính chống cháy lan của tấm nhựa Ecoplast hoạt động thế nào?",
@@ -403,7 +414,8 @@ const generateQuestionBank = (): Question[] => {
         "Chỉ chịu nhiệt được dưới 50 độ C."
       ],
       answer: 0,
-      explanation: "Ecoplast có tính tự tắt lửa, hạn chế đám cháy lây lan rộng, đáp ứng tiêu chuẩn an toàn phòng cháy chữa cháy nội thất."
+      explanation: "Ecoplast có tính tự tắt lửa, hạn chế đám cháy lây lan rộng, đáp ứng tiêu chuẩn an toàn phòng cháy chữa cháy nội thất.",
+      category: "ưu-thế-vật-liệu"
     },
     {
       question: "Dung môi hóa học nào sau đây CẤM sử dụng khi vệ sinh bề mặt tấm nhựa Ecoplast vân gỗ?",
@@ -414,7 +426,8 @@ const generateQuestionBank = (): Question[] => {
         "Nước lau kính sạch thông thường."
       ],
       answer: 2,
-      explanation: "Xăng thơm và Axeton sẽ tẩy bay lớp vân phủ bóng PVC, làm bạc màu loang lổ bề mặt nhựa."
+      explanation: "Xăng thơm và Axeton sẽ tẩy bay lớp vân phủ bóng PVC, làm bạc màu loang lổ bề mặt nhựa.",
+      category: "kĩ-thuật-chế-tác"
     },
     {
       question: "Khi khách hàng chê tủ nhựa rỗng nhìn ọp ẹp và mỏng manh, phương án thuyết phục tốt nhất của sale là gì?",
@@ -425,7 +438,8 @@ const generateQuestionBank = (): Question[] => {
         "Tự ý giảm giá sâu 50% để khách hàng đồng ý mua đại."
       ],
       answer: 0,
-      explanation: "Chứng minh độ bền cơ học thực tế của tấm xương tăng cứng và công nghệ gia cố thanh tăng cường bằng nhựa đặc chuyên dụng là cách thuyết phục trực quan nhất."
+      explanation: "Chứng minh độ bền cơ học thực tế của tấm xương tăng cứng và công nghệ gia cố thanh tăng cường bằng nhựa đặc chuyên dụng là cách thuyết phục trực quan nhất.",
+      category: "kĩ-năng-chốt-sales"
     },
     {
       question: "Tấm nhựa Ecoplast có chiều dài tiêu chuẩn của các phôi tấm sản xuất tại nhà máy là bao nhiêu?",
@@ -436,7 +450,8 @@ const generateQuestionBank = (): Question[] => {
         "1.2m"
       ],
       answer: 1,
-      explanation: "Kích thước tiêu chuẩn giúp tối ưu hóa gia công chiều cao tủ quần áo và kệ là 2.2m và 2.4m."
+      explanation: "Kích thước tiêu chuẩn giúp tối ưu hóa gia công chiều cao tủ quần áo và kệ là 2.2m và 2.4m.",
+      category: "kĩ-thuật-chế-tác"
     },
     {
       question: "Nhựa Ecoplast có chứa chất độc hại nào sau đây không?",
@@ -447,7 +462,8 @@ const generateQuestionBank = (): Question[] => {
         "Chứa amiăng gây xơ hóa phổi."
       ],
       answer: 1,
-      explanation: "Được kiểm định chất lượng an toàn, không chứa chì (Lead-free) và không phát thải formaldehyde gây hại hô hấp, an toàn tuyệt đối cho trẻ nhỏ."
+      explanation: "Được kiểm định chất lượng an toàn, không chứa chì (Lead-free) và không phát thải formaldehyde gây hại hô hấp, an toàn tuyệt đối cho trẻ nhỏ.",
+      category: "ưu-thế-vật-liệu"
     }
   ];
 
@@ -478,7 +494,8 @@ const generateQuestionBank = (): Question[] => {
         "Từ 150cm trở lên để tiết kiệm vật tư tủ."
       ],
       answer: 0,
-      explanation: "Khoảng cách an toàn chịu lực của tấm đợt ngang là dưới 80cm, vượt quá độ dài này cần thiết kế thêm vách đỡ dọc hoặc thanh tăng cường bằng nhựa chịu lực."
+      explanation: "Khoảng cách an toàn chịu lực của tấm đợt ngang là dưới 80cm, vượt quá độ dài này cần thiết kế thêm vách đỡ dọc hoặc thanh tăng cường bằng nhựa chịu lực.",
+      category: 'kĩ-thuật-chế-tác' as const
     }),
     (cat: string, p: { value: number; unit: string }) => ({
       question: `Tấm nhựa Ecoplast dày ${p.value}${p.unit} dùng cho hạng mục ${cat} có khả năng kháng ẩm mốc như thế nào trong mùa nồm ẩm miền Bắc?`,
@@ -489,7 +506,8 @@ const generateQuestionBank = (): Question[] => {
         "Cần phun thêm chất bảo quản chống ẩm định kỳ hàng tháng."
       ],
       answer: 0,
-      explanation: "Khả năng chống ẩm tuyệt hảo của polyme nguyên sinh giúp bảo vệ tủ hoàn toàn khỏi nấm mốc kể cả khi trời nồm ẩm hay thấm dột nước."
+      explanation: "Khả năng chống ẩm tuyệt hảo của polyme nguyên sinh giúp bảo vệ tủ hoàn toàn khỏi nấm mốc kể cả khi trời nồm ẩm hay thấm dột nước.",
+      category: 'ưu-thế-vật-liệu' as const
     }),
     (cat: string, p: { value: number; unit: string }) => ({
       question: `Khi tư vấn chốt sale thiết kế ${cat} bằng nhựa Ecoplast có độ dày ${p.value}${p.unit}, khách hàng hỏi tuổi thọ trung bình của tủ nhựa là bao nhiêu, sale trả lời thế nào?`,
@@ -500,7 +518,8 @@ const generateQuestionBank = (): Question[] => {
         "Độ bền tương đương gỗ lim tự nhiên nhóm 1."
       ],
       answer: 0,
-      explanation: "Tấm nhựa Ecoplast có độ bền vật liệu cực kỳ cao, kết cấu gia công lắp ráp tiêu chuẩn của I-Nội-Thất bảo đảm tuổi thọ sản phẩm bền bỉ 20-30 năm."
+      explanation: "Tấm nhựa Ecoplast có độ bền vật liệu cực kỳ cao, kết cấu gia công lắp ráp tiêu chuẩn của I-Nội-Thất bảo đảm tuổi thọ sản phẩm bền bỉ 20-30 năm.",
+      category: 'kĩ-năng-chốt-sales' as const
     }),
     (cat: string, p: { value: number; unit: string }) => ({
       question: `Độ bám vít bản lề của tấm nhựa Ecoplast dày ${p.value}${p.unit} lắp cho ${cat} phụ thuộc lớn nhất vào yếu tố nào?`,
@@ -511,7 +530,32 @@ const generateQuestionBank = (): Question[] => {
         "Màu sắc vân gỗ sáng hay tối."
       ],
       answer: 0,
-      explanation: "Độ bền chắc của vít phụ thuộc vào việc vít được bắt vào phần thịt nhựa (xương gân dọc) hoặc phần thanh tăng cường bằng nhựa đặc nhét bên trong ô rỗng."
+      explanation: "Độ bền chắc của vít phụ thuộc vào việc vít được bắt vào phần thịt nhựa (xương gân dọc) hoặc phần thanh tăng cường bằng nhựa đặc nhét bên trong ô rỗng.",
+      category: 'kĩ-thuật-chế-tác' as const
+    }),
+    (cat: string, p: { value: number; unit: string }) => ({
+      question: `Khi đo đạc khảo sát cho hạng mục ${cat} sát góc tường, tại sao thợ kỹ thuật phải đo đủ 3 điểm (dưới, giữa, trên) thay vì chỉ đo 1 điểm duy nhất?`,
+      options: [
+        "Để phát hiện độ nghiêng méo của tường và chọn kích thước nhỏ nhất trừ đi dung sai lắp đặt phù hợp.",
+        "Để kiểm tra màu sắc sơn tường xem có phẳng hay không.",
+        "Để tính xem cần mua bao nhiêu cuộn keo dán viền.",
+        "Để chứng minh với khách hàng là mình làm việc cẩn thận nhằm lấy lòng tin."
+      ],
+      answer: 0,
+      explanation: "Tường xây thực tế tại Việt Nam thường có độ nghiêng méo (out-of-plumb). Đo 3 điểm và lấy trị số nhỏ nhất là nguyên tắc sống còn để tủ lắp ráp đút vừa hộc tường.",
+      category: 'đo-đạc-khảo-sát' as const
+    }),
+    (cat: string, p: { value: number; unit: string }) => ({
+      question: `Khi thi công tủ bếp hoặc ${cat} sát nền nhà dốc, kỹ thuật viên I-Nội-thất xử lý phần chân tủ như thế nào để thăng bằng tuyệt đối?`,
+      options: [
+        "Sử dụng chân tủ có thể tăng chỉnh độ cao chuyên dụng để cân bằng bề mặt.",
+        "Kê tạm bằng các mẩu gỗ thừa nhặt tại công trình.",
+        "Bỏ qua vì độ dốc sàn nhà không ảnh hưởng đến thẩm mỹ.",
+        "Bào bớt chân nhựa trực tiếp bằng dao rọc giấy."
+      ],
+      answer: 0,
+      explanation: "Chân tăng chỉnh độ cao giúp thợ dễ dàng căn chỉnh mặt tủ thăng bằng tuyệt đối kể cả trên các bề mặt sàn nhà bị dốc nhẹ, đảm bảo thẩm mỹ và an toàn.",
+      category: 'đo-đạc-khảo-sát' as const
     })
   ];
 
@@ -532,6 +576,48 @@ const generateQuestionBank = (): Question[] => {
   return bank;
 };
 
+const getLessonCategory = (lessonId: number): 'ưu-thế-vật-liệu' | 'kĩ-thuật-chế-tác' | 'đo-đạc-khảo-sát' | 'kĩ-năng-chốt-sales' => {
+  if (lessonId <= 3) return 'ưu-thế-vật-liệu';
+  if (lessonId <= 7) return 'kĩ-thuật-chế-tác';
+  if (lessonId <= 9) return 'đo-đạc-khảo-sát';
+  return 'kĩ-năng-chốt-sales';
+};
+
+const ROADMAP_PHASES = [
+  {
+    id: 'ưu-thế-vật-liệu',
+    title: 'Giai đoạn 1: Ưu thế vật liệu',
+    description: 'Nắm vững cấu trúc xương nhựa rỗng, khả năng chống nước, chống cháy lan và độ an toàn chì/formaldehyde.',
+    lessonsRange: 'Bài 1 - 3',
+    color: 'emerald',
+    iconName: 'Droplet'
+  },
+  {
+    id: 'kĩ-thuật-chế-tác',
+    title: 'Giai đoạn 2: Kỹ thuật chế tác',
+    description: 'Học về độ dày phôi (15mm, 20mm), khoảng cách đợt chịu lực ngang tối đa, và chốt gỗ/nhựa gia cố chống bung tuột bản lề.',
+    lessonsRange: 'Bài 4 - 7',
+    color: 'blue',
+    iconName: 'Layers'
+  },
+  {
+    id: 'đo-đạc-khảo-sát',
+    title: 'Giai đoạn 3: Đo đạc khảo sát',
+    description: 'Quy tắc đo 3 điểm, kiểm tra độ nghiêng méo của tường và sàn dốc, đánh dấu ổ điện và lập hồ sơ hiện trạng.',
+    lessonsRange: 'Bài 8 - 9',
+    color: 'orange',
+    iconName: 'Ruler'
+  },
+  {
+    id: 'kĩ-năng-chốt-sales',
+    title: 'Giai đoạn 4: Kỹ năng chốt Sales',
+    description: 'Xử lý phản đối về giá nhựa rẻ tiền, chứng minh độ bền phôi xương dày dặn và kịch bản chốt đơn tối ưu.',
+    lessonsRange: 'Bài 10 - 11',
+    color: 'indigo',
+    iconName: 'Award'
+  }
+];
+
 export function EcoplastLearningPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
@@ -547,6 +633,10 @@ export function EcoplastLearningPage() {
   const [contentField, setContentField] = React.useState('');
   const [orderField, setOrderField] = React.useState<number>(0);
   const [iconNameField, setIconNameField] = React.useState('BookOpen');
+  const [imageUrlField, setImageUrlField] = React.useState('');
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false);
+  const [selectedPhaseId, setSelectedPhaseId] = React.useState<string>('all');
+  const [selectedQuizCategory, setSelectedQuizCategory] = React.useState<string>('all');
   
   // Quiz states
   const [quizStarted, setQuizStarted] = React.useState(false);
@@ -608,7 +698,8 @@ export function EcoplastLearningPage() {
             title: data.title || 'Untitled',
             content: data.content || '',
             order: data.order ?? 999,
-            iconName: data.iconName || 'BookOpen'
+            iconName: data.iconName || 'BookOpen',
+            imageUrl: data.imageUrl || ''
           });
         } catch (err) {
           console.error(`Error parsing lesson ${doc.id}:`, err);
@@ -617,6 +708,10 @@ export function EcoplastLearningPage() {
       }).filter(Boolean) as LessonType[];
     }
   });
+
+  const filteredLessons = React.useMemo(() => {
+    return lessons.filter(l => selectedPhaseId === 'all' || getLessonCategory(l.id) === selectedPhaseId);
+  }, [lessons, selectedPhaseId]);
 
   // Mutation to Add/Update Lesson
   const upsertLessonMutation = useMutation({
@@ -660,6 +755,7 @@ export function EcoplastLearningPage() {
     setContentField('');
     setOrderField(maxOrder + 1);
     setIconNameField('BookOpen');
+    setImageUrlField('');
     setIsDialogOpen(true);
   };
 
@@ -669,7 +765,27 @@ export function EcoplastLearningPage() {
     setContentField(lesson.content);
     setOrderField(lesson.order);
     setIconNameField(lesson.iconName);
+    setImageUrlField(lesson.imageUrl || '');
     setIsDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `ecoplast_lessons/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setImageUrlField(url);
+      toast.success("Tải ảnh lên thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Lỗi khi tải ảnh lên: ${err.message}`);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSave = () => {
@@ -680,7 +796,8 @@ export function EcoplastLearningPage() {
         title: titleField.trim(),
         content: contentField.trim(),
         order: Number(orderField),
-        iconName: iconNameField
+        iconName: iconNameField,
+        imageUrl: imageUrlField
       };
       
       // Zod validation
@@ -702,11 +819,20 @@ export function EcoplastLearningPage() {
   };
 
   const handleStartQuiz = () => {
-    const allQuestions = generateQuestionBank();
+    let allQuestions = generateQuestionBank();
     
-    // Pick 30 random questions
+    if (selectedQuizCategory && selectedQuizCategory !== 'all') {
+      allQuestions = allQuestions.filter(q => q.category === selectedQuizCategory);
+    }
+    
+    // Pick 30 random questions (or fewer if category has less than 30)
     const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 30);
+    const selected = shuffled.slice(0, Math.min(30, shuffled.length));
+    
+    if (selected.length === 0) {
+      toast.error("Không có câu hỏi nào thuộc bộ câu hỏi đã chọn!");
+      return;
+    }
     
     setSelectedQuestions(selected);
     setAnswers({});
@@ -813,7 +939,69 @@ export function EcoplastLearningPage() {
 
         {/* Tab 1: Theory */}
         <TabsContent value="theory" className="outline-none">
-          {/* Removed Admin Control Bar */}
+          {/* Interactive Learning Roadmap */}
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-blue-600" />
+                  Lộ trình đào tạo chuyên sâu Ecoplast
+                </h2>
+                <p className="text-xs text-muted-foreground">Chọn từng giai đoạn học tập dưới đây để tự động lọc danh sách bài giảng tương ứng.</p>
+              </div>
+              {selectedPhaseId !== 'all' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSelectedPhaseId('all')}
+                  className="font-bold text-xs h-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                >
+                  Hiển thị tất cả bài học
+                </Button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {ROADMAP_PHASES.map((phase) => {
+                const PhaseIcon = ICON_MAP[phase.iconName] || BookOpen;
+                const isActive = selectedPhaseId === phase.id;
+                return (
+                  <Card 
+                    key={phase.id}
+                    onClick={() => setSelectedPhaseId(isActive ? 'all' : phase.id)}
+                    className={cn(
+                      "cursor-pointer transition-all duration-300 border shadow-sm flex flex-col justify-between overflow-hidden relative group h-full",
+                      isActive 
+                        ? "border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/15 dark:bg-blue-950/10" 
+                        : "border-border/60 hover:border-blue-400 hover:shadow-md bg-card"
+                    )}
+                  >
+                    <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <div className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          isActive ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground group-hover:bg-blue-50 group-hover:text-blue-600"
+                        )}>
+                          <PhaseIcon className="h-4.5 w-4.5" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-bold border-none bg-muted px-2 py-0.5">
+                          {phase.lessonsRange}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 mt-2">
+                        <h3 className="font-extrabold text-sm text-foreground leading-tight">{phase.title}</h3>
+                        <p className="text-[11px] leading-snug text-muted-foreground line-clamp-3">{phase.description}</p>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "h-1.5 w-full mt-auto transition-all",
+                      isActive ? "bg-blue-600" : "bg-transparent group-hover:bg-blue-400/40"
+                    )} />
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
@@ -822,13 +1010,13 @@ export function EcoplastLearningPage() {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
                   <p className="text-xs font-bold text-muted-foreground">Đang tải tài liệu học tập từ hệ thống...</p>
                 </div>
-              ) : lessons.length === 0 ? (
+              ) : filteredLessons.length === 0 ? (
                 <div className="text-center py-12 bg-card border rounded-2xl">
                   <BookMarked className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-bold text-muted-foreground">Chưa có bài học nào được cấu hình.</p>
+                  <p className="text-sm font-bold text-muted-foreground">Chưa có bài học nào được cấu hình cho giai đoạn này.</p>
                 </div>
               ) : (
-                lessons.map((lesson) => {
+                filteredLessons.map((lesson) => {
                   const Icon = ICON_MAP[lesson.iconName] || BookOpen;
                   const isExpanded = expandedLesson === lesson.id;
                   return (
@@ -879,8 +1067,17 @@ export function EcoplastLearningPage() {
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <CardContent className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-line border-t border-border/10 border-b border-border/10 bg-white dark:bg-zinc-950">
-                              {lesson.content}
+                            <CardContent className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-line border-t border-border/10 border-b border-border/10 bg-white dark:bg-zinc-950 space-y-4">
+                              {lesson.imageUrl && (
+                                <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-sm max-w-full md:max-w-2xl mx-auto overflow-hidden">
+                                  <img 
+                                    src={lesson.imageUrl} 
+                                    alt={lesson.title} 
+                                    className="w-full h-auto max-h-[380px] object-contain bg-muted" 
+                                  />
+                                </div>
+                              )}
+                              <div>{lesson.content}</div>
                             </CardContent>
                           </motion.div>
                         )}
@@ -955,15 +1152,51 @@ export function EcoplastLearningPage() {
         {/* Tab 2: Quiz */}
         <TabsContent value="quiz" className="outline-none">
           {!quizStarted ? (
-            <Card className="border border-border/80 p-8 text-center max-w-xl mx-auto rounded-2xl shadow-sm">
-              <HelpCircle className="h-14 w-14 text-blue-600 mx-auto mb-4" />
-              <h2 className="text-xl font-bold mb-2">Đề thi Đào tạo chuyên đề Ecoplast</h2>
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                Đề thi gồm 30 câu hỏi ngẫu nhiên được trích xuất tự động từ bộ câu hỏi 300 tình huống chốt Sales thực tế và kỹ thuật đo đạc của I-Nội-thất.
-                <br />
-                Thời gian làm bài: <strong>45 phút</strong>. Điểm đạt tối thiểu: <strong>24/30 câu đúng (80%)</strong>.
-              </p>
-              <Button onClick={handleStartQuiz} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 h-11 rounded-xl">
+            <Card className="border border-border/80 p-6 md:p-8 text-center max-w-2xl mx-auto rounded-2xl shadow-sm bg-card space-y-6">
+              <div className="space-y-2">
+                <HelpCircle className="h-14 w-14 text-blue-600 mx-auto mb-2" />
+                <h2 className="text-xl font-black">Thi sát hạch Chuyên đề Ecoplast</h2>
+                <p className="text-xs text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                  Đề thi gồm 30 câu hỏi ngẫu nhiên được trích xuất từ ngân hàng 300 câu hỏi sát hạch của I-Nội-thất.
+                  Thời gian: <strong>45 phút</strong>. Điều kiện đạt: <strong>24/30 câu đúng (80%)</strong>.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-3 border-t text-left">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Chọn chuyên đề sát hạch:</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { id: 'all', label: 'Đề thi tổng hợp (Tất cả)', desc: 'Ngẫu nhiên 30 câu thuộc cả 4 phần.' },
+                    { id: 'ưu-thế-vật-liệu', label: '1. Ưu thế vật liệu', desc: 'Đặc tính cấu trúc nhựa, chống nước, chống cháy.' },
+                    { id: 'kĩ-thuật-chế-tác', label: '2. Kỹ thuật chế tác', desc: 'Độ dày phôi, khoảng cách chịu lực, bám vít.' },
+                    { id: 'đo-đạc-khảo-sát', label: '3. Đo đạc khảo sát', desc: 'Đo 3 điểm, out-of-plumb, phào chỉ.' },
+                    { id: 'kĩ-năng-chốt-sales', label: '4. Kỹ năng chốt Sales', desc: 'Xử lý từ chối, kịch bản thuyết phục.' }
+                  ].map((cat) => {
+                    const isSelected = selectedQuizCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedQuizCategory(cat.id)}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all flex flex-col justify-between hover:border-blue-400 hover:shadow-sm",
+                          isSelected 
+                            ? "border-blue-600 bg-blue-50/25 ring-2 ring-blue-500/10" 
+                            : "border-border/60 bg-card text-foreground"
+                        )}
+                      >
+                        <span className="font-extrabold text-xs text-foreground block">{cat.label}</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5 leading-snug block">{cat.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleStartQuiz} 
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-12 h-11 rounded-xl shadow-md transition-all mt-4"
+              >
                 Bắt đầu làm bài thi
               </Button>
             </Card>
@@ -1192,6 +1425,57 @@ export function EcoplastLearningPage() {
                     })}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-foreground">Hình ảnh trực quan (Tùy chọn)</Label>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageUpload} 
+                  disabled={isUploadingImage}
+                  className="hidden"
+                  id="image-file-upload"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="h-11 flex items-center gap-2 border-dashed border-2 hover:border-blue-400 hover:text-blue-600"
+                  disabled={isUploadingImage}
+                  onClick={() => document.getElementById('image-file-upload')?.click()}
+                >
+                  {isUploadingImage ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                      <span>Đang tải lên...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      <span>Chọn ảnh tải lên</span>
+                    </>
+                  )}
+                </Button>
+                {imageUrlField && (
+                  <div className="flex-1 flex items-center gap-2 bg-muted/30 p-2 rounded-lg border border-border overflow-hidden">
+                    <img 
+                      src={imageUrlField} 
+                      alt="Xem trước" 
+                      className="h-8 w-8 object-cover rounded" 
+                    />
+                    <span className="text-xs truncate flex-1 font-semibold text-muted-foreground">{imageUrlField}</span>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 text-red-600 hover:text-red-700" 
+                      onClick={() => setImageUrlField('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="space-y-2 flex-1 flex flex-col">
