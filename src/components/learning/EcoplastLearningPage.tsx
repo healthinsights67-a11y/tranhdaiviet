@@ -26,7 +26,11 @@ import {
   Edit2,
   Trash2,
   Upload,
-  X
+  X,
+  User,
+  MessageSquare,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
@@ -618,6 +622,276 @@ const ROADMAP_PHASES = [
   }
 ];
 
+const SWATCH_COLORS = [
+  { code: 'AT', name: 'Vân gỗ Teak cổ điển', type: 'UV Standard', style: 'bg-[#9c6644]' },
+  { code: 'AV', name: 'Vân gỗ Vàng nhạt', type: 'UV Standard', style: 'bg-[#e9c46a]' },
+  { code: 'A2', name: 'Vân gỗ Sồi nhạt Bắc Âu', type: 'UV Standard', style: 'bg-[#ddb892]' },
+  { code: 'A7', name: 'Vân gỗ Đỏ / Xoan đào', type: 'UV Standard', style: 'bg-[#8b5a2b]' },
+  
+  { code: 'A9', name: 'Sồi trắng Thụy Điển', type: 'Premium Film', style: 'bg-[#f4ebe1] border border-zinc-200 text-zinc-900' },
+  { code: 'A10', name: 'Sồi nâu tự nhiên', type: 'Premium Film', style: 'bg-[#a38063]' },
+  { code: 'A11', name: 'Gỗ Óc chó đậm châu Âu', type: 'Premium Film', style: 'bg-[#5c4033]' },
+  { code: 'A12', name: 'Gỗ Đỏ hoàng gia', type: 'Premium Film', style: 'bg-[#70291d]' },
+  { code: 'Lux 01', name: 'Sồi xám phong trần', type: 'Luxury Film', style: 'bg-[#8f8f8f]' },
+  { code: 'Lux 02', name: 'Óc chó vương giả', type: 'Luxury Film', style: 'bg-[#4a3728]' },
+  { code: 'Lux 04', name: 'Gỗ tếch nhiệt đới', type: 'Luxury Film', style: 'bg-[#b07d62]' },
+  { code: 'Lux 06', name: 'Mun sọc huyền bí', type: 'Luxury Film', style: 'bg-[#2b2b2b]' },
+  { code: 'Lux 24', name: 'Vân vải xám Linen', type: 'Luxury Film', style: 'bg-[#d3d3d3] text-zinc-800' },
+  
+  { code: 'S6', name: 'Nhũ bạc ánh sao', type: 'Galaxy Stars', style: 'bg-gradient-to-r from-slate-300 via-zinc-100 to-slate-300 border border-slate-200 text-slate-800' },
+  { code: 'S8', name: 'Đen vũ trụ hạt kim sa', type: 'Galaxy Stars', style: 'bg-[#121212] text-zinc-300' },
+  { code: 'A8 Galaxy', name: 'Trắng nhũ ngọc trai', type: 'Galaxy Stars', style: 'bg-gradient-to-r from-zinc-50 via-slate-100 to-zinc-50 border border-zinc-200 text-zinc-700' },
+
+  { code: 'E1', name: 'Sồi sa mạc', type: 'Eco+ (Eco Plus)', style: 'bg-[#d7ba8d]' },
+  { code: 'E2', name: 'Gỗ óc chó sần Bắc Mỹ', type: 'Eco+ (Eco Plus)', style: 'bg-[#58412f]' },
+  { code: 'E3', name: 'Xám xi măng lỳ', type: 'Eco+ (Eco Plus)', style: 'bg-[#808588]' },
+  { code: 'E4', name: 'Trắng sữa bóng Acrylic', type: 'Eco+ (Eco Plus)', style: 'bg-white border border-zinc-200 text-zinc-800' },
+  { code: 'E5', name: 'Xanh mint pastel matte', type: 'Eco+ (Eco Plus)', style: 'bg-[#b6d7a8] text-zinc-800' },
+  { code: 'E6', name: 'Hồng đất ấm pastel', type: 'Eco+ (Eco Plus)', style: 'bg-[#e0b0ff] text-zinc-800' }
+];
+
+interface BeautifulLessonRendererProps {
+  content: string;
+  lessonId: number;
+}
+
+function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererProps) {
+  if (!content) return null;
+
+  const parseContent = (text: string) => {
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let currentBlock: { type: 'situation' | 'none'; title: string; lines: string[] } = { type: 'none', title: '', lines: [] };
+
+    const flushBlock = (key: number) => {
+      if (currentBlock.type === 'situation') {
+        elements.push(
+          <div key={`block-${key}`} className="my-6 border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-amber-100/80 dark:bg-amber-950/50 px-4 py-3 border-b border-amber-200 dark:border-amber-900 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-bold text-amber-900 dark:text-amber-100 text-sm md:text-base">
+                {currentBlock.title.replace(/\*\*|:/g, '')}
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              {currentBlock.lines.map((line, idx) => renderLine(line, `sub-${key}-${idx}`))}
+            </div>
+          </div>
+        );
+      } else {
+        currentBlock.lines.forEach((line, idx) => {
+          const rendered = renderLine(line, `line-${key}-${idx}`);
+          if (rendered) elements.push(rendered);
+        });
+      }
+      currentBlock = { type: 'none', title: '', lines: [] };
+    };
+
+    const renderLine = (line: string, key: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return null;
+
+      // 1. Step/Dialogue items inside situation: - *Bước 1...* or - *Tư vấn:* or - *Khách hàng hỏi:*
+      if (trimmed.startsWith('- *Bước') || trimmed.startsWith('- **Bước') || trimmed.startsWith('- *Tư vấn:') || trimmed.startsWith('- *Khách hàng') || trimmed.startsWith('- *Kịch bản') || trimmed.startsWith('**Bước')) {
+        const isClient = trimmed.includes('Khách hàng');
+        
+        let displayContent = trimmed;
+        // Strip leading symbols
+        if (displayContent.startsWith('- ')) displayContent = displayContent.substring(2);
+        if (displayContent.startsWith('  - ')) displayContent = displayContent.substring(4);
+        
+        // Parse bold prefix
+        const boldMatch = displayContent.match(/^\*(.*?):\*(.*)/) || displayContent.match(/^\*\*(.*?):\*\*(.*)/) || displayContent.match(/^\*(.*?)\*(.*)/);
+        let prefix = "";
+        let body = displayContent;
+        if (boldMatch) {
+          prefix = boldMatch[1];
+          body = boldMatch[2] || boldMatch[3] || "";
+        }
+
+        return (
+          <div key={key} className={cn(
+            "flex gap-3 items-start p-3 rounded-lg text-sm border my-2 transition-all hover:shadow-xs",
+            isClient 
+              ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-950/20 text-rose-950 dark:text-rose-200" 
+              : "bg-emerald-50/40 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-950/20 text-emerald-950 dark:text-emerald-200"
+          )}>
+            <div className={cn(
+              "p-1.5 rounded-md shrink-0",
+              isClient ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400" : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+            )}>
+              {isClient ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+            </div>
+            <div className="flex-1">
+              {prefix && (
+                <span className="font-bold text-xs uppercase tracking-wider block mb-1 opacity-90">
+                  {prefix.replace(/:/g, '')}
+                </span>
+              )}
+              <span className="text-muted-foreground leading-relaxed whitespace-pre-line">{body.trim()}</span>
+            </div>
+          </div>
+        );
+      }
+
+      // 2. Section/Item Title: **1. ...** or **Thành phần...**
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        const cleanTitle = trimmed.replace(/\*\*/g, '');
+        return (
+          <h4 key={key} className="text-base font-bold text-foreground mt-6 mb-3 flex items-center gap-2 border-b border-border/40 pb-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
+            {cleanTitle}
+          </h4>
+        );
+      }
+
+      // 3. Bullet point with custom badge: - *Ưu điểm:* or - *Nhược điểm:* or - *Hạn chế:* or - *Đặc điểm:*
+      if (trimmed.startsWith('- *') || trimmed.startsWith('- **') || trimmed.startsWith('*')) {
+        let cleanText = trimmed;
+        if (cleanText.startsWith('- ')) cleanText = cleanText.substring(2);
+        
+        const labelMatch = cleanText.match(/^\*(.*?):\*(.*)/) || cleanText.match(/^\*\*(.*?):\*\*(.*)/);
+        
+        if (labelMatch) {
+          const label = labelMatch[1].trim();
+          const desc = labelMatch[2].trim();
+          
+          let icon = <Check className="h-3.5 w-3.5" />;
+          let theme = "bg-sky-50/30 dark:bg-sky-950/15 text-sky-950 dark:text-sky-200 border-sky-100/50 dark:border-sky-900/30";
+          let badgeTheme = "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-300";
+
+          if (label.toLowerCase().includes("ưu điểm")) {
+            icon = <Check className="h-3.5 w-3.5" />;
+            theme = "bg-emerald-50/40 dark:bg-emerald-950/10 text-emerald-950 dark:text-emerald-200 border-emerald-100/50 dark:border-emerald-900/30";
+            badgeTheme = "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300";
+          } else if (label.toLowerCase().includes("nhược điểm") || label.toLowerCase().includes("hạn chế")) {
+            icon = <X className="h-3.5 w-3.5" />;
+            theme = "bg-rose-50/40 dark:bg-rose-950/10 text-rose-950 dark:text-rose-200 border-rose-100/50 dark:border-rose-900/30";
+            badgeTheme = "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300";
+          } else if (label.toLowerCase().includes("lưu ý") || label.toLowerCase().includes("nguyên tắc") || label.toLowerCase().includes("hạn chế")) {
+            icon = <AlertCircle className="h-3.5 w-3.5" />;
+            theme = "bg-amber-50/40 dark:bg-amber-950/10 text-amber-950 dark:text-amber-200 border-amber-100/50 dark:border-amber-900/30";
+            badgeTheme = "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300";
+          } else if (label.toLowerCase().includes("đặc điểm") || label.toLowerCase().includes("công nghệ")) {
+            icon = <Info className="h-3.5 w-3.5" />;
+            theme = "bg-blue-50/40 dark:bg-blue-950/10 text-blue-950 dark:text-blue-200 border-blue-100/50 dark:border-blue-900/30";
+            badgeTheme = "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300";
+          }
+
+          return (
+            <div key={key} className={cn("flex gap-3 items-start p-3 my-2 border rounded-xl transition-all", theme)}>
+              <span className={cn("flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 shadow-xs border border-current/10 uppercase tracking-wider", badgeTheme)}>
+                {icon}
+                {label}
+              </span>
+              <span className="text-muted-foreground leading-relaxed text-sm">{desc}</span>
+            </div>
+          );
+        }
+
+        // Standard bullet with bold text
+        const boldTextMatch = cleanText.match(/^\*\*(.*?)\*\*(.*)/);
+        if (boldTextMatch) {
+          return (
+            <div key={key} className="flex gap-2.5 items-start my-2.5 text-sm leading-relaxed">
+              <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-2" />
+              <span>
+                <strong className="text-foreground font-semibold mr-1">{boldTextMatch[1]}</strong>
+                <span className="text-muted-foreground">{boldTextMatch[2]}</span>
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <div key={key} className="flex gap-2.5 items-start my-2.5 text-sm text-muted-foreground leading-relaxed">
+            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 shrink-0 mt-2" />
+            <span>{cleanText}</span>
+          </div>
+        );
+      }
+
+      // 3. Section/Item Title: **1. ...** or **Thành phần...**
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        const cleanTitle = trimmed.replace(/\*\*/g, '');
+        return (
+          <h4 key={key} className="text-base font-bold text-foreground mt-6 mb-3 flex items-center gap-2 border-b border-border/40 pb-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
+            {cleanTitle}
+          </h4>
+        );
+      }
+
+      // 4. Default Text Paragraph
+      return (
+        <p key={key} className="text-muted-foreground text-sm leading-relaxed my-3 whitespace-pre-line">
+          {trimmed.replace(/\*\*/g, '')}
+        </p>
+      );
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith('**TÌNH HUỐNG')) {
+        flushBlock(i);
+        currentBlock = { type: 'situation', title: trimmed, lines: [] };
+      } else if (currentBlock.type === 'situation') {
+        if (trimmed.startsWith('**1.') || trimmed.startsWith('**2.') || trimmed.startsWith('**3.') || trimmed.startsWith('**4.') || trimmed.startsWith('**5.') || trimmed.startsWith('**6.') || trimmed.startsWith('**7.') || trimmed.startsWith('**8.') || trimmed.startsWith('**9.') || trimmed.startsWith('**10.') || trimmed.startsWith('**11.')) {
+          // If we encounter a new main lesson topic, flush
+          flushBlock(i);
+          currentBlock.lines.push(line);
+        } else {
+          currentBlock.lines.push(line);
+        }
+      } else {
+        currentBlock.lines.push(line);
+      }
+    }
+    flushBlock(lines.length);
+
+    return elements;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">{parseContent(content)}</div>
+      
+      {lessonId === 8 && (
+        <div className="mt-8 border border-border/60 rounded-2xl p-6 bg-slate-50/50 dark:bg-zinc-950/20">
+          <h4 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-500" />
+            Bảng Tra Cứu Mã Màu Ecoplast Thực Tế
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {SWATCH_COLORS.map((swatch, idx) => (
+              <div 
+                key={idx} 
+                className="group relative rounded-xl border border-border bg-white dark:bg-zinc-900 p-2 shadow-xs transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 flex flex-col gap-2"
+              >
+                <div className={cn("w-full h-16 rounded-lg font-bold flex items-center justify-center text-sm shadow-xs text-white", swatch.style)}>
+                  <span className="px-2 py-1 rounded bg-black/30 backdrop-blur-xs font-mono tracking-wider">
+                    {swatch.code}
+                  </span>
+                </div>
+                <div className="px-1">
+                  <div className="font-bold text-xs truncate text-foreground group-hover:text-blue-600 transition-colors">
+                    {swatch.name}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {swatch.type}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EcoplastLearningPage() {
   const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
@@ -1067,17 +1341,17 @@ export function EcoplastLearningPage() {
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <CardContent className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-line border-t border-border/10 border-b border-border/10 bg-white dark:bg-zinc-950 space-y-4">
+                            <CardContent className="p-6 text-sm leading-relaxed text-muted-foreground border-t border-border/10 bg-slate-50/30 dark:bg-zinc-950/20 space-y-6">
                               {lesson.imageUrl && (
-                                <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-sm max-w-full md:max-w-2xl mx-auto overflow-hidden">
+                                <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-sm max-w-full md:max-w-2xl mx-auto">
                                   <img 
                                     src={lesson.imageUrl} 
                                     alt={lesson.title} 
-                                    className="w-full h-auto max-h-[380px] object-contain bg-muted" 
+                                    className="w-full h-[200px] md:h-[320px] object-cover bg-muted" 
                                   />
                                 </div>
                               )}
-                              <div>{lesson.content}</div>
+                              <BeautifulLessonRenderer content={lesson.content} lessonId={lesson.id} />
                             </CardContent>
                           </motion.div>
                         )}
