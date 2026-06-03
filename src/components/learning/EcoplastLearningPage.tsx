@@ -1599,7 +1599,7 @@ export function EcoplastLearningPage() {
           {(isAdmin || isManager) && (
             <TabsTrigger value="sales-progress" className="rounded-lg font-bold text-sm flex items-center gap-2">
               <Users className="h-4.5 w-4.5" />
-              Tiến độ Nhân viên
+              Tiến độ Thành viên
             </TabsTrigger>
           )}
         </TabsList>
@@ -2081,10 +2081,10 @@ export function EcoplastLearningPage() {
                 <div>
                   <CardTitle className="text-lg font-extrabold flex items-center gap-2 text-primary">
                     <Users className="h-5.5 w-5.5" />
-                    Báo cáo Tiến độ Học tập của Đội ngũ Sales
+                    Báo cáo Tiến độ Học tập của Thành viên
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Theo dõi chi tiết thời lượng tích lũy thực tế và phòng chống gian lận cho từng nhân viên.
+                    Theo dõi chi tiết thời lượng tích lũy thực tế và phòng chống gian lận cho từng thành viên.
                   </CardDescription>
                 </div>
                 <Button 
@@ -2105,14 +2105,14 @@ export function EcoplastLearningPage() {
                 ) : salesProgressReport.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-bold text-muted-foreground">Chưa ghi nhận tiến độ học tập nào từ nhân viên sales.</p>
+                    <p className="text-sm font-bold text-muted-foreground">Chưa ghi nhận tiến độ học tập nào từ thành viên.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-border/40 bg-muted/30 text-xs font-black uppercase text-muted-foreground">
-                          <th className="p-4 pl-6">Nhân viên</th>
+                          <th className="p-4 pl-6">Thành viên</th>
                           <th className="p-4">Số bài hoàn thành</th>
                           <th className="p-4">Tổng thời gian học</th>
                           <th className="p-4 pr-6">Chi tiết tiến trình</th>
