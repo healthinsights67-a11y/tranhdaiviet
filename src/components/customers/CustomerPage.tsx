@@ -238,6 +238,43 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
         await updateDoc(doc(db, 'customers', id), updateData);
 
+        // Push customer's tasks to current month (closing/accepted date)
+        if ((selectedCustomer.stage === 'contracted' || selectedCustomer.stage === 'completed') && 
+            existingStage !== 'contracted' && existingStage !== 'completed') {
+          try {
+            const nowStr = new Date().toISOString();
+            const taskQ = query(collection(db, 'tasks'));
+            const taskSnap = await getDocs(taskQ);
+            const cleanPhone = selectedCustomer.phone?.trim()?.replace(/\D/g, '');
+            
+            for (const taskDoc of taskSnap.docs) {
+              const tData = taskDoc.data();
+              if (tData.status === 'done' || tData.status === 'archived') continue;
+              
+              let matches = false;
+              if (tData.customerId === id) {
+                matches = true;
+              } else if (cleanPhone) {
+                const tPhone = tData.phone?.trim()?.replace(/\D/g, '') || 
+                               tData.description?.replace(/\D/g, '').slice(-10);
+                if (tPhone && (cleanPhone.includes(tPhone) || tPhone.includes(cleanPhone))) {
+                  matches = true;
+                }
+              }
+              
+              if (matches) {
+                await updateDoc(doc(db, 'tasks', taskDoc.id), {
+                  createdAt: nowStr,
+                  ...(tData.customerId ? {} : { customerId: id })
+                });
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          } catch (err) {
+            console.error("Error updating tasks createdAt for customer:", err);
+          }
+        }
+
         // Automated Workflow: Contracted -> Show Assignment Dialog
         if (selectedCustomer.stage === 'contracted' && existingStage !== 'contracted') {
           setPendingContract({

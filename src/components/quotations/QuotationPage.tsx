@@ -405,6 +405,43 @@ export function QuotationPage({ quotations, user, customers, members, products =
             }
 
             await updateDoc(customerRef, customerUpdate);
+
+            // Push tasks to current month (closing/accepted date)
+            if (customerStage !== 'contracted' && customerStage !== 'completed') {
+              try {
+                const nowStr = new Date().toISOString();
+                const taskQ = query(collection(db, 'tasks'));
+                const taskSnap = await getDocs(taskQ);
+                const cleanPhone = prevData.phone?.trim()?.replace(/\D/g, '');
+                
+                for (const taskDoc of taskSnap.docs) {
+                  const tData = taskDoc.data();
+                  if (tData.status === 'done' || tData.status === 'archived') continue;
+                  
+                  let matches = false;
+                  if (prevData.customerId && tData.customerId === prevData.customerId) {
+                    matches = true;
+                  } else if (cleanPhone) {
+                    const tPhone = tData.phone?.trim()?.replace(/\D/g, '') || 
+                                   tData.description?.replace(/\D/g, '').slice(-10);
+                    if (tPhone && (cleanPhone.includes(tPhone) || tPhone.includes(cleanPhone))) {
+                      matches = true;
+                    }
+                  }
+                  
+                  if (matches) {
+                    await updateDoc(doc(db, 'tasks', taskDoc.id), {
+                      createdAt: nowStr,
+                      ...(tData.customerId ? {} : { customerId: prevData.customerId })
+                    });
+                  }
+                }
+                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+              } catch (err) {
+                console.error("Error updating tasks createdAt for customer from quotation:", err);
+              }
+            }
+
             toast.info(`Đã cập nhật trạng thái khách hàng sang: ${status === 'accepted' ? 'Hoàn thành' : 'Đã ký hợp đồng'} & Cập nhật giá trị đơn hàng.`);
             queryClient.invalidateQueries({ queryKey: ['customers'] });
 
