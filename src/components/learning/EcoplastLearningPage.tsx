@@ -20,7 +20,8 @@ import {
   TrendingUp,
   ChevronRight,
   BookMarked,
-  Info
+  Info,
+  Ruler
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
@@ -140,14 +141,36 @@ const LESSONS = [
     id: 8,
     title: "8. Màu sắc, Mã màu & Số lượng Màu sắc",
     icon: BookOpen,
-    content: `Nhựa Ecoplast mang lại sự đa dạng về mặt thẩm mỹ với hơn 20 mã màu sắc phong phú, phù hợp mọi phong cách nội thất từ cổ điển đến hiện đại:
+    content: `Nhựa Ecoplast mang lại sự đa dạng về mặt thẩm mỹ với hơn 20 mã màu sắc phong phú được phân cấp rõ ràng theo từng dòng sản phẩm để đáp ứng nhu cầu thiết kế từ bình dân đến cao cấp:
 
-**Các tông màu thịnh hành nhất:**
-- **Màu đơn sắc hiện đại:** Trắng bóng ngọc trai (**A8**), Xám ghi thời thượng, Kem sữa thanh lịch.
-- **Tông vân gỗ ấm áp:** Vân gỗ Sồi sáng (**A9**), Vân sồi nâu ấm (**A10**), Óc chó đậm châu Âu (**A11**), Gỗ đỏ truyền thống (**A12**).
+**1. Dòng Ecoplast In Vân (UV Standard):**
+- *Công nghệ:* Vân gỗ được in trực tiếp lên bề mặt phôi nhựa bằng công nghệ in UV hiện đại, phủ bóng bảo vệ.
+- *Các mã màu phổ biến:*
+  - **AT** (Vân gỗ Teak cổ điển - sắc vàng sẫm)
+  - **AV** (Vân gỗ Vàng nhạt - sáng sủa, thanh lịch)
+  - **A2** (Vân gỗ Sồi nhạt Bắc Âu - trẻ trung, nhẹ nhàng)
+  - **A7** (Vân gỗ Đỏ / Xoan đào truyền thống - trầm ấm, lịch lãm)
+  - **A15, A16, AF, AH, A1D** (Các mã vân gỗ in tiêu chuẩn khác).
 
-**Đặc tính lớp film phủ:**
-- Bề mặt phủ film PVC chất lượng cao chịu được ánh nắng trực tiếp, chống bay màu, kháng ẩm bám và chống trầy xước nhẹ. Bề mặt nhẵn bóng giúp việc lau chùi bụi bẩn vô cùng dễ dàng chỉ bằng khăn ẩm.`
+**2. Dòng Ecoplast Phủ Film (Premium/Luxury):**
+- *Công nghệ:* Dán phủ màng film PVC cao cấp chịu nhiệt, tạo vân gỗ nổi có chiều sâu 3D chân thực, xúc cảm sần nhẹ như gỗ thật.
+- *Các mã màu phổ biến:*
+  - **A9** (Vân sồi trắng Thụy Điển - hiện đại, sang trọng)
+  - **A10** (Vân sồi nâu ấm áp - nhã nhặn, tự nhiên)
+  - **A11** (Vân gỗ Óc chó đậm châu Âu - đẳng cấp, thời thượng)
+  - **A12** (Vân gỗ Đỏ hoàng gia - quý phái, truyền thống)
+  - **Dòng Ecoplast Luxury (Dán phin đặc biệt):** **Lux 01** (Sồi xám phong trần), **Lux 02** (Óc chó vương giả), **Lux 04** (Gỗ tếch nhiệt đới), **Lux 06** (Mun sọc huyền bí), **Lux 24** (Vân vải xám Linen thời thượng), **Lux 25**, **Lux 26**.
+
+**3. Dòng Ecoplast Galaxy (Galaxy Stars):**
+- *Đặc điểm:* Các tông màu nhũ ánh kim sa lấp lánh như dải ngân hà dưới ánh sáng đèn trang trí.
+- *Các mã màu phổ biến:*
+  - **S6** (Nhũ bạc ánh sao - sang trọng, tinh tế)
+  - **S8** (Đen vũ trụ hạt kim sa - huyền ảo, độc lạ)
+  - **Trắng nhũ ngọc trai ánh kim** (A8 Galaxy - bóng bẩy, cao cấp).
+
+**4. Dòng tấm nhựa sinh thái Eco+ (Eco Plus):**
+- *Đặc điểm:* Dòng sản phẩm thế hệ mới của Nhựa Đại Việt với chất lượng phôi siêu chịu lực và bảng màu thời trang độc quyền.
+- *Các mã màu phổ biến:* **E1** (Sồi sa mạc), **E2** (Gỗ óc chó sần Bắc Mỹ), **E3** (Xám xi măng lỳ industrial), **E4** (Trắng sữa bóng Acrylic), **E5** (Xanh mint pastel matte chống bám vân tay), **E6** (Hồng đất ấm pastel matte).`
   },
   {
     id: 9,
@@ -168,13 +191,54 @@ const LESSONS = [
     id: 10,
     title: "10. Cẩm nang chốt Sales & Kỹ năng xử lý từ chối",
     icon: Award,
-    content: `Dành cho Sales khi làm việc trực tiếp với khách hàng để xóa tan nghi ngại về nhựa rỗng:
+    content: `Dành cho nhân viên tư vấn chốt Sales thực tế tại công trình hoặc showroom khi đối mặt với các băn khoăn của khách hàng:
 
-**1. Khách bảo: "Tủ nhựa rỗng ọp ẹp lắm, dùng một thời gian sẽ bung bản lề"**
-- *Tư vấn:* "Dạ chị, nhựa rỗng Ecoplast có độ dày xương gấp 3 lần nhựa Đài Loan thông thường. Đặc biệt, tại I-Nội-Thất, ở mọi điểm liên kết bản lề chịu tải, chúng em đều lắp thêm thanh tăng cường bằng nhựa đặc chuyên dụng để vít xoắn bám chặt vào nhựa đặc chứ không bắt vào khoảng rỗng. Bản lề sẽ vô cùng chắc chắn và không bao giờ lo bị xệ cánh."
+**TÌNH HUỐNG 1: KHÁCH HÀNG SO SÁNH VỚI GỖ CÔNG NGHIỆP AN CƯỜNG CHỐNG ẨM**
+- *Khách hàng phân vân:* "Chị thấy gỗ MDF chống ẩm của An Cường làm tủ nhìn phẳng phiu, vuông vắn và sang trọng hơn nhiều. Tủ nhựa Ecoplast này trông vẫn có vẻ mỏng manh, bình dân. Liệu dùng vài năm vít bản lề có bị lỏng và bung cánh ra không?"
+- *Kịch bản xử lý chốt Sales cho nhân viên:*
+  - *Bước 1 - Đồng cảm và ghi nhận:* "Dạ chị, em rất hiểu băn khoăn của chị. Gỗ MDF chống ẩm An Cường đúng là thương hiệu rất tốt và bề mặt gỗ công nghiệp phẳng đẹp sang trọng đã được khẳng định từ lâu ạ."
+  - *Bước 2 - Phân tích cốt lõi giải pháp:* "Tuy nhiên, nhược điểm lớn nhất của gỗ công nghiệp vẫn là khả năng hút ẩm lâu ngày, nếu ở phòng ngủ khép kín nồm ẩm miền Bắc hay tầng trệt rất dễ bị mốc đen và trương nở mép dán chỉ. Đặc biệt, gỗ MDF chứa keo kết dính có phát thải Formaldehyde ảnh hưởng hô hấp của trẻ nhỏ. Tấm nhựa Ecoplast Đại Việt của bên em chống nước tuyệt đối 100%, không lo mối mọt hay ẩm mốc."
+  - *Bước 3 - Giải tỏa nghi ngại về độ bền và bắt vít cánh:* "Về lo ngại xệ cánh tủ và lỏng vít của nhựa rỗng: Chị hoàn toàn yên tâm vì tại I-Nội-Thất, chúng em cắt tấm bằng máy CNC chuẩn xác và áp dụng quy chuẩn **đút thanh tăng cường bằng nhựa đặc/composite** vào sâu bên trong khoang rỗng tại tất cả các điểm bắt bản lề. Khi thợ bắn vít xoắn ren sâu, vít sẽ ngậm chặt vào phần lõi nhựa đặc này chứ không phải vào khoảng rỗng, bản lề sẽ chắc chắn tương đương gỗ thịt, đảm bảo cánh tủ đóng mở êm ái hàng chục năm không hề bị xệ hay bung vít!"
 
-**2. Khách bảo: "Mặt đợt ngang dài thế kia để đồ nặng sẽ bị võng"**
-- *Tư vấn:* "Đối với các đợt ngăn tủ dài trên 70-80cm, chúng em đều thiết kế chèn thanh tăng cứng bằng nhựa composite chịu lực chạy dọc bên dưới và vách đỡ ngăn tủ dọc để phân phối lực đều, cam kết không bị võng nứt."`
+**TÌNH HUỐNG 2: KHÁCH HÀNG LO NGẠI GIƯỜNG NGỦ/ĐỢT TỦ BỊ VÕNG KHI ĐỂ ĐỒ NẶNG**
+- *Khách hàng hỏi:* "Tủ nhựa Ecoplast là nhựa rỗng, nếu anh xếp nhiều chăn màn nặng lên đợt tủ ngang hoặc hai vợ chồng và con cùng nằm lên giường nhựa thì có sợ bị gãy hay võng cong trũng xuống không em?"
+- *Kịch bản xử lý chốt Sales cho nhân viên:*
+  - *Tư vấn:* "Dạ anh, về kết cấu chịu lực, nhựa Ecoplast có hệ gân tăng cứng dọc dày đặc bên trong tấm phôi. Đối với các đợt tủ ngang dài trên 70-80cm, bên em đều gia cố chèn thêm các thanh xương đỡ chịu lực chạy dọc bên dưới và thiết kế vách ngăn dọc chia lực đứng. Đối với giường ngủ, bên em sử dụng phôi tấm Ecoplast có độ dày tối đa lên đến **25mm - 30mm** chịu lực nén cực tốt. Dưới giàn vạt giường là hệ thống xương nâng đỡ chịu lực dạng ô bàn cờ đan dày với khoảng cách chỉ 30cm/nhịp, đảm bảo chịu tải tĩnh và động lên tới 500kg. Thậm chí xe tải cán qua phôi tấm Ecoplast cũng không bị nứt vỡ, nên gia đình mình hoàn toàn yên tâm ngủ ngon mà không lo ọp ẹp hay võng nứt ạ."
+
+**TÌNH HUỐNG 3: SO SÁNH GIÁ VỚI NHỰA ĐÀI LOAN GIÁ RẺ TRÊN THỊ TRƯỜNG**
+- *Khách hàng thắc mắc:* "Sao giá tủ nhựa Ecoplast bên em báo giá thi công cao gấp rưỡi, gấp đôi mấy cái tủ nhựa Đài Loan bán sẵn ngoài phố vậy?"
+- *Kịch bản xử lý chốt Sales cho nhân viên:*
+  - *Tư vấn:* "Dạ thưa anh/chị, nhựa Ecoplast và nhựa Đài Loan thông thường (như ChinHuei) có sự khác biệt rất lớn về đẳng cấp và độ bền kết cấu:
+    1. *Độ dày phôi và trọng lượng:* Tấm nhựa Ecoplast của Đại Việt dày gấp 3 lần nhựa Đài Loan thông thường, trọng lượng phôi nặng gấp đôi, giúp tủ cầm đầm tay, chịu va đập tốt.
+    2. *Kỹ thuật liên kết:* Tủ nhựa Đài Loan giá rẻ ngoài phố thường liên kết thô sơ bằng cách bắn ke góc sắt/ke nhựa lộ đầu vít sắt ra ngoài rất thô và dễ rỉ sét. Tủ Ecoplast tại I-Nội-Thất được phay mộng âm dương bằng máy CNC, giấu kín ốc vít liên kết vào bên trong mang lại thẩm mỹ vuông vắn như tủ gỗ cao cấp.
+    3. *Độ bền bám vít:* Tủ giá rẻ ngoài phố bắt vít trực tiếp vào phần nhựa mỏng nên dùng 1-2 năm là lỏng lẻo bản lề. Bên em sử dụng thanh tăng cứng nhựa đặc đút trong khoang rỗng bám vít tuyệt đối. Đầu tư một chiếc tủ Ecoplast chất lượng dùng bền bỉ 20-30 năm sẽ tiết kiệm hơn rất nhiều so với tủ Đài Loan giá rẻ dùng vài năm đã hỏng ạ."`
+  },
+  {
+    id: 11,
+    title: "11. Cẩm nang đo đạc kỹ thuật tại công trình",
+    icon: Ruler,
+    content: `Đo đạc hiện trạng là công đoạn sống còn quyết định sự thành bại của dự án nội thất. Sai một ly đi một dặm, chỉ cần sai lệch vài milimet có thể dẫn đến việc tủ không đút vừa hộc tường hoặc hở khe quá lớn gây mất thẩm mỹ.
+
+**1. Quy tắc đo đạc 3 điểm chuẩn:**
+- Đối với mọi ô hộc tủ âm tường hoặc hộc tường lắp tủ bếp, tủ quần áo, thợ kỹ thuật bắt buộc phải đo đủ 3 vị trí để kiểm tra độ nghiêng méo của tường và sàn:
+  - **Chiều rộng (W):** Đo tại vị trí đáy (dưới), vị trí giữa, và vị trí sát trần (trên).
+  - **Chiều cao (H):** Đo tại vị trí góc trái, vị trí giữa, và vị trí góc phải.
+  - **Chiều sâu (D):** Đo kiểm tra độ sâu lòng tường ở 3 điểm để tránh tường xây lồi lõm làm lồi tủ ra ngoài.
+- *Nguyên tắc sản xuất:* Luôn lấy **kích thước nhỏ nhất** thu thập được làm kích thước sản xuất chính, trừ đi dung sai lắp đặt phù hợp (thường từ 5mm - 15mm tùy thuộc vào độ nghiêng của tường thực tế) để khi lắp ráp tủ không bị kẹt.
+
+**2. Kiểm tra độ nghiêng méo của tường (Out-of-plumb) và sàn dốc:**
+- Sử dụng thước nivo laser hoặc thước dây rọi để quét kiểm tra độ nghiêng dọc của bức tường lắp tủ.
+- Kiểm tra cao độ của sàn nhà xem có phẳng hay dốc. Với tủ bếp dưới, nếu sàn dốc cần thiết kế chân tủ bếp có thể tăng chỉnh độ cao để mặt đá bếp sau này thăng bằng tuyệt đối.
+- Xác định góc vuông của 2 bức tường giao nhau (sử dụng ke vuông góc lớn hoặc kiểm tra theo quy tắc Pythagoras 3-4-5) để thiết kế góc tủ góc (L-shape/U-shape) chính xác.
+
+**3. Khảo sát và đánh dấu các chướng ngại vật kỹ thuật:**
+- **Ổ cắm & Công tắc điện:** Đo tọa độ tâm ổ cắm (khoảng cách từ sàn và từ mép tường gần nhất) để ghi chú cho bộ phận CNC khoét sẵn lỗ luồn dây trên hồi tủ hoặc mặt hậu.
+- **Phào chỉ & Baseboard:** Đo chiều dày và chiều cao của phào chân tường, phào trần thạch cao. Thiết kế hồi tủ cần khoét giật cấp (nẹp chặn) để tủ áp khít sát vào tường.
+- **Thiết bị hạ tầng:** Ghi nhận vị trí hộp kỹ thuật (hộp gen), đường ống thoát nước, đường cấp nước (đặc biệt quan trọng với tủ lavabo, tủ bếp để bố trí khoang tủ chậu rửa chính xác), vị trí ống thông khói máy hút mùi.
+
+**4. Khảo sát hành lang và đường vận chuyển:**
+- Đo kích thước chiều cao, chiều rộng của thang máy chung cư, chiếu nghỉ cầu thang bộ, và các ô cửa phòng ngủ.
+- Nếu lắp đặt hệ tủ quần áo kịch trần lớn hoặc tủ dài, bắt buộc phải chia module nhỏ phù hợp để vận chuyển dễ dàng, tránh tình trạng sản xuất tủ nguyên khối lớn không thể đưa lên phòng khách hàng.`
   }
 ];
 
