@@ -84,6 +84,17 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
   
   const installDate = task.waiting_install_at || task.productionChecklist?.installationDate || schedule?.date;
 
+  const measurementSchedules = queryClient.getQueryData<any[]>(['measurement_schedules']) || [];
+  const linkedMeasurement = React.useMemo(() => {
+    if (!task.customerId) return null;
+    return measurementSchedules.find(s => s.customerId === task.customerId && s.status === 'completed');
+  }, [task.customerId, measurementSchedules]);
+
+  const allMeasurementImages = React.useMemo(() => {
+    const urls = new Set([...(task.imageUrls || []), ...(linkedMeasurement?.imageUrls || [])]);
+    return Array.from(urls);
+  }, [task.imageUrls, linkedMeasurement?.imageUrls]);
+
   // Update editable fields when task changes or modal opens
   React.useEffect(() => {
     if (isDetailOpen) {
@@ -649,19 +660,25 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
               />
             </div>
 
-            {task.imageUrls && task.imageUrls.length > 0 && (
+            {((allMeasurementImages && allMeasurementImages.length > 0) || linkedMeasurement?.notes) && (
               <div className="border-t pt-4 space-y-3">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                  Ảnh đo đạc (từ Sale)
+                  Thông tin đo đạc (từ Sale)
                 </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {task.imageUrls.map((url, i) => (
-                    <div 
-                      key={i} 
-                      className="aspect-square relative cursor-pointer group/sale-img"
-                      onClick={() => handleOpenPreview(url)}
-                    >
+                {linkedMeasurement?.notes && (
+                  <div className="text-sm bg-blue-50/50 p-3 rounded-lg border border-blue-100 italic text-muted-foreground whitespace-pre-wrap">
+                    {linkedMeasurement.notes}
+                  </div>
+                )}
+                {allMeasurementImages.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {allMeasurementImages.map((url, i) => (
+                      <div 
+                        key={i} 
+                        className="aspect-square relative cursor-pointer group/sale-img"
+                        onClick={() => handleOpenPreview(url)}
+                      >
                       <img 
                         src={url} 
                         alt={`Sale file ${i}`} 
@@ -671,6 +688,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 
