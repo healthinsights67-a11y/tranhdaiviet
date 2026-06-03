@@ -124,6 +124,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   };
 
   const queryClient = useQueryClient();
+  const installationSchedules = queryClient.getQueryData<any[]>(['installation_schedules']) || [];
 
   const [isOpen, setIsOpen] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -542,7 +543,33 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                           </p>
                           
                           <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
-                            <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                              {(() => {
+                                const installSchedule = installationSchedules.find(s => {
+                                  if (s.status === 'cancelled') return false;
+                                  if (item.type === 'task' && item.rawTask) {
+                                    return s.taskId === item.rawTask.id || 
+                                      (s.customerId && s.customerId === item.rawTask.customerId) || 
+                                      (s.customerName && s.customerName.toLowerCase() === (item.rawTask.customerName || item.rawTask.title.replace(/^sản xuất:\s*/i, '').trim()).toLowerCase());
+                                  } else if (item.rawCustomer) {
+                                    return s.customerId === item.rawCustomer.id || 
+                                      (s.customerName && s.customerName.toLowerCase() === item.rawCustomer.name.toLowerCase());
+                                  }
+                                  return false;
+                                });
+                                
+                                if (installSchedule) {
+                                  return (
+                                    <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded flex items-center gap-1 w-max">
+                                      <Hammer className="h-2.5 w-2.5" />
+                                      Lắp: {format(parseISO(installSchedule.date), 'dd/MM/yy', { locale: vi })}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                             <Button 
                               onClick={() => {
                                 if (item.type === 'task') {
