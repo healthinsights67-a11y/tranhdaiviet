@@ -62,6 +62,18 @@ const lessonSchema = z.object({
 
 type LessonType = z.infer<typeof lessonSchema>;
 
+const swatchColorSchema = z.object({
+  id: z.string().min(1, "ID không được để trống"),
+  code: z.string().min(1, "Mã màu không được để trống"),
+  name: z.string().min(1, "Tên màu không được để trống"),
+  type: z.string().min(1, "Dòng sản phẩm không được để trống"),
+  style: z.string().optional().default(""),
+  imageUrl: z.string().optional().default(""),
+  order: z.number().int().nonnegative().optional().default(0)
+});
+
+type SwatchColorType = z.infer<typeof swatchColorSchema>;
+
 const userProgressSchema = z.object({
   userId: z.string(),
   userEmail: z.string(),
@@ -639,33 +651,481 @@ const ROADMAP_PHASES = [
   }
 ];
 
-const SWATCH_COLORS = [
-  { code: 'AT', name: 'Vân gỗ Teak cổ điển', type: 'UV Standard', style: 'bg-[#9c6644]' },
-  { code: 'AV', name: 'Vân gỗ Vàng nhạt', type: 'UV Standard', style: 'bg-[#e9c46a]' },
-  { code: 'A2', name: 'Vân gỗ Sồi nhạt Bắc Âu', type: 'UV Standard', style: 'bg-[#ddb892]' },
-  { code: 'A7', name: 'Vân gỗ Đỏ / Xoan đào', type: 'UV Standard', style: 'bg-[#8b5a2b]' },
-  
-  { code: 'A9', name: 'Sồi trắng Thụy Điển', type: 'Premium Film', style: 'bg-[#f4ebe1] border border-zinc-200 text-zinc-900' },
-  { code: 'A10', name: 'Sồi nâu tự nhiên', type: 'Premium Film', style: 'bg-[#a38063]' },
-  { code: 'A11', name: 'Gỗ Óc chó đậm châu Âu', type: 'Premium Film', style: 'bg-[#5c4033]' },
-  { code: 'A12', name: 'Gỗ Đỏ hoàng gia', type: 'Premium Film', style: 'bg-[#70291d]' },
-  { code: 'Lux 01', name: 'Sồi xám phong trần', type: 'Luxury Film', style: 'bg-[#8f8f8f]' },
-  { code: 'Lux 02', name: 'Óc chó vương giả', type: 'Luxury Film', style: 'bg-[#4a3728]' },
-  { code: 'Lux 04', name: 'Gỗ tếch nhiệt đới', type: 'Luxury Film', style: 'bg-[#b07d62]' },
-  { code: 'Lux 06', name: 'Mun sọc huyền bí', type: 'Luxury Film', style: 'bg-[#2b2b2b]' },
-  { code: 'Lux 24', name: 'Vân vải xám Linen', type: 'Luxury Film', style: 'bg-[#d3d3d3] text-zinc-800' },
-  
-  { code: 'S6', name: 'Nhũ bạc ánh sao', type: 'Galaxy Stars', style: 'bg-gradient-to-r from-slate-300 via-zinc-100 to-slate-300 border border-slate-200 text-slate-800' },
-  { code: 'S8', name: 'Đen vũ trụ hạt kim sa', type: 'Galaxy Stars', style: 'bg-[#121212] text-zinc-300' },
-  { code: 'A8 Galaxy', name: 'Trắng nhũ ngọc trai', type: 'Galaxy Stars', style: 'bg-gradient-to-r from-zinc-50 via-slate-100 to-zinc-50 border border-zinc-200 text-zinc-700' },
+interface EcoplastColorSwatchesProps {
+  isAdmin: boolean;
+  isManager: boolean;
+}
 
-  { code: 'E1', name: 'Sồi sa mạc', type: 'Eco+ (Eco Plus)', style: 'bg-[#d7ba8d]' },
-  { code: 'E2', name: 'Gỗ óc chó sần Bắc Mỹ', type: 'Eco+ (Eco Plus)', style: 'bg-[#58412f]' },
-  { code: 'E3', name: 'Xám xi măng lỳ', type: 'Eco+ (Eco Plus)', style: 'bg-[#808588]' },
-  { code: 'E4', name: 'Trắng sữa bóng Acrylic', type: 'Eco+ (Eco Plus)', style: 'bg-white border border-zinc-200 text-zinc-800' },
-  { code: 'E5', name: 'Xanh mint pastel matte', type: 'Eco+ (Eco Plus)', style: 'bg-[#b6d7a8] text-zinc-800' },
-  { code: 'E6', name: 'Hồng đất ấm pastel', type: 'Eco+ (Eco Plus)', style: 'bg-[#e0b0ff] text-zinc-800' }
-];
+export function EcoplastColorSwatches({ isAdmin, isManager }: EcoplastColorSwatchesProps) {
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingColor, setEditingColor] = React.useState<SwatchColorType | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  // Form states
+  const [code, setCode] = React.useState('');
+  const [name, setName] = React.useState('');
+  const [type, setType] = React.useState('UV Standard');
+  const [style, setStyle] = React.useState('#9c6644');
+  const [imageUrl, setImageUrl] = React.useState('');
+  const [order, setOrder] = React.useState(0);
+  const [presentation, setPresentation] = React.useState<'color' | 'image'>('color');
+
+  // TanStack Query for colors
+  const { data: swatchColors = [], isLoading } = useQuery<SwatchColorType[]>({
+    queryKey: ['ecoplast_colors'],
+    queryFn: async () => {
+      const q = query(collection(db, 'ecoplast_colors'), orderBy('order', 'asc'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        console.log("Seeding default Ecoplast colors to Firestore...");
+        const DEFAULT_COLORS = [
+          { code: 'AT', name: 'Vân gỗ Teak cổ điển', type: 'UV Standard', style: '#9c6644', imageUrl: '', order: 1 },
+          { code: 'AV', name: 'Vân gỗ Vàng nhạt', type: 'UV Standard', style: '#e9c46a', imageUrl: '', order: 2 },
+          { code: 'A2', name: 'Vân gỗ Sồi nhạt Bắc Âu', type: 'UV Standard', style: '#ddb892', imageUrl: '', order: 3 },
+          { code: 'A7', name: 'Vân gỗ Đỏ / Xoan đào', type: 'UV Standard', style: '#8b5a2b', imageUrl: '', order: 4 },
+          { code: 'A9', name: 'Sồi trắng Thụy Điển', type: 'Premium Film', style: '#f4ebe1', imageUrl: '', order: 5 },
+          { code: 'A10', name: 'Sồi nâu tự nhiên', type: 'Premium Film', style: '#a38063', imageUrl: '', order: 6 },
+          { code: 'A11', name: 'Gỗ Óc chó đậm châu Âu', type: 'Premium Film', style: '#5c4033', imageUrl: '', order: 7 },
+          { code: 'A12', name: 'Gỗ Đỏ hoàng gia', type: 'Premium Film', style: '#70291d', imageUrl: '', order: 8 },
+          { code: 'Lux 01', name: 'Sồi xám phong trần', type: 'Luxury Film', style: '#8f8f8f', imageUrl: '', order: 9 },
+          { code: 'Lux 02', name: 'Óc chó vương giả', type: 'Luxury Film', style: '#4a3728', imageUrl: '', order: 10 },
+          { code: 'Lux 04', name: 'Gỗ tếch nhiệt đới', type: 'Luxury Film', style: '#b07d62', imageUrl: '', order: 11 },
+          { code: 'Lux 06', name: 'Mun sọc huyền bí', type: 'Luxury Film', style: '#2b2b2b', imageUrl: '', order: 12 },
+          { code: 'Lux 24', name: 'Vân vải xám Linen', type: 'Luxury Film', style: '#d3d3d3', imageUrl: '', order: 13 },
+          { code: 'S6', name: 'Nhũ bạc ánh sao', type: 'Galaxy Stars', style: 'linear-gradient(to right, #cbd5e1, #f4f4f5, #cbd5e1)', imageUrl: '', order: 14 },
+          { code: 'S8', name: 'Đen vũ trụ hạt kim sa', type: 'Galaxy Stars', style: '#121212', imageUrl: '', order: 15 },
+          { code: 'A8 Galaxy', name: 'Trắng nhũ ngọc trai', type: 'Galaxy Stars', style: 'linear-gradient(to right, #fafafa, #f4f4f5, #fafafa)', imageUrl: '', order: 16 },
+          { code: 'E1', name: 'Sồi sa mạc', type: 'Eco+ (Eco Plus)', style: '#d7ba8d', imageUrl: '', order: 17 },
+          { code: 'E2', name: 'Gỗ óc chó sần Bắc Mỹ', type: 'Eco+ (Eco Plus)', style: '#58412f', imageUrl: '', order: 18 },
+          { code: 'E3', name: 'Xám xi măng lỳ', type: 'Eco+ (Eco Plus)', style: '#808588', imageUrl: '', order: 19 },
+          { code: 'E4', name: 'Trắng sữa bóng Acrylic', type: 'Eco+ (Eco Plus)', style: '#ffffff', imageUrl: '', order: 20 },
+          { code: 'E5', name: 'Xanh mint pastel matte', type: 'Eco+ (Eco Plus)', style: '#b6d7a8', imageUrl: '', order: 21 },
+          { code: 'E6', name: 'Hồng đất ấm pastel', type: 'Eco+ (Eco Plus)', style: '#e0b0ff', imageUrl: '', order: 22 }
+        ];
+        
+        for (const color of DEFAULT_COLORS) {
+          const id = `color_${color.code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+          await setDoc(doc(db, 'ecoplast_colors', id), {
+            id,
+            ...color
+          });
+        }
+        
+        const freshSnap = await getDocs(q);
+        return freshSnap.docs.map(d => swatchColorSchema.parse(d.data()));
+      }
+      return snap.docs.map(d => {
+        try {
+          return swatchColorSchema.parse(d.data());
+        } catch (err) {
+          console.error("Error parsing color:", d.id, err);
+          return null;
+        }
+      }).filter(Boolean) as SwatchColorType[];
+    }
+  });
+
+  // Mutations
+  const upsertColorMutation = useMutation({
+    mutationFn: async (newColor: SwatchColorType) => {
+      const validated = swatchColorSchema.parse(newColor);
+      await setDoc(doc(db, 'ecoplast_colors', validated.id), validated);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecoplast_colors'] });
+      toast.success("Lưu mã màu thành công!");
+      setDialogOpen(false);
+      setEditingColor(null);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(`Lỗi khi lưu mã màu: ${err.message}`);
+    }
+  });
+
+  const deleteColorMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteDoc(doc(db, 'ecoplast_colors', id));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecoplast_colors'] });
+      toast.success("Đã xóa mã màu thành công!");
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(`Lỗi khi xóa mã màu: ${err.message}`);
+    }
+  });
+
+  const handleAdd = () => {
+    setEditingColor(null);
+    setCode('');
+    setName('');
+    setType('UV Standard');
+    setStyle('#9c6644');
+    setImageUrl('');
+    setOrder(swatchColors.length > 0 ? Math.max(...swatchColors.map(c => c.order || 0)) + 1 : 1);
+    setPresentation('color');
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (color: SwatchColorType) => {
+    setEditingColor(color);
+    setCode(color.code);
+    setName(color.name);
+    setType(color.type);
+    setStyle(color.style || '#9c6644');
+    setImageUrl(color.imageUrl || '');
+    setOrder(color.order || 0);
+    setPresentation(color.imageUrl ? 'image' : 'color');
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Bạn có chắc chắn muốn xóa mã màu này?")) {
+      deleteColorMutation.mutate(id);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const url = await uploadToImgBB(file);
+      if (url) {
+        setImageUrl(url);
+        toast.success("Tải ảnh mã màu lên thành công!");
+      }
+    } catch (err: any) {
+      toast.error("Lỗi khi tải ảnh lên: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (!code.trim()) {
+      toast.error("Vui lòng nhập mã màu");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Vui lòng nhập tên màu");
+      return;
+    }
+    
+    const id = editingColor ? editingColor.id : `color_${code.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const newColor: SwatchColorType = {
+      id,
+      code: code.trim().toUpperCase(),
+      name: name.trim(),
+      type,
+      style: presentation === 'color' ? style : '',
+      imageUrl: presentation === 'image' ? imageUrl : '',
+      order: Number(order)
+    };
+
+    upsertColorMutation.mutate(newColor);
+  };
+
+  const getSwatchStyle = (swatch: SwatchColorType) => {
+    if (swatch.imageUrl) {
+      return {
+        backgroundImage: `url(${swatch.imageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      };
+    }
+    const isHex = swatch.style.startsWith('#') || swatch.style.startsWith('rgb');
+    const isGradient = swatch.style.startsWith('linear-gradient') || swatch.style.startsWith('radial-gradient');
+    if (isHex) {
+      return { backgroundColor: swatch.style };
+    }
+    if (isGradient) {
+      return { background: swatch.style };
+    }
+    return {};
+  };
+
+  return (
+    <div className="mt-8 border border-border/60 rounded-2xl p-6 bg-slate-50/50 dark:bg-zinc-950/20">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-base font-bold text-foreground flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-amber-500" />
+          Bảng Tra Cứu Mã Màu Ecoplast Thực Tế
+        </h4>
+        {(isAdmin || isManager) && (
+          <Button 
+            size="sm" 
+            onClick={handleAdd}
+            className="font-bold text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Thêm mã màu
+          </Button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {swatchColors.map((swatch) => {
+            const isTailwindClass = swatch.style && !swatch.style.startsWith('#') && !swatch.style.startsWith('linear-gradient') && !swatch.style.startsWith('radial-gradient') && !swatch.style.startsWith('rgb');
+            const hasBorder = swatch.code.toLowerCase().includes('trắng') || swatch.style.toLowerCase().includes('white') || swatch.style.toLowerCase().includes('#ffffff');
+            
+            return (
+              <div 
+                key={swatch.id} 
+                className="group relative rounded-xl border border-border bg-white dark:bg-zinc-900 p-2 shadow-xs transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 flex flex-col gap-2"
+              >
+                {/* Admin/Manager Actions Overlay */}
+                {(isAdmin || isManager) && (
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 bg-black/50 p-1 rounded-md backdrop-blur-xs">
+                    <button 
+                      onClick={() => handleEdit(swatch)}
+                      className="p-1 text-white hover:text-blue-300 transition-colors"
+                      title="Chỉnh sửa"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(swatch.id)}
+                      className="p-1 text-white hover:text-red-400 transition-colors"
+                      title="Xóa"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                <div 
+                  className={cn(
+                    "w-full h-16 rounded-lg font-bold flex items-center justify-center text-sm shadow-xs text-white relative overflow-hidden", 
+                    isTailwindClass ? swatch.style : "",
+                    hasBorder ? "border border-zinc-200 text-zinc-800" : ""
+                  )}
+                  style={getSwatchStyle(swatch)}
+                >
+                  <span className="px-2 py-1 rounded bg-black/30 backdrop-blur-xs font-mono tracking-wider">
+                    {swatch.code}
+                  </span>
+                </div>
+                <div className="px-1">
+                  <div className="font-bold text-xs truncate text-foreground group-hover:text-blue-600 transition-colors">
+                    {swatch.name}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {swatch.type}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add/Edit Swatch Color Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-950 border-border/60 shadow-xl overflow-hidden flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b border-border/40 bg-muted/20">
+            <DialogTitle className="text-lg font-black text-blue-700 dark:text-blue-400">
+              {editingColor ? "Chỉnh sửa mã màu" : "Thêm mã màu mới"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 p-6 overflow-y-auto flex-1">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="swatch-code" className="text-xs font-bold">Mã màu</Label>
+                <Input 
+                  id="swatch-code" 
+                  placeholder="Ví dụ: AT, Lux 01" 
+                  value={code} 
+                  onChange={(e) => setCode(e.target.value)}
+                  className="h-10 font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="swatch-order" className="text-xs font-bold">Thứ tự (Order)</Label>
+                <Input 
+                  id="swatch-order" 
+                  type="number" 
+                  value={order} 
+                  onChange={(e) => setOrder(Number(e.target.value))}
+                  className="h-10 font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="swatch-name" className="text-xs font-bold">Tên màu thực tế</Label>
+              <Input 
+                id="swatch-name" 
+                placeholder="Ví dụ: Vân gỗ Sồi nhạt Bắc Âu" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)}
+                className="h-10 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="swatch-type" className="text-xs font-bold">Dòng sản phẩm</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger id="swatch-type" className="h-10 font-semibold">
+                  <SelectValue placeholder="Chọn dòng sản phẩm" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UV Standard">UV Standard (In vân)</SelectItem>
+                  <SelectItem value="Premium Film">Premium Film (Phủ film cao cấp)</SelectItem>
+                  <SelectItem value="Luxury Film">Luxury Film (Phủ film đặc biệt)</SelectItem>
+                  <SelectItem value="Galaxy Stars">Galaxy Stars (Nhũ kim sa)</SelectItem>
+                  <SelectItem value="Eco+ (Eco Plus)">Eco+ (Eco Plus)</SelectItem>
+                  <SelectItem value="Khác">Dòng sản phẩm khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {type === 'Khác' && (
+              <div className="space-y-1">
+                <Label htmlFor="swatch-custom-type" className="text-xs font-bold">Tên dòng sản phẩm tùy chỉnh</Label>
+                <Input 
+                  id="swatch-custom-type" 
+                  placeholder="Nhập tên dòng sản phẩm" 
+                  onChange={(e) => setType(e.target.value)}
+                  className="h-10 font-semibold"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="text-xs font-bold block mb-1">Hình thức thể hiện</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPresentation('color')}
+                  className={cn(
+                    "py-2 px-3 text-xs font-bold border rounded-lg transition-colors flex items-center justify-center gap-1.5",
+                    presentation === 'color' 
+                      ? "border-blue-600 bg-blue-50/50 text-blue-700" 
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <span className="w-3 h-3 rounded-full bg-linear-gradient" style={{ background: 'linear-gradient(to right, red, orange, yellow, green, blue)' }} />
+                  Chọn màu sắc
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPresentation('image')}
+                  className={cn(
+                    "py-2 px-3 text-xs font-bold border rounded-lg transition-colors flex items-center justify-center gap-1.5",
+                    presentation === 'image' 
+                      ? "border-blue-600 bg-blue-50/50 text-blue-700" 
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Tải ảnh mẫu lên
+                </button>
+              </div>
+            </div>
+
+            {presentation === 'color' ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="swatch-color" className="text-xs font-bold">Chọn mã màu / Nhập mã màu</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="color" 
+                    value={style.startsWith('#') ? style : '#9c6644'} 
+                    onChange={(e) => setStyle(e.target.value)}
+                    className="w-12 h-10 p-1 cursor-pointer shrink-0"
+                  />
+                  <Input 
+                    type="text" 
+                    placeholder="Mã màu HEX (ví dụ: #9c6644) hoặc linear-gradient(...)" 
+                    value={style} 
+                    onChange={(e) => setStyle(e.target.value)}
+                    className="h-10 font-mono text-xs"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs font-bold">Ảnh chụp vân gỗ thực tế</Label>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    disabled={isUploading}
+                    className="hidden"
+                    id="swatch-image-upload"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="h-10 flex items-center gap-2 border-dashed border-2 hover:border-blue-400 hover:text-blue-600 w-full justify-center"
+                    disabled={isUploading}
+                    onClick={() => document.getElementById('swatch-image-upload')?.click()}
+                  >
+                    {isUploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                        <span>Đang tải lên...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        <span>Chọn ảnh vân gỗ</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {imageUrl && (
+                  <div className="flex items-center gap-3 bg-muted/40 p-2 rounded-lg border">
+                    <img 
+                      src={imageUrl} 
+                      alt="Vân gỗ xem trước" 
+                      className="w-12 h-12 object-cover rounded border border-border" 
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground truncate">{imageUrl}</p>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-red-500 hover:text-red-700"
+                      onClick={() => setImageUrl('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t border-border/40 bg-muted/20">
+            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="font-bold">
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              size="sm"
+              className="bg-blue-600 text-white hover:bg-blue-700 font-bold px-6"
+            >
+              Lưu lại
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 interface LessonStudyTrackerProps {
   lessonId: number;
@@ -1140,39 +1600,15 @@ function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererP
     return elements;
   };
 
+  const { isAdmin, userProfile } = useAuth();
+  const isManager = isAdmin || (userProfile?.role?.toLowerCase().includes('quản lý') || userProfile?.role?.toLowerCase().includes('manager'));
+
   return (
     <div className="space-y-4">
       <div className="space-y-1">{parseContent(content)}</div>
       
       {lessonId === 8 && (
-        <div className="mt-8 border border-border/60 rounded-2xl p-6 bg-slate-50/50 dark:bg-zinc-950/20">
-          <h4 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
-            Bảng Tra Cứu Mã Màu Ecoplast Thực Tế
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {SWATCH_COLORS.map((swatch, idx) => (
-              <div 
-                key={idx} 
-                className="group relative rounded-xl border border-border bg-white dark:bg-zinc-900 p-2 shadow-xs transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 flex flex-col gap-2"
-              >
-                <div className={cn("w-full h-16 rounded-lg font-bold flex items-center justify-center text-sm shadow-xs text-white", swatch.style)}>
-                  <span className="px-2 py-1 rounded bg-black/30 backdrop-blur-xs font-mono tracking-wider">
-                    {swatch.code}
-                  </span>
-                </div>
-                <div className="px-1">
-                  <div className="font-bold text-xs truncate text-foreground group-hover:text-blue-600 transition-colors">
-                    {swatch.name}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {swatch.type}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <EcoplastColorSwatches isAdmin={isAdmin} isManager={isManager} />
       )}
     </div>
   );
