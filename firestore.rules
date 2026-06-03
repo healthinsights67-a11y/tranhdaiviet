@@ -239,5 +239,9 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /ecoplast_lessons/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }

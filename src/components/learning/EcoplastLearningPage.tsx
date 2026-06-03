@@ -21,18 +21,57 @@ import {
   ChevronRight,
   BookMarked,
   Info,
-  Ruler
+  Ruler,
+  Plus,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { z } from 'zod';
+import { db, collection, doc, getDocs, setDoc, deleteDoc, query, orderBy } from '../../lib/firebase';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Theory content structure
-const LESSONS = [
+// Zod schema for validation
+const lessonSchema = z.object({
+  id: z.number().int().positive(),
+  title: z.string().min(1, "Tiêu đề không được để trống"),
+  content: z.string().min(1, "Nội dung không được để trống"),
+  order: z.number().int().nonnegative(),
+  iconName: z.string().min(1, "Vui lòng chọn Icon đại diện")
+});
+
+type LessonType = z.infer<typeof lessonSchema>;
+
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Layers,
+  Info,
+  BookMarked,
+  ShieldCheck,
+  Droplet,
+  TrendingUp,
+  Clock,
+  BookOpen,
+  Flame,
+  Award,
+  Ruler
+};
+
+// Default static lessons for database initialization
+const DEFAULT_LESSONS: LessonType[] = [
   {
     id: 1,
     title: "1. Giới thiệu Ngành vật liệu & Xu hướng Nhựa rỗng",
-    icon: Layers,
+    order: 1,
+    iconName: "Layers",
     content: `Trong ngành thiết kế và thi công nội thất hiện đại, việc lựa chọn chất liệu đóng vai trò quyết định đến độ bền, thẩm mỹ và chi phí của công trình. Dưới đây là bức tranh toàn cảnh về các nhóm vật liệu phổ biến:
 
 **1. Gỗ tự nhiên (Gỗ thịt):**
@@ -51,7 +90,8 @@ const LESSONS = [
   {
     id: 2,
     title: "2. Cấu tạo Chi tiết Tấm nhựa Ecoplast",
-    icon: Info,
+    order: 2,
+    iconName: "Info",
     content: `Tấm nội thất Ecoplast được sản xuất trên dây chuyền công nghệ đùn ép tiên tiến, tạo ra cấu trúc nhựa rỗng với hệ xương chịu lực dày bên trong:
 
 **Thành phần cấu tạo chính:**
@@ -67,11 +107,12 @@ const LESSONS = [
   {
     id: 3,
     title: "3. Hệ thống Phụ kiện Chuyên dụng đi kèm",
-    icon: BookMarked,
+    order: 3,
+    iconName: "BookMarked",
     content: `Để hoàn thiện sản phẩm nhựa Ecoplast cao cấp, hệ thống phụ kiện chuyên dụng đi kèm đóng vai trò cực kỳ quan trọng:
 
 **1. Thanh tăng cường bằng nhựa (Composite/Nhựa đặc):**
-- Đây là thanh tăng cứng dạng hộp bằng nhựa đặc/composite thiết kế vừa khít để nhét vào các khoang rỗng bên trong tấm nhựa Ecoplast tại vị trí bắt vít bản lề hoặc khu vực chịu lực uốn chính.
+- Đây là thanh tăng cứng dạng hộp bằng nhựa đặc/composite thiết thiết kế vừa khít để nhét vào các khoang rỗng bên trong tấm nhựa Ecoplast tại vị trí bắt vít bản lề hoặc khu vực chịu lực uốn chính.
 - Thanh tăng cường bằng nhựa giúp vít bám chặt, thay thế hoàn toàn chốt gỗ truyền thống để đồng nhất vật liệu nhựa, không lo bị ẩm mốc, mối mọt hay co nở theo thời gian.
 
 **2. Nẹp chỉ viền PVC:**
@@ -83,7 +124,8 @@ const LESSONS = [
   {
     id: 4,
     title: "4. Cách thức Liên kết (Mộng & CNC)",
-    icon: ShieldCheck,
+    order: 4,
+    iconName: "ShieldCheck",
     content: `Quy trình chế tác nhựa Ecoplast tại I-Nội-Thất áp dụng các công nghệ cơ khí chính xác:
 
 **1. Công nghệ cắt CNC tự động:**
@@ -97,7 +139,8 @@ const LESSONS = [
   {
     id: 5,
     title: "5. Tính An toàn Sức khỏe của Vật liệu",
-    icon: Droplet,
+    order: 5,
+    iconName: "Droplet",
     content: `Nhựa Ecoplast là vật liệu an toàn tuyệt đối với sức khỏe con người và thân thiện với môi trường nhờ các kiểm định nghiêm ngặt:
 
 **1. Tiêu chuẩn Lead-free (Không chì):**
@@ -112,7 +155,8 @@ const LESSONS = [
   {
     id: 6,
     title: "6. So sánh Giá thành của Nhựa Ecoplast",
-    icon: TrendingUp,
+    order: 6,
+    iconName: "TrendingUp",
     content: `Giá thành của nhựa Ecoplast tối ưu và hiệu quả về mặt kinh tế lâu dài:
 
 **1. So với nhựa Đài Loan giá rẻ:**
@@ -127,7 +171,8 @@ const LESSONS = [
   {
     id: 7,
     title: "7. Thời gian Sản xuất & Thi công Lắp đặt",
-    icon: Clock,
+    order: 7,
+    iconName: "Clock",
     content: `Ưu thế lớn của tấm nội thất nhựa Ecoplast là tốc độ sản xuất và thi công cực kỳ nhanh chóng:
 
 **1. Rút ngắn thời gian gia công:**
@@ -140,7 +185,8 @@ const LESSONS = [
   {
     id: 8,
     title: "8. Màu sắc, Mã màu & Số lượng Màu sắc",
-    icon: BookOpen,
+    order: 8,
+    iconName: "BookOpen",
     content: `Nhựa Ecoplast mang lại sự đa dạng về mặt thẩm mỹ với hơn 20 mã màu sắc phong phú được phân cấp rõ ràng theo từng dòng sản phẩm để đáp ứng nhu cầu thiết kế từ bình dân đến cao cấp:
 
 **1. Dòng Ecoplast In Vân (UV Standard):**
@@ -175,7 +221,8 @@ const LESSONS = [
   {
     id: 9,
     title: "9. Độ bền của Nhựa Ecoplast",
-    icon: Flame,
+    order: 9,
+    iconName: "Flame",
     content: `Nhựa Ecoplast được đánh giá là một trong những vật liệu nội thất có độ bền kết cấu tốt nhất hiện nay:
 
 **1. Tuổi thọ sử dụng:**
@@ -190,7 +237,8 @@ const LESSONS = [
   {
     id: 10,
     title: "10. Cẩm nang chốt Sales & Kỹ năng xử lý từ chối",
-    icon: Award,
+    order: 10,
+    iconName: "Award",
     content: `Dành cho nhân viên tư vấn chốt Sales thực tế tại công trình hoặc showroom khi đối mặt với các băn khoăn của khách hàng:
 
 **TÌNH HUỐNG 1: KHÁCH HÀNG SO SÁNH VỚI GỖ CÔNG NGHIỆP AN CƯỜNG CHỐNG ẨM**
@@ -216,7 +264,8 @@ const LESSONS = [
   {
     id: 11,
     title: "11. Cẩm nang đo đạc kỹ thuật tại công trình",
-    icon: Ruler,
+    order: 11,
+    iconName: "Ruler",
     content: `Đo đạc hiện trạng là công đoạn sống còn quyết định sự thành bại của dự án nội thất. Sai một ly đi một dặm, chỉ cần sai lệch vài milimet có thể dẫn đến việc tủ không đút vừa hộc tường hoặc hở khe quá lớn gây mất thẩm mỹ.
 
 **1. Quy tắc đo đạc 3 điểm chuẩn:**
@@ -241,6 +290,18 @@ const LESSONS = [
 - Nếu lắp đặt hệ tủ quần áo kịch trần lớn hoặc tủ dài, bắt buộc phải chia module nhỏ phù hợp để vận chuyển dễ dàng, tránh tình trạng sản xuất tủ nguyên khối lớn không thể đưa lên phòng khách hàng.`
   }
 ];
+
+const initializeLessonsIfEmpty = async () => {
+  const q = query(collection(db, 'ecoplast_lessons'), orderBy('order', 'asc'));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    console.log("Seeding default Ecoplast lessons to Firestore...");
+    for (const lesson of DEFAULT_LESSONS) {
+      const validated = lessonSchema.parse(lesson);
+      await setDoc(doc(db, 'ecoplast_lessons', `lesson_${validated.id}`), validated);
+    }
+  }
+};
 
 interface Question {
   id: number;
@@ -472,8 +533,20 @@ const generateQuestionBank = (): Question[] => {
 };
 
 export function EcoplastLearningPage() {
+  const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
+  
   const [activeTab, setActiveTab] = React.useState<string>('theory');
   const [expandedLesson, setExpandedLesson] = React.useState<number | null>(1);
+  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [editingLesson, setEditingLesson] = React.useState<LessonType | null>(null);
+
+  // Form fields for Dialog
+  const [titleField, setTitleField] = React.useState('');
+  const [contentField, setContentField] = React.useState('');
+  const [orderField, setOrderField] = React.useState<number>(0);
+  const [iconNameField, setIconNameField] = React.useState('BookOpen');
   
   // Quiz states
   const [quizStarted, setQuizStarted] = React.useState(false);
@@ -520,6 +593,109 @@ export function EcoplastLearningPage() {
     return () => clearInterval(timer);
   }, [quizStarted, timeLeft, quizSubmitted]);
 
+  // TanStack Query to fetch lessons dynamically from Firestore
+  const { data: lessons = [], isLoading } = useQuery<LessonType[]>({
+    queryKey: ['ecoplast_lessons'],
+    queryFn: async () => {
+      await initializeLessonsIfEmpty();
+      const q = query(collection(db, 'ecoplast_lessons'), orderBy('order', 'asc'));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => {
+        const data = doc.data();
+        return lessonSchema.parse({
+          id: data.id,
+          title: data.title,
+          content: data.content,
+          order: data.order,
+          iconName: data.iconName
+        });
+      });
+    }
+  });
+
+  // Mutation to Add/Update Lesson
+  const upsertLessonMutation = useMutation({
+    mutationFn: async (lesson: LessonType) => {
+      const validated = lessonSchema.parse(lesson);
+      const docRef = doc(db, 'ecoplast_lessons', `lesson_${validated.id}`);
+      await setDoc(docRef, validated);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecoplast_lessons'] });
+      toast.success("Đã lưu bài học thành công!");
+      setIsDialogOpen(false);
+      setEditingLesson(null);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(`Lỗi khi lưu bài học: ${err.message}`);
+    }
+  });
+
+  // Mutation to Delete Lesson
+  const deleteLessonMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await deleteDoc(doc(db, 'ecoplast_lessons', `lesson_${id}`));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ecoplast_lessons'] });
+      toast.success("Đã xóa bài học thành công!");
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(`Lỗi khi xóa bài học: ${err.message}`);
+    }
+  });
+
+  const handleOpenAddDialog = () => {
+    setEditingLesson(null);
+    const maxId = lessons.reduce((max, l) => l.id > max ? l.id : max, 0);
+    const maxOrder = lessons.reduce((max, l) => l.order > max ? l.order : max, 0);
+    setTitleField('');
+    setContentField('');
+    setOrderField(maxOrder + 1);
+    setIconNameField('BookOpen');
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (lesson: LessonType) => {
+    setEditingLesson(lesson);
+    setTitleField(lesson.title);
+    setContentField(lesson.content);
+    setOrderField(lesson.order);
+    setIconNameField(lesson.iconName);
+    setIsDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    try {
+      const id = editingLesson ? editingLesson.id : (lessons.reduce((max, l) => l.id > max ? l.id : max, 0) + 1);
+      const newLesson: LessonType = {
+        id,
+        title: titleField.trim(),
+        content: contentField.trim(),
+        order: Number(orderField),
+        iconName: iconNameField
+      };
+      
+      // Zod validation
+      lessonSchema.parse(newLesson);
+      upsertLessonMutation.mutate(newLesson);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      } else {
+        toast.error(err.message || "Lỗi dữ liệu nhập vào");
+      }
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Bạn có chắc chắn muốn xóa bài học này?")) {
+      deleteLessonMutation.mutate(id);
+    }
+  };
+
   const handleStartQuiz = () => {
     const allQuestions = generateQuestionBank();
     
@@ -531,31 +707,22 @@ export function EcoplastLearningPage() {
     setAnswers({});
     setQuizStarted(true);
     setQuizSubmitted(false);
-    setTimeLeft(1800); // 30 minutes for 30 questions
+    setScore(0);
+    setTimeLeft(2700); // 45 minutes
     setCurrentQuestionIndex(0);
-    toast.success("Đề thi gồm 30 câu hỏi ngẫu nhiên bắt đầu! Thời gian làm bài 30 phút.");
   };
 
-  const handleSelectAnswer = (qId: number, optionIdx: number) => {
+  const handleAnswerSelect = (questionId: number, optionIndex: number) => {
     if (quizSubmitted) return;
     setAnswers(prev => ({
       ...prev,
-      [qId]: optionIdx
+      [questionId]: optionIndex
     }));
   };
 
-  const handleQuizSubmit = (force = false) => {
+  const handleQuizSubmit = (isTimeOut: boolean = false) => {
     if (quizSubmitted) return;
-
-    const unansweredCount = selectedQuestions.filter(q => answers[q.id] === undefined).length;
     
-    if (!force && unansweredCount > 0) {
-      if (!confirm(`Bạn còn ${unansweredCount} câu chưa trả lời. Bạn vẫn muốn nộp bài chứ?`)) {
-        return;
-      }
-    }
-
-    // Calculate score
     let correctCount = 0;
     selectedQuestions.forEach(q => {
       if (answers[q.id] === q.answer) {
@@ -566,17 +733,22 @@ export function EcoplastLearningPage() {
     setScore(correctCount);
     setQuizSubmitted(true);
 
-    const isPassed = correctCount >= 24; // 80% pass score
-    const newBest = Math.max(stats.bestScore, correctCount);
+    const isPassed = correctCount >= 24; // 80% of 30 is 24
+
+    // Update stats
     const newStats = {
       totalTests: stats.totalTests + 1,
-      bestScore: newBest,
+      bestScore: Math.max(stats.bestScore, correctCount),
       lastScore: correctCount,
-      passed: isPassed || stats.passed
+      passed: stats.passed || isPassed
     };
 
     setStats(newStats);
     localStorage.setItem('ecoplast_quiz_stats', JSON.stringify(newStats));
+
+    if (isTimeOut) {
+      toast.error("Hết giờ làm bài! Hệ thống tự động nộp bài thi của bạn.");
+    }
 
     if (isPassed) {
       toast.success(`Chúc mừng! Bạn đạt điểm ${correctCount}/30 câu hỏi. Đạt điều kiện tốt nghiệp chuyên đề Ecoplast! 🎉`);
@@ -636,45 +808,92 @@ export function EcoplastLearningPage() {
 
         {/* Tab 1: Theory */}
         <TabsContent value="theory" className="outline-none">
+          {/* Removed Admin Control Bar */}
+
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
-              {LESSONS.map((lesson) => {
-                const Icon = lesson.icon;
-                const isExpanded = expandedLesson === lesson.id;
-                return (
-                  <Card key={lesson.id} className="border border-border/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <button
-                      onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}
-                      className="w-full p-4 flex items-center justify-between bg-gray-50/50 hover:bg-gray-50 text-left transition-colors border-b border-border/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <span className="font-bold text-base text-foreground leading-none">{lesson.title}</span>
-                      </div>
-                      <ChevronRight className={cn(
-                        "h-5 w-5 text-muted-foreground/50 transition-transform duration-200",
-                        isExpanded ? "transform rotate-90" : ""
-                      )} />
-                    </button>
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3 bg-card border rounded-2xl p-8">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                  <p className="text-xs font-bold text-muted-foreground">Đang tải tài liệu học tập từ hệ thống...</p>
+                </div>
+              ) : lessons.length === 0 ? (
+                <div className="text-center py-12 bg-card border rounded-2xl">
+                  <BookMarked className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-bold text-muted-foreground">Chưa có bài học nào được cấu hình.</p>
+                </div>
+              ) : (
+                lessons.map((lesson) => {
+                  const Icon = ICON_MAP[lesson.iconName] || BookOpen;
+                  const isExpanded = expandedLesson === lesson.id;
+                  return (
+                    <Card key={lesson.id} className="border border-border/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <div className="w-full p-4 flex items-center justify-between bg-gray-50/50 hover:bg-gray-50 dark:hover:bg-zinc-800/40 text-left transition-colors border-b border-border/30">
+                        <button
+                          onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}
+                          className="flex-1 flex items-center gap-3 text-left"
                         >
-                          <CardContent className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-line border-t border-border/10">
-                            {lesson.content}
-                          </CardContent>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </Card>
-                );
-              })}
+                          <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span className="font-bold text-base text-foreground leading-none">{lesson.title}</span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 mr-2" onClick={(e) => e.stopPropagation()}>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30" 
+                                onClick={() => handleOpenEditDialog(lesson)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-950/30" 
+                                onClick={() => handleDelete(lesson.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          <button onClick={() => setExpandedLesson(isExpanded ? null : lesson.id)}>
+                            <ChevronRight className={cn(
+                              "h-5 w-5 text-muted-foreground/50 transition-transform duration-200",
+                              isExpanded ? "transform rotate-90" : ""
+                            )} />
+                          </button>
+                        </div>
+                      </div>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <CardContent className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-line border-t border-border/10 border-b border-border/10 bg-white dark:bg-zinc-950">
+                              {lesson.content}
+                            </CardContent>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Card>
+                  );
+                })
+              )}
+              
+              {/* Add New Section Button */}
+              <Button 
+                variant="outline"
+                className="w-full py-6 border-dashed border-2 text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 flex flex-col gap-2 h-auto"
+                onClick={handleOpenAddDialog}
+              >
+                <Plus className="h-6 w-6" />
+                <span className="font-bold">Thêm phần thông tin mới</span>
+              </Button>
             </div>
 
             <div className="space-y-6">
@@ -720,7 +939,7 @@ export function EcoplastLearningPage() {
                     onClick={() => { setActiveTab('quiz'); handleStartQuiz(); }}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl"
                   >
-                    Bắt đầu đề thi thử ngay
+                    Bắt đầu thi sát hạch
                   </Button>
                 </CardContent>
               </Card>
@@ -728,82 +947,62 @@ export function EcoplastLearningPage() {
           </div>
         </TabsContent>
 
-        {/* Tab 2: Quiz Practice */}
+        {/* Tab 2: Quiz */}
         <TabsContent value="quiz" className="outline-none">
           {!quizStarted ? (
-            <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-xl mx-auto space-y-6">
-              <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                <HelpCircle className="h-8 w-8" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-bold text-xl text-foreground">Sát hạch kiến thức Ecoplast</h3>
-                <p className="text-sm text-muted-foreground">
-                  Hệ thống sẽ lấy ngẫu nhiên 30 câu hỏi từ kho dữ liệu 300 câu hỏi sát hạch để tạo đề thi dành riêng cho bạn. Để vượt qua chuyên đề này, bạn cần trả lời đúng tối thiểu **24/30 câu (80%)** trong thời gian 30 phút.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 w-full text-left bg-muted/40 p-4 rounded-2xl border border-border/50">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Thời gian làm bài</span>
-                  <p className="font-black text-sm text-foreground">30 Phút</p>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Số lượng câu hỏi</span>
-                  <p className="font-black text-sm text-foreground">30 Câu hỏi trắc nghiệm</p>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleStartQuiz} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl text-sm"
-              >
-                Bắt đầu làm bài thi mới
+            <Card className="border border-border/80 p-8 text-center max-w-xl mx-auto rounded-2xl shadow-sm">
+              <HelpCircle className="h-14 w-14 text-blue-600 mx-auto mb-4" />
+              <h2 className="text-xl font-bold mb-2">Đề thi Đào tạo chuyên đề Ecoplast</h2>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                Đề thi gồm 30 câu hỏi ngẫu nhiên được trích xuất tự động từ bộ câu hỏi 300 tình huống chốt Sales thực tế và kỹ thuật đo đạc của I-Nội-thất.
+                <br />
+                Thời gian làm bài: <strong>45 phút</strong>. Điểm đạt tối thiểu: <strong>24/30 câu đúng (80%)</strong>.
+              </p>
+              <Button onClick={handleStartQuiz} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 h-11 rounded-xl">
+                Bắt đầu làm bài thi
               </Button>
-            </div>
+            </Card>
           ) : (
             <div className="grid gap-6 lg:grid-cols-4">
-              {/* Question Navigation Grid & Timer */}
-              <div className="lg:col-span-1 order-last lg:order-first space-y-4">
-                <Card className="border border-border shadow-sm p-4">
-                  <div className="flex items-center justify-between mb-4 pb-2 border-b">
-                    <span className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <Clock className="h-4 w-4" /> Thời gian
-                    </span>
+              {/* Question Navigation & Stats */}
+              <div className="space-y-4">
+                <Card className="border border-border/80 rounded-2xl p-4 shadow-sm bg-card">
+                  <div className="flex justify-between items-center pb-3 border-b mb-3">
+                    <span className="text-xs font-bold text-muted-foreground">Thời gian còn lại</span>
                     <span className={cn(
-                      "font-mono text-base font-black px-3 py-1 rounded-md",
-                      timeLeft < 300 ? "bg-red-500/10 text-red-600 animate-pulse" : "bg-blue-500/10 text-blue-700"
+                      "text-base font-black px-2.5 py-0.5 rounded-lg border",
+                      timeLeft < 300 ? "bg-red-50 text-red-600 border-red-200 animate-pulse" : "bg-blue-50 text-blue-600 border-blue-100"
                     )}>
                       {formatTime(timeLeft)}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-muted-foreground">Tiến độ</span>
+                      <span>{Object.keys(answers).length}/30 câu</span>
+                    </div>
+                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-blue-600 h-full transition-all duration-300"
+                        style={{ width: `${(Object.keys(answers).length / 30) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2 mt-5">
                     {selectedQuestions.map((q, idx) => {
                       const isAnswered = answers[q.id] !== undefined;
-                      const isCurrent = idx === currentQuestionIndex;
-                      
-                      let btnClass = "bg-secondary text-muted-foreground border-transparent hover:bg-secondary/70";
-                      
-                      if (isAnswered) {
-                        btnClass = "bg-blue-600 text-white border-transparent hover:bg-blue-700";
-                      }
-                      if (quizSubmitted) {
-                        const isCorrect = answers[q.id] === q.answer;
-                        btnClass = isCorrect 
-                          ? "bg-emerald-500 text-white border-transparent" 
-                          : "bg-rose-500 text-white border-transparent";
-                      }
-                      if (isCurrent) {
-                        btnClass += " ring-2 ring-blue-600 ring-offset-2";
-                      }
-
+                      const isCurrent = currentQuestionIndex === idx;
                       return (
                         <button
                           key={q.id}
                           onClick={() => setCurrentQuestionIndex(idx)}
                           className={cn(
-                            "h-9 w-full rounded-lg text-xs font-black border transition-all flex items-center justify-center",
-                            btnClass
+                            "h-9 rounded-lg text-xs font-black transition-all border",
+                            isCurrent && "border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20",
+                            !isCurrent && isAnswered && "bg-secondary text-foreground border-border",
+                            !isCurrent && !isAnswered && "bg-transparent text-muted-foreground/80 border-border hover:bg-secondary/40"
                           )}
                         >
                           {idx + 1}
@@ -812,101 +1011,90 @@ export function EcoplastLearningPage() {
                     })}
                   </div>
 
-                  {quizSubmitted ? (
-                    <div className="mt-6 pt-4 border-t space-y-4">
-                      <div className="bg-secondary/40 p-4 rounded-xl text-center space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Kết quả thi</span>
-                        <p className="text-2xl font-black text-foreground">{score}/30</p>
-                        <Badge className={cn("text-[9px] font-bold border-none py-0.5", score >= 24 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600")}>
-                          {score >= 24 ? "ĐẠT (PASS)" : "CHƯA ĐẠT"}
+                  {!quizSubmitted ? (
+                    <Button 
+                      onClick={() => handleQuizSubmit()}
+                      className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 rounded-xl"
+                    >
+                      Nộp bài thi
+                    </Button>
+                  ) : (
+                    <div className="mt-6 space-y-3">
+                      <div className="p-3 bg-muted rounded-xl text-center border">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">Kết quả thi</p>
+                        <p className="text-2xl font-black mt-1 text-primary">{score}/30 đúng</p>
+                        <Badge className={cn(
+                          "mt-2 font-bold px-3 border-none",
+                          score >= 24 ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
+                        )}>
+                          {score >= 24 ? "ĐẠT (TỐT NGHIỆP)" : "CHƯA ĐẠT"}
                         </Badge>
                       </div>
-
                       <Button 
-                        onClick={handleStartQuiz} 
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl"
+                        onClick={handleStartQuiz}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl flex items-center justify-center gap-2"
                       >
-                        <RotateCcw className="h-4 w-4 mr-2" /> Làm lại đề thi mới
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="mt-6 pt-4 border-t">
-                      <Button 
-                        onClick={() => handleQuizSubmit()} 
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 rounded-xl"
-                      >
-                        Nộp bài thi
+                        <RotateCcw className="h-4 w-4" />
+                        Thi đề khác
                       </Button>
                     </div>
                   )}
                 </Card>
               </div>
 
-              {/* Main Quiz Panel */}
-              <div className="lg:col-span-3 space-y-4">
-                <Card className="border border-border/80 shadow-md">
-                  <CardHeader className="p-6 pb-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <Badge className="bg-blue-500/10 text-blue-600 border-none font-bold uppercase tracking-wider text-[9px]">
-                        Câu hỏi {currentQuestionIndex + 1} / 30
+              {/* Current Question */}
+              <div className="lg:col-span-3">
+                <Card className="border border-border/80 rounded-2xl shadow-sm bg-card">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex justify-between items-center gap-4">
+                      <Badge className="bg-blue-500/10 text-blue-600 border-none font-black text-[10px] px-2.5 py-0.5">
+                        CÂU HỎI {currentQuestionIndex + 1} / 30
                       </Badge>
                       {quizSubmitted && (
-                        <div className="flex items-center gap-1.5 text-xs font-bold">
-                          {answers[selectedQuestions[currentQuestionIndex]?.id] === selectedQuestions[currentQuestionIndex]?.answer ? (
-                            <span className="text-emerald-500 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Trả lời đúng</span>
-                          ) : (
-                            <span className="text-rose-500 flex items-center gap-1"><XCircle className="w-4 h-4" /> Trả lời sai</span>
-                          )}
-                        </div>
+                        answers[selectedQuestions[currentQuestionIndex]?.id] === selectedQuestions[currentQuestionIndex]?.answer ? (
+                          <Badge className="bg-emerald-500 text-white border-none font-bold text-xs flex items-center gap-1">
+                            <CheckCircle className="h-3.5 w-3.5" /> Đúng
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-rose-500 text-white border-none font-bold text-xs flex items-center gap-1">
+                            <XCircle className="h-3.5 w-3.5" /> Sai
+                          </Badge>
+                        )
                       )}
                     </div>
-                    <CardTitle className="text-base md:text-lg font-bold leading-relaxed text-slate-800 dark:text-zinc-100">
+                    <CardTitle className="text-base md:text-lg font-bold leading-snug mt-3">
                       {selectedQuestions[currentQuestionIndex]?.question}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 pt-4 space-y-3">
+                  <CardContent className="p-5 pt-0 space-y-3">
                     {selectedQuestions[currentQuestionIndex]?.options.map((option, idx) => {
-                      const qId = selectedQuestions[currentQuestionIndex].id;
-                      const isSelected = answers[qId] === idx;
+                      const questionId = selectedQuestions[currentQuestionIndex].id;
+                      const isSelected = answers[questionId] === idx;
                       const isCorrect = selectedQuestions[currentQuestionIndex].answer === idx;
-                      
-                      let containerClass = "border border-border/70 bg-card text-card-foreground hover:bg-muted/40 cursor-pointer";
-                      
-                      if (isSelected) {
-                        containerClass = "border-blue-600 bg-blue-50 text-blue-800 dark:bg-zinc-800 dark:text-blue-400";
-                      }
-                      if (quizSubmitted) {
-                        if (isCorrect) {
-                          containerClass = "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-zinc-850 dark:text-emerald-400";
-                        } else if (isSelected) {
-                          containerClass = "border-rose-500 bg-rose-50 text-rose-800 dark:bg-zinc-850 dark:text-rose-400";
-                        } else {
-                          containerClass = "border-border/30 bg-muted/20 text-muted-foreground opacity-50 cursor-not-allowed";
-                        }
-                      }
-
                       const labels = ['A', 'B', 'C', 'D'];
-
+                      
                       return (
                         <div
                           key={idx}
-                          onClick={() => handleSelectAnswer(qId, idx)}
+                          onClick={() => handleAnswerSelect(questionId, idx)}
                           className={cn(
-                            "flex items-start gap-4 p-4 rounded-xl border transition-all text-xs font-semibold leading-relaxed",
-                            containerClass
+                            "flex items-start gap-3 p-4 rounded-xl border transition-all text-sm font-semibold cursor-pointer",
+                            !isSelected && "bg-transparent border-border hover:bg-secondary/20",
+                            isSelected && "border-blue-600 bg-blue-500/5 text-blue-700 ring-1 ring-blue-500/30",
+                            quizSubmitted && isCorrect && "bg-emerald-500/5 border-emerald-500 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30",
+                            quizSubmitted && isSelected && !isCorrect && "bg-rose-500/5 border-rose-500 text-rose-700 dark:text-rose-400 ring-1 ring-rose-500/30"
                           )}
                         >
                           <div className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border",
-                            isSelected 
-                              ? "bg-blue-600 text-white border-blue-600" 
-                              : "bg-secondary text-muted-foreground border-border/70",
+                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border shrink-0 mt-0.5",
+                            !isSelected && "bg-secondary text-muted-foreground border-border/70",
+                            isSelected && "bg-blue-600 text-white border-blue-600",
                             quizSubmitted && isCorrect && "bg-emerald-500 text-white border-emerald-500",
                             quizSubmitted && isSelected && !isCorrect && "bg-rose-500 text-white border-rose-500"
                           )}>
                             {labels[idx]}
                           </div>
-                          <span>{option}</span>
+                          <span className="leading-snug">{option}</span>
                         </div>
                       );
                     })}
@@ -917,7 +1105,7 @@ export function EcoplastLearningPage() {
                         <h4 className="font-bold text-primary mb-2 flex items-center gap-1.5">
                           <AlertCircle className="w-4.5 h-4.5" /> Giải thích chi tiết:
                         </h4>
-                        <p className="leading-relaxed whitespace-pre-line font-medium">
+                        <p className="leading-relaxed whitespace-pre-line font-medium text-muted-foreground">
                           {selectedQuestions[currentQuestionIndex]?.explanation}
                         </p>
                       </div>
@@ -948,6 +1136,70 @@ export function EcoplastLearningPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Admin Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLesson ? "Chỉnh sửa bài học" : "Thêm bài học mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-xs font-bold">Tiêu đề bài học</Label>
+              <Input 
+                id="title" 
+                placeholder="Ví dụ: 1. Giới thiệu Ecoplast" 
+                value={titleField} 
+                onChange={(e) => setTitleField(e.target.value)} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="order" className="text-xs font-bold">Thứ tự hiển thị (Order)</Label>
+                <Input 
+                  id="order" 
+                  type="number" 
+                  value={orderField} 
+                  onChange={(e) => setOrderField(Number(e.target.value))} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="iconName" className="text-xs font-bold">Chọn Icon đại diện</Label>
+                <Select value={iconNameField} onValueChange={setIconNameField}>
+                  <SelectTrigger id="iconName">
+                    <SelectValue placeholder="Chọn icon" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(ICON_MAP).map((name) => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="content" className="text-xs font-bold">Nội dung bài học (Markdown/Text)</Label>
+              <Textarea 
+                id="content" 
+                placeholder="Nhập nội dung chi tiết bài học..." 
+                className="min-h-[200px] text-sm"
+                value={contentField} 
+                onChange={(e) => setContentField(e.target.value)} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700">
+              Lưu lại
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
