@@ -602,14 +602,19 @@ export function EcoplastLearningPage() {
       const snap = await getDocs(q);
       return snap.docs.map(doc => {
         const data = doc.data();
-        return lessonSchema.parse({
-          id: data.id,
-          title: data.title,
-          content: data.content,
-          order: data.order,
-          iconName: data.iconName
-        });
-      });
+        try {
+          return lessonSchema.parse({
+            id: data.id || parseInt(doc.id.replace('lesson_', '')) || 0,
+            title: data.title || 'Untitled',
+            content: data.content || '',
+            order: data.order ?? 999,
+            iconName: data.iconName || 'BookOpen'
+          });
+        } catch (err) {
+          console.error(`Error parsing lesson ${doc.id}:`, err);
+          return null;
+        }
+      }).filter(Boolean) as LessonType[];
     }
   });
 
