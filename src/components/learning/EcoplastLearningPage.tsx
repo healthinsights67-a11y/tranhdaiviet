@@ -32,7 +32,8 @@ import {
   ShieldAlert,
   MessageSquare,
   Check,
-  Sparkles
+  Sparkles,
+  Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
@@ -57,6 +58,7 @@ const lessonSchema = z.object({
   order: z.number().int().nonnegative(),
   iconName: z.string().min(1, "Vui lòng chọn Icon đại diện"),
   imageUrl: z.string().optional().default(""),
+  imagePosition: z.enum(['top', 'bottom', 'hidden']).optional().default('top'),
   requiredStudyTime: z.number().int().positive().optional().default(360)
 });
 
@@ -1587,6 +1589,27 @@ function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererP
         );
       }
 
+      // Detect markdown image: ![Alt Text](url)
+      const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/);
+      if (imgMatch) {
+        const altText = imgMatch[1];
+        const srcUrl = imgMatch[2];
+        return (
+          <div key={key} className="relative my-6 rounded-xl overflow-hidden border border-border/60 shadow-xs max-w-full md:max-w-2xl mx-auto bg-slate-50 dark:bg-zinc-900/50 p-1">
+            <img 
+              src={srcUrl} 
+              alt={altText || "Hình ảnh"} 
+              className="w-full h-auto max-h-[450px] object-contain rounded-lg bg-muted mx-auto block" 
+            />
+            {altText && (
+              <p className="text-[11px] text-center text-muted-foreground mt-2 font-medium italic">
+                {altText}
+              </p>
+            )}
+          </div>
+        );
+      }
+
       // 4. Default Text Paragraph
       return (
         <p key={key} className="text-muted-foreground text-sm leading-relaxed my-3 whitespace-pre-line">
@@ -1749,6 +1772,7 @@ export function EcoplastLearningPage() {
   const [orderField, setOrderField] = React.useState<number>(0);
   const [iconNameField, setIconNameField] = React.useState('BookOpen');
   const [imageUrlField, setImageUrlField] = React.useState('');
+  const [imagePositionField, setImagePositionField] = React.useState<'top' | 'bottom' | 'hidden'>('top');
   const [requiredStudyTimeField, setRequiredStudyTimeField] = React.useState<number>(6);
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
   const [selectedPhaseId, setSelectedPhaseId] = React.useState<string>('all');
@@ -1816,6 +1840,7 @@ export function EcoplastLearningPage() {
             order: data.order ?? 999,
             iconName: data.iconName || 'BookOpen',
             imageUrl: data.imageUrl || '',
+            imagePosition: data.imagePosition || 'top',
             requiredStudyTime: data.requiredStudyTime
           });
         } catch (err) {
@@ -1873,6 +1898,7 @@ export function EcoplastLearningPage() {
     setOrderField(maxOrder + 1);
     setIconNameField('BookOpen');
     setImageUrlField('');
+    setImagePositionField('top');
     setRequiredStudyTimeField(6); // Default to 6 minutes
     setIsDialogOpen(true);
   };
@@ -1884,6 +1910,7 @@ export function EcoplastLearningPage() {
     setOrderField(lesson.order);
     setIconNameField(lesson.iconName);
     setImageUrlField(lesson.imageUrl || '');
+    setImagePositionField(lesson.imagePosition || 'top');
     setRequiredStudyTimeField(Math.round((lesson.requiredStudyTime || 360) / 60));
     setIsDialogOpen(true);
   };
@@ -1909,6 +1936,31 @@ export function EcoplastLearningPage() {
     }
   };
 
+  const insertImageIntoContent = () => {
+    if (!imageUrlField) return;
+    
+    const textarea = document.getElementById('content') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    const text = contentField;
+    
+    const insertText = `\n![Mô tả ảnh](${imageUrlField})\n`;
+    const newContent = text.substring(0, startPos) + insertText + text.substring(endPos);
+    
+    setContentField(newContent);
+    setImagePositionField('hidden'); // Automatically set default rendering position to hidden since user is placing it manually
+    
+    toast.success("Đã chèn cú pháp ảnh vào nội dung tại vị trí con trỏ!");
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = startPos + insertText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 50);
+  };
+
   const handleSave = () => {
     try {
       const id = editingLesson ? editingLesson.id : (lessons.reduce((max, l) => l.id > max ? l.id : max, 0) + 1);
@@ -1919,6 +1971,7 @@ export function EcoplastLearningPage() {
         order: Number(orderField),
         iconName: iconNameField,
         imageUrl: imageUrlField,
+        imagePosition: imagePositionField,
         requiredStudyTime: Number(requiredStudyTimeField) * 60
       };
       
@@ -2228,7 +2281,7 @@ export function EcoplastLearningPage() {
                             transition={{ duration: 0.2 }}
                           >
                             <CardContent className="p-6 text-sm leading-relaxed text-muted-foreground border-t border-border/10 bg-slate-50/30 dark:bg-zinc-950/20 space-y-6">
-                              {lesson.imageUrl && (
+                              {lesson.imageUrl && (!lesson.imagePosition || lesson.imagePosition === 'top') && (
                                 <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-sm max-w-full md:max-w-2xl mx-auto">
                                   <img 
                                     src={lesson.imageUrl} 
@@ -2244,6 +2297,15 @@ export function EcoplastLearningPage() {
                                 onProgressUpdated={() => refetchUserProgress()} 
                               />
                               <BeautifulLessonRenderer content={lesson.content} lessonId={lesson.id} />
+                              {lesson.imageUrl && lesson.imagePosition === 'bottom' && (
+                                <div className="relative rounded-xl overflow-hidden border border-border/60 shadow-sm max-w-full md:max-w-2xl mx-auto mt-6">
+                                  <img 
+                                    src={lesson.imageUrl} 
+                                    alt={lesson.title} 
+                                    className="w-full h-[200px] md:h-[320px] object-cover bg-muted" 
+                                  />
+                                </div>
+                              )}
                             </CardContent>
                           </motion.div>
                         )}
@@ -2765,6 +2827,37 @@ export function EcoplastLearningPage() {
                   </div>
                 )}
               </div>
+              {imageUrlField && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 p-3.5 bg-slate-50 dark:bg-zinc-900/40 rounded-xl border border-border/60">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="imagePosition" className="text-xs font-bold text-muted-foreground">Vị trí hiển thị ảnh mặc định</Label>
+                    <Select 
+                      value={imagePositionField} 
+                      onValueChange={(val: 'top' | 'bottom' | 'hidden') => setImagePositionField(val)}
+                    >
+                      <SelectTrigger id="imagePosition" className="h-10 text-xs font-semibold bg-white dark:bg-zinc-950">
+                        <SelectValue placeholder="Chọn vị trí" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="top">Đầu bài học (Mặc định)</SelectItem>
+                        <SelectItem value="bottom">Cuối bài học</SelectItem>
+                        <SelectItem value="hidden">Tự chèn thủ công vào nội dung (Ẩn tự động)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={insertImageIntoContent}
+                      className="w-full h-10 text-xs font-bold bg-white dark:bg-zinc-950 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400 border border-input flex items-center justify-center gap-1.5"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
+                      Chèn ảnh vào nội dung (tại con trỏ)
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="requiredStudyTime" className="text-sm font-bold text-foreground">Thời gian học tối thiểu (Phút)</Label>
