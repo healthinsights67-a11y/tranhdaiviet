@@ -83,9 +83,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
 
   const isTopManager = (user && (user.email === 'nhoanhkoem01@gmail.com' || user.email === 'haanhtran.cv02@gmail.com')) || 
-    (currentUser?.role?.toLowerCase().includes('giám đốc')) || 
-    (currentUser?.role?.toLowerCase().includes('quản lý tổng')) ||
-    (currentUser?.role?.toLowerCase().includes('quản lý')) ||
+    !!(currentUser?.role?.toLowerCase()?.includes('giám đốc')) || 
+    !!(currentUser?.role?.toLowerCase()?.includes('quản lý tổng')) ||
+    !!(currentUser?.role?.toLowerCase()?.includes('quản lý')) ||
     (currentUser?.permissions?.viewPrice === true);
 
   const canViewPrice = isTopManager;
@@ -142,10 +142,10 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   const productionMembers = React.useMemo(() => {
     return members.filter(m => 
-      m.role.toLowerCase().includes('sản xuất') || 
-      m.role.toLowerCase().includes('thi công') || 
-      m.role.toLowerCase().includes('xưởng') ||
-      m.role.toLowerCase().includes('kỹ thuật')
+      !!m.role?.toLowerCase()?.includes('sản xuất') || 
+      !!m.role?.toLowerCase()?.includes('thi công') || 
+      !!m.role?.toLowerCase()?.includes('xưởng') ||
+      !!m.role?.toLowerCase()?.includes('kỹ thuật')
     );
   }, [members]);
 

@@ -56,7 +56,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
   const [isSendingAnnouncement, setIsSendingAnnouncement] = React.useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
 
-  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
   const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 

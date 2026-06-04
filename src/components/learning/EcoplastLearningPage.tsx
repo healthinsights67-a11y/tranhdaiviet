@@ -1620,7 +1620,7 @@ function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererP
   };
 
   const { isAdmin, userProfile } = useAuth();
-  const isManager = isAdmin || (userProfile?.role?.toLowerCase().includes('quản lý') || userProfile?.role?.toLowerCase().includes('manager'));
+  const isManager = isAdmin || !!(userProfile?.role?.toLowerCase()?.includes('quản lý') || userProfile?.role?.toLowerCase()?.includes('manager'));
 
   return (
     <div className="space-y-4">
@@ -1636,7 +1636,7 @@ function BeautifulLessonRenderer({ content, lessonId }: BeautifulLessonRendererP
 export function EcoplastLearningPage() {
   const queryClient = useQueryClient();
   const { user, userProfile, isAdmin } = useAuth();
-  const isManager = isAdmin || (userProfile?.role?.toLowerCase().includes('quản lý') || userProfile?.role?.toLowerCase().includes('manager'));
+  const isManager = isAdmin || !!(userProfile?.role?.toLowerCase()?.includes('quản lý') || userProfile?.role?.toLowerCase()?.includes('manager'));
   
   // Load progress list for current user
   const { data: userProgressList = [], refetch: refetchUserProgress } = useQuery<UserProgressType[]>({

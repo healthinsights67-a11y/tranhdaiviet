@@ -77,6 +77,38 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBo
   );
 }
 
+function LocalPageErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
+  const queryClient = useQueryClient();
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center space-y-4 bg-card border border-border rounded-3xl my-4 mx-auto max-w-lg shadow-sm">
+      <div className="p-4 bg-destructive/10 rounded-full">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+      </div>
+      <h3 className="text-lg font-bold animate-pulse">Không thể tải nội dung trang</h3>
+      <p className="text-muted-foreground max-w-xs text-xs leading-normal">
+        Đã xảy ra sự cố khi xử lý dữ liệu hoặc tải trang này. Bạn có thể thử tải lại trang hoặc chuyển sang tab khác.
+      </p>
+      <div className="flex gap-2 w-full max-w-xs justify-center pt-2">
+        <Button onClick={() => { queryClient.invalidateQueries(); resetErrorBoundary(); }} size="sm" className="px-4">
+          Thử lại
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => window.location.reload()} 
+          className="px-4"
+        >
+          Tải lại ứng dụng
+        </Button>
+      </div>
+      {process.env.NODE_ENV !== 'production' && (
+        <pre className="mt-4 p-3 bg-muted rounded-lg text-[10px] overflow-auto max-w-full text-left opacity-60 w-full font-mono">
+          {error?.message || String(error)}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, userProfile, loading, signOut, isLoginDialogOpen, setLoginDialogOpen, isApproved, isAdmin } = useAuth();
@@ -246,7 +278,7 @@ function AppContent() {
     MOCK_MEMBERS.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase())
   ) : null;
 
-  const isManager = isAdmin || (currentMember?.role?.toLowerCase().includes('quản lý'));
+  const isManager = isAdmin || !!(currentMember?.role?.toLowerCase()?.includes('quản lý'));
 
   // Determine if we should show all data (Manager or missing profile for now)
   const showAllData = !user || isManager || !currentMember;
@@ -531,13 +563,18 @@ function AppContent() {
                 transition={{ duration: 0.2 }}
                 className="min-h-full"
               >
-                <React.Suspense fallback={
-                  <div className="flex h-[50vh] items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                }>
-                  {renderContent()}
-                </React.Suspense>
+                <ErrorBoundary
+                  FallbackComponent={LocalPageErrorFallback}
+                  onReset={() => queryClient.invalidateQueries()}
+                >
+                  <React.Suspense fallback={
+                    <div className="flex h-[50vh] items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  }>
+                    {renderContent()}
+                  </React.Suspense>
+                </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </main>

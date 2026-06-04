@@ -33,12 +33,12 @@ interface InstallationPageProps {
 
 export function InstallationPage({ schedules, members, customers, tasks, setTasks, user, currentUser }: InstallationPageProps) {
   const queryClient = useQueryClient();
-  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
+  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
 
-  const isInstaller = currentUser?.role?.toLowerCase().includes('thi công') || 
-                      currentUser?.role?.toLowerCase().includes('lắp đặt') || 
-                      currentUser?.role?.toLowerCase().includes('sản xuất') ||
-                      currentUser?.role?.toLowerCase().includes('kỹ thuật');
+  const isInstaller = !!currentUser?.role?.toLowerCase()?.includes('thi công') || 
+                      !!currentUser?.role?.toLowerCase()?.includes('lắp đặt') || 
+                      !!currentUser?.role?.toLowerCase()?.includes('sản xuất') ||
+                      !!currentUser?.role?.toLowerCase()?.includes('kỹ thuật');
   
   const canViewAll = isManager || !isInstaller;
 
@@ -50,10 +50,10 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       );
 
   const installerMembers = members.filter(m => 
-    m.role.toLowerCase().includes('thi công') || 
-    m.role.toLowerCase().includes('lắp đặt') || 
-    m.role.toLowerCase().includes('sản xuất') ||
-    m.role.toLowerCase().includes('kỹ thuật')
+    !!m.role?.toLowerCase()?.includes('thi công') || 
+    !!m.role?.toLowerCase()?.includes('lắp đặt') || 
+    !!m.role?.toLowerCase()?.includes('sản xuất') ||
+    !!m.role?.toLowerCase()?.includes('kỹ thuật')
   );
 
   const [currentMonth, setCurrentMonth] = useState(() => getCurrentVNDate());

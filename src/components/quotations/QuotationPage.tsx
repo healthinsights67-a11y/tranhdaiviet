@@ -1063,7 +1063,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                   <SelectValue placeholder="Chọn nhân viên thiết kế..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {members.filter(m => m.role?.toLowerCase().includes('thiết kế') || m.role?.toLowerCase().includes('design')).map(m => (
+                  {members.filter(m => !!(m.role?.toLowerCase()?.includes('thiết kế') || m.role?.toLowerCase()?.includes('design'))).map(m => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name || m.email || 'Nhân viên (Chưa cập nhật tên)'}
                     </SelectItem>

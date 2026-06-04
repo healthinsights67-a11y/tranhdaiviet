@@ -31,7 +31,7 @@ interface MeasurementPageProps {
 
 export function MeasurementPage({ schedules, members, customers, user, currentUser }: MeasurementPageProps) {
   const queryClient = useQueryClient();
-  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
+  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
 
   const filteredSchedules = isManager 
     ? schedules 
@@ -114,8 +114,8 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
     }
   };
 
-  const saleMembers = members.filter(m => m.role.toLowerCase().includes('sale'));
-  const designMembers = members.filter(m => m.role.toLowerCase().includes('design') || m.role.toLowerCase().includes('thiết kế'));
+  const saleMembers = members.filter(m => !!m.role?.toLowerCase()?.includes('sale'));
+  const designMembers = members.filter(m => !!m.role?.toLowerCase()?.includes('design') || !!m.role?.toLowerCase()?.includes('thiết kế'));
 
   const [currentMonth, setCurrentMonth] = useState(() => getCurrentVNDate());
   const [isOpen, setIsOpen] = useState(false);

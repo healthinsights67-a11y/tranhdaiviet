@@ -133,7 +133,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   }, [currentUser]);
 
   const formatCurrency = (value?: number) => {
-    const isManager = currentUser?.role?.toLowerCase().includes('quản lý');
+    const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý');
     if (currentUser?.permissions?.viewPrice === false && !isManager) return '*** ₫';
     if (value === undefined) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
@@ -459,7 +459,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
-  const isManager = currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
 
   const filteredQuotations = quotations.filter(q => filteredCustomers.some(c => c.id === q.customerId));
@@ -719,7 +719,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent alignItemWithTrigger={false} className="w-[var(--radix-select-trigger-width)] min-w-[300px]">
-                          {members.filter(m => m.role?.toLowerCase().includes('sale')).map(m => (
+                          {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
                             <SelectItem key={m.id} value={m.id}>
                               <div className="flex flex-col gap-0.5 text-left">
                                 <span className="font-bold text-sm">{m.name}</span>
@@ -730,7 +730,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         </SelectContent>
                       </Select>
                     </div>
-                    {(currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                    {(!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
                       <div className="grid gap-2">
                         <Label htmlFor="orderValue">Giá trị đơn hàng (VNĐ)</Label>
                         <Input
@@ -914,7 +914,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5">
                     <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5 opacity-50" /> {customer.phone}</span>
                     <div className="flex flex-col items-end">
-                      {customer.orderValue !== undefined && customer.orderValue > 0 && (currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                      {customer.orderValue !== undefined && customer.orderValue > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
                         <span className="font-black text-primary/80">
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(customer.orderValue)}
                         </span>
@@ -922,7 +922,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       {(() => {
                         const customerQuotation = quotations.find(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
                         const depositAmount = (customerQuotation?.status === 'deposit' || customerQuotation?.depositAmount) ? customerQuotation.depositAmount : undefined;
-                        if (depositAmount !== undefined && depositAmount > 0 && (currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false)) {
+                        if (depositAmount !== undefined && depositAmount > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false)) {
                           return (
                             <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
                               Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(depositAmount)}
@@ -1071,7 +1071,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent alignItemWithTrigger={false} className="w-[var(--radix-select-trigger-width)] min-w-[300px]">
-                          {members.filter(m => m.role?.toLowerCase().includes('sale')).map(m => (
+                          {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
                             <SelectItem key={m.id} value={m.id}>
                               <div className="flex flex-col gap-0.5 text-left">
                                 <span className="font-bold text-sm">{m.name}</span>
@@ -1082,7 +1082,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         </SelectContent>
                       </Select>
                     </div>
-                    {(currentUser?.role?.toLowerCase().includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                    {(!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
                       <div className="grid gap-2">
                         <Label htmlFor="edit-orderValue">Giá trị đơn hàng (VNĐ)</Label>
                         <Input
@@ -1321,7 +1321,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false} className="w-auto min-w-[320px]">
-                  {members.filter(m => m.role.toLowerCase().includes('thiết kế') || m.role.toLowerCase().includes('kỹ thuật')).map(m => (
+                  {members.filter(m => !!m.role?.toLowerCase()?.includes('thiết kế') || !!m.role?.toLowerCase()?.includes('kỹ thuật')).map(m => (
                     <SelectItem key={m.id} value={m.id}>
                       <div className="flex items-center gap-3 py-1">
                         <Avatar className="h-8 w-8">
