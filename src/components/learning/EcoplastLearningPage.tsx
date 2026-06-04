@@ -1143,8 +1143,15 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
   const [isWindowFocused, setIsWindowFocused] = React.useState(true);
   const [isIdle, setIsIdle] = React.useState(false);
   const [isAutoClickerDetected, setIsAutoClickerDetected] = React.useState(false);
-  const [lastInteraction, setLastInteraction] = React.useState(Date.now());
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // References to prevent interval resets and closures
+  const lastInteractionRef = React.useRef(Date.now());
+  const secondsRef = React.useRef(0);
+  
+  React.useEffect(() => {
+    secondsRef.current = seconds;
+  }, [seconds]);
 
   // Load initial progress
   React.useEffect(() => {
@@ -1185,7 +1192,7 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
     }
   }, [lessonId, user]);
 
-  // Anti-cheat Event Handlers
+  // Anti-cheat Event Handlers - Updates Ref directly to avoid re-renders and timer resets
   React.useEffect(() => {
     const handleActivity = (e: Event) => {
       // Check if event is trusted
@@ -1193,7 +1200,7 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
         setIsAutoClickerDetected(true);
         return;
       }
-      setLastInteraction(Date.now());
+      lastInteractionRef.current = Date.now();
       setIsIdle(false);
     };
 
@@ -1232,7 +1239,7 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
       const progressData = {
         userId: user ? user.uid : 'mock_user',
         userEmail: user ? (user.email || "") : 'guest@example.com',
-        userName: userProfile?.name || user?.email || "Khách hàng thử nghiệm",
+        userName: userProfile?.displayName || userProfile?.name || user?.email || "Khách hàng thử nghiệm",
         lessonId,
         lessonTitle,
         studyTime: timeToSave,
@@ -1261,13 +1268,19 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
     }
   };
 
+  const saveProgressRef = React.useRef(saveProgress);
+  React.useEffect(() => {
+    saveProgressRef.current = saveProgress;
+  }, [saveProgress]);
+
   // Timer Tick and Inactivity Check
   React.useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
+      const lastInt = lastInteractionRef.current;
       
       // Idle check: 20 seconds of no interactions
-      if (now - lastInteraction > 20000) {
+      if (now - lastInt > 20000) {
         setIsIdle(true);
       } else {
         setIsIdle(false);
@@ -1280,12 +1293,18 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
       setIsWindowFocused(windowFocused);
 
       // Accumulate time if active
-      if (tabVisible && windowFocused && !(now - lastInteraction > 20000) && !isAutoClickerDetected && seconds < REQUIRED_STUDY_TIME) {
+      if (
+        tabVisible && 
+        windowFocused && 
+        !(now - lastInt > 20000) && 
+        !isAutoClickerDetected && 
+        secondsRef.current < REQUIRED_STUDY_TIME
+      ) {
         setSeconds(prev => {
           const next = prev + 1;
           // Auto save every 10 seconds or when completed
           if (next % 10 === 0 || next >= REQUIRED_STUDY_TIME) {
-            saveProgress(next);
+            saveProgressRef.current(next);
           }
           return next;
         });
@@ -1293,7 +1312,7 @@ function LessonStudyTracker({ lessonId, lessonTitle, requiredStudyTime = 360, on
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [seconds, lastInteraction, isAutoClickerDetected, lessonId, user, userProfile]);
+  }, [lessonId, REQUIRED_STUDY_TIME, isAutoClickerDetected]);
 
   const isCompleted = seconds >= REQUIRED_STUDY_TIME;
   const progressPercent = Math.min(100, Math.round((seconds / REQUIRED_STUDY_TIME) * 100));
