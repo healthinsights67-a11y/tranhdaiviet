@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { uploadToImgBB } from '../../services/uploadService';
 
 interface DocumentFolder {
   id: string;
@@ -158,20 +159,41 @@ export const ProductDocuments = () => {
     try {
       const uploadFile = async (file: File, index: number) => {
         try {
-          const processedFile = file.type.startsWith('image/') ? await compressImage(file) : file;
-          // Use a random string + index to ensure uniqueness even if Date.now() is identical
-          const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9) + '_' + index;
-          const safeName = processedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${uniqueId}_${safeName}`);
-          await uploadBytes(fileRef, processedFile);
-          const url = await getDownloadURL(fileRef);
+          const ext = file.name.split('.').pop()?.toLowerCase() || '';
+          const isImage = file.type?.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
+          
+          let url = '';
+          let type = file.type || '';
+          let size = file.size;
+
+          if (isImage) {
+            // Try uploading to ImgBB first
+            const imgbbUrl = await uploadToImgBB(file);
+            if (imgbbUrl) {
+              url = imgbbUrl;
+              type = file.type || 'image/jpeg';
+            }
+          }
+
+          // Fallback to Firebase Storage if not an image or if ImgBB upload failed
+          if (!url) {
+            const isCompressibleImage = file.type?.startsWith('image/') && ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+            const processedFile = isCompressibleImage ? await compressImage(file) : file;
+            const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9) + '_' + index;
+            const safeName = processedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${uniqueId}_${safeName}`);
+            await uploadBytes(fileRef, processedFile);
+            url = await getDownloadURL(fileRef);
+            type = processedFile.type;
+            size = processedFile.size;
+          }
           
           await addDoc(collection(db, 'product_documents'), {
             folderId: selectedFolder.id,
-            name: processedFile.name,
+            name: file.name,
             url,
-            type: processedFile.type,
-            size: processedFile.size,
+            type,
+            size,
             createdAt: serverTimestamp()
           });
           return true;
