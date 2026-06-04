@@ -866,8 +866,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
             >
-              <Card className="group transition-all duration-300 border border-border shadow-sm bg-card text-card-foreground hover:shadow-md">
-                <CardHeader className="p-2.5 md:p-5 pb-1.5 md:pb-3 space-y-1.5 md:space-y-3">
+              <Card className="group h-[225px] md:h-[315px] flex flex-col justify-between transition-all duration-300 border border-border shadow-sm bg-card text-card-foreground hover:shadow-md">
+                <CardHeader className="p-2.5 md:p-5 pb-1.5 md:pb-3 space-y-1.5 md:space-y-3 flex-1 flex flex-col justify-between min-h-0">
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col gap-0.5 md:gap-1">
                       <Badge variant="outline" className={cn(
@@ -878,15 +878,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         {stage.label}
                       </Badge>
                       <div className="flex flex-col gap-0.5 text-[7px] md:text-[9px] text-muted-foreground/60 font-semibold pl-0.5">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 h-3 md:h-3.5">
                           <Clock className="h-2 w-2 md:h-2.5 md:w-2.5 opacity-60" />
                           <span>Chốt/Cọc: {formatVNTime(customer.createdAt)}</span>
                         </div>
-                        {customer.consultedAt && customer.consultedAt !== customer.createdAt && (
-                          <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-amber-600 font-semibold">
+                        {customer.consultedAt && customer.consultedAt !== customer.createdAt ? (
+                          <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-amber-600 font-semibold h-3 md:h-3.5">
                             <Clock className="h-2 w-2 opacity-60" />
                             <span>Tư vấn: {formatVNTime(customer.consultedAt)}</span>
                           </div>
+                        ) : (
+                          <div className="h-3 md:h-3.5" />
                         )}
                       </div>
                     </div>
@@ -903,27 +905,35 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <CardTitle className="text-[11px] md:text-lg font-bold tracking-tight leading-tight">
-                    {customer.code && (
-                      <span className="block text-[7px] md:text-[10px] text-primary/80 mb-0 font-mono truncate">{customer.code}</span>
-                    )}
-                    <span className="truncate block">{customer.name}</span>
-                  </CardTitle>
-                  <div className="flex flex-wrap items-center gap-0.5 md:gap-1 mt-0">
-                    {customer.furnitureCategory && (
-                      <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-blue-50 text-primary text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-blue-100">
-                        <Layout className="h-2 w-2 md:h-2.5 md:w-2.5" />
-                        <span className="truncate max-w-[60px] md:max-w-none">{customer.furnitureCategory}</span>
-                      </div>
-                    )}
+                  
+                  <div className="space-y-1">
+                    <CardTitle className="text-[11px] md:text-lg font-bold tracking-tight leading-tight">
+                      {customer.code && (
+                        <span className="block text-[7px] md:text-[10px] text-primary/80 mb-0 font-mono truncate">{customer.code}</span>
+                      )}
+                      <span className="truncate block" title={customer.name}>{customer.name}</span>
+                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-0.5 md:gap-1 mt-0 h-3.5 md:h-5">
+                      {customer.furnitureCategory ? (
+                        <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-blue-50 text-primary text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-blue-100">
+                          <Layout className="h-2 w-2 md:h-2.5 md:w-2.5" />
+                          <span className="truncate max-w-[60px] md:max-w-none">{customer.furnitureCategory}</span>
+                        </div>
+                      ) : (
+                        <div className="h-3.5 md:h-5" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5">
+
+                  <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5 border-t border-dashed border-border/60">
                     <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5 opacity-50" /> {customer.phone}</span>
-                    <div className="flex flex-col items-end">
-                      {customer.orderValue !== undefined && customer.orderValue > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                    <div className="flex flex-col items-end justify-center min-h-[22px] md:min-h-[36px]">
+                      {customer.orderValue !== undefined && customer.orderValue > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) ? (
                         <span className="font-black text-primary/80">
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(customer.orderValue)}
                         </span>
+                      ) : (
+                        <span className="text-[7px] md:text-[9px] text-muted-foreground/40 font-bold italic">Chưa chốt giá</span>
                       )}
                       {(() => {
                         const customerQuotation = quotations.find(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
@@ -935,15 +945,15 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                             </span>
                           );
                         }
-                        return null;
+                        return <div className="h-2 md:h-3.5" />;
                       })()}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-2.5 md:p-5 pt-0 md:pt-0 space-y-2 md:space-y-4">
-                  <div className="flex items-start gap-1.5 text-[8px] md:text-[11px] text-muted-foreground/70 leading-tight bg-muted border border-border p-1.5 md:p-3 rounded-lg md:rounded-xl">
+                <CardContent className="p-2.5 md:p-5 pt-0 md:pt-0 space-y-2 md:space-y-4 shrink-0">
+                  <div className="flex items-start gap-1.5 text-[8px] md:text-[11px] text-muted-foreground/70 leading-tight bg-muted border border-border p-1.5 md:p-3 rounded-lg md:rounded-xl h-[26px] md:h-[42px]">
                     <MapPin className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 shrink-0 mt-0" />
-                    <span className="line-clamp-1 md:line-clamp-none">{customer.address}</span>
+                    <span className="line-clamp-1" title={customer.address}>{customer.address || '—'}</span>
                   </div>
                   
                   <div className="flex items-center justify-between pt-1.5 border-t border-border">
@@ -954,7 +964,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="text-[9px] md:text-[11px] font-bold opacity-80">{sale?.name?.split(' ').pop() || 'Chưa gán'}</span>
-                        <span className="text-[7px] md:text-[9px] opacity-50 font-medium truncate max-w-[50px] md:max-w-none">{getWorkshopName(customer.workshop)}</span>
+                        <span className="text-[7px] md:text-[9px] opacity-50 font-medium truncate max-w-[50px] md:max-w-[80px]">{getWorkshopName(customer.workshop)}</span>
                       </div>
                     </div>
                     <Button 
