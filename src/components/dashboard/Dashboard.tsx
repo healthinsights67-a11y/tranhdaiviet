@@ -124,14 +124,22 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
     };
   }).sort((a, b) => b.count - a.count);
 
-  const actualRevenue = filteredQuotations.reduce((sum, q) => {
-    if (q.status === 'deposit') return sum + (q.depositAmount || 0);
-    if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+  const actualRevenue = filteredCustomers.reduce((sum, c) => {
+    if (c.stage === 'completed') {
+      return sum + (c.orderValue || 0);
+    }
+    if (['contracted', 'production', 'installation'].includes(c.stage)) {
+      const q = (quotations || []).find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+      const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+      return sum + deposit;
+    }
     return sum;
   }, 0);
 
-  const expectedRevenue = filteredQuotations.reduce((sum, q) => {
-    if (q.status === 'deposit' || q.status === 'accepted') return sum + (q.totalAmount || 0);
+  const expectedRevenue = filteredCustomers.reduce((sum, c) => {
+    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+      return sum + (c.orderValue || 0);
+    }
     return sum;
   }, 0);
 

@@ -121,10 +121,15 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
       const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
       
       const memberProjects = filteredProjects.filter(o => memberCustomerNames.has(o.name));
-      const memberQuotations = quotations.filter(q => memberCustomerNames.has(q.customerName) && (!selectedMonth || matchesTime(q.createdAt)));
-      const revenue = memberQuotations.reduce((sum, q) => {
-        if (q.status === 'deposit') return sum + (q.depositAmount || 0);
-        if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+      const revenue = memberCustomers.reduce((sum, c) => {
+        if (c.stage === 'completed') {
+          return sum + (c.orderValue || 0);
+        }
+        if (['contracted', 'production', 'installation'].includes(c.stage)) {
+          const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+          const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+          return sum + deposit;
+        }
         return sum;
       }, 0);
       
@@ -223,14 +228,22 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
 
   const selectedMemberStats = memberStats.find(s => s.id === selectedMemberId);
 
-  const filteredQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)));
-  const totalRevenue = filteredQuotations.reduce((sum, q) => {
-    if (q.status === 'deposit') return sum + (q.depositAmount || 0);
-    if (q.status === 'accepted') return sum + (q.totalAmount || 0);
+  const totalRevenue = filteredCustomers.reduce((sum, c) => {
+    if (c.stage === 'completed') {
+      return sum + (c.orderValue || 0);
+    }
+    if (['contracted', 'production', 'installation'].includes(c.stage)) {
+      const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+      const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+      return sum + deposit;
+    }
     return sum;
   }, 0);
-  const totalExpectedRevenue = filteredQuotations.reduce((sum, q) => {
-    if (q.status === 'deposit' || q.status === 'accepted') return sum + (q.totalAmount || 0);
+
+  const totalExpectedRevenue = filteredCustomers.reduce((sum, c) => {
+    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+      return sum + (c.orderValue || 0);
+    }
     return sum;
   }, 0);
   const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt))).length;
