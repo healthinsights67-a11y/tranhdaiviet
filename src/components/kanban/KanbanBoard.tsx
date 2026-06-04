@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { useQueryClient } from '@tanstack/react-query';
-import { Task, Status, Member, Customer, WORKSHOPS } from '@/src/types';
+import { Task, Status, Member, Customer, WORKSHOPS, getWorkshopName } from '@/src/types';
 import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { createPortal } from 'react-dom';
@@ -340,8 +340,19 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
 
   const filteredTasksByMonth = React.useMemo(() => {
     const filtered = tasks.filter(t => {
-      // Workshop filter
-      const matchesWorkshop = selectedWorkshop === 'all' || t.workshop === selectedWorkshop;
+      // Workshop filter with normalization and customer fallback
+      let taskWorkshop = t.workshop;
+      if (!taskWorkshop && t.customerId) {
+        const cust = customers.find(c => c.id === t.customerId);
+        if (cust) {
+          taskWorkshop = cust.workshop;
+        }
+      }
+
+      const taskWorkshopName = getWorkshopName(taskWorkshop);
+      const selectedWorkshopName = getWorkshopName(selectedWorkshop);
+      
+      const matchesWorkshop = selectedWorkshop === 'all' || taskWorkshopName === selectedWorkshopName;
       if (!matchesWorkshop) return false;
 
       // Show tasks created in this month OR tasks completed/waiting_install in this month
@@ -355,7 +366,7 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
 
     // Sort by createdAt descending, new tasks at the top
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [tasks, selectedMonth, selectedWorkshop]);
+  }, [tasks, selectedMonth, selectedWorkshop, customers]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

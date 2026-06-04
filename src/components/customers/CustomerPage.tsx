@@ -899,6 +899,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       <DropdownMenuContent align="end" className="rounded-xl">
                         <DropdownMenuItem onClick={() => openEditDialog(customer)} className="text-xs">Sửa</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openViewDialog(customer)} className="text-xs">Chi tiết</DropdownMenuItem>
+                        {['contracted', 'production', 'completed'].includes(customer.stage) && (
+                          <DropdownMenuItem 
+                            onClick={() => setPendingContract({
+                              customer,
+                              isNew: false
+                            })} 
+                            className="text-xs text-blue-600 font-medium"
+                          >
+                            Giao việc thiết kế
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem className="text-destructive text-xs" onClick={() => handleDeleteCustomer(customer.id)}>Xóa</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

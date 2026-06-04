@@ -458,6 +458,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
               customerId: prevData.customerId || '',
               customerName: prevData.customerName || 'Khách lẻ'
             });
+            setIsPreviewOpen(false); // Close preview to prevent dialog overlap
           }
         }
       }
@@ -928,7 +929,20 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                         Sửa tiền cọc
                                      </DropdownMenuItem>
                                    )}
-                                   {activeQuotation.status !== 'rejected' && (
+                                   {(activeQuotation.status === 'deposit' || activeQuotation.status === 'accepted') && (
+                                      <DropdownMenuItem 
+                                        className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" 
+                                        onClick={() => setPendingDesignTask({
+                                          quotationId: activeQuotation.id,
+                                          customerId: activeQuotation.customerId || '',
+                                          customerName: activeQuotation.customerName || 'Khách lẻ'
+                                        })}
+                                      >
+                                        <Plus className="h-4 w-4 text-blue-500" />
+                                        Bàn giao thiết kế
+                                      </DropdownMenuItem>
+                                    )}
+                                    {activeQuotation.status !== 'rejected' && (
                                      <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onClick={() => handleUpdateStatus(activeQuotation.id, 'rejected')}>
                                        <XCircle className="h-4 w-4 text-amber-500" />
                                        Từ chối báo giá (Hủy)

@@ -221,10 +221,61 @@ export const ProductDocuments = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const renderFileIcon = (type: string) => {
-    if (type.includes('image')) return <ImageIcon className="h-10 w-10 text-blue-500" />;
-    if (type.includes('pdf')) return <FileText className="h-10 w-10 text-red-500" />;
-    return <FileIcon className="h-10 w-10 text-gray-500" />;
+  const getFileMeta = (name: string, type: string) => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    
+    if (type.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+      return {
+        icon: <ImageIcon className="h-10 w-10 text-sky-500" />,
+        typeName: ext.toUpperCase() || 'IMAGE'
+      };
+    }
+    if (ext === 'pdf' || type.includes('pdf')) {
+      return {
+        icon: <FileText className="h-10 w-10 text-rose-500" />,
+        typeName: 'PDF'
+      };
+    }
+    if (['doc', 'docx'].includes(ext) || type.includes('word') || type.includes('msword')) {
+      return {
+        icon: <FileText className="h-10 w-10 text-blue-600" />,
+        typeName: ext.toUpperCase() || 'WORD'
+      };
+    }
+    if (['xls', 'xlsx', 'csv'].includes(ext) || type.includes('excel') || type.includes('sheet') || type.includes('csv')) {
+      return {
+        icon: <FileText className="h-10 w-10 text-emerald-600" />,
+        typeName: ext.toUpperCase() || 'EXCEL'
+      };
+    }
+    if (['ppt', 'pptx'].includes(ext) || type.includes('powerpoint') || type.includes('presentation')) {
+      return {
+        icon: <FileText className="h-10 w-10 text-orange-500" />,
+        typeName: ext.toUpperCase() || 'POWERPOINT'
+      };
+    }
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext) || type.includes('zip') || type.includes('compressed')) {
+      return {
+        icon: <FileIcon className="h-10 w-10 text-amber-500" />,
+        typeName: ext.toUpperCase() || 'ARCHIVE'
+      };
+    }
+    if (['txt', 'md'].includes(ext) || type.includes('text')) {
+      return {
+        icon: <FileText className="h-10 w-10 text-slate-500" />,
+        typeName: ext.toUpperCase() || 'TEXT'
+      };
+    }
+    if (['cad', 'dwg', 'dxf'].includes(ext)) {
+      return {
+        icon: <FileIcon className="h-10 w-10 text-indigo-500" />,
+        typeName: ext.toUpperCase() || 'CAD'
+      };
+    }
+    return {
+      icon: <FileIcon className="h-10 w-10 text-gray-400" />,
+      typeName: ext.toUpperCase() || 'FILE'
+    };
   };
 
   return (
@@ -296,7 +347,6 @@ export const ProductDocuments = () => {
                   <input
                     type="file"
                     multiple
-                    accept="image/*,.pdf"
                     className="hidden"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
@@ -324,10 +374,10 @@ export const ProductDocuments = () => {
                 {documents.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase())).map(doc => (
                   <div key={doc.id} className="group bg-card rounded-xl border shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col relative">
                     <div className="aspect-square bg-muted/30 flex items-center justify-center p-4 relative overflow-hidden">
-                      {doc.type.includes('image') ? (
+                      {doc.type.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(doc.name.split('.').pop()?.toLowerCase() || '') ? (
                         <img src={doc.url} alt={doc.name} className="w-full h-full object-cover rounded-md" />
                       ) : (
-                        renderFileIcon(doc.type)
+                        getFileMeta(doc.name, doc.type).icon
                       )}
                       
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -341,7 +391,7 @@ export const ProductDocuments = () => {
                     </div>
                     <div className="p-3 flex flex-col justify-between flex-1">
                       <p className="text-sm font-medium line-clamp-2" title={doc.name}>{doc.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-2">{formatSize(doc.size)} • {doc.type.split('/')[1] || doc.type}</p>
+                      <p className="text-[10px] text-muted-foreground mt-2">{formatSize(doc.size)} • {getFileMeta(doc.name, doc.type).typeName}</p>
                     </div>
                   </div>
                 ))}

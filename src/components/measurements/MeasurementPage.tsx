@@ -78,6 +78,11 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           
           await updateDoc(doc(db, 'tasks', taskDoc.id), updateData);
         }
+        if (!schedule.isPushedToDesign) {
+          await updateDoc(doc(db, 'measurement_schedules', schedule.id), {
+            isPushedToDesign: true
+          });
+        }
       } else if (schedule.designAssigneeId) {
         let workshop = '';
         if (schedule.customerId) {
@@ -107,8 +112,12 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           checklists: [],
           materialList: [],
         });
+        await updateDoc(doc(db, 'measurement_schedules', schedule.id), {
+          isPushedToDesign: true
+        });
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
     } catch (error) {
       console.error("Error syncing to design task:", error);
     }

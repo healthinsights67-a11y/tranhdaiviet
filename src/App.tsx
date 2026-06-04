@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, Customer, Member, InstallationSchedule } from './types';
+import { Task, Customer, Member, InstallationSchedule, getWorkshopName } from './types';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
   return (
@@ -311,8 +311,12 @@ function AppContent() {
   const filteredCustomers = React.useMemo(() => {
     if (!user) return MOCK_CUSTOMERS;
     return customers.filter(c => {
-      if (isWorkshopRestricted && c.workshop !== userWorkshop) {
-        return false;
+      if (isWorkshopRestricted) {
+        const customerWorkshopName = getWorkshopName(c.workshop);
+        const userWorkshopName = getWorkshopName(userWorkshop);
+        if (customerWorkshopName !== userWorkshopName) {
+          return false;
+        }
       }
       if (!isManager && !isWorkshopRestricted) {
         return c.assignedSaleId === currentMember?.id;
@@ -324,29 +328,64 @@ function AppContent() {
   const filteredTasks = React.useMemo(() => {
     if (!user) return MOCK_TASKS;
     return tasks.filter(t => {
-      if (isWorkshopRestricted) {
-        if (t.workshop && t.workshop !== userWorkshop) return false;
-        if (!t.workshop && t.customerId) {
-          const cust = customers.find(c => c.id === t.customerId);
-          if (cust && cust.workshop !== userWorkshop) return false;
+      // Design task restriction: only show if customer has deposited (chốt cọc) or accepted (chốt báo giá)
+      if (t.type === 'design') {
+        if (t.customerId || t.phone) {
+          const cust = customers.find(c => 
+            (t.customerId && c.id === t.customerId) || 
+            (t.phone && c.phone?.trim()?.replace(/\D/g, '') === t.phone?.trim()?.replace(/\D/g, ''))
+          );
+          
+          const hasPostDepositStage = cust && ['contracted', 'production', 'installation', 'completed'].includes(cust.stage);
+          
+          const matchingQuotations = quotations.filter(q => {
+            if (t.customerId && q.customerId === t.customerId) return true;
+            if (t.phone && q.phone?.trim()?.replace(/\D/g, '') === t.phone?.trim()?.replace(/\D/g, '')) return true;
+            if (cust && q.customerId === cust.id) return true;
+            if (cust && q.phone?.trim()?.replace(/\D/g, '') === cust.phone?.trim()?.replace(/\D/g, '')) return true;
+            return false;
+          });
+          const hasValidQuotation = matchingQuotations.some(q => q.status === 'deposit' || q.status === 'accepted');
+
+          if (!hasPostDepositStage && !hasValidQuotation) {
+            return false;
+          }
         }
+      }
+
+      if (isWorkshopRestricted) {
+        let taskWorkshop = t.workshop;
+        if (!taskWorkshop && t.customerId) {
+          const cust = customers.find(c => c.id === t.customerId);
+          if (cust) {
+            taskWorkshop = cust.workshop;
+          }
+        }
+        const taskWorkshopName = getWorkshopName(taskWorkshop);
+        const userWorkshopName = getWorkshopName(userWorkshop);
+        if (taskWorkshopName !== userWorkshopName) return false;
       }
       if (!isManager && !isWorkshopRestricted) {
         return t.assigneeId === currentMember?.id;
       }
       return true;
     });
-  }, [user, tasks, customers, isWorkshopRestricted, userWorkshop, isManager, currentMember]);
+  }, [user, tasks, customers, quotations, isWorkshopRestricted, userWorkshop, isManager, currentMember]);
 
   const filteredQuotations = React.useMemo(() => {
     if (!user) return MOCK_QUOTATIONS;
     return quotations.filter(q => {
       if (isWorkshopRestricted) {
-        if (q.workshop && q.workshop !== userWorkshop) return false;
-        if (!q.workshop && q.customerId) {
+        let quotationWorkshop = q.workshop;
+        if (!quotationWorkshop && q.customerId) {
           const cust = customers.find(c => c.id === q.customerId);
-          if (cust && cust.workshop !== userWorkshop) return false;
+          if (cust) {
+            quotationWorkshop = cust.workshop;
+          }
         }
+        const quotationWorkshopName = getWorkshopName(quotationWorkshop);
+        const userWorkshopName = getWorkshopName(userWorkshop);
+        if (quotationWorkshopName !== userWorkshopName) return false;
       }
       return true;
     });
@@ -356,10 +395,16 @@ function AppContent() {
     if (!user) return [];
     return schedulesData.filter(s => {
       if (isWorkshopRestricted) {
+        let scheduleWorkshop = '';
         if (s.customerId) {
           const cust = customers.find(c => c.id === s.customerId);
-          if (cust && cust.workshop !== userWorkshop) return false;
+          if (cust) {
+            scheduleWorkshop = cust.workshop || '';
+          }
         }
+        const scheduleWorkshopName = getWorkshopName(scheduleWorkshop);
+        const userWorkshopName = getWorkshopName(userWorkshop);
+        if (scheduleWorkshopName !== userWorkshopName) return false;
       }
       return true;
     });
@@ -369,10 +414,16 @@ function AppContent() {
     if (!user) return [];
     return installations.filter(s => {
       if (isWorkshopRestricted) {
+        let installationWorkshop = '';
         if (s.customerId) {
           const cust = customers.find(c => c.id === s.customerId);
-          if (cust && cust.workshop !== userWorkshop) return false;
+          if (cust) {
+            installationWorkshop = cust.workshop || '';
+          }
         }
+        const installationWorkshopName = getWorkshopName(installationWorkshop);
+        const userWorkshopName = getWorkshopName(userWorkshop);
+        if (installationWorkshopName !== userWorkshopName) return false;
       }
       return true;
     });
