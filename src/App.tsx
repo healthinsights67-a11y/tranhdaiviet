@@ -31,7 +31,7 @@ import { NotificationManager } from './components/notifications/NotificationMana
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, Clock, UserCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, UserCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,30 +45,166 @@ import {
 } from "@/components/ui/select";
 import { Task, Customer, Member, InstallationSchedule, getWorkshopName } from './types';
 
+const FUNNY_MESSAGES = [
+  "Đang pha một ly cà phê nóng cho máy chủ... ☕",
+  "Đang dọn dẹp đống bừa bộn sau hậu trường... 🧹",
+  "Mạng đang bận đi du lịch rồi, đang triệu hồi nó về... ✈️",
+  "Đang xếp hàng lại các pixel thần kỳ... ✨",
+  "Đang lau bụi bảng điện tử và vặn chặt ốc vít... 🔧",
+  "Đang truyền thêm 500 anh em năng lượng cho đường truyền... 🔋",
+  "Đang cho mèo ăn để nó không gặm cáp quang nữa... 🐱🔌",
+  "Đang khởi động lại động cơ phản lực của ứng dụng... 🚀",
+  "Đang cân chỉnh lại tần số bắt sóng vũ trụ... 🛰️"
+];
+
 function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
+  const queryClient = useQueryClient();
+  const [countdown, setCountdown] = React.useState(5);
+  const [funnyMessage, setFunnyMessage] = React.useState("");
+  const [shouldAutoRetry, setShouldAutoRetry] = React.useState(true);
+  const [isRetrying, setIsRetrying] = React.useState(false);
+
+  React.useEffect(() => {
+    const randomMsg = FUNNY_MESSAGES[Math.floor(Math.random() * FUNNY_MESSAGES.length)];
+    setFunnyMessage(randomMsg);
+
+    // Limit automatic retries to prevent reload loops
+    const now = Date.now();
+    const lastRetryStr = sessionStorage.getItem('last_root_retry_time');
+    const retryCountStr = sessionStorage.getItem('root_retry_count');
+    const lastRetry = lastRetryStr ? parseInt(lastRetryStr, 10) : 0;
+    let retryCount = retryCountStr ? parseInt(retryCountStr, 10) : 0;
+
+    if (now - lastRetry < 15000) {
+      if (retryCount >= 3) {
+        setShouldAutoRetry(false);
+        return;
+      }
+      retryCount += 1;
+    } else {
+      retryCount = 1;
+    }
+    sessionStorage.setItem('last_root_retry_time', String(now));
+    sessionStorage.setItem('root_retry_count', String(retryCount));
+  }, []);
+
+  React.useEffect(() => {
+    if (!shouldAutoRetry || countdown <= 0) {
+      if (countdown === 0 && !isRetrying) {
+        handleRetry();
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, shouldAutoRetry, isRetrying]);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+
+    const errorStr = error?.message || String(error);
+    const isChunkError = 
+      error?.name === 'ChunkLoadError' || 
+      errorStr.includes('Failed to fetch dynamically imported module') || 
+      errorStr.includes('Loading chunk') ||
+      errorStr.includes('loading chunk') ||
+      errorStr.includes('dynamic import');
+
+    if (isChunkError) {
+      window.location.reload();
+      return;
+    }
+
+    try {
+      await queryClient.invalidateQueries();
+      resetErrorBoundary();
+    } catch (err) {
+      console.error("Failed to reset root error boundary:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen p-6 text-center space-y-4 bg-background">
-      <div className="p-4 bg-destructive/10 rounded-full">
-        <AlertTriangle className="h-10 w-10 text-destructive" />
+    <div className="flex flex-col items-center justify-center h-screen p-6 text-center space-y-6 bg-background relative overflow-hidden">
+      {/* Decorative background blur lights */}
+      <div className="absolute -top-10 -left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-10 -right-10 w-72 h-72 bg-destructive/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="p-4 bg-destructive/10 rounded-full shadow-inner">
+        {shouldAutoRetry ? (
+          <motion.div
+            animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+            transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+          >
+            <AlertTriangle className="h-10 w-10 text-destructive" />
+          </motion.div>
+        ) : (
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+        )}
       </div>
-      <h2 className="text-xl font-bold">Không thể kết nối hệ thống</h2>
-      <p className="text-muted-foreground max-w-xs text-sm">
-        Có vẻ như đã xảy ra sự cố kết nối hoặc phiên đăng nhập của bạn đã hết hạn.
-      </p>
-      <div className="flex flex-col gap-2 w-full max-w-xs">
-        <Button onClick={resetErrorBoundary} className="w-full">
-          Thử kết nối lại
+
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight">Không thể kết nối hệ thống</h2>
+        {shouldAutoRetry ? (
+          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
+            Hệ thống đang gặp sự cố kết nối tạm thời. Đừng lo lắng, chúng tôi đang thiết lập lại ngay lập tức.
+          </p>
+        ) : (
+          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
+            Chúng tôi đã thử kết nối lại tự động vài lần nhưng chưa thành công. Bạn hãy thử kiểm tra lại kết nối mạng hoặc thử lại thủ công.
+          </p>
+        )}
+      </div>
+
+      {shouldAutoRetry && (
+        <div className="w-full max-w-xs space-y-4">
+          <div className="py-2.5 px-4 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm">
+            <p className="text-primary font-medium text-xs animate-pulse">
+              {funnyMessage}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+              Tự động kết nối lại sau {countdown}s
+            </span>
+            <div className="w-48 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-primary"
+                initial={{ width: "100%" }}
+                animate={{ width: `${(countdown / 5) * 100}%` }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 w-full max-w-xs pt-4 border-t border-border">
+        <Button onClick={handleRetry} disabled={isRetrying} className="w-full gap-2 font-semibold shadow-sm">
+          {isRetrying ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Thử kết nối lại ngay
         </Button>
         <Button 
           variant="outline" 
           onClick={() => window.location.href = window.location.origin} 
-          className="w-full"
+          className="w-full font-medium"
         >
           Trang chủ
         </Button>
       </div>
       {process.env.NODE_ENV !== 'production' && (
-        <pre className="mt-8 p-4 bg-muted rounded-lg text-[10px] overflow-auto max-w-full text-left opacity-50">
+        <pre className="mt-8 p-4 bg-muted rounded-lg text-[10px] overflow-auto max-w-full text-left opacity-50 font-mono">
           {error?.message || String(error)}
         </pre>
       )}
@@ -78,30 +214,158 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBo
 
 function LocalPageErrorFallback({ error, resetErrorBoundary }: { error: any, resetErrorBoundary: () => void }) {
   const queryClient = useQueryClient();
+  const [countdown, setCountdown] = React.useState(5);
+  const [funnyMessage, setFunnyMessage] = React.useState("");
+  const [shouldAutoRetry, setShouldAutoRetry] = React.useState(true);
+  const [isRetrying, setIsRetrying] = React.useState(false);
+
+  React.useEffect(() => {
+    const randomMsg = FUNNY_MESSAGES[Math.floor(Math.random() * FUNNY_MESSAGES.length)];
+    setFunnyMessage(randomMsg);
+
+    // Limit automatic retries to prevent reload loops
+    const now = Date.now();
+    const lastRetryStr = sessionStorage.getItem('last_local_retry_time');
+    const retryCountStr = sessionStorage.getItem('local_retry_count');
+    const lastRetry = lastRetryStr ? parseInt(lastRetryStr, 10) : 0;
+    let retryCount = retryCountStr ? parseInt(retryCountStr, 10) : 0;
+
+    if (now - lastRetry < 15000) {
+      if (retryCount >= 3) {
+        setShouldAutoRetry(false);
+        return;
+      }
+      retryCount += 1;
+    } else {
+      retryCount = 1;
+    }
+    sessionStorage.setItem('last_local_retry_time', String(now));
+    sessionStorage.setItem('local_retry_count', String(retryCount));
+  }, []);
+
+  React.useEffect(() => {
+    if (!shouldAutoRetry || countdown <= 0) {
+      if (countdown === 0 && !isRetrying) {
+        handleRetry();
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, shouldAutoRetry, isRetrying]);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+
+    const errorStr = error?.message || String(error);
+    const isChunkError = 
+      error?.name === 'ChunkLoadError' || 
+      errorStr.includes('Failed to fetch dynamically imported module') || 
+      errorStr.includes('Loading chunk') ||
+      errorStr.includes('loading chunk') ||
+      errorStr.includes('dynamic import');
+
+    if (isChunkError) {
+      window.location.reload();
+      return;
+    }
+
+    try {
+      await queryClient.invalidateQueries();
+      resetErrorBoundary();
+    } catch (err) {
+      console.error("Failed to reset local error boundary:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center space-y-4 bg-card border border-border rounded-3xl my-4 mx-auto max-w-lg shadow-sm">
-      <div className="p-4 bg-destructive/10 rounded-full">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center bg-card border border-border rounded-3xl my-4 mx-auto max-w-lg shadow-xl relative overflow-hidden">
+      {/* Decorative background blur lights */}
+      <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-destructive/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="p-4 bg-destructive/10 rounded-full mb-4 shadow-inner">
+        {shouldAutoRetry ? (
+          <motion.div
+            animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+            transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+          >
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+          </motion.div>
+        ) : (
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        )}
       </div>
-      <h3 className="text-lg font-bold animate-pulse">Không thể tải nội dung trang</h3>
-      <p className="text-muted-foreground max-w-xs text-xs leading-normal">
-        Đã xảy ra sự cố khi xử lý dữ liệu hoặc tải trang này. Bạn có thể thử tải lại trang hoặc chuyển sang tab khác.
-      </p>
-      <div className="flex gap-2 w-full max-w-xs justify-center pt-2">
-        <Button onClick={() => { queryClient.invalidateQueries(); resetErrorBoundary(); }} size="sm" className="px-4">
-          Thử lại
+
+      <h3 className="text-lg font-bold">Không thể tải nội dung trang</h3>
+      
+      {shouldAutoRetry ? (
+        <div className="w-full space-y-4 my-2">
+          <p className="text-muted-foreground text-xs px-4">
+            Đã xảy ra sự cố tải giao diện. Hệ thống đang tự động làm mới để cập nhật dữ liệu.
+          </p>
+          
+          <div className="py-2.5 px-4 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm inline-block max-w-xs mx-auto">
+            <p className="text-primary font-medium text-xs animate-pulse">
+              {funnyMessage}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+              Tự động làm mới sau {countdown}s
+            </span>
+            <div className="w-48 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-primary"
+                initial={{ width: "100%" }}
+                animate={{ width: `${(countdown / 5) * 100}%` }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 my-2">
+          <p className="text-muted-foreground max-w-xs text-xs leading-normal">
+            Chúng tôi đã thử tự động làm mới trang vài lần nhưng vẫn chưa tải được dữ liệu. Vui lòng kiểm tra lại kết nối mạng hoặc thử tải lại thủ công.
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-2 w-full max-w-xs justify-center pt-4 border-t border-border mt-4">
+        <Button 
+          onClick={handleRetry} 
+          disabled={isRetrying}
+          size="sm" 
+          className="px-4 gap-1.5 min-w-[110px] font-semibold"
+        >
+          {isRetrying ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          Thử lại ngay
         </Button>
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => window.location.reload()} 
-          className="px-4"
+          className="px-4 font-medium"
         >
           Tải lại ứng dụng
         </Button>
       </div>
+
       {process.env.NODE_ENV !== 'production' && (
-        <pre className="mt-4 p-3 bg-muted rounded-lg text-[10px] overflow-auto max-w-full text-left opacity-60 w-full font-mono">
+        <pre className="mt-4 p-3 bg-muted rounded-lg text-[9px] overflow-auto max-w-full text-left opacity-60 w-full font-mono max-h-32">
           {error?.message || String(error)}
         </pre>
       )}
