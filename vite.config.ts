@@ -12,6 +12,9 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        workbox: {
+          importScripts: ['/firebase-messaging-sw.js']
+        },
         manifest: {
           name: 'I NỘI THẤT',
           short_name: 'I NỘI THẤT',

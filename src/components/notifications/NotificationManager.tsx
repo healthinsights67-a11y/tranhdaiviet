@@ -26,7 +26,7 @@ export function NotificationManager() {
 
         let registration;
         if ('serviceWorker' in navigator) {
-          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          registration = await navigator.serviceWorker.ready;
         }
         const token = await getToken(messaging, { 
           vapidKey,
