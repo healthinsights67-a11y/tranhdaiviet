@@ -71,21 +71,9 @@ export function NotificationManager() {
       }
     }
 
-    const authUnsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        if (permission === 'default' && typeof window !== 'undefined' && 'Notification' in window) {
-          try {
-            const newPermission = await Notification.requestPermission();
-            setPermission(newPermission);
-            if (newPermission === 'granted') {
-              requestAndSaveToken();
-            }
-          } catch (err) {
-            console.error('Error requesting notification permission on auth change:', err);
-          }
-        } else if (permission === 'granted') {
-          requestAndSaveToken();
-        }
+    const authUnsubscribe = auth.onAuthStateChanged((user) => {
+      if (user && permission === 'granted') {
+        requestAndSaveToken();
       }
     });
 
