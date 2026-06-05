@@ -197,8 +197,9 @@ export const ProductDocuments = () => {
             createdAt: serverTimestamp()
           });
           return true;
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error uploading file:", err);
+          toast.error(`Lỗi tải lên tệp "${file.name}": ${err?.message || String(err)}`);
           return false;
         }
       };
@@ -213,7 +214,7 @@ export const ProductDocuments = () => {
       if (successCount > 0) {
         toast.success(`Đã tải lên thành công ${successCount}/${files.length} tài liệu`);
       } else {
-        toast.error('Không thể tải lên tài liệu nào');
+        toast.error('Không thể tải lên tài liệu nào. Vui lòng kiểm tra thông báo lỗi chi tiết ở trên.');
       }
     } catch (error: any) {
       toast.error('Lỗi tải file: ' + error.message);
