@@ -865,13 +865,13 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                     <div 
                                       key={task.id}
                                       className={cn(
-                                        "text-xs px-2 py-1 rounded truncate border shadow-sm",
+                                        "text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border shadow-sm",
                                         STATUS_COLORS[stage]
                                       )}
                                       title={`[Sản xuất] ${task.customerName || task.title} - ${task.address || ''}`}
                                     >
-                                      <div className="flex items-center gap-1">
-                                        <StatusIcon className="h-3 w-3 shrink-0" />
+                                      <div className="flex items-center gap-0.5 sm:gap-1">
+                                        <StatusIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                                         <span className="font-bold uppercase tracking-tighter truncate">
                                           {customer?.code || customer?.name || task.customerName || task.title}
                                         </span>
@@ -884,15 +884,15 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                     <div 
                                       key={schedule.id}
                                       className={cn(
-                                        "text-[10px] sm:text-xs px-2 py-1 rounded truncate border font-semibold flex items-center gap-1 shadow-sm",
+                                        "text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border font-semibold flex items-center gap-0.5 sm:gap-1 shadow-sm",
                                         schedule.status === 'completed' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900' :
                                         schedule.status === 'cancelled' ? 'text-red-700 border-red-200 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900' :
                                         'text-purple-700 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900'
                                       )}
                                       title={`[Lắp đặt] ${schedule.customerName} - ${schedule.address}`}
                                     >
-                                      <Hammer className="h-3 w-3 shrink-0 text-purple-600 dark:text-purple-400" />
-                                      <span className="font-bold opacity-75">{format(parseISO(schedule.date), 'HH:mm')}</span>
+                                      <Hammer className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-purple-600 dark:text-purple-400" />
+                                      <span className="font-bold opacity-75 hidden xs:inline">{format(parseISO(schedule.date), 'HH:mm')}</span>
                                       <span className="truncate">{schedule.customerName}</span>
                                     </div>
                                   );
