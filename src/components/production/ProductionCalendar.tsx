@@ -873,7 +873,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                       <div className="flex items-center gap-0.5 sm:gap-1">
                                         <StatusIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                                         <span className="font-bold uppercase tracking-tighter truncate">
-                                          {customer?.code || customer?.name || task.customerName || task.title}
+                                          {customer?.name || task.customerName || customer?.code || task.title}
                                         </span>
                                       </div>
                                     </div>
