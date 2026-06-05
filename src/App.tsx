@@ -19,7 +19,6 @@ const MediaLibrary = React.lazy(() => import('./components/media/MediaLibrary').
 const ProductDocuments = React.lazy(() => import('./components/documents/ProductDocuments').then(module => ({ default: module.ProductDocuments })));
 const QuotationPage = React.lazy(() => import('./components/quotations/QuotationPage').then(module => ({ default: module.QuotationPage })));
 const MeasurementPage = React.lazy(() => import('./components/measurements/MeasurementPage').then(module => ({ default: module.MeasurementPage })));
-const InstallationPage = React.lazy(() => import('./components/installations/InstallationPage').then(module => ({ default: module.InstallationPage })));
 const ReportPage = React.lazy(() => import('./components/reports/ReportPage').then(module => ({ default: module.ReportPage })));
 const UserManagement = React.lazy(() => import('./components/admin/UserManagement').then(module => ({ default: module.UserManagement })));
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
@@ -487,9 +486,9 @@ function AppContent() {
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <MeasurementPage schedules={filteredSchedulesData} members={activeMembers} customers={filteredCustomers} user={user} currentUser={currentMember} />;
       case 'installations':
-        return redirect(perms.menuOrders)
+        return redirect(perms.menuProduction)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
-          : <InstallationPage schedules={filteredInstallations} members={activeMembers} customers={filteredCustomers} tasks={filteredTasks} setTasks={setTasks} user={user} currentUser={currentMember} />;
+          : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />

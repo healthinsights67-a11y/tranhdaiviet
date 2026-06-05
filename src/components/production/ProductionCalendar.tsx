@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Task, Member, Customer } from '@/src/types';
+import { Task, Member, Customer, InstallationSchedule } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,8 @@ import {
   MapPin,
   Phone,
   User,
-  Hammer
+  Hammer,
+  Wrench
 } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek, addDays, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,15 +31,20 @@ import { vi } from 'date-fns/locale';
 import { cn, getCurrentVNDate } from '@/src/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from '@/src/components/kanban/KanbanBoard';
-import { useQueryClient } from '@tanstack/react-query';
-import { doc, updateDoc, setDoc, db } from '@/src/lib/firebase';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { doc, updateDoc, setDoc, deleteDoc, db, arrayUnion, getDoc } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { InstallationScheduleSchema } from '@/src/schemas';
+import { z } from 'zod';
+import { notifyManagers } from '@/src/services/notificationService';
+import { uploadToImgBB } from '@/src/services/uploadService';
+import { fetchInstallationSchedules } from '@/src/services/dataService';
 
 interface ProductionCalendarProps {
-  
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   members: Member[];
@@ -81,14 +87,13 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const [currentDate, setCurrentDate] = React.useState(() => getCurrentVNDate());
   const [viewMode, setViewMode] = React.useState<'1d' | '7d' | '30d'>('30d');
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
+  const [rightTab, setRightTab] = React.useState<'production' | 'installation'>('production');
 
   const isTopManager = (user && (user.email === 'nhoanhkoem01@gmail.com' || user.email === 'haanhtran.cv02@gmail.com')) || 
     !!(currentUser?.role?.toLowerCase()?.includes('giám đốc')) || 
     !!(currentUser?.role?.toLowerCase()?.includes('quản lý tổng')) ||
     !!(currentUser?.role?.toLowerCase()?.includes('quản lý')) ||
     (currentUser?.permissions?.viewPrice === true);
-
-  const canViewPrice = isTopManager;
 
   const { startDate, endDate } = React.useMemo(() => {
     if (viewMode === '1d') {
@@ -124,7 +129,29 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   };
 
   const queryClient = useQueryClient();
-  const installationSchedules = queryClient.getQueryData<any[]>(['installation_schedules']) || [];
+
+  const { data: installationSchedules = [] } = useQuery<any[]>({
+    queryKey: ['installation_schedules'],
+    queryFn: fetchInstallationSchedules,
+    enabled: !!user,
+    staleTime: Infinity
+  });
+
+  const isInstaller = !!currentUser?.role?.toLowerCase()?.includes('thi công') || 
+                      !!currentUser?.role?.toLowerCase()?.includes('lắp đặt') || 
+                      !!currentUser?.role?.toLowerCase()?.includes('sản xuất') ||
+                      !!currentUser?.role?.toLowerCase()?.includes('kỹ thuật');
+
+  const canViewAllInstalls = isTopManager || !isInstaller;
+
+  const filteredInstallationSchedules = React.useMemo(() => {
+    return canViewAllInstalls 
+      ? installationSchedules 
+      : installationSchedules.filter(s => 
+          s.assigneeId === currentUser?.id || 
+          (s.assigneeIds && currentUser?.id && s.assigneeIds.includes(currentUser.id))
+        );
+  }, [installationSchedules, canViewAllInstalls, currentUser]);
 
   const [isOpen, setIsOpen] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -138,6 +165,25 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     notes: ''
   });
 
+  const [isInstallOpen, setIsInstallOpen] = React.useState(false);
+  const [installFormData, setInstallFormData] = React.useState<any>({
+    taskId: '',
+    customerId: '',
+    customerName: '',
+    phone: '',
+    address: '',
+    date: new Date().toISOString().slice(0, 16),
+    assigneeId: '',
+    assigneeIds: [],
+    notes: '',
+    status: 'pending'
+  });
+
+  const [editingInstallId, setEditingInstallId] = React.useState<string | null>(null);
+  const [isSavingInstall, setIsSavingInstall] = React.useState(false);
+  const [editInstallFormData, setEditInstallFormData] = React.useState<Partial<InstallationSchedule>>({});
+  const [isUploadingInstall, setIsUploadingInstall] = React.useState<string | null>(null);
+
   const productionTasks = tasks.filter(t => t.type === 'production');
 
   const productionMembers = React.useMemo(() => {
@@ -149,12 +195,47 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     );
   }, [members]);
 
+  const installerMembers = React.useMemo(() => {
+    return members.filter(m => 
+      !!m.role?.toLowerCase()?.includes('thi công') || 
+      !!m.role?.toLowerCase()?.includes('lắp đặt') || 
+      !!m.role?.toLowerCase()?.includes('sản xuất') ||
+      !!m.role?.toLowerCase()?.includes('kỹ thuật')
+    );
+  }, [members]);
+
+  const displayInstallerOptions = React.useMemo(() => {
+    const installerOptions = installerMembers.map(m => ({ label: `${m.name} (${m.role})`, value: m.id }));
+    return installerOptions.length > 0 
+      ? installerOptions 
+      : members.map(m => ({ label: `${m.name} (${m.role})`, value: m.id }));
+  }, [installerMembers, members]);
+
+  const handleInstallerToggle = (assigneeId: string, type: 'create' | 'edit') => {
+    if (type === 'create') {
+      const current = installFormData.assigneeIds || [];
+      const newIds = current.includes(assigneeId) ? current.filter((id: string) => id !== assigneeId) : [...current, assigneeId];
+      setInstallFormData((prev: any) => ({ ...prev, assigneeIds: newIds, assigneeId: newIds[0] || '' }));
+    } else {
+      const current = editInstallFormData.assigneeIds || [];
+      const newIds = current.includes(assigneeId) ? current.filter((id: string) => id !== assigneeId) : [...current, assigneeId];
+      setEditInstallFormData(prev => ({ ...prev, assigneeIds: newIds, assigneeId: newIds[0] || '' }));
+    }
+  };
+
   const getTasksForDay = (day: Date) => {
     return tasks.filter(t => 
       t.type === 'production' && 
       t.dueDate && 
       t.dueDate !== '' &&
       isSameDay(parseISO(t.dueDate), day)
+    );
+  };
+
+  const getInstallSchedulesForDay = (day: Date) => {
+    return filteredInstallationSchedules.filter((s: any) => 
+      s.date && 
+      isSameDay(parseISO(s.date), day)
     );
   };
 
@@ -198,6 +279,72 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     return [...unscheduledTasksList, ...unscheduledCustomersList];
   }, [unscheduledTasksList, unscheduledCustomersList]);
 
+  const unscheduledInstallTasksList = React.useMemo(() => {
+    return tasks.filter(t => 
+      t.status === 'waiting_install' && 
+      !filteredInstallationSchedules.some((s: any) => {
+        if (s.status === 'cancelled') return false;
+        if (s.taskId === t.id) return true;
+        if (s.customerId && t.customerId && s.customerId === t.customerId) return true;
+        if (s.customerName && (t.customerName || t.title) && s.customerName.toLowerCase() === (t.customerName || t.title).replace(/^sản xuất:\s*/i, '').trim().toLowerCase()) return true;
+        return false;
+      })
+    ).map(t => ({
+      id: t.id,
+      type: 'task' as const,
+      name: t.customerName || t.title,
+      workshop: t.workshop,
+      address: t.address || '',
+      phone: t.phone || '',
+      rawTask: t,
+      rawCustomer: undefined
+    }));
+  }, [tasks, filteredInstallationSchedules]);
+
+  const unscheduledInstallCustomersList = React.useMemo(() => {
+    return customers.filter(c => 
+      (['contracted', 'production'].includes(c.stage)) && 
+      !filteredInstallationSchedules.some((s: any) => {
+        if (s.status === 'cancelled') return false;
+        if (s.customerId === c.id) return true;
+        if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
+        return false;
+      }) &&
+      !unscheduledInstallTasksList.some(t => t.rawTask?.customerId === c.id || (t.rawTask?.customerName && t.rawTask.customerName.toLowerCase() === c.name.toLowerCase()))
+    ).map(c => ({
+      id: c.id,
+      type: 'customer' as const,
+      name: c.name,
+      workshop: c.workshop,
+      address: c.address || '',
+      phone: c.phone || '',
+      rawTask: undefined,
+      rawCustomer: c
+    }));
+  }, [customers, filteredInstallationSchedules, unscheduledInstallTasksList]);
+
+  const unscheduledInstallations = React.useMemo(() => {
+    return [...unscheduledInstallTasksList, ...unscheduledInstallCustomersList];
+  }, [unscheduledInstallTasksList, unscheduledInstallCustomersList]);
+
+  const taskOptions = React.useMemo(() => {
+    const options = [
+      { label: '-- Nhập tay / Không liên kết thẻ --', value: 'manual' },
+      ...unscheduledInstallations.map(t => ({
+        label: `${t.name} (${t.address || 'Không có địa chỉ'})`,
+        value: t.id
+      }))
+    ];
+    if (installFormData.taskId && installFormData.taskId !== 'manual' && !options.find(o => o.value === installFormData.taskId)) {
+      const t = tasks.find(x => x.id === installFormData.taskId);
+      options.push({
+        label: t ? `${t.customerName || t.title} (${t.address || 'Không có địa chỉ'})` : installFormData.customerName || installFormData.taskId,
+        value: installFormData.taskId
+      });
+    }
+    return options;
+  }, [unscheduledInstallations, installFormData.taskId, installFormData.customerName, tasks]);
+
   const handleSaveSchedule = async () => {
     if (!formData.customerName || formData.customerName.trim() === '') {
       toast.error('Vui lòng nhập tên khách hàng');
@@ -213,7 +360,6 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       const dueDateIso = new Date(formData.date).toISOString();
 
       if (taskId) {
-        // Update existing task
         const taskRef = doc(db, 'tasks', taskId);
         await updateDoc(taskRef, {
           dueDate: dueDateIso,
@@ -221,7 +367,6 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
           description: formData.notes || ''
         });
       } else {
-        // Create new production task
         taskId = `prod-${formData.customerId || 'manual'}-${Date.now()}`;
         const prodTask = {
           id: taskId,
@@ -241,7 +386,6 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         await setDoc(doc(db, 'tasks', taskId), prodTask);
       }
 
-      // Automatically update customer stage to 'production' if currently 'contracted'
       if (formData.customerId) {
         const customer = customers.find(c => c.id === formData.customerId);
         if (customer && customer.stage === 'contracted') {
@@ -271,6 +415,253 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     }
   };
 
+  const handleSaveInstall = async () => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để lưu');
+      return;
+    }
+    if (!installFormData.customerName || installFormData.customerName.trim() === '') {
+      toast.error('Vui lòng nhập tên khách hàng');
+      return;
+    }
+    if (!installFormData.date || installFormData.date.trim() === '') {
+      toast.error('Vui lòng nhập thời gian lắp');
+      return;
+    }
+
+    try {
+      const id = Date.now().toString();
+      const schedule: InstallationSchedule = {
+        id,
+        date: new Date(installFormData.date!).toISOString(),
+        taskId: installFormData.taskId || '',
+        customerId: installFormData.customerId || '',
+        customerName: installFormData.customerName || '',
+        phone: installFormData.phone || '',
+        address: installFormData.address || '',
+        status: installFormData.status as 'pending' | 'completed' | 'cancelled',
+        assigneeId: installFormData.assigneeId || '',
+        assigneeIds: installFormData.assigneeIds || [],
+        notes: installFormData.notes || '',
+        createdAt: new Date().toISOString()
+      };
+
+      InstallationScheduleSchema.parse(schedule);
+      
+      await setDoc(doc(db, 'installation_schedules', id), schedule);
+
+      const assignee = members.find(m => m.id === schedule.assigneeId);
+      notifyManagers(
+        'Lịch lắp đặt mới',
+        `Điều phối lịch lắp đặt cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}. Phụ trách: ${assignee?.name || 'Chưa rõ'}`,
+        { taskId: schedule.id, type: 'installation' },
+        schedule.assigneeId
+      );
+
+      if (schedule.status === 'completed') {
+        if (schedule.taskId) {
+          const taskRef = doc(db, 'tasks', schedule.taskId);
+          await updateDoc(taskRef, {
+            status: 'done',
+            completedAt: new Date().toISOString()
+          });
+        }
+        if (schedule.customerId) {
+          await updateDoc(doc(db, 'customers', schedule.customerId), { 
+            stage: 'completed'
+          });
+        }
+      }
+
+      toast.success('Đã xếp lịch lắp đặt thành công');
+      setIsInstallOpen(false);
+      setInstallFormData({
+        taskId: '',
+        customerId: '',
+        customerName: '',
+        phone: '',
+        address: '',
+        date: new Date().toISOString().slice(0, 16),
+        assigneeId: '',
+        assigneeIds: [],
+        status: 'pending',
+        notes: ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    } catch (error) {
+      console.error("Lỗi khi xếp lịch lắp đặt:", error);
+      if (error instanceof z.ZodError) {
+        const errorMsg = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        toast.error('Lỗi định dạng dữ liệu: ' + errorMsg);
+      } else {
+        toast.error('Có lỗi xảy ra khi xếp lịch lắp đặt');
+      }
+    }
+  };
+
+  const handleEditInstallClick = (schedule: InstallationSchedule) => {
+    setEditingInstallId(schedule.id);
+    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(new Date(schedule.date).getTime() - tzOffset)).toISOString().slice(0, 16);
+    setEditInstallFormData({ ...schedule, date: localISOTime, assigneeIds: schedule.assigneeIds || (schedule.assigneeId ? [schedule.assigneeId] : []) });
+  };
+
+  const handleCancelInstallEdit = () => {
+    setEditingInstallId(null);
+    setEditInstallFormData({});
+  };
+
+  const handleSaveInstallEdit = async (schedule: InstallationSchedule) => {
+    if (!editInstallFormData.customerName || editInstallFormData.customerName.trim() === '') {
+        toast.error('Vui lòng nhập tên khách hàng');
+        return;
+    }
+    if (!editInstallFormData.date || editInstallFormData.date.trim() === '') {
+        toast.error('Vui lòng nhập thời gian lắp');
+        return;
+    }
+    if (!editInstallFormData.phone || editInstallFormData.phone.trim().length < 9) {
+        toast.error('Vui lòng nhập số điện thoại hợp lệ');
+        return;
+    }
+
+    setIsSavingInstall(true);
+    try {
+        const scheduleRef = doc(db, 'installation_schedules', schedule.id);
+        const updatedData = {
+          ...editInstallFormData,
+          date: new Date(editInstallFormData.date!).toISOString()
+        };
+
+        if (updatedData.status === 'completed' && schedule.status !== 'completed') {
+          if (updatedData.taskId) {
+            const taskRef = doc(db, 'tasks', updatedData.taskId);
+            await updateDoc(taskRef, {
+              status: 'done',
+              completedAt: new Date().toISOString()
+            });
+          }
+
+          if (updatedData.customerId) {
+            await updateDoc(doc(db, 'customers', updatedData.customerId), { 
+              stage: 'completed'
+            });
+            toast.success(`Đã tự động hoàn tất dự án cho: ${updatedData.customerName}`);
+          }
+        }
+
+        const { id, createdAt, ...dataToUpdate } = updatedData as any;
+        await updateDoc(scheduleRef, dataToUpdate);
+        toast.success('Đã cập nhật lịch lắp đặt');
+        setEditingInstallId(null);
+        setEditInstallFormData({});
+        queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
+    } catch (error) {
+        console.error("Lỗi khi lưu thay đổi lịch lắp đặt:", error);
+        toast.error('Lỗi khi lưu thay đổi');
+    } finally {
+        setIsSavingInstall(false);
+    }
+  };
+
+  const handleInstallFileUpload = async (schedule: InstallationSchedule, files: FileList) => {
+    setIsUploadingInstall(schedule.id);
+    const toastId = toast.loading(`Đang tải lên ${files.length} ảnh...`);
+
+    try {
+      let successCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const newUrl = await uploadToImgBB(file);
+        if (newUrl) {
+          await updateDoc(doc(db, 'installation_schedules', schedule.id), {
+            imageUrls: arrayUnion(newUrl)
+          });
+          successCount++;
+        }
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      
+      if (successCount > 0) {
+        toast.success(`Đã tải lên ${successCount}/${files.length} ảnh thành công!`, { id: toastId });
+      } else {
+        toast.error('Không thể tải lên ảnh nào', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Lỗi khi tải ảnh: ' + (error instanceof Error ? error.message : 'Unknown'), { id: toastId });
+    } finally {
+      setIsUploadingInstall(null);
+    }
+  };
+
+  const handleUpdateInstallStatus = async (item: InstallationSchedule, newStatus: 'pending' | 'completed' | 'cancelled') => {
+    try {
+      const scheduleRef = doc(db, 'installation_schedules', item.id);
+      
+      const snap = await getDoc(scheduleRef);
+      const freshItem = snap.exists() ? snap.data() as InstallationSchedule : item;
+
+      if (newStatus === 'completed' && (!freshItem.imageUrls || freshItem.imageUrls.length === 0)) {
+        toast.error('Vui lòng tải ảnh nghiệm thu lắp đặt lên trước khi hoàn tất!');
+        return;
+      }
+
+      await updateDoc(scheduleRef, {
+        status: newStatus
+      });
+
+      if (newStatus === 'completed') {
+        if (freshItem.taskId) {
+          const taskRef = doc(db, 'tasks', freshItem.taskId);
+          await updateDoc(taskRef, {
+            status: 'done',
+            completedAt: new Date().toISOString()
+          });
+        }
+
+        if (freshItem.customerId) {
+          await updateDoc(doc(db, 'customers', freshItem.customerId), { 
+            stage: 'completed'
+          });
+          toast.success(`Đã tự động hoàn tất dự án cho: ${freshItem.customerName}`);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      
+      let message = 'Đã cập nhật trạng thái';
+      if (newStatus === 'completed') message = 'Đã hoàn thành lắp đặt';
+      else if (newStatus === 'cancelled') message = 'Đã hủy lịch lắp đặt';
+      else if (newStatus === 'pending') message = 'Đã đưa về trạng thái chờ lắp';
+
+      toast.success(message);
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái lắp đặt:", error);
+      toast.error('Có lỗi xảy ra');
+    }
+  };
+
+  const handleDeleteInstallSchedule = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa lịch lắp đặt này không?')) return;
+    try {
+      await deleteDoc(doc(db, 'installation_schedules', id));
+      queryClient.invalidateQueries({ queryKey: ['installation_schedules'] });
+      toast.success('Đã xóa lịch lắp đặt');
+      setSelectedDay(null);
+    } catch (error) {
+      console.error("Lỗi khi xóa lịch lắp đặt:", error);
+      toast.error('Có lỗi xảy ra khi xóa');
+    }
+  };
+
   const getCustomersForDay = (day: Date) => {
     return customers.filter(customer => {
       const isValidStage = ['contracted', 'production', 'installation', 'completed'].includes(customer.stage);
@@ -280,8 +671,6 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     });
   };
 
-  // Map orders to tasks for display in the progress board if they don't have a production task yet
-  // This ensures the user sees all "công trình" as requested
   const virtualProductionTasks: Task[] = React.useMemo(() => {
     const existingTitles = new Set(productionTasks.map(t => t.title.toLowerCase()));
     
@@ -310,15 +699,13 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   return (
     <div className="space-y-3 max-w-[1600px] mx-auto px-2">
-      {/* Header Section */}
       <div className="flex flex-col space-y-0.5 px-2">
         <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">
-          Quản lý Sản Xuất
+          Quản lý Sản Xuất & Lắp Đặt
         </h1>
-        <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ thi công thực tế.</p>
+        <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ thi công sản xuất & lắp đặt thực tế.</p>
       </div>
 
-      {/* Summary Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 px-2">
         <Card className="rounded-xl border bg-card hover:shadow-md transition-all">
           <CardHeader className="p-3 pb-1">
@@ -383,7 +770,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
       <Tabs defaultValue="calendar" className="w-full flex-grow flex flex-col mt-4">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2 mb-2">
-          <TabsList className="bg-gray-100 p-0.5 rounded-lg w-full sm:w-auto h-9">
+          <TabsList className="bg-gray-100 p-0.5 rounded-lg w-full sm:w-auto h-9 dark:bg-zinc-800">
             <TabsTrigger value="calendar" className="rounded-md gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm w-full sm:w-auto text-xs h-8">
               <CalendarDays className="h-3.5 w-3.5" />
               Lịch
@@ -399,9 +786,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               <SelectTrigger className="h-7 w-[70px] text-[10px] border-none px-1">
                 <SelectValue placeholder="Chế độ" />
               </SelectTrigger>
-              <SelectContent
-                className="z-50 bg-card text-card-foreground dark:bg-zinc-900 opacity-100 border shadow-xl backdrop-blur-none rounded-xl"
-              >
+              <SelectContent className="z-50 bg-card text-card-foreground border shadow-xl rounded-xl">
                 <SelectItem value="1d">1 Ngày</SelectItem>
                 <SelectItem value="7d">7 Ngày</SelectItem>
                 <SelectItem value="30d">30 Ngày</SelectItem>
@@ -422,7 +807,6 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
         <TabsContent value="calendar" className="flex-grow flex flex-col outline-none mt-0">
           <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1">
-            {/* Left Column: Calendar */}
             <Card className="flex-grow border shadow-sm bg-card overflow-hidden rounded-xl flex flex-col min-h-[400px]">
               <div className="flex-grow flex flex-col">
                 <div className="w-full flex-grow flex flex-col">
@@ -438,6 +822,17 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                     <div className="grid grid-cols-7 min-w-[700px] auto-rows-[minmax(100px,1fr)]">
                       {calendarDays.map((day, i) => {
                         const dayTasks = getTasksForDay(day);
+                        const dayInstalls = getInstallSchedulesForDay(day);
+
+                        const combinedItems = [
+                          ...dayTasks.map(t => ({ ...t, displayType: 'production' as const, sortTime: t.dueDate })),
+                          ...dayInstalls.map(s => ({ ...s, displayType: 'installation' as const, sortTime: s.date }))
+                        ].sort((a, b) => {
+                          const timeA = a.sortTime ? new Date(a.sortTime).getTime() : 0;
+                          const timeB = b.sortTime ? new Date(b.sortTime).getTime() : 0;
+                          return timeA - timeB;
+                        });
+
                         const isToday = isSameDay(day, getCurrentVNDate());
 
                         return (
@@ -460,31 +855,52 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                             </div>
                             
                             <div className="flex-1 overflow-hidden flex flex-col space-y-1">
-                              {dayTasks.slice(0, 3).map((task) => {
-                                const customer = customers.find(c => c.id === task.customerId || c.name.toLowerCase() === (task.customerName || '').toLowerCase());
-                                const stage = customer?.stage || 'production';
-                                const StatusIcon = STATUS_ICONS[stage];
-                                return (
-                                  <div 
-                                    key={task.id}
-                                    className={cn(
-                                      "text-xs px-2 py-1 rounded truncate border shadow-sm",
-                                      STATUS_COLORS[stage]
-                                    )}
-                                    title={`${task.customerName || task.title} - ${task.address || ''}`}
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      <StatusIcon className="h-3 w-3 shrink-0" />
-                                      <span className="font-bold uppercase tracking-tighter truncate">
-                                        {customer?.code || customer?.name || task.customerName || task.title}
-                                      </span>
+                              {combinedItems.slice(0, 3).map((item) => {
+                                if (item.displayType === 'production') {
+                                  const task = item as any;
+                                  const customer = customers.find(c => c.id === task.customerId || c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+                                  const stage = customer?.stage || 'production';
+                                  const StatusIcon = STATUS_ICONS[stage] || Package;
+                                  return (
+                                    <div 
+                                      key={task.id}
+                                      className={cn(
+                                        "text-xs px-2 py-1 rounded truncate border shadow-sm",
+                                        STATUS_COLORS[stage]
+                                      )}
+                                      title={`[Sản xuất] ${task.customerName || task.title} - ${task.address || ''}`}
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        <StatusIcon className="h-3 w-3 shrink-0" />
+                                        <span className="font-bold uppercase tracking-tighter truncate">
+                                          {customer?.code || customer?.name || task.customerName || task.title}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
+                                  );
+                                } else {
+                                  const schedule = item as any;
+                                  return (
+                                    <div 
+                                      key={schedule.id}
+                                      className={cn(
+                                        "text-[10px] sm:text-xs px-2 py-1 rounded truncate border font-semibold flex items-center gap-1 shadow-sm",
+                                        schedule.status === 'completed' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900' :
+                                        schedule.status === 'cancelled' ? 'text-red-700 border-red-200 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900' :
+                                        'text-purple-700 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900'
+                                      )}
+                                      title={`[Lắp đặt] ${schedule.customerName} - ${schedule.address}`}
+                                    >
+                                      <Hammer className="h-3 w-3 shrink-0 text-purple-600 dark:text-purple-400" />
+                                      <span className="font-bold opacity-75">{format(parseISO(schedule.date), 'HH:mm')}</span>
+                                      <span className="truncate">{schedule.customerName}</span>
+                                    </div>
+                                  );
+                                }
                               })}
-                              {dayTasks.length > 3 && (
+                              {combinedItems.length > 3 && (
                                 <div className="text-xs text-muted-foreground text-center font-medium py-1">
-                                  + {dayTasks.length - 3} lịch
+                                  + {combinedItems.length - 3} lịch
                                 </div>
                               )}
                             </div>
@@ -497,118 +913,222 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               </div>
             </Card>
 
-            {/* Right Column: Unscheduled production list */}
             <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0">
-              <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
-                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                  <ClipboardList className="h-4.5 w-4.5 text-primary" />
-                  Chờ xếp lịch sản xuất
-                  {unscheduledProduction.length > 0 && (
-                    <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
-                      {unscheduledProduction.length}
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription className="text-[10px]">
-                  Danh sách đơn hàng chưa được xếp ngày sản xuất
-                </CardDescription>
+              <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                    <ClipboardList className="h-4.5 w-4.5 text-primary" />
+                    Chờ xếp lịch
+                  </CardTitle>
+                </div>
+                <div className="flex mt-2 bg-gray-100 p-0.5 rounded-lg dark:bg-zinc-800">
+                  <button 
+                    onClick={() => setRightTab('production')}
+                    className={cn(
+                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1",
+                      rightTab === 'production' ? "bg-white text-primary shadow-sm dark:bg-zinc-700" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Sản xuất
+                    {unscheduledProduction.length > 0 && (
+                      <span className="bg-destructive text-destructive-foreground text-[8px] px-1 rounded-full scale-90">
+                        {unscheduledProduction.length}
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setRightTab('installation')}
+                    className={cn(
+                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1",
+                      rightTab === 'installation' ? "bg-white text-primary shadow-sm dark:bg-zinc-700" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Lắp đặt
+                    {unscheduledInstallations.length > 0 && (
+                      <span className="bg-destructive text-destructive-foreground text-[8px] px-1 rounded-full scale-90">
+                        {unscheduledInstallations.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </CardHeader>
               <CardContent className="p-3 flex-1 overflow-y-auto">
-                {unscheduledProduction.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-                    <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                    <p className="text-xs font-semibold">Tất cả việc đã xếp lịch</p>
-                    <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có đơn hàng nào đang chờ xếp lịch sản xuất.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {unscheduledProduction.map((item) => (
-                      <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
-                              {item.name}
-                            </span>
-                            <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none">
-                              Chờ SX
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
-                          </p>
-                          <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                            <Phone className="h-3 w-3 shrink-0" />
-                            <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
-                          </p>
-                          
-                          <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
-                              {(() => {
-                                const installSchedule = installationSchedules.find(s => {
-                                  if (s.status === 'cancelled') return false;
-                                  if (item.type === 'task' && item.rawTask) {
-                                    return s.taskId === item.rawTask.id || 
-                                      (s.customerId && s.customerId === item.rawTask.customerId) || 
-                                      (s.customerName && s.customerName.toLowerCase() === (item.rawTask.customerName || item.rawTask.title.replace(/^sản xuất:\s*/i, '').trim()).toLowerCase());
-                                  } else if (item.rawCustomer) {
-                                    return s.customerId === item.rawCustomer.id || 
-                                      (s.customerName && s.customerName.toLowerCase() === item.rawCustomer.name.toLowerCase());
-                                  }
-                                  return false;
-                                });
-                                
-                                if (installSchedule) {
-                                  return (
-                                    <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded flex items-center gap-1 w-max">
-                                      <Hammer className="h-2.5 w-2.5" />
-                                      Lắp: {format(parseISO(installSchedule.date), 'dd/MM/yy', { locale: vi })}
-                                    </span>
-                                  );
-                                }
-                                return null;
-                              })()}
+                {rightTab === 'production' ? (
+                  unscheduledProduction.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                      <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs font-semibold">Tất cả việc đã xếp lịch</p>
+                      <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có đơn hàng nào đang chờ xếp lịch sản xuất.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {unscheduledProduction.map((item) => (
+                        <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
+                                {item.name}
+                              </span>
+                              <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none">
+                                Chờ SX
+                              </Badge>
                             </div>
-                            <Button 
-                              onClick={() => {
-                                if (item.type === 'task') {
-                                  const task = item.rawTask!;
-                                  setFormData({
-                                    id: task.id,
-                                    customerId: task.customerId || '',
-                                    customerName: task.customerName || task.title,
-                                    phone: task.phone || '',
-                                    address: task.address || '',
-                                    date: new Date().toISOString().slice(0, 16),
-                                    assigneeId: task.assigneeId || '',
-                                    notes: task.description || ''
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
+                            </p>
+                            
+                            <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                                {(() => {
+                                  const installSchedule = filteredInstallationSchedules.find(s => {
+                                    if (s.status === 'cancelled') return false;
+                                    if (item.type === 'task' && item.rawTask) {
+                                      return s.taskId === item.rawTask.id || 
+                                        (s.customerId && s.customerId === item.rawTask.customerId) || 
+                                        (s.customerName && s.customerName.toLowerCase() === (item.rawTask.customerName || item.rawTask.title.replace(/^sản xuất:\s*/i, '').trim()).toLowerCase());
+                                    } else if (item.rawCustomer) {
+                                      return s.customerId === item.rawCustomer.id || 
+                                        (s.customerName && s.customerName.toLowerCase() === item.rawCustomer.name.toLowerCase());
+                                    }
+                                    return false;
                                   });
-                                } else {
-                                  const customer = item.rawCustomer!;
-                                  setFormData({
-                                    id: '',
-                                    customerId: customer.id,
-                                    customerName: customer.name,
-                                    phone: customer.phone || '',
-                                    address: customer.address || '',
-                                    date: new Date().toISOString().slice(0, 16),
-                                    assigneeId: '',
-                                    notes: ''
-                                  });
-                                }
-                                setIsOpen(true);
-                              }}
-                              size="sm" 
-                              className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
-                            >
-                              Xếp lịch
-                            </Button>
+                                  
+                                  if (installSchedule) {
+                                    return (
+                                      <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded flex items-center gap-1 w-max">
+                                        <Hammer className="h-2.5 w-2.5" />
+                                        Lắp: {format(parseISO(installSchedule.date), 'dd/MM/yy', { locale: vi })}
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                              <Button 
+                                onClick={() => {
+                                  if (item.type === 'task') {
+                                    const task = item.rawTask!;
+                                    setFormData({
+                                      id: task.id,
+                                      customerId: task.customerId || '',
+                                      customerName: task.customerName || task.title,
+                                      phone: task.phone || '',
+                                      address: task.address || '',
+                                      date: new Date().toISOString().slice(0, 16),
+                                      assigneeId: task.assigneeId || '',
+                                      notes: task.description || ''
+                                    });
+                                  } else {
+                                    const customer = item.rawCustomer!;
+                                    setFormData({
+                                      id: '',
+                                      customerId: customer.id,
+                                      customerName: customer.name,
+                                      phone: customer.phone || '',
+                                      address: customer.address || '',
+                                      date: new Date().toISOString().slice(0, 16),
+                                      assigneeId: '',
+                                      notes: ''
+                                    });
+                                  }
+                                  setIsOpen(true);
+                                }}
+                                size="sm" 
+                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
+                              >
+                                Xếp lịch
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  unscheduledInstallations.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                      <Wrench className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs font-semibold">Tất cả việc đã xếp lịch</p>
+                      <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có dự án nào đang chờ xếp lịch lắp đặt.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {unscheduledInstallations.map((item) => (
+                        <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
+                                {item.name}
+                              </span>
+                              {item.workshop ? (
+                                <Badge className="text-[8px] scale-90 px-1 py-0 bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 shadow-none capitalize">
+                                  {item.workshop}
+                                </Badge>
+                              ) : (
+                                <Badge className="text-[8px] scale-90 px-1 py-0 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-none">
+                                  KH mới
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
+                            </p>
+                            
+                            <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                              <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
+                              <Button 
+                                onClick={() => {
+                                  if (item.type === 'task') {
+                                    const task = item.rawTask!;
+                                    const customer = task.customerId 
+                                      ? customers.find(c => c.id === task.customerId) 
+                                      : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+
+                                    setInstallFormData((prev: any) => ({
+                                      ...prev,
+                                      taskId: task.id,
+                                      customerId: customer?.id || task.customerId || '',
+                                      customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+                                      phone: customer?.phone || task.phone || '',
+                                      address: customer?.address || task.address || '',
+                                      date: new Date().toISOString().slice(0, 16)
+                                    }));
+                                  } else {
+                                    const customer = item.rawCustomer!;
+                                    setInstallFormData((prev: any) => ({
+                                      ...prev,
+                                      taskId: '',
+                                      customerId: customer.id,
+                                      customerName: customer.name,
+                                      phone: customer.phone || '',
+                                      address: customer.address || '',
+                                      date: new Date().toISOString().slice(0, 16)
+                                    }));
+                                  }
+                                  setIsInstallOpen(true);
+                                }}
+                                size="sm" 
+                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
+                              >
+                                Xếp lịch lắp
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )
                 )}
               </CardContent>
             </Card>
@@ -641,7 +1161,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card text-card-foreground rounded-2xl shadow-xl w-full max-w-lg p-6"
+              className="bg-card text-card-foreground rounded-2xl shadow-xl w-full max-w-2xl p-6"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
@@ -652,53 +1172,319 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                   <X className="w-5 h-5" />
                 </Button>
               </div>
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {getTasksForDay(selectedDay).length === 0 ? (
-                  <p className="text-muted-foreground text-sm italic">Không có lịch sản xuất nào.</p>
-                ) : (
-                  getTasksForDay(selectedDay).map(task => {
-                    const customer = customers.find(c => c.id === task.customerId || c.name.toLowerCase() === (task.customerName || '').toLowerCase());
-                    const stage = customer?.stage || 'production';
-                    const assignee = members.find(m => m.id === task.assigneeId);
-                    return (
-                      <div key={task.id} className="p-3 border rounded-lg flex items-center justify-between hover:bg-secondary/10">
-                        <div>
-                          <p className="font-bold text-sm">{task.customerName || task.title}</p>
-                          {task.address && <p className="text-xs text-muted-foreground mt-0.5">Địa chỉ: {task.address}</p>}
-                          {task.phone && <p className="text-xs text-muted-foreground">SĐT: {task.phone}</p>}
-                          {assignee && <p className="text-xs text-muted-foreground">Phụ trách: {assignee.name}</p>}
-                          {task.description && <p className="text-xs text-muted-foreground italic mt-1">Ghi chú: {task.description}</p>}
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          <Badge className={cn(STATUS_COLORS[stage])}>
-                            {STATUS_LABELS[stage]}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[10px] px-2 rounded-lg"
-                            onClick={() => {
-                              setFormData({
-                                id: task.id,
-                                customerId: task.customerId || '',
-                                customerName: task.customerName || task.title,
-                                phone: task.phone || '',
-                                address: task.address || '',
-                                date: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-                                assigneeId: task.assigneeId || '',
-                                notes: task.description || ''
-                              });
-                              setIsOpen(true);
-                              setSelectedDay(null);
-                            }}
-                          >
-                            Đổi lịch
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+                <div className="space-y-2">
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Package className="h-4 w-4 text-blue-500" />
+                    Lịch Sản Xuất ({getTasksForDay(selectedDay).length})
+                  </h4>
+                  {getTasksForDay(selectedDay).length === 0 ? (
+                    <p className="text-muted-foreground text-xs italic pl-6">Không có lịch sản xuất nào.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {getTasksForDay(selectedDay).map(task => {
+                        const customer = customers.find(c => c.id === task.customerId || c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+                        const stage = customer?.stage || 'production';
+                        const assignee = members.find(m => m.id === task.assigneeId);
+                        return (
+                          <div key={task.id} className="p-3 border rounded-xl flex items-center justify-between hover:bg-secondary/10 dark:border-zinc-800">
+                            <div>
+                              <p className="font-bold text-sm">{task.customerName || task.title}</p>
+                              {task.address && <p className="text-xs text-muted-foreground mt-0.5">Địa chỉ: {task.address}</p>}
+                              {task.phone && <p className="text-xs text-muted-foreground">SĐT: {task.phone}</p>}
+                              {assignee && <p className="text-xs text-muted-foreground">Phụ trách: {assignee.name}</p>}
+                              {task.description && <p className="text-xs text-muted-foreground italic mt-1">Ghi chú: {task.description}</p>}
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0 pl-2">
+                              <Badge className={cn(STATUS_COLORS[stage])}>
+                                {STATUS_LABELS[stage]}
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] px-2 rounded-lg"
+                                onClick={() => {
+                                  setFormData({
+                                    id: task.id,
+                                    customerId: task.customerId || '',
+                                    customerName: task.customerName || task.title,
+                                    phone: task.phone || '',
+                                    address: task.address || '',
+                                    date: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+                                    assigneeId: task.assigneeId || '',
+                                    notes: task.description || ''
+                                  });
+                                  setIsOpen(true);
+                                  setSelectedDay(null);
+                                }}
+                              >
+                                Đổi lịch
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 border-t pt-4 dark:border-zinc-800">
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Hammer className="h-4 w-4 text-purple-500" />
+                    Lịch Lắp Đặt ({getInstallSchedulesForDay(selectedDay).length})
+                  </h4>
+                  {getInstallSchedulesForDay(selectedDay).length === 0 ? (
+                    <p className="text-muted-foreground text-xs italic pl-6">Không có lịch lắp đặt nào.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {getInstallSchedulesForDay(selectedDay).map((schedule) => {
+                        const assignee = members.find(m => m.id === schedule.assigneeId);
+                        const isManager = isTopManager;
+                        return (
+                          <div key={schedule.id} className="p-4 rounded-xl border bg-card shadow-sm space-y-3 dark:border-zinc-800">
+                            {editingInstallId === schedule.id ? (
+                              <div className="space-y-4 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">Ngày giờ lắp *</Label>
+                                    <Input 
+                                      type="datetime-local"
+                                      value={editInstallFormData.date || ''}
+                                      onChange={e => setEditInstallFormData({...editInstallFormData, date: e.target.value})}
+                                      className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 text-card-foreground"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">Tên khách hàng *</Label>
+                                    <Input 
+                                      value={editInstallFormData.customerName || ''}
+                                      onChange={e => setEditInstallFormData({...editInstallFormData, customerName: e.target.value})}
+                                      className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">SĐT khách hàng *</Label>
+                                    <Input 
+                                      type="tel"
+                                      value={editInstallFormData.phone || ''}
+                                      onChange={e => setEditInstallFormData({...editInstallFormData, phone: e.target.value})}
+                                      className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">Địa chỉ *</Label>
+                                    <Input 
+                                      value={editInstallFormData.address || ''}
+                                      onChange={e => setEditInstallFormData({...editInstallFormData, address: e.target.value})}
+                                      className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5 flex flex-col">
+                                    <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger className="h-10 rounded-xl border border-gray-200 bg-card w-full justify-start text-left font-normal px-4 py-2 text-sm flex items-center dark:border-zinc-700 text-card-foreground">
+                                        {(editInstallFormData.assigneeIds && editInstallFormData.assigneeIds.length > 0) 
+                                          ? `${editInstallFormData.assigneeIds.length} nhân viên được chọn` 
+                                          : 'Chọn nhân viên (có thể chọn nhiều)'}
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
+                                        {members.map(m => (
+                                          <DropdownMenuCheckboxItem
+                                            key={m.id}
+                                            checked={(editInstallFormData.assigneeIds || []).includes(m.id)}
+                                            onCheckedChange={() => handleInstallerToggle(m.id, 'edit')}
+                                          >
+                                            {m.name || 'Không xác định'}
+                                          </DropdownMenuCheckboxItem>
+                                        ))}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    {(editInstallFormData.assigneeIds && editInstallFormData.assigneeIds.length > 0) && (
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {editInstallFormData.assigneeIds.map((id: string) => {
+                                          const m = members.find(x => x.id === id);
+                                          return m ? (
+                                            <Badge key={id} variant="secondary" className="text-[10px] font-bold">
+                                              {m.name || 'Không xác định'}
+                                            </Badge>
+                                          ) : null;
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">Trạng thái</Label>
+                                    <Select 
+                                      value={editInstallFormData.status || ''} 
+                                      onValueChange={(val: any) => setEditInstallFormData({...editInstallFormData, status: val})}
+                                    >
+                                      <SelectTrigger className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-card text-card-foreground">
+                                        <SelectValue placeholder="Chọn trạng thái">
+                                          {editInstallFormData.status === 'completed' ? 'Đã hoàn thành' : 
+                                           editInstallFormData.status === 'cancelled' ? 'Đã hủy' : 
+                                           editInstallFormData.status === 'pending' ? 'Chờ lắp đặt' : 'Chọn trạng thái'}
+                                        </SelectValue>
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-card z-50">
+                                        <SelectItem value="pending">Chờ lắp đặt</SelectItem>
+                                        <SelectItem value="completed">Đã hoàn thành</SelectItem>
+                                        <SelectItem value="cancelled">Đã hủy</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-bold text-muted-foreground">Ghi chú</Label>
+                                    <Input 
+                                      value={editInstallFormData.notes || ''}
+                                      onChange={e => setEditInstallFormData({...editInstallFormData, notes: e.target.value})}
+                                      className="h-10 w-full rounded-xl border border-gray-200 dark:border-zinc-700"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                  <Button variant="outline" size="sm" onClick={handleCancelInstallEdit} disabled={isSavingInstall} className="rounded-xl">Hủy</Button>
+                                  <Button size="sm" onClick={() => handleSaveInstallEdit(schedule)} disabled={isSavingInstall} className="rounded-xl bg-primary text-white">{isSavingInstall ? 'Đang lưu...' : 'Lưu thay đổi'}</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-start gap-4">
+                                  <div>
+                                    <h4 className="font-bold text-base text-primary">{schedule.customerName}</h4>
+                                    <div className="flex items-center text-muted-foreground text-xs mt-1 gap-4 font-medium">
+                                      <span className="flex items-center gap-1 text-foreground">
+                                        <Clock className="w-3.5 h-3.5 text-primary" /> 
+                                        {format(parseISO(schedule.date), 'HH:mm')}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <User className="w-3.5 h-3.5" /> 
+                                        Phụ trách: {assignee?.name || 'Chưa phân công'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Badge className={cn(
+                                    "text-[10px] px-2 py-0.5 rounded-lg shadow-none",
+                                    schedule.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-500/20' : 
+                                    schedule.status === 'pending' ? 'bg-blue-500/15 text-blue-600 dark:bg-blue-950 dark:text-blue-400 border border-blue-500/20' : 
+                                    'bg-red-500/15 text-red-600 dark:bg-red-950 dark:text-red-400 border border-red-500/20'
+                                  )}>
+                                    {schedule.status === 'completed' ? 'Đã lắp xong' : 
+                                     schedule.status === 'pending' ? 'Chờ lắp đặt' : 'Đã hủy lịch'}
+                                  </Badge>
+                                </div>
+
+                                <div className="grid gap-2 text-xs font-medium text-muted-foreground pt-1">
+                                  <div className="flex items-start gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                                    <span className="text-foreground">{schedule.address}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-foreground">{schedule.phone}</span>
+                                  </div>
+                                  {schedule.notes && (
+                                     <div className="mt-2 text-xs p-3 bg-secondary/35 rounded-xl border text-muted-foreground italic">
+                                       {schedule.notes}
+                                     </div>
+                                  )}
+                                </div>
+
+                                <div className="pt-3 border-t dark:border-zinc-800 mt-4 space-y-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                      <Label className="text-xs font-bold text-muted-foreground">Ảnh nghiệm thu / lắp đặt hoàn thiện</Label>
+                                      {(currentUser?.id === schedule.assigneeId || isManager) && (
+                                        <div className="space-y-2">
+                                          <Input 
+                                            type="file" 
+                                            accept="image/*"
+                                            multiple
+                                            disabled={isUploadingInstall === schedule.id}
+                                            onChange={(e) => {
+                                              if (e.target.files?.length) {
+                                                handleInstallFileUpload(schedule, e.target.files);
+                                                e.target.value = '';
+                                              }
+                                            }}
+                                            className="h-9 text-xs file:text-xs file:h-full rounded-xl cursor-pointer"
+                                          />
+                                          {isUploadingInstall === schedule.id && (
+                                            <div className="text-[10px] text-blue-500 animate-pulse font-bold">Đang tải ảnh lên...</div>
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="flex gap-2 mt-2 flex-wrap min-h-[40px]">
+                                        {(schedule.imageUrls || []).map((url: string, i: number) => (
+                                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative group/img cursor-pointer">
+                                            <img src={url} alt={`installation-${i}`} className="w-12 h-12 object-cover rounded-lg border hover:scale-105 transition-transform" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                                    <div className="flex gap-1.5">
+                                      {(isManager || currentUser?.id === schedule.assigneeId) && schedule.status !== 'completed' && (
+                                        <Button 
+                                          size="sm" 
+                                          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-xl h-8 text-xs font-semibold"
+                                          onClick={() => handleUpdateInstallStatus(schedule, 'completed')}
+                                        >
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          Hoàn thành lắp
+                                        </Button>
+                                      )}
+                                      {schedule.status === 'completed' && (
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          className="gap-1 rounded-xl h-8 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                          onClick={() => handleUpdateInstallStatus(schedule, 'pending')}
+                                        >
+                                          Mở lại lịch
+                                        </Button>
+                                      )}
+                                      {schedule.status === 'pending' && (
+                                        <Button 
+                                          size="sm" 
+                                          variant="destructive"
+                                          className="rounded-xl h-8 text-xs font-semibold"
+                                          onClick={() => handleUpdateInstallStatus(schedule, 'cancelled')}
+                                        >
+                                          Hủy lịch
+                                        </Button>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex gap-1.5">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="rounded-xl h-8 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                        onClick={() => handleDeleteInstallSchedule(schedule.id)}
+                                      >
+                                        Xóa lịch
+                                      </Button>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="rounded-xl h-8 text-xs font-semibold"
+                                        onClick={() => handleEditInstallClick(schedule)}
+                                      >
+                                        Chỉnh sửa
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -768,7 +1554,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                 value={formData.assigneeId || 'none'}
                 onValueChange={val => setFormData(prev => ({ ...prev, assigneeId: val === 'none' ? '' : val }))}
               >
-                <SelectTrigger className="h-9 rounded-lg bg-background">
+                <SelectTrigger className="h-9 rounded-lg bg-background text-card-foreground">
                   <SelectValue placeholder="Chọn người phụ trách" />
                 </SelectTrigger>
                 <SelectContent className="z-50 bg-card text-card-foreground dark:bg-zinc-900 border rounded-xl shadow-xl">
@@ -800,6 +1586,166 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
             <Button onClick={handleSaveSchedule} className="h-9 rounded-lg text-white bg-primary">
               Lưu Lịch Hẹn
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInstallOpen} onOpenChange={setIsInstallOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5 font-bold">
+              <Hammer className="h-5 w-5 text-primary" />
+              Điều phối Lịch Lắp Đặt
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Vui lòng điền thông tin và phân công thợ thi công lắp đặt tại công trình.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-3 text-sm">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Liên kết Công việc Chờ lắp *</Label>
+              <Select 
+                value={installFormData.taskId || 'manual'} 
+                onValueChange={(taskId) => {
+                  if (taskId === 'manual') {
+                    setInstallFormData((prev: any) => ({ 
+                      ...prev, 
+                      taskId: '',
+                      customerId: '', 
+                      customerName: '', 
+                      phone: '', 
+                      address: '' 
+                    }));
+                    return;
+                  }
+                  const task = tasks.find(t => t.id === taskId);
+                  if (task) {
+                    const customer = task.customerId 
+                      ? customers.find(c => c.id === task.customerId) 
+                      : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+
+                    setInstallFormData((prev: any) => ({
+                      ...prev,
+                      taskId: task.id,
+                      customerId: customer?.id || task.customerId || '',
+                      customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+                      phone: customer?.phone || task.phone || '',
+                      address: customer?.address || task.address || ''
+                    }));
+                  }
+                }}
+              >
+                <SelectTrigger className="h-10 bg-gray-50 border-gray-200 rounded-xl dark:bg-zinc-800 dark:border-zinc-700 w-full text-card-foreground">
+                  <SelectValue placeholder="Chọn từ danh sách chờ lắp hoặc tự nhập">
+                    {installFormData.taskId && installFormData.taskId !== 'manual' 
+                      ? (taskOptions.find(o => o.value === installFormData.taskId)?.label || installFormData.taskId) 
+                      : (installFormData.taskId === 'manual' ? '-- Nhập tay / Không liên kết thẻ --' : 'Chọn từ danh sách chờ lắp hoặc tự nhập')}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-card">
+                  {taskOptions.map(o => (
+                    <SelectItem 
+                      key={o.value} 
+                      value={o.value}
+                      className={o.value === 'manual' ? "font-bold text-primary" : ""}
+                    >
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Tên khách hàng *</Label>
+                <Input 
+                  value={installFormData.customerName || ''} 
+                  onChange={e => setInstallFormData({...installFormData, customerName: e.target.value})} 
+                  placeholder="Họ và tên"
+                  className="h-10 rounded-xl w-full border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Điện thoại khách *</Label>
+                <Input 
+                  value={installFormData.phone || ''} 
+                  onChange={e => setInstallFormData({...installFormData, phone: e.target.value})} 
+                  placeholder="090..."
+                  className="h-10 rounded-xl w-full border-gray-200 dark:border-zinc-700"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Địa chỉ lắp đặt *</Label>
+              <Input 
+                value={installFormData.address || ''} 
+                onChange={e => setInstallFormData({...installFormData, address: e.target.value})} 
+                placeholder="Địa chỉ công trình"
+                className="h-10 rounded-xl border-gray-200 dark:border-zinc-700"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground">Thời gian lắp đặt *</Label>
+                <Input 
+                  type="datetime-local" 
+                  value={installFormData.date || ''} 
+                  onChange={e => setInstallFormData({...installFormData, date: e.target.value})}
+                  className="h-10 rounded-xl bg-gray-50 border-gray-200 cursor-pointer w-full dark:bg-zinc-800 dark:border-zinc-700 text-card-foreground"
+                />
+              </div>
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="text-xs font-bold text-muted-foreground">Nhân viên thi công *</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="h-10 rounded-xl border border-gray-200 bg-gray-50 w-full justify-start text-left font-normal px-4 py-2 text-sm flex items-center dark:bg-zinc-800 dark:border-zinc-700 text-card-foreground">
+                    {(installFormData.assigneeIds && installFormData.assigneeIds.length > 0) 
+                      ? `${installFormData.assigneeIds.length} nhân viên được chọn` 
+                      : 'Chọn thợ lắp đặt (có thể chọn nhiều)'}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[300px] max-h-[300px] overflow-y-auto bg-card z-50">
+                    {displayInstallerOptions.map(m => (
+                      <DropdownMenuCheckboxItem
+                        key={m.value}
+                        checked={(installFormData.assigneeIds || []).includes(m.value)}
+                        onCheckedChange={() => handleInstallerToggle(m.value, 'create')}
+                      >
+                        {m.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {(installFormData.assigneeIds && installFormData.assigneeIds.length > 0) && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {installFormData.assigneeIds.map((id: string) => {
+                      const m = displayInstallerOptions.find(o => o.value === id);
+                      return m ? (
+                        <Badge key={id} variant="secondary" className="text-[10px] font-bold">
+                          {m.label.split(' (')[0]}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-muted-foreground">Ghi chú lắp đặt</Label>
+              <Input 
+                value={installFormData.notes || ''} 
+                onChange={e => setInstallFormData({...installFormData, notes: e.target.value})} 
+                placeholder="Lưu ý về sản phẩm, tiến độ lắp ráp..."
+                className="h-10 rounded-xl border-gray-200 dark:border-zinc-700"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInstallOpen(false)} className="rounded-xl">Hủy</Button>
+            <Button onClick={handleSaveInstall} className="rounded-xl bg-primary text-white hover:bg-primary/90">Lưu thông tin</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
