@@ -1,7 +1,57 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import * as admin from 'firebase-admin';
+
+let isFirebaseInitialized = false;
+
+function initializeFirebaseAdmin() {
+  if (isFirebaseInitialized || admin.apps.length > 0) {
+    isFirebaseInitialized = true;
+    return;
+  }
+
+  let storageBucket = "gen-lang-client-0686745109.firebasestorage.app";
+  try {
+    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.storageBucket) {
+        storageBucket = config.storageBucket;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not read firebase-applet-config.json in server, using fallback bucket");
+  }
+
+  try {
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (serviceAccount && serviceAccount !== "undefined" && serviceAccount.trim() !== "") {
+      try {
+        admin.initializeApp({
+          credential: admin.credential.cert(JSON.parse(serviceAccount)),
+          storageBucket
+        });
+      } catch (jsonErr) {
+        console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT env var, falling back to applicationDefault", jsonErr);
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+          storageBucket
+        });
+      }
+    } else {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        storageBucket
+      });
+    }
+    isFirebaseInitialized = true;
+    console.log("Firebase Admin successfully initialized with bucket:", storageBucket);
+  } catch (error) {
+    console.error("Firebase Admin initialization failed:", error);
+  }
+}
 
 let fcm: admin.messaging.Messaging | null = null;
 
@@ -9,30 +59,11 @@ function getFCM() {
   if (fcm) return fcm;
   
   try {
-    if (!admin.apps.length) {
-      const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (serviceAccount && serviceAccount !== "undefined" && serviceAccount.trim() !== "") {
-        try {
-          admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(serviceAccount))
-          });
-        } catch (jsonErr) {
-          console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT env var", jsonErr);
-          admin.initializeApp({
-            credential: admin.credential.applicationDefault()
-          });
-        }
-      } else {
-        // Fallback to default or just project ID if possible
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault()
-        });
-      }
-    }
+    initializeFirebaseAdmin();
     fcm = admin.messaging();
     return fcm;
   } catch (error) {
-    console.warn("Firebase Admin initialization failed. Notifications will not work.", error);
+    console.warn("Firebase Admin messaging failed to get instance:", error);
     return null;
   }
 }
@@ -41,7 +72,8 @@ async function startServer() {
   const app = express();
   const PORT = parseInt(process.env.PORT || "3000", 10);
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // API Routes
   app.post("/api/send-notification", async (req, res) => {
@@ -70,6 +102,40 @@ async function startServer() {
     } catch (error) {
       console.error("Error sending notification:", error);
       res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  app.post("/api/upload-document", async (req, res) => {
+    const { name, type, folderId, base64 } = req.body;
+    if (!name || !folderId || !base64) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    try {
+      initializeFirebaseAdmin();
+      const bucket = admin.storage().bucket();
+      const buffer = Buffer.from(base64, 'base64');
+      
+      const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
+      const safeName = name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `product_documents/${folderId}/${uniqueId}_${safeName}`;
+      const file = bucket.file(filePath);
+
+      await file.save(buffer, {
+        metadata: {
+          contentType: type || 'application/octet-stream',
+        },
+      });
+
+      // Make the file publicly accessible
+      await file.makePublic();
+
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+
+      res.json({ success: true, url: publicUrl, size: buffer.length });
+    } catch (error: any) {
+      console.error("Error in backend upload:", error);
+      res.status(500).json({ error: error.message || "Failed to upload file to storage" });
     }
   });
 

@@ -175,17 +175,42 @@ export const ProductDocuments = () => {
             }
           }
 
-          // Fallback to Firebase Storage if not an image or if ImgBB upload failed
+          // Fallback to Firebase Storage via backend if not an image or if ImgBB upload failed
           if (!url) {
-            const isCompressibleImage = file.type?.startsWith('image/') && ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
-            const processedFile = isCompressibleImage ? await compressImage(file) : file;
-            const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9) + '_' + index;
-            const safeName = processedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-            const fileRef = ref(storage, `product_documents/${selectedFolder.id}/${uniqueId}_${safeName}`);
-            await uploadBytes(fileRef, processedFile);
-            url = await getDownloadURL(fileRef);
-            type = processedFile.type;
-            size = processedFile.size;
+            // Read file as Base64
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              reader.onload = () => {
+                const resultStr = reader.result as string;
+                const base64Data = resultStr.split(',')[1];
+                resolve(base64Data);
+              };
+              reader.onerror = (err) => reject(err);
+            });
+
+            const response = await fetch('/api/upload-document', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: file.name,
+                type: file.type || 'application/octet-stream',
+                folderId: selectedFolder.id,
+                base64,
+              }),
+            });
+
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData.error || `Lỗi từ máy chủ: ${response.status}`);
+            }
+
+            const data = await response.json();
+            url = data.url;
+            type = file.type || 'application/octet-stream';
+            size = data.size;
           }
           
           await addDoc(collection(db, 'product_documents'), {
