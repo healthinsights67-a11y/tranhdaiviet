@@ -29,12 +29,15 @@ export async function handleRequestNotification() {
         return;
       }
 
-      // Check registration
+      let registration;
       if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.ready;
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
       }
 
-      const token = await getToken(messaging, { vapidKey });
+      const token = await getToken(messaging, { 
+        vapidKey,
+        serviceWorkerRegistration: registration 
+      });
       
       if (token && auth.currentUser) {
         // 1: Members fallback check

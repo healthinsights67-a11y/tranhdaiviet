@@ -24,7 +24,14 @@ export function NotificationManager() {
           return;
         }
 
-        const token = await getToken(messaging, { vapidKey });
+        let registration;
+        if ('serviceWorker' in navigator) {
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        }
+        const token = await getToken(messaging, { 
+          vapidKey,
+          serviceWorkerRegistration: registration
+        });
         
         if (token && auth.currentUser) {
           console.log('Current identity for token:', auth.currentUser.email);

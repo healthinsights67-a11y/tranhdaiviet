@@ -18,10 +18,10 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'Thông báo mới';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/vite.svg', // Update icon path as needed
+    body: payload.notification?.body || payload.data?.body || '',
+    icon: '/pwa-192x192.svg',
     data: payload.data
   };
 
