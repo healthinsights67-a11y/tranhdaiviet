@@ -211,6 +211,12 @@ export const ProductDocuments = () => {
             url = data.url;
             type = file.type || 'application/octet-stream';
             size = data.size;
+
+            if (data.isFallback) {
+              toast.warning(`Lưu tệp tạm thời thành công: ${data.warning}`, {
+                duration: 8000
+              });
+            }
           }
           
           await addDoc(collection(db, 'product_documents'), {

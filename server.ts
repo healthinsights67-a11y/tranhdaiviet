@@ -75,6 +75,9 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+  // Serve uploads folder statically for fallback storage
+  app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
+
   // API Routes
   app.post("/api/send-notification", async (req, res) => {
     const { tokens, title, body, data } = req.body;
@@ -111,13 +114,14 @@ async function startServer() {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    const buffer = Buffer.from(base64, 'base64');
+    const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
+    const safeName = name.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+    // 1. Try Firebase Storage
     try {
       initializeFirebaseAdmin();
       const bucket = admin.storage().bucket();
-      const buffer = Buffer.from(base64, 'base64');
-      
-      const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
-      const safeName = name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = `product_documents/${folderId}/${uniqueId}_${safeName}`;
       const file = bucket.file(filePath);
 
@@ -131,11 +135,35 @@ async function startServer() {
       await file.makePublic();
 
       const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
-
-      res.json({ success: true, url: publicUrl, size: buffer.length });
+      console.log("Uploaded successfully to Firebase Storage:", publicUrl);
+      return res.json({ success: true, url: publicUrl, size: buffer.length });
     } catch (error: any) {
-      console.error("Error in backend upload:", error);
-      res.status(500).json({ error: error.message || "Failed to upload file to storage" });
+      console.warn("Firebase Storage upload failed, falling back to local server storage. Error:", error.message);
+
+      // 2. Fallback to local server storage
+      try {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'product_documents');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const fileName = `${uniqueId}_${safeName}`;
+        const localPath = path.join(uploadsDir, fileName);
+        fs.writeFileSync(localPath, buffer);
+
+        const publicUrl = `/uploads/product_documents/${fileName}`;
+        console.log("Fallback storage upload successful:", publicUrl);
+        return res.json({ 
+          success: true, 
+          url: publicUrl, 
+          size: buffer.length, 
+          isFallback: true, 
+          warning: "Firebase Storage chưa được kích hoạt nên tệp được lưu tạm thời trên máy chủ." 
+        });
+      } catch (localError: any) {
+        console.error("Local fallback storage upload failed:", localError);
+        return res.status(500).json({ error: `Không thể tải lên: Cả Firebase Storage (${error.message}) và bộ nhớ tạm thời trên máy chủ đều gặp lỗi.` });
+      }
     }
   });
 
