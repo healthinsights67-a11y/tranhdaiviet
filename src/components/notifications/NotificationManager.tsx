@@ -64,17 +64,51 @@ export function NotificationManager() {
       }
     }
 
-    const authUnsubscribe = auth.onAuthStateChanged((user) => {
-      if (user && permission === 'granted') {
-        requestAndSaveToken();
+    const authUnsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        if (permission === 'default' && typeof window !== 'undefined' && 'Notification' in window) {
+          try {
+            const newPermission = await Notification.requestPermission();
+            setPermission(newPermission);
+            if (newPermission === 'granted') {
+              requestAndSaveToken();
+            }
+          } catch (err) {
+            console.error('Error requesting notification permission on auth change:', err);
+          }
+        } else if (permission === 'granted') {
+          requestAndSaveToken();
+        }
       }
     });
 
     const onMessageUnsubscribe = onMessage(messaging, (payload) => {
       console.log('Message received. ', payload);
+      
+      // 1. Show inside-app toast
       toast(payload.notification?.title || 'Thông báo mới', {
         description: payload.notification?.body,
       });
+
+      // 2. Also show native system notification so it pops up outside/on top of the screen
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && payload.notification) {
+        const title = payload.notification.title || 'Thông báo mới';
+        const options = {
+          body: payload.notification.body,
+          icon: '/pwa-192x192.svg',
+          data: payload.data
+        };
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(title, options);
+          }).catch(() => {
+            new Notification(title, options);
+          });
+        } else {
+          new Notification(title, options);
+        }
+      }
     });
 
     return () => {
