@@ -43,7 +43,7 @@ export const MemberSchema = z.object({
   id: z.string(),
   name: z.string(),
   role: z.string(),
-  avatar: z.string(),
+  avatar: z.string().optional().or(z.literal('')).catch(''),
   email: z.string().optional().or(z.literal('')).catch(''),
   workshop: z.string().optional(),
   permissions: MemberPermissionsSchema.optional(),

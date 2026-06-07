@@ -114,9 +114,40 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const [pickerUnitFilter, setPickerUnitFilter] = React.useState('all');
   const [pickerCategoryFilter, setPickerCategoryFilter] = React.useState('all');
 
+  const allProducts = React.useMemo(() => {
+    const merged = [...STANDARD_PRICES.map(p => ({ 
+      id: `std-${p.name}`, 
+      productName: p.name, 
+      category: p.category, 
+      unitPrice: p.price, 
+      unit: p.unit, 
+      description: p.description,
+      imageUrl: '',
+      isStandard: true 
+    }))];
+    
+    products.forEach(p => {
+      const idx = merged.findIndex(m => m.productName === p.productName);
+      const mapped = {
+        id: p.id,
+        productName: p.productName,
+        category: p.category || 'Khác',
+        unitPrice: p.unitPrice,
+        unit: p.unit,
+        description: p.description || '',
+        imageUrl: p.imageUrl || '',
+        isStandard: false
+      };
+      
+      if (idx !== -1) merged[idx] = mapped;
+      else merged.push(mapped);
+    });
+    return merged;
+  }, [products]);
+
   const uniqueCategories = React.useMemo(() => {
     const cats = new Set<string>();
-    products.forEach(p => {
+    allProducts.forEach(p => {
       if (p.category) {
         cats.add(p.category.trim());
       }
@@ -126,15 +157,16 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       return ["Phòng bếp", "Phòng ngủ", "Phòng khách", "Phòng thờ", "Khác"];
     }
     return list;
-  }, [products]);
+  }, [allProducts]);
 
-  const filteredLibraryProducts = products.filter(p => {
+  const filteredLibraryProducts = allProducts.filter(p => {
     const matchesSearch = p.productName.toLowerCase().includes(pickerSearchTerm.toLowerCase()) || 
                           p.description.toLowerCase().includes(pickerSearchTerm.toLowerCase());
     const matchesUnit = pickerUnitFilter === 'all' || p.unit === pickerUnitFilter;
     const matchesCategory = pickerCategoryFilter === 'all' || p.category === pickerCategoryFilter;
     return matchesSearch && matchesUnit && matchesCategory;
   });
+  console.log("DEBUG: QuotationForm products:", allProducts.length, "filtered:", filteredLibraryProducts.length);
 
   const handleSelectFromLibrary = (product: ProductLibraryItem) => {
     const newItem: QuotationItem = {

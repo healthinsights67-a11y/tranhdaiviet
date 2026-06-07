@@ -27,6 +27,7 @@ import { toCanvas } from 'html-to-image';
 import { toast } from 'sonner';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
 import { cn } from '@/src/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 interface QuotationPreviewProps {
   isOpen: boolean;
@@ -61,21 +62,37 @@ export function QuotationPreview({
   const [customerCode, setCustomerCode] = React.useState<string>('KH000');
   const [quotationIndex, setQuotationIndex] = React.useState<number>(1);
 
-  React.useEffect(() => {
-    if (isOpen) {
+  const { data: dbConfig } = useQuery<QuotationTemplate>({
+    queryKey: ['quotation_template_config'],
+    queryFn: async () => {
+      const { db, doc, getDoc } = await import('@/src/lib/firebase');
+      const docRef = doc(db, 'configs', 'quotation_template');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { ...defaultTemplate, ...docSnap.data() } as QuotationTemplate;
+      }
       const saved = localStorage.getItem('quotation_template_config');
       if (saved && saved.trim() !== 'undefined' && saved.trim() !== 'null') {
         try {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object') {
-            setTemplate({ ...defaultTemplate, ...parsed });
+            return { ...defaultTemplate, ...parsed } as QuotationTemplate;
           }
         } catch (e) {
           console.error('Failed to parse saved config in preview', e);
         }
       }
+      return defaultTemplate;
+    },
+    staleTime: Infinity,
+    enabled: isOpen
+  });
+
+  React.useEffect(() => {
+    if (dbConfig) {
+      setTemplate(dbConfig);
     }
-  }, [isOpen]);
+  }, [dbConfig, isOpen]);
 
   React.useEffect(() => {
     if (isOpen && quotation.customerId) {

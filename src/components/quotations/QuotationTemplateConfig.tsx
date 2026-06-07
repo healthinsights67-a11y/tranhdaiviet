@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { cn } from '@/src/lib/utils';
 import html2canvas from 'html2canvas';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { db, doc, getDoc, setDoc } from '@/src/lib/firebase';
 
 export interface QuotationTemplate {
   companyName: string;
@@ -44,30 +46,54 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingQR, setIsUploadingQR] = useState(false);
 
-  useEffect(() => {
-    if (open) {
+  const queryClient = useQueryClient();
+  const { data: dbConfig } = useQuery<QuotationTemplate>({
+    queryKey: ['quotation_template_config'],
+    queryFn: async () => {
+      const docRef = doc(db, 'configs', 'quotation_template');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { ...defaultTemplate, ...docSnap.data() } as QuotationTemplate;
+      }
+      // Fallback to localStorage if no Firestore data yet
       const saved = localStorage.getItem('quotation_template_config');
       if (saved && saved.trim() !== 'undefined' && saved.trim() !== 'null') {
         try {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object') {
-            setConfig({ ...defaultTemplate, ...parsed });
+            return { ...defaultTemplate, ...parsed } as QuotationTemplate;
           }
         } catch (e) {
           console.error('Failed to parse saved config', e);
         }
       }
+      return defaultTemplate;
+    },
+    staleTime: Infinity
+  });
+
+  useEffect(() => {
+    if (dbConfig) {
+      setConfig(dbConfig);
     }
-  }, [open]);
+  }, [dbConfig, open]);
 
   const handleChange = (field: keyof QuotationTemplate, value: string) => {
     setConfig(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    localStorage.setItem('quotation_template_config', JSON.stringify(config));
-    toast.success('Đã lưu cấu hình biểu mẫu báo giá!');
-    setOpen(false);
+  const handleSave = async () => {
+    try {
+      const docRef = doc(db, 'configs', 'quotation_template');
+      await setDoc(docRef, config);
+      localStorage.setItem('quotation_template_config', JSON.stringify(config));
+      queryClient.setQueryData(['quotation_template_config'], config);
+      toast.success('Đã lưu cấu hình biểu mẫu báo giá lên hệ thống!');
+      setOpen(false);
+    } catch (error) {
+      console.error('Failed to save config', error);
+      toast.error('Có lỗi xảy ra khi lưu cấu hình lên hệ thống.');
+    }
   };
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'qrCodeUrl') => {

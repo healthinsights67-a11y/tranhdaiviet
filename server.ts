@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 let isFirebaseInitialized = false;
 
