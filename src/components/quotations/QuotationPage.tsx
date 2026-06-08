@@ -20,7 +20,8 @@ import {
   Package,
   XCircle,
   X,
-  Calendar
+  Calendar,
+  Building
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -63,7 +64,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useQueryClient } from '@tanstack/react-query';
-import { Quotation, Customer, Member } from '@/src/types';
+import { Quotation, Customer, Member, WORKSHOPS } from '@/src/types';
 import { format } from 'date-fns';
 import { QuotationForm } from './QuotationForm';
 import { QuotationPreview } from './QuotationPreview';
@@ -92,6 +93,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
+  const [workshopFilter, setWorkshopFilter] = React.useState<string>('all');
   const [selectedMonth, setSelectedMonth] = React.useState<string>('');
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -127,7 +129,9 @@ export function QuotationPage({ quotations, user, customers, members, products =
       return getVNMonth(q.createdAt) === selectedMonth;
     })();
 
-    return matchesSearch && matchesStatus && matchesTime;
+    const matchesWorkshop = workshopFilter === 'all' || q.workshop === workshopFilter;
+
+    return matchesSearch && matchesStatus && matchesTime && matchesWorkshop;
   });
 
   const [activeQuotationIds, setActiveQuotationIds] = React.useState<Record<string, string>>({});
@@ -667,6 +671,17 @@ export function QuotationPage({ quotations, user, customers, members, products =
                       />
                     </div>
                     <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto scrollbar-none pb-1 md:pb-0">
+                      <Select value={workshopFilter} onValueChange={setWorkshopFilter}>
+                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
+                           <Building className="h-4 w-4 text-muted-foreground" />
+                           <SelectValue placeholder="Cơ sở" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-white/10">
+                          {WORKSHOPS.map(w => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FilterStatus)}>
                         <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
                            <Filter className="h-4 w-4 text-muted-foreground" />
