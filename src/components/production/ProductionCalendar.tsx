@@ -142,7 +142,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                       !!currentUser?.role?.toLowerCase()?.includes('sản xuất') ||
                       !!currentUser?.role?.toLowerCase()?.includes('kỹ thuật');
 
-  const canViewAllInstalls = isTopManager || !isInstaller;
+  const hasInstallationsPermission = !!(currentUser?.permissions as any)?.menuInstallations;
+
+  const canViewAllInstalls = isTopManager || !isInstaller || hasInstallationsPermission;
 
   const filteredInstallationSchedules = React.useMemo(() => {
     return canViewAllInstalls 

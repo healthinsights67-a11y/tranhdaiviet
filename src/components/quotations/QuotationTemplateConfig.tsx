@@ -27,17 +27,17 @@ export interface QuotationTemplate {
 }
 
 export const defaultTemplate: QuotationTemplate = {
-  companyName: 'CÔNG TY TNHH ABC',
-  companyAddress: '123 Đường XYZ, Quận 1, TP.HCM',
-  companyPhone: '0909 123 456',
-  companyEmail: 'contact@abc.vn',
-  companyWebsite: 'www.abc.vn',
+  companyName: 'CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN',
+  companyAddress: 'Số 70 Phố Đồng Xung, Xã Chương Dương, TP Hà Nội, Việt Nam',
+  companyPhone: '0985.328.832',
+  companyEmail: 'cskh@tu3mien.com',
+  companyWebsite: 'www.tu3mien.com',
   logoUrl: '',
-  bankName: 'Vietcombank',
-  bankAccount: '123456789',
-  bankAccountName: 'CONG TY TNHH ABC',
+  bankName: 'Techcombank',
+  bankAccount: '19070004987011',
+  bankAccountName: 'Nguyễn Thị Mai Phương',
   qrCodeUrl: '',
-  terms: '- Tạm ứng 50% ngay sau khi ký hợp đồng.\n- Thanh toán 50% còn lại trước khi giao hàng.\n- Báo giá có giá trị trong vòng 15 ngày.',
+  terms: '- Tạm ứng 30% ngay sau khi ký hợp đồng.\n- Thanh toán 70% còn lại trước khi giao hàng.\n- Báo giá có giá trị trong vòng 15 ngày.',
 };
 
 export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode }) => {
