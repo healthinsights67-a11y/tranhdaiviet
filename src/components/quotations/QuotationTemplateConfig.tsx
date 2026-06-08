@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Upload, Save, X, Trash2, Building, Landmark, CheckSquare, Image as ImageIcon } from 'lucide-react';
+import { Settings, Upload, Save, X, Trash2, Building, Landmark, CheckSquare, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,14 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
       const docRef = doc(db, 'configs', 'quotation_template');
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { ...defaultTemplate, ...docSnap.data() } as QuotationTemplate;
+        const data = docSnap.data();
+        // Tự động ghi đè nếu phát hiện dữ liệu cũ là PLASTIHOME (để người dùng không cần bấm gì)
+        if (data.companyName?.includes('PLASTIHOME') || data.companyName === 'CÔNG TY TNHH ABC') {
+          await setDoc(docRef, defaultTemplate);
+          localStorage.setItem('quotation_template_config', JSON.stringify(defaultTemplate));
+          return defaultTemplate;
+        }
+        return { ...defaultTemplate, ...data } as QuotationTemplate;
       }
       // Fallback to localStorage if no Firestore data yet
       const saved = localStorage.getItem('quotation_template_config');
@@ -61,6 +68,9 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
         try {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object') {
+            if (parsed.companyName?.includes('PLASTIHOME') || parsed.companyName === 'CÔNG TY TNHH ABC') {
+              return defaultTemplate;
+            }
             return { ...defaultTemplate, ...parsed } as QuotationTemplate;
           }
         } catch (e) {
@@ -448,12 +458,18 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border bg-card">
-          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">Hủy</Button>
-          <Button onClick={handleSave} className="rounded-xl px-6 gap-2">
-            <Save className="w-4 h-4" />
-            Lưu Cấu Hình
+        <DialogFooter className="px-4 md:px-6 py-4 border-t border-border bg-card flex flex-col-reverse sm:flex-row justify-between items-center w-full gap-3">
+          <Button type="button" variant="secondary" onClick={() => setConfig(defaultTemplate)} className="rounded-xl gap-2 w-full sm:w-auto text-xs md:text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200">
+            <RefreshCw className="w-4 h-4" />
+            Điền nhanh thông tin Tủ 3 Miền
           </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl flex-1 sm:flex-none">Hủy</Button>
+            <Button onClick={handleSave} className="rounded-xl px-6 gap-2 flex-1 sm:flex-none">
+              <Save className="w-4 h-4" />
+              Lưu Cấu Hình
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
