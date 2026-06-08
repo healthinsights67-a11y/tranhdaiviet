@@ -64,7 +64,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useQueryClient } from '@tanstack/react-query';
-import { Quotation, Customer, Member, WORKSHOPS } from '@/src/types';
+import { Quotation, Customer, Member, WORKSHOPS, getWorkshopName } from '@/src/types';
 import { format } from 'date-fns';
 import { QuotationForm } from './QuotationForm';
 import { QuotationPreview } from './QuotationPreview';
@@ -129,7 +129,9 @@ export function QuotationPage({ quotations, user, customers, members, products =
       return getVNMonth(q.createdAt) === selectedMonth;
     })();
 
-    const matchesWorkshop = workshopFilter === 'all' || q.workshop === workshopFilter;
+    const customer = customers.find(c => c.id === q.customerId);
+    const quoteWorkshop = q.workshop || customer?.workshop;
+    const matchesWorkshop = workshopFilter === 'all' || getWorkshopName(quoteWorkshop) === getWorkshopName(workshopFilter);
 
     return matchesSearch && matchesStatus && matchesTime && matchesWorkshop;
   });
