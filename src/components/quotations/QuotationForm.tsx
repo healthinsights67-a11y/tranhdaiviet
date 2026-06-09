@@ -477,7 +477,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
             {/* --- Section: Quotation Items --- */}
             <section className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-primary/10 pb-2 gap-3">
+              <div className="sticky top-0 z-20 bg-card py-2 flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-primary/10 gap-3">
                  <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
                        <Calculator className="h-4 w-4" />
