@@ -150,14 +150,18 @@ export function QuotationPage({ quotations, user, customers, members, products =
     });
 
     // Map to array and sort chronologically (Lần 1, Lần 2, ...)
-    return Object.values(groups).map(groupQuotes => {
+    const mappedGroups = Object.values(groups).map(groupQuotes => {
       const sorted = [...groupQuotes].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       return {
         phone: sorted[0].phone,
         customerName: sorted[0].customerName,
-        quotations: sorted
+        quotations: sorted,
+        latestDate: new Date(sorted[sorted.length - 1].createdAt).getTime()
       };
     });
+
+    // Sort groups from newest to oldest based on their latest quotation
+    return mappedGroups.sort((a, b) => b.latestDate - a.latestDate);
   }, [filteredQuotations]);
 
   const getActiveQuotation = (group: { phone: string; customerName: string; quotations: Quotation[] }) => {
