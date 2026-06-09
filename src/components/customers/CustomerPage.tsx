@@ -457,7 +457,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     c.phone.includes(searchTerm) ||
     (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  ).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
   const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
