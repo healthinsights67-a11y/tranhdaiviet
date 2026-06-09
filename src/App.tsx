@@ -24,6 +24,7 @@ const UserManagement = React.lazy(() => import('./components/admin/UserManagemen
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
 const EcoplastLearningPage = React.lazy(() => import('./components/learning/EcoplastLearningPage'));
 const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
+const MaterialExtractionPage = React.lazy(() => import('./components/materials/MaterialExtractionPage').then(module => ({ default: module.MaterialExtractionPage })));
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
@@ -771,6 +772,10 @@ function AppContent() {
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <EcoplastLearningPage />;
+      case 'extraction':
+        return redirect(perms.menuProduction)
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
+          : <MaterialExtractionPage />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">

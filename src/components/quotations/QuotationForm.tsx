@@ -892,7 +892,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                       <Card 
                         key={product.id} 
                         className="cursor-pointer border border-border hover:border-blue-300 hover:shadow-xl hover:shadow-blue-50 transition-all group relative overflow-hidden flex flex-col rounded-2xl"
-                        onClick={() => handleSelectFromLibrary(product)}
+                        onClick={() => handleSelectFromLibrary(product as ProductLibraryItem)}
                       >
                         <CardContent className="p-0 flex flex-col h-full">
                           <div className="aspect-video w-full bg-gray-100 overflow-hidden relative">
