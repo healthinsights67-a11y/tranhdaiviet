@@ -377,7 +377,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         </DialogHeader>
 
         <form id="quotation-form" onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto w-full p-3 md:p-8 space-y-4 md:space-y-10 max-w-6xl mx-auto">
+          <div className="flex-1 overflow-y-auto w-full">
+            <div className="p-3 md:p-8 space-y-4 md:space-y-10 max-w-6xl mx-auto">
             {/* --- Section: Customer Info --- */}
             <section className="space-y-4">
               <div className="flex items-center gap-3 border-b-2 border-primary/10 pb-2">
@@ -788,6 +789,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                 </div>
               </div>
             </section>
+            </div>
           </div>
 
           <DialogFooter className="px-4 py-4 md:px-8 md:py-6 border-t bg-background shrink-0 flex flex-row items-center justify-between gap-2 md:gap-4 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
