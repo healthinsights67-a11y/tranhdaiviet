@@ -11,6 +11,7 @@ import { Navbar } from './components/layout/Navbar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 const Dashboard = React.lazy(() => import('./components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
 const KanbanBoard = React.lazy(() => import('./components/kanban/KanbanBoard').then(module => ({ default: module.KanbanBoard })));
+const SaleWeeklyPlanner = React.lazy(() => import('./components/kanban/SaleWeeklyPlanner').then(module => ({ default: module.SaleWeeklyPlanner })));
 const MemberPage = React.lazy(() => import('./components/members/MemberPage').then(module => ({ default: module.MemberPage })));
 const CustomerPage = React.lazy(() => import('./components/customers/CustomerPage').then(module => ({ default: module.CustomerPage })));
 const AIRenderPage = React.lazy(() => import('./components/ai-render/AIRenderPage'));
@@ -24,7 +25,6 @@ const UserManagement = React.lazy(() => import('./components/admin/UserManagemen
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
 const EcoplastLearningPage = React.lazy(() => import('./components/learning/EcoplastLearningPage'));
 const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
-const MaterialExtractionPage = React.lazy(() => import('./components/materials/MaterialExtractionPage').then(module => ({ default: module.MaterialExtractionPage })));
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
@@ -721,7 +721,7 @@ function AppContent() {
       case 'sale':
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
-          : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} type="sale" user={user} customers={filteredCustomers} currentUser={currentMember} />;
+          : <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'marketing':
         return redirect(perms.menuMarketing)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
@@ -772,10 +772,6 @@ function AppContent() {
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
           : <EcoplastLearningPage />;
-      case 'extraction':
-        return redirect(perms.menuProduction)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} />
-          : <MaterialExtractionPage />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">

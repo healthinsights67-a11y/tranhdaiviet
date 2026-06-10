@@ -66,6 +66,7 @@ export interface Task {
   address?: string;
   workshop?: string;
   column?: string;
+  scheduledDate?: string; // YYYY-MM-DD, dùng cho weekly planner
   files2D3D?: string[]; // URLs or storage references
   imageUrls?: string[]; // URLs from measurement stage
   checklists?: { id: string; title: string; completed: boolean }[];

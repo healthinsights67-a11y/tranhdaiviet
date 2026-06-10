@@ -84,6 +84,7 @@ export const TaskSchema = z.object({
   address: z.string().optional(),
   workshop: z.string().optional(),
   column: z.string().optional(),
+  scheduledDate: z.string().optional(),
   files2D3D: z.array(z.string()).optional(),
   imageUrls: z.array(z.string()).optional(),
   checklists: z.array(z.object({
