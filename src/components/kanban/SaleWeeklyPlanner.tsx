@@ -37,6 +37,7 @@ import {
   SlidersHorizontal,
   Inbox,
   Clock,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -465,6 +466,49 @@ export function SaleWeeklyPlanner({
   const weekTasks = tasks.filter(t => t.scheduledDate && weekDays.some(d => toDateStr(d) === t.scheduledDate));
   const weekDone = weekTasks.filter(t => t.status === 'done').length;
 
+  // Export report
+  const handleExportReport = () => {
+    // Determine which tasks to export based on current filters and visible week
+    let tasksToExport = tasks.filter(t => {
+      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+      if (filterAssignee !== 'all' && t.assigneeId !== filterAssignee) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (tasksToExport.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+
+    const headers = ['Tiêu đề', 'Mô tả', 'Giai đoạn', 'Ưu tiên', 'Người thực hiện', 'Khách hàng', 'Ngày lên lịch', 'Hoàn thành lúc'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...tasksToExport.map(t => {
+        const stage = SALE_STAGES.find(s => s.id === t.status)?.label || t.status;
+        const assignee = members.find(m => m.id === t.assigneeId)?.name || 'Chưa giao';
+        const customer = customers?.find(c => c.id === t.customerId)?.name || '';
+        const priority = t.priority === 'high' ? 'Cao' : t.priority === 'medium' ? 'Trung bình' : 'Thấp';
+        const completedAt = t.completedAt ? new Date(t.completedAt).toLocaleString('vi-VN') : 'Chưa hoàn thành';
+        return `"${t.title.replace(/"/g, '""')}","${(t.description || '').replace(/"/g, '""')}","${stage}","${priority}","${assignee}","${customer}","${t.scheduledDate || 'Chưa lên lịch'}","${completedAt}"`;
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Bao_cao_cong_viec_${toDateStr(new Date())}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Đã xuất báo cáo thành công');
+  };
+
   return (
     <div className="h-full flex flex-col gap-3">
       {/* ── Header ── */}
@@ -567,6 +611,16 @@ export function SaleWeeklyPlanner({
             </Button>
           </div>
 
+          {/* Export Report */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+            onClick={handleExportReport}
+          >
+            <Download className="h-3.5 w-3.5" /> Xuất báo cáo
+          </Button>
+
           {/* Add task */}
           <Button
             size="sm"
@@ -579,7 +633,7 @@ export function SaleWeeklyPlanner({
       </div>
 
       {/* ── Mobile: Day Tabs ── */}
-      <div className="flex md:hidden gap-1 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex md:hidden gap-2 overflow-x-auto pb-2 px-1 scrollbar-none snap-x">
         {weekDays.map(d => {
           const ds = toDateStr(d);
           const cnt = getTasksForDay(ds).length;
@@ -589,18 +643,18 @@ export function SaleWeeklyPlanner({
               key={ds}
               onClick={() => setSelectedDay(ds)}
               className={cn(
-                'shrink-0 flex flex-col items-center px-3 py-1.5 rounded-xl border text-[10px] font-medium transition-all',
+                'shrink-0 snap-start flex flex-col items-center min-w-[64px] px-3 py-2.5 rounded-xl border transition-all duration-200',
                 selectedDay === ds
-                  ? 'bg-primary text-primary-foreground border-primary shadow'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105'
                   : td
                   ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-card border-border text-muted-foreground'
+                  : 'bg-card border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              <span>{DAYS_VN[d.getDay()]}</span>
-              <span className="font-bold text-xs">{d.getDate()}</span>
+              <span className="uppercase text-[9px] font-medium mb-0.5 opacity-80">{DAYS_VN[d.getDay()]}</span>
+              <span className="font-bold text-sm leading-none">{d.getDate()}</span>
               {cnt > 0 && (
-                <span className={cn('text-[8px] rounded-full px-1', selectedDay === ds ? 'bg-white/20' : 'bg-primary/10 text-primary')}>
+                <span className={cn('mt-1.5 text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none', selectedDay === ds ? 'bg-white/20' : 'bg-primary/10 text-primary')}>
                   {cnt}
                 </span>
               )}

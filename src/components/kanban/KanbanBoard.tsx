@@ -76,7 +76,7 @@ const DEFAULT_COLUMNS: { id: Status; title: string }[] = [
 const DESIGN_COLUMNS: { id: Status; title: string }[] = [
   { id: 'todo', title: 'Tiếp nhận thông tin' },
   { id: 'in-progress', title: 'Lên bản vẽ 3D/2D' },
-  { id: 'review', title: 'Bóc tách vật tư' },
+  { id: 'review', title: 'Chờ duyệt thiết kế' },
   { id: 'done', title: 'Hoàn tất thiết kế' },
 ];
 
@@ -479,10 +479,10 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
           if (newStatus === 'in-progress' && task.status !== 'in-progress') {
             notifyManagers('Thiết kế: Lên bản vẽ 2D/3D', `Dự án "${task.title}" bắt đầu lên bản vẽ 2D/3D. Phụ trách: ${assigneeName}`, null, targetMember?.id);
           } else if (newStatus === 'review' && task.status !== 'review') {
-            notifyManagers('Thiết kế: Bóc tách vật tư', `Dự án "${task.title}" bắt đầu bóc tách vật tư. Phụ trách: ${assigneeName}`, null, targetMember?.id);
+            notifyManagers('Thiết kế: Chờ duyệt thiết kế', `Dự án "${task.title}" đang chờ duyệt thiết kế. Phụ trách: ${assigneeName}`, null, targetMember?.id);
           } else if (newStatus === 'done' && task.status !== 'done') {
             // Notify managers, the designer, AND all production members
-            notifyManagers('Thiết kế: Hoàn tất', `Dự án "${task.title}" đã hoàn tất bản vẽ và bóc tách vật tư. Sẵn sàng chuyển giao sản xuất.`, null, targetMember?.id, ['sản xuất']);
+            notifyManagers('Thiết kế: Hoàn tất', `Dự án "${task.title}" đã hoàn tất bản vẽ. Sẵn sàng chuyển giao sản xuất.`, null, targetMember?.id, ['sản xuất']);
           }
         } else if (type === 'production') {
           const projectTitle = task.title.replace('Sản xuất: ', '');
