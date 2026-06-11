@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Task, Member, Customer, Status, WORKSHOPS } from '@/src/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -466,8 +468,8 @@ export function SaleWeeklyPlanner({
   const weekTasks = tasks.filter(t => t.scheduledDate && weekDays.some(d => toDateStr(d) === t.scheduledDate));
   const weekDone = weekTasks.filter(t => t.status === 'done').length;
 
-  // Export report
-  const handleExportReport = () => {
+  // Export report professional excel
+  const handleExportReport = async () => {
     // Determine which tasks to export based on current filters and visible week
     let tasksToExport = tasks.filter(t => {
       if (filterStatus !== 'all' && t.status !== filterStatus) return false;
@@ -484,29 +486,123 @@ export function SaleWeeklyPlanner({
       return;
     }
 
-    const headers = ['Tiêu đề', 'Mô tả', 'Giai đoạn', 'Ưu tiên', 'Người thực hiện', 'Khách hàng', 'Ngày lên lịch', 'Hoàn thành lúc'];
-    
-    const csvContent = [
-      headers.join(','),
-      ...tasksToExport.map(t => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Báo cáo Kế hoạch tuần');
+
+      // Add Title
+      worksheet.mergeCells('A1:I1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = `BÁO CÁO KẾ HOẠCH TUẦN - BỘ PHẬN SALE`;
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0070C0' } };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).height = 35;
+
+      // Add subtitle
+      worksheet.mergeCells('A2:I2');
+      const subTitleCell = worksheet.getCell('A2');
+      subTitleCell.value = `Ngày xuất báo cáo: ${new Date().toLocaleString('vi-VN')}`;
+      subTitleCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF595959' } };
+      subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(2).height = 20;
+
+      // Add blank row
+      worksheet.addRow([]);
+
+      // Headers
+      const headers = ['STT', 'Tiêu đề', 'Khách hàng', 'Mô tả', 'Giai đoạn', 'Ưu tiên', 'Người thực hiện', 'Ngày lên lịch', 'Trạng thái/Thời gian hoàn thành'];
+      const headerRow = worksheet.addRow(headers);
+      
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF366092' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+          left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+          bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+          right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        };
+      });
+      headerRow.height = 30;
+
+      // Define columns width
+      worksheet.columns = [
+        { width: 8 },  // STT
+        { width: 35 }, // Tiêu đề
+        { width: 25 }, // Khách hàng
+        { width: 45 }, // Mô tả
+        { width: 20 }, // Giai đoạn
+        { width: 15 }, // Ưu tiên
+        { width: 25 }, // Người thực hiện
+        { width: 18 }, // Ngày lên lịch
+        { width: 25 }, // Hoàn thành lúc
+      ];
+
+      // Add data
+      tasksToExport.forEach((t, index) => {
         const stage = SALE_STAGES.find(s => s.id === t.status)?.label || t.status;
         const assignee = members.find(m => m.id === t.assigneeId)?.name || 'Chưa giao';
         const customer = customers?.find(c => c.id === t.customerId)?.name || '';
         const priority = t.priority === 'high' ? 'Cao' : t.priority === 'medium' ? 'Trung bình' : 'Thấp';
-        const completedAt = t.completedAt ? new Date(t.completedAt).toLocaleString('vi-VN') : 'Chưa hoàn thành';
-        return `"${t.title.replace(/"/g, '""')}","${(t.description || '').replace(/"/g, '""')}","${stage}","${priority}","${assignee}","${customer}","${t.scheduledDate || 'Chưa lên lịch'}","${completedAt}"`;
-      })
-    ].join('\n');
+        const completedAt = t.status === 'done' ? (t.completedAt ? new Date(t.completedAt).toLocaleString('vi-VN') : 'Đã hoàn thành') : 'Chưa hoàn thành';
 
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Bao_cao_cong_viec_${toDateStr(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Đã xuất báo cáo thành công');
+        const row = worksheet.addRow([
+          index + 1,
+          t.title,
+          customer,
+          t.description || '',
+          stage,
+          priority,
+          assignee,
+          t.scheduledDate ? new Date(t.scheduledDate).toLocaleDateString('vi-VN') : 'Chưa lên lịch',
+          completedAt
+        ]);
+
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Arial', size: 10 };
+          cell.alignment = { 
+            vertical: 'middle', 
+            horizontal: (colNumber === 1 || colNumber === 5 || colNumber === 6 || colNumber === 8 || colNumber === 9) ? 'center' : 'left',
+            wrapText: true 
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+            left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+            bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+            right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+          };
+
+          // Colorize priority
+          if (colNumber === 6) { // priority
+            if (t.priority === 'high') {
+              cell.font = { ...cell.font, color: { argb: 'FFC00000' }, bold: true };
+            } else if (t.priority === 'medium') {
+              cell.font = { ...cell.font, color: { argb: 'FFE36C09' }, bold: true };
+            } else {
+              cell.font = { ...cell.font, color: { argb: 'FF00B050' } };
+            }
+          }
+          
+          // Colorize status
+          if (colNumber === 5 || colNumber === 9) {
+            if (t.status === 'done') cell.font = { ...cell.font, color: { argb: 'FF00B050' }, bold: true };
+            else if (t.status === 'in-progress') cell.font = { ...cell.font, color: { argb: 'FF0070C0' }, bold: true };
+          }
+        });
+      });
+
+      // Save file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Bao_cao_KH_Tuan_Sale_${toDateStr(new Date())}.xlsx`);
+      
+      toast.success('Đã xuất báo cáo chuyên nghiệp thành công');
+    } catch (error) {
+      console.error('Lỗi xuất file Excel:', error);
+      toast.error('Có lỗi xảy ra khi xuất báo cáo');
+    }
   };
 
   return (
