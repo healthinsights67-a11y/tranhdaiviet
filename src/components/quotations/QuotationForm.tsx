@@ -257,6 +257,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
             const multiplier = multipliers.find(m => m.code === updates.materialCode);
             if (multiplier) {
               updated.materialName = multiplier.material;
+              if (!updated.basePrice && multiplier.globalBasePrice) {
+                updated.basePrice = multiplier.globalBasePrice;
+              }
               updated.unitPrice = Math.round((updated.basePrice || updated.unitPrice || 0) * (multiplier.percentage / 100));
             }
           }

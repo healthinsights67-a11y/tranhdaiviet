@@ -271,5 +271,6 @@ export interface MaterialMultiplier {
   code: string;
   material: string;
   description: string;
+  globalBasePrice?: number;
   percentage: number;
 }

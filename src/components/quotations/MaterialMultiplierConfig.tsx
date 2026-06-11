@@ -71,6 +71,7 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
       code: '',
       material: '',
       description: '',
+      globalBasePrice: undefined,
       percentage: 100
     };
     setItems([...items, newItem]);
@@ -122,6 +123,7 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
                     <TableHead className="w-32 font-bold">Mã vật liệu</TableHead>
                     <TableHead className="w-48 font-bold">Tên vật liệu</TableHead>
                     <TableHead className="font-bold">Nội dung / Mô tả</TableHead>
+                    <TableHead className="w-32 font-bold">Giá gốc (VNĐ)</TableHead>
                     <TableHead className="w-24 text-center font-bold">Tỉ lệ (%)</TableHead>
                     <TableHead className="w-16 text-center"></TableHead>
                   </TableRow>
@@ -162,6 +164,15 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
                         />
                       </TableCell>
                       <TableCell className="p-2">
+                        <Input 
+                          type="number" 
+                          value={item.globalBasePrice || ''} 
+                          onChange={(e) => handleChange(item.id, 'globalBasePrice', parseFloat(e.target.value) || undefined)}
+                          className="h-9 font-mono text-xs text-right pr-3"
+                          placeholder="0"
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
                         <div className="relative">
                           <Input 
                             type="number" 
@@ -186,7 +197,7 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
                   ))}
                   {items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Chưa có dữ liệu. Vui lòng thêm vật liệu hoặc khôi phục mặc định.
                       </TableCell>
                     </TableRow>
