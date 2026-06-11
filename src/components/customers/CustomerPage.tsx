@@ -167,6 +167,22 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           'Khách hàng mới',
           `Sale ${currentUser?.name || 'nào đó'} vừa tạo khách hàng mới: ${customerData.name} (${customerData.phone})`
         );
+
+        // Auto-sync to Sale Weekly Plan
+        const newSaleTask = {
+          title: `Tiếp nhận Lead: ${customerData.name}`,
+          description: `Khách hàng mới. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address}.`,
+          status: 'todo' as const,
+          type: 'sale' as const,
+          priority: 'medium' as const,
+          assigneeId: customerData.assignedSaleId || currentUser?.id || '',
+          customerId: createdCustomerId,
+          createdAt: nowStr,
+          scheduledDate: nowStr.split('T')[0],
+          dueDate: nowStr.split('T')[0],
+        };
+        await addDoc(collection(db, 'tasks'), newSaleTask);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
       } else {
         const customer: Customer = {
           id: `c-${Date.now()}`,
@@ -174,6 +190,22 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         };
         setCustomers([customer, ...customers]);
         createdCustomerId = customer.id;
+
+        // Auto-sync local
+        const newSaleTask: Task = {
+          id: `t-sale-${Date.now()}`,
+          title: `Tiếp nhận Lead: ${customerData.name}`,
+          description: `Khách hàng mới. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address}.`,
+          status: 'todo',
+          type: 'sale',
+          priority: 'medium',
+          assigneeId: customerData.assignedSaleId || currentUser?.id || '',
+          customerId: createdCustomerId,
+          createdAt: nowStr,
+          scheduledDate: nowStr.split('T')[0],
+          dueDate: nowStr.split('T')[0],
+        };
+        setTasks((prev) => [newSaleTask, ...prev]);
       }
       
       setIsAddDialogOpen(false);

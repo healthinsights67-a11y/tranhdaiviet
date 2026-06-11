@@ -123,6 +123,29 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
     }
   };
 
+  const autoSyncToSaleWeeklyPlan = async (scheduleItem: any) => {
+    try {
+      const nowStr = new Date().toISOString();
+      const scheduledDate = nowStr.split('T')[0];
+      const newSaleTask = {
+        title: `Tư vấn & Báo giá: ${scheduleItem.customerName}`,
+        description: `Đã hoàn tất đo đạc. Cần lên báo giá/thiết kế cho khách hàng ${scheduleItem.customerName}. SĐT: ${scheduleItem.phone}. Địa chỉ: ${scheduleItem.address}.`,
+        status: 'in-progress',
+        type: 'sale',
+        priority: 'high',
+        assigneeId: scheduleItem.assigneeId || currentUser?.id || '',
+        customerId: scheduleItem.customerId || '',
+        createdAt: nowStr,
+        scheduledDate: scheduledDate,
+        dueDate: scheduledDate,
+      };
+      await addDoc(collection(db, 'tasks'), newSaleTask);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (err) {
+      console.error('Error auto-syncing to weekly plan:', err);
+    }
+  };
+
   const saleMembers = members.filter(m => !!m.role?.toLowerCase()?.includes('sale'));
   const designMembers = members.filter(m => !!m.role?.toLowerCase()?.includes('design') || !!m.role?.toLowerCase()?.includes('thiết kế'));
 
@@ -258,6 +281,10 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         }
       }
 
+      if (schedule.status === 'completed') {
+        await autoSyncToSaleWeeklyPlan(schedule);
+      }
+
       toast.success('Đã xếp lịch thành công');
       setIsOpen(false);
       setFormData({
@@ -347,6 +374,10 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           }
         }
 
+        if (updatedData.status === 'completed' && schedule.status !== 'completed') {
+          await autoSyncToSaleWeeklyPlan(updatedData);
+        }
+
         // Remove id or createdAt if necessary
         const { id, createdAt, ...dataToUpdate } = updatedData as any;
         await updateDoc(scheduleRef, dataToUpdate);
@@ -432,6 +463,8 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
             }
           }
         }
+        
+        await autoSyncToSaleWeeklyPlan(freshItem);
       }
 
       await updateDoc(scheduleRef, {
