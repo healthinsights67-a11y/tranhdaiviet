@@ -940,37 +940,31 @@ export function SaleWeeklyPlanner({
 
       {/* ── Task Detail Dialog (dùng lại TaskCard) ── */}
       {detailTask && (
-        <Dialog open={!!detailTask} onOpenChange={open => !open && setDetailTask(null)}>
-          <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[90vh]">
-            <ScrollArea className="max-h-[90vh]">
-              <div className="p-6">
-                <TaskCard
-                  task={detailTask}
-                  assignee={members.find(m => m.id === detailTask.assigneeId)}
-                  members={members}
-                  customers={customers}
-                  columns={SALE_STAGES.map(s => ({ id: s.id, title: s.label }))}
-                  onMoveTask={async (taskId, newStatus) => {
-                    const updateData: any = { status: newStatus };
-                    if (newStatus === 'done') updateData.completedAt = new Date().toISOString();
-                    queryClient.setQueryData(['tasks'], (prev: Task[] = []) =>
-                      prev.map(t => (t.id === taskId ? { ...t, ...updateData } : t))
-                    );
-                    if (user) {
-                      try {
-                        await updateDoc(doc(db, 'tasks', taskId), updateData);
-                      } catch (err: any) {
-                        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-                        handleFirestoreError(err, OperationType.UPDATE, `tasks/${taskId}`);
-                      }
-                    }
-                    setDetailTask(prev => prev ? { ...prev, ...updateData } : null);
-                  }}
-                />
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+        <TaskCard
+          dialogOnly
+          onCloseDialog={() => setDetailTask(null)}
+          task={detailTask}
+          assignee={members.find(m => m.id === detailTask.assigneeId)}
+          members={members}
+          customers={customers}
+          columns={SALE_STAGES.map(s => ({ id: s.id, title: s.label }))}
+          onMoveTask={async (taskId, newStatus) => {
+            const updateData: any = { status: newStatus };
+            if (newStatus === 'done') updateData.completedAt = new Date().toISOString();
+            queryClient.setQueryData(['tasks'], (prev: Task[] = []) =>
+              prev.map(t => (t.id === taskId ? { ...t, ...updateData } : t))
+            );
+            if (user) {
+              try {
+                await updateDoc(doc(db, 'tasks', taskId), updateData);
+              } catch (err: any) {
+                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                handleFirestoreError(err, OperationType.UPDATE, `tasks/${taskId}`);
+              }
+            }
+            setDetailTask(prev => prev ? { ...prev, ...updateData } : null);
+          }}
+        />
       )}
     </div>
   );

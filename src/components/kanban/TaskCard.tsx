@@ -39,6 +39,8 @@ interface TaskCardProps {
   onMoveTask?: (taskId: string, newStatus: Status, preSelectedAssigneeId?: string, fileLinks?: string[]) => void;
   hideChecklist?: boolean;
   renderAsTextOnly?: boolean;
+  dialogOnly?: boolean;
+  onCloseDialog?: () => void;
   key?: React.Key;
 }
 
@@ -55,7 +57,7 @@ const PRIORITY_ACCENTS = {
   'low': 'before:bg-blue-500',
 };
 
-export const TaskCard = React.memo(({ task, assignee, members = [], customers = [], columns = [], onMoveTask, hideChecklist = false, renderAsTextOnly = false }: TaskCardProps) => {
+export const TaskCard = React.memo(({ task, assignee, members = [], customers = [], columns = [], onMoveTask, hideChecklist = false, renderAsTextOnly = false, dialogOnly = false, onCloseDialog }: TaskCardProps) => {
   const queryClient = useQueryClient();
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = React.useState(false);
@@ -70,6 +72,18 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
   // Remove storedImgbbKey state and useEffect as we use the service now
   const [isMaterialFormOpen, setIsMaterialFormOpen] = React.useState(false);
   const [isProductionChecklistOpen, setIsProductionChecklistOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (dialogOnly) {
+      setIsDetailOpen(true);
+    }
+  }, [dialogOnly]);
+
+  React.useEffect(() => {
+    if (dialogOnly && !isDetailOpen) {
+      onCloseDialog?.();
+    }
+  }, [isDetailOpen, dialogOnly, onCloseDialog]);
 
   // Compute installation date
   const actualId = task.id.startsWith('virtual-') ? task.id.replace('virtual-', '') : task.id;
@@ -456,7 +470,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
 
   return (
     <>
-      {renderAsTextOnly ? (
+      {dialogOnly ? null : renderAsTextOnly ? (
         <span 
           onClick={() => setIsDetailOpen(true)}
           className="cursor-pointer hover:underline text-primary font-medium"
