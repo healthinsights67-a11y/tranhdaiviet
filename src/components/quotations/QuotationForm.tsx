@@ -16,7 +16,8 @@ import {
   Search,
   Image as ImageIcon,
   ImagePlus,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,6 +48,11 @@ import { STANDARD_PRICES } from '@/src/constants/priceList';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+
+import { MaterialMultiplierConfig } from './MaterialMultiplierConfig';
+import { getMaterialMultipliers } from '@/src/services/materialConfigService';
+import { MaterialMultiplier } from '@/src/types';
+
 
 interface QuotationFormProps {
   isOpen: boolean;
@@ -108,6 +114,14 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     imageUrls: initialData?.imageUrls || [],
     workshop: initialData?.workshop || ''
   });
+
+  
+  const [isConfigOpen, setIsConfigOpen] = React.useState(false);
+  const [multipliers, setMultipliers] = React.useState<MaterialMultiplier[]>([]);
+
+  React.useEffect(() => {
+    getMaterialMultipliers().then(setMultipliers);
+  }, [isConfigOpen]);
 
   const [isProductPickerOpen, setIsProductPickerOpen] = React.useState(false);
   const [pickerSearchTerm, setPickerSearchTerm] = React.useState('');
@@ -176,9 +190,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       description: product.description,
       unit: product.unit,
       quantity: 1,
+      basePrice: product.unitPrice,
       unitPrice: product.unitPrice,
       total: product.unitPrice,
-      imageUrl: product.imageUrl
+      imageUrl: product.imageUrl,
+      materialCode: '',
+      materialName: ''
     };
     
     const newItems = [...formData.items, newItem];
@@ -203,8 +220,11 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       description: '',
       unit: 'md',
       quantity: 1,
+      basePrice: 0,
       unitPrice: 0,
-      total: 0
+      total: 0,
+      materialCode: '',
+      materialName: ''
     };
     setFormData({ ...formData, items: [...formData.items, newItem] });
   };
@@ -229,14 +249,30 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       if (item.id === id) {
         let updated = { ...item, ...updates };
 
+        if (updates.materialCode !== undefined) {
+          if (updates.materialCode === '') {
+            updated.materialName = '';
+            updated.unitPrice = updated.basePrice || updated.unitPrice;
+          } else {
+            const multiplier = multipliers.find(m => m.code === updates.materialCode);
+            if (multiplier) {
+              updated.materialName = multiplier.material;
+              updated.unitPrice = Math.round((updated.basePrice || updated.unitPrice || 0) * (multiplier.percentage / 100));
+            }
+          }
+        }
+
         // Tự động nhảy đơn giá & đơn vị nếu khớp tên hạng mục mẫu
         if (updates.name !== undefined && updates.name.length > 2) {
           const standard = STANDARD_PRICES.find(p => 
             updates.name!.toLowerCase().includes(p.name.toLowerCase())
           );
           if (standard) {
+            updated.basePrice = standard.price;
             updated.unitPrice = standard.price;
             updated.unit = standard.unit;
+            updated.materialCode = '';
+            updated.materialName = '';
             if (!updated.description) {
                updated.description = standard.description;
             }
@@ -486,7 +522,17 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     <h3 className="font-bold text-base whitespace-nowrap">Danh sách hạng mục chi tiết</h3>
                     <Badge variant="secondary" className="h-6 px-2 text-xs font-mono">{formData.items.length} hạng mục</Badge>
                  </div>
-                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                 <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                   <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsConfigOpen(true)} 
+                    className="h-9 text-[11px] sm:text-xs px-1 border-purple-200 hover:bg-purple-50 text-purple-600 font-bold shadow-sm"
+                   >
+                    <Settings className="h-3 w-3 mr-1" />
+                    Hệ số giá
+                  </Button>
                    <Button 
                     type="button" 
                     variant="outline" 
@@ -557,9 +603,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       updateItem(item.id, { 
                                         name: standard.name,
                                         unit: standard.unit,
+                                        basePrice: standard.price,
                                         unitPrice: standard.price,
                                         description: standard.description,
-                                        category: standard.category
+                                        category: standard.category,
+                                        materialCode: '',
+                                        materialName: ''
                                       });
                                     }
                                   }}
@@ -616,7 +665,26 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                             />
                           </div>
                         </div>
-                            
+
+                        {/* Material selection Row */}
+                        <div className="w-full space-y-1">
+                          <Label className="text-xs font-semibold text-slate-700">Vật liệu</Label>
+                          <Select 
+                            value={item.materialCode || ''}
+                            onValueChange={(val) => updateItem(item.id, { materialCode: val })}
+                          >
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue placeholder="Chọn vật liệu (Tùy chọn)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Mặc định (ECOPLAST)</SelectItem>
+                              {multipliers.map(m => (
+                                <SelectItem key={m.id} value={m.code}>{m.material} ({m.percentage}%)</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
                         {/* Rows 2-4: Tên, Kích thước, Mô tả */}
                         <div className="w-full space-y-1">
                             <Label className="text-xs font-semibold text-slate-700">Tên sản phẩm</Label>
@@ -958,6 +1026,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
           </Dialog>
         )}
       </AnimatePresence>
+      <MaterialMultiplierConfig isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
     </Dialog>
   );
 }

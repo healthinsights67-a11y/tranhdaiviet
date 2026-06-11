@@ -143,6 +143,9 @@ export interface QuotationItem {
   height?: number | string;
   cornerL?: number | string;
   imageUrl?: string;
+  materialCode?: string;
+  materialName?: string;
+  basePrice?: number;
 }
 
 export interface Quotation {
@@ -260,4 +263,13 @@ export interface ProfitAnalysis {
   materialCost: number;
   profit: number;
   completedAt: string;
+}
+
+export interface MaterialMultiplier {
+  id: string;
+  stt: number;
+  code: string;
+  material: string;
+  description: string;
+  percentage: number;
 }
