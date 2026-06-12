@@ -26,9 +26,12 @@ import {
   ClipboardList, 
   Palette, 
   Factory, Package, 
-  UserCheck, Users, Target 
+  Factory, Package, 
+  UserCheck, Users, Target, Map, LayoutGrid
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
+import { LocationPickerDialog } from '../maps/LocationPickerDialog';
+import { MapComponent, CustomMarker } from '../maps/MapComponent';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth } from '@/src/lib/utils';
@@ -111,6 +114,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     isNew: boolean;
   } | null>(null);
   const [targetDesignerId, setTargetDesignerId] = React.useState<string>('');
+  const [locationPickerFor, setLocationPickerFor] = React.useState<'add' | 'edit' | null>(null);
+  const [viewMode, setViewMode] = React.useState<'grid' | 'map'>('grid');
   
   const [newCustomer, setNewCustomer] = React.useState({
     name: '',
@@ -123,6 +128,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     oneDriveLink: '',
     furnitureCategory: '',
     workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
+    location: undefined as { lat: number, lng: number } | undefined,
   });
 
   // Update default assignedSaleId when currentUser changes
@@ -222,6 +228,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         oneDriveLink: '',
         furnitureCategory: '',
         workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
+        location: undefined,
       });
       toast.success("Khách hàng đã được thêm thành công");
 
@@ -687,8 +694,20 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         className="h-11 rounded-xl"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="address">Địa chỉ / Công trình</Label>
+                    <div className="grid gap-2 relative">
+                      <Label htmlFor="address" className="flex items-center justify-between">
+                        <span>Địa chỉ / Công trình</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className={cn("h-6 px-2 text-[10px]", newCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
+                          onClick={() => setLocationPickerFor('add')}
+                        >
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {newCustomer.location ? "Đã ghim vị trí" : "Ghim bản đồ"}
+                        </Button>
+                      </Label>
                       <Input
                         id="address"
                         value={newCustomer.address}
@@ -889,7 +908,69 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         </div>
       </div>
 
-      {/* Customers Grid */}
+      {/* View Mode Toggle & Customers Grid */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 md:mb-4 gap-2">
+        <h3 className="font-bold text-sm md:text-lg text-foreground/80">Danh sách & Bản đồ</h3>
+        <div className="bg-muted p-1 rounded-lg flex items-center shadow-inner border border-border/50 self-start sm:self-auto">
+          <Button 
+            variant={viewMode === 'grid' ? "default" : "ghost"} 
+            size="sm" 
+            className={cn("h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium", viewMode === 'grid' && "shadow-sm")}
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 mr-1.5" /> Dạng Lưới
+          </Button>
+          <Button 
+            variant={viewMode === 'map' ? "default" : "ghost"} 
+            size="sm" 
+            className={cn("h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium", viewMode === 'map' && "shadow-sm")}
+            onClick={() => setViewMode('map')}
+          >
+            <Map className="w-3.5 h-3.5 mr-1.5" /> Bản đồ
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === 'map' ? (
+        <Card className="h-[600px] border border-border shadow-sm rounded-xl overflow-hidden relative z-0">
+          <MapComponent interactive={true}>
+            {filteredCustomers.filter(c => c.location).map(customer => {
+              const stage = STAGE_CONFIG[customer.stage];
+              return (
+                <CustomMarker 
+                  key={customer.id} 
+                  latitude={customer.location!.lat} 
+                  longitude={customer.location!.lng}
+                  color={stage.color.split(' ')[0]}
+                  onClick={() => openViewDialog(customer)}
+                >
+                  <div className="bg-card text-card-foreground p-2 rounded-xl shadow-xl border border-border w-48 text-left cursor-pointer">
+                    <p className="font-bold text-xs truncate">{customer.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate" title={customer.address}>{customer.address || "Chưa có địa chỉ"}</p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <Badge variant="outline" className={cn("text-[8px] py-0 font-bold", stage.color)}>
+                        {stage.label}
+                      </Badge>
+                      {customer.orderValue !== undefined && customer.orderValue > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                        <span className="text-[10px] font-bold text-primary">{formatCurrency(customer.orderValue)}</span>
+                      )}
+                    </div>
+                  </div>
+                </CustomMarker>
+              );
+            })}
+          </MapComponent>
+          {filteredCustomers.filter(c => c.location).length === 0 && (
+             <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm pointer-events-none">
+                <div className="bg-card p-4 rounded-xl shadow-lg border text-center max-w-sm">
+                   <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                   <p className="text-sm font-semibold">Chưa có khách hàng nào được ghim trên bản đồ.</p>
+                   <p className="text-xs text-muted-foreground mt-1">Hãy mở thông tin khách hàng và chọn "Ghim bản đồ".</p>
+                </div>
+             </div>
+          )}
+        </Card>
+      ) : (
       <div className="grid gap-2.5 md:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredCustomers.map((customer, i) => {
           const stage = STAGE_CONFIG[customer.stage];
@@ -1023,6 +1104,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           );
         })}
       </div>
+      )}
 
       {/* Edit Customer Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -1055,8 +1137,20 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         className="h-11 rounded-xl"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-address">Địa chỉ / Công trình</Label>
+                    <div className="grid gap-2 relative">
+                      <Label htmlFor="edit-address" className="flex items-center justify-between">
+                        <span>Địa chỉ / Công trình</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className={cn("h-6 px-2 text-[10px]", selectedCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
+                          onClick={() => setLocationPickerFor('edit')}
+                        >
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {selectedCustomer.location ? "Đã ghim vị trí" : "Ghim bản đồ"}
+                        </Button>
+                      </Label>
                       <Input
                         id="edit-address"
                         value={selectedCustomer.address}
@@ -1410,6 +1504,19 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <LocationPickerDialog 
+        isOpen={locationPickerFor !== null}
+        onClose={() => setLocationPickerFor(null)}
+        initialLocation={locationPickerFor === 'add' ? newCustomer.location : selectedCustomer?.location}
+        onSave={(loc) => {
+          if (locationPickerFor === 'add') {
+            setNewCustomer(prev => ({ ...prev, location: loc }));
+          } else if (locationPickerFor === 'edit' && selectedCustomer) {
+            setSelectedCustomer({ ...selectedCustomer, location: loc });
+          }
+        }}
+      />
     </div>
   );
 }
