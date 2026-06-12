@@ -933,8 +933,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         </Button>
                       } />
                       <DropdownMenuContent align="end" className="rounded-xl">
-                        <DropdownMenuItem onClick={() => openEditDialog(customer)} className="text-xs">Sửa</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openViewDialog(customer)} className="text-xs">Chi tiết</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => openEditDialog(customer)} className="text-xs">Sửa</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => openViewDialog(customer)} className="text-xs">Chi tiết</DropdownMenuItem>
                         {['contracted', 'production', 'completed'].includes(customer.stage) && (
                           <DropdownMenuItem 
                             onClick={() => setPendingContract({
@@ -946,7 +946,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                             Giao việc thiết kế
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem className="text-destructive text-xs" onClick={() => handleDeleteCustomer(customer.id)}>Xóa</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive text-xs" onSelect={() => handleDeleteCustomer(customer.id)}>Xóa</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
