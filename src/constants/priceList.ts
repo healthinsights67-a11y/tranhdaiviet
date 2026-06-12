@@ -10,105 +10,105 @@ export const STANDARD_PRICES: PriceItem[] = [
   {
     name: 'Tủ bếp',
     unit: 'md',
-    price: 4200000,
+    price: 4000000,
     category: 'Phòng bếp',
     description: '- Tủ bếp kích thước tiêu chuẩn\n- Bếp dưới cao 80-85; sâu 55\n- Bếp trên cao 75; sâu 35\n- Khoảng Cách Giữa Bếp Trên và Dưới 62'
   },
   {
     name: 'Tủ áo',
     unit: 'm2',
-    price: 1942500,
+    price: 1850000,
     category: 'Phòng ngủ',
     description: 'Tủ áo sâu 55'
   },
   {
     name: 'Tủ giày',
     unit: 'm2',
-    price: 1680000,
+    price: 1600000,
     category: 'Phòng khách',
     description: 'Tủ giày sâu 35'
   },
   {
     name: 'Kệ TV treo',
     unit: 'md',
-    price: 1680000,
+    price: 1600000,
     category: 'Phòng khách',
     description: 'Kệ TV treo cao 30; sâu 35'
   },
   {
     name: 'Tủ Gầm Cầu Thang',
     unit: 'm2',
-    price: 1680000,
+    price: 1600000,
     category: 'Khu vực khác',
     description: 'Tủ gầm cầu thang kích thước tiêu chuẩn - Sâu 35'
   },
   {
     name: 'Cánh',
     unit: 'm2',
-    price: 1522500,
+    price: 1450000,
     category: 'Khu vực khác',
     description: 'Thay cánh (Chưa bản lề)'
   },
   {
     name: 'Giường 1m6x2m',
     unit: 'cái',
-    price: 5250000,
+    price: 5000000,
     category: 'Phòng ngủ',
     description: '- Giường trơn\n- Không Ngăn Kéo\n- Đầu Giường Bo Cong - Điểm nhấn 3 Kẻ Trắng\n- Mặt Giường Nhựa Rỗng'
   },
   {
     name: 'Giường 1m8x2m',
     unit: 'cái',
-    price: 5985000,
+    price: 5700000,
     category: 'Phòng ngủ',
     description: '- Giường trơn\n- Không Ngăn Kéo\n- Đầu Giường Bo Cong - Điểm nhấn 3 Kẻ Trắng\n- Mặt Giường Nhựa Rỗng'
   },
   {
     name: 'Giường 2x2m2',
     unit: 'cái',
-    price: 6825000,
+    price: 6500000,
     category: 'Phòng ngủ',
     description: '- Giường trơn\n- Không Ngăn Kéo\n- Đầu Giường Bo Cong - Điểm nhấn 3 Kẻ Trắng\n- Mặt Giường Nhựa Rỗng'
   },
   {
     name: 'Bàn học 1m2',
     unit: 'cái',
-    price: 2625000,
+    price: 2500000,
     category: 'Phòng ngủ',
     description: 'Bàn Học Phổ Thông Cao 75cm\n- 1 NK To\n- 1 Hộc Tủ Cánh Mở'
   },
   {
     name: 'Bàn học 1m5',
     unit: 'cái',
-    price: 3045000,
+    price: 2900000,
     category: 'Phòng ngủ',
     description: 'Bàn Học Phổ Thông Cao 75cm\n- 1 NK To\n- 1 Hộc Tủ Cánh Mở'
   },
   {
     name: 'Bàn học 1m6',
     unit: 'cái',
-    price: 3360000,
+    price: 3200000,
     category: 'Phòng ngủ',
     description: 'Bàn Học Phổ Thông Cao 75cm\n- 1 NK To\n- 1 Hộc Tủ Cánh Mở'
   },
   {
     name: 'Mặt sàn ATT',
     unit: 'm2',
-    price: 567000,
+    price: 540000,
     category: 'Phòng ngủ',
     description: ''
   },
   {
     name: 'Tap đầu giường',
     unit: 'cái',
-    price: 735000,
+    price: 700000,
     category: 'Phòng ngủ',
     description: 'Tab Đầu Giường\n- Có 1 NK\n- 2NK'
   },
   {
     name: 'Lavabo',
     unit: 'cái',
-    price: 2730000,
+    price: 2600000,
     category: 'Phòng tắm',
     description: '- Lavabo không kèm theo gương'
   },

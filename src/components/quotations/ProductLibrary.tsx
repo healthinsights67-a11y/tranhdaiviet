@@ -13,7 +13,9 @@ import {
   Plus,
   ImagePlus,
   Upload,
-  X
+  X,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -88,6 +90,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
+  const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('table');
   const [editingProduct, setEditingProduct] = React.useState<any>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
@@ -219,6 +222,24 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
         </div>
         
         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none w-full md:w-auto">
+          <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-xl mr-2">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className={cn("rounded-lg h-8 px-3 transition-all", viewMode === 'table' ? "shadow-md shadow-primary/20" : "")}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className={cn("rounded-lg h-8 px-3 transition-all", viewMode === 'grid' ? "shadow-md shadow-primary/20" : "")}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+          </div>
           {categories.map((cat) => (
             <Button
               key={cat}
@@ -236,7 +257,8 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <AnimatePresence mode="popLayout">
           {filteredProducts.map((product, idx) => (
             <motion.div
@@ -318,8 +340,70 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
               </Card>
             </motion.div>
           ))}
-        </AnimatePresence>
-      </div>
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="border rounded-2xl bg-card overflow-hidden flex flex-col shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                <tr>
+                  <th className="px-4 py-4 font-semibold text-center w-12">STT</th>
+                  <th className="px-4 py-4 font-semibold">Hình ảnh</th>
+                  <th className="px-4 py-4 font-semibold">Tên sản phẩm</th>
+                  <th className="px-4 py-4 font-semibold">Danh mục</th>
+                  <th className="px-4 py-4 font-semibold text-center">ĐVT</th>
+                  <th className="px-4 py-4 font-semibold text-right">Đơn giá gốc (VNĐ)</th>
+                  <th className="px-4 py-4 font-semibold text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredProducts.map((product, index) => (
+                  <tr key={product.id || product.productName} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 text-center font-medium text-muted-foreground">{index + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                        {product.imageUrl ? (
+                          <img src={product.imageUrl} alt={product.productName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <Package className="h-5 w-5 text-gray-400" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold">
+                      {product.productName}
+                      {product.isStandard && (
+                        <Badge variant="secondary" className="ml-2 text-[9px] px-1.5 py-0">Mẫu</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{product.category}</td>
+                    <td className="px-4 py-3 text-center">{product.unit}</td>
+                    <td className="px-4 py-3 text-right font-bold text-primary font-mono tracking-tighter text-base">
+                      {product.unitPrice?.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => openEdit(product)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" 
+                          onClick={() => onDelete(product.id)}
+                          disabled={product.isStandard}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <Dialog open={!!editingProduct} onOpenChange={(open) => {
         if (!open) {
