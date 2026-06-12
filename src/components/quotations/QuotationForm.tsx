@@ -249,7 +249,20 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       if (item.id === id) {
         let updated = { ...item, ...updates };
 
-        if (updates.materialCode !== undefined) {
+        if (updates.basePrice !== undefined) {
+          // Khi đổi đơn giá gốc
+          if (updated.materialCode) {
+            const multiplier = multipliers.find(m => m.code === updated.materialCode);
+            if (multiplier) {
+              updated.unitPrice = Math.round((updated.basePrice || 0) * (multiplier.percentage / 100));
+            } else {
+              updated.unitPrice = updated.basePrice;
+            }
+          } else {
+            updated.unitPrice = updated.basePrice;
+          }
+        } else if (updates.materialCode !== undefined) {
+          // Khi đổi vật liệu
           if (updates.materialCode === '') {
             updated.materialName = '';
             updated.unitPrice = updated.basePrice || updated.unitPrice;
@@ -749,20 +762,35 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                         </div>
 
                         {/* Row 5: Giá tiền */}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
-                                <Label className="text-xs font-semibold text-slate-700">Đơn giá</Label>
+                                <Label className="text-xs font-semibold text-slate-700">Đơn giá gốc</Label>
                                 <div className="relative">
                                   <Input 
                                     type="text"
-                                    className="h-9 font-mono font-black text-right pr-7 text-xs bg-secondary/5"
+                                    className="h-9 font-mono font-bold text-right pr-7 text-xs bg-secondary/5"
+                                    value={formatMoneyInput(item.basePrice !== undefined ? item.basePrice : item.unitPrice)} 
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/[^0-9]/g, '');
+                                      updateItem(item.id, { basePrice: val === '' ? 0 : parseInt(val) });
+                                    }}
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-muted-foreground uppercase">đ</span>
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs font-semibold text-slate-700">Báo giá</Label>
+                                <div className="relative">
+                                  <Input 
+                                    type="text"
+                                    className="h-9 font-mono font-black text-right pr-7 text-xs bg-blue-50/50 border-blue-200"
                                     value={formatMoneyInput(item.unitPrice)} 
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/[^0-9]/g, '');
                                       updateItem(item.id, { unitPrice: val === '' ? 0 : parseInt(val) });
                                     }}
                                   />
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-muted-foreground uppercase">đ</span>
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-blue-500 uppercase">đ</span>
                                 </div>
                             </div>
                             <div className="space-y-0.5">
