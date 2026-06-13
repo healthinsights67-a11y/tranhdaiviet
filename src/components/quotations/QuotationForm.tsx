@@ -742,7 +742,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       <SelectItem key={m.id} value={m.code}>
                                         <div className="flex items-center gap-1.5">
                                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor(m.code) }} />
-                                          <span className="truncate">{m.material} ({m.percentage}%)</span>
+                                          <span className="truncate">{m.material}</span>
                                         </div>
                                       </SelectItem>
                                     ))}
