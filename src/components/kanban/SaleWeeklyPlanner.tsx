@@ -424,7 +424,7 @@ export function SaleWeeklyPlanner({
       ...newTask,
       title: newTask.title.trim(),
       description: newTask.description.trim(),
-      type: 'sale',
+      type: 'sale' as const,
       scheduledDate: addDialogDate,
       dueDate: addDialogDate,
       createdAt: new Date().toISOString(),
@@ -640,14 +640,12 @@ export function SaleWeeklyPlanner({
 
           {/* Filter popover */}
           <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Lọc
-                {(filterStatus !== 'all' || filterAssignee !== 'all') && (
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                )}
-              </Button>
+            <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 text-xs border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 font-medium transition-colors">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Lọc
+              {(filterStatus !== 'all' || filterAssignee !== 'all') && (
+                <span className="h-2 w-2 rounded-full bg-primary" />
+              )}
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3 space-y-3" align="end">
               <div className="space-y-1.5">

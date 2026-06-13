@@ -23,9 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  ClipboardList, 
   Palette, 
-  Factory, Package, 
   Factory, Package, 
   UserCheck, Users, Target, Map, LayoutGrid
 } from 'lucide-react';
@@ -75,6 +73,24 @@ import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 
 
+const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
+  if (!address || address.trim().length < 3) return undefined;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+  } catch (error) {
+    console.error("Geocoding error for address:", address, error);
+  }
+  return undefined;
+};
+
 interface CustomerPageProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
@@ -97,6 +113,16 @@ const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: 
   lost: { label: 'Tạm dừng', color: 'bg-red-50 text-red-600 border-red-200', icon: X },
 };
 
+const STAGE_MARKER_COLORS: Record<CustomerStage, string> = {
+  consulting: 'bg-amber-500',
+  surveying: 'bg-purple-600',
+  contracted: 'bg-emerald-600',
+  production: 'bg-blue-600',
+  installation: 'bg-orange-500',
+  completed: 'bg-green-600',
+  lost: 'bg-rose-600',
+};
+
 export function CustomerPage({ customers, setCustomers, tasks, setTasks, members, quotations, schedules, user, currentUser }: CustomerPageProps) {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -116,6 +142,10 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   const [targetDesignerId, setTargetDesignerId] = React.useState<string>('');
   const [locationPickerFor, setLocationPickerFor] = React.useState<'add' | 'edit' | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'map'>('grid');
+  
+  const [geocodingProgress, setGeocodingProgress] = React.useState<{ current: number; total: number } | null>(null);
+  const isGeocodingRef = React.useRef(false);
+  const failedGeocodesRef = React.useRef<Set<string>>(new Set());
   
   const [newCustomer, setNewCustomer] = React.useState({
     name: '',
@@ -138,6 +168,60 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     }
   }, [currentUser]);
 
+  // Background geocoding for existing customers without location
+  React.useEffect(() => {
+    if (isGeocodingRef.current) return;
+
+    // Filter customers who have address but no location and haven't failed previously
+    const pendingCustomers = customers.filter(
+      c => c.address && c.address.trim().length > 3 && !c.location && !failedGeocodesRef.current.has(c.id)
+    );
+
+    if (pendingCustomers.length === 0) {
+      setGeocodingProgress(null);
+      return;
+    }
+
+    const runBackgroundGeocoding = async () => {
+      isGeocodingRef.current = true;
+      setGeocodingProgress({ current: 0, total: pendingCustomers.length });
+
+      for (let i = 0; i < pendingCustomers.length; i++) {
+        const customer = pendingCustomers[i];
+        
+        // Skip if location was added in the meantime
+        if (customer.location) continue;
+
+        try {
+          const loc = await geocodeAddress(customer.address);
+          if (loc) {
+            if (user) {
+              await updateDoc(doc(db, 'customers', customer.id), { location: loc });
+            } else {
+              setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, location: loc } : c));
+            }
+          } else {
+            // Mark as failed to avoid infinite loop attempts
+            failedGeocodesRef.current.add(customer.id);
+          }
+        } catch (error) {
+          console.error(`Error background geocoding customer ${customer.name}:`, error);
+          failedGeocodesRef.current.add(customer.id);
+        }
+
+        setGeocodingProgress({ current: i + 1, total: pendingCustomers.length });
+        
+        // Wait 1.2s to satisfy Nominatim rate limits
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+
+      isGeocodingRef.current = false;
+      setGeocodingProgress(null);
+    };
+
+    runBackgroundGeocoding();
+  }, [customers, user, setCustomers]);
+
   const formatCurrency = (value?: number) => {
     const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý');
     if (currentUser?.permissions?.viewPrice === false && !isManager) return '*** ₫';
@@ -155,8 +239,20 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     const customerCode = `KH${codeIndex}_${newCustomer.name}`;
 
     const nowStr = new Date().toISOString();
+    let finalLocation = newCustomer.location;
+    if (!finalLocation && newCustomer.address && newCustomer.address.trim().length > 3) {
+      const toastId = toast.loading("Đang tự động định vị địa chỉ khách hàng...");
+      const loc = await geocodeAddress(newCustomer.address);
+      toast.dismiss(toastId);
+      if (loc) {
+        finalLocation = loc;
+        toast.success("Đã tự động định vị thành công!");
+      }
+    }
+
     const customerData = {
       ...newCustomer,
+      location: finalLocation,
       code: customerCode,
       createdAt: nowStr,
       consultedAt: nowStr,
@@ -259,9 +355,22 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     }
 
     try {
+      const existingCustomer = customers.find(c => c.id === selectedCustomer.id);
+      
+      // If address changed or location is missing, and has an address, geocode it
+      if (selectedCustomer.address && 
+          (!existingCustomer || existingCustomer.address !== selectedCustomer.address || !selectedCustomer.location)) {
+        const toastId = toast.loading("Đang tự động xác định vị trí của khách hàng...");
+        const loc = await geocodeAddress(selectedCustomer.address);
+        toast.dismiss(toastId);
+        if (loc) {
+          selectedCustomer.location = loc;
+          toast.success("Đã tự động xác định vị trí mới!");
+        }
+      }
+
       if (user) {
         const { id, ...data } = selectedCustomer;
-        const existingCustomer = customers.find(c => c.id === id);
         const existingStage = existingCustomer?.stage;
 
         const updateData: any = { ...data };
@@ -941,7 +1050,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   key={customer.id} 
                   latitude={customer.location!.lat} 
                   longitude={customer.location!.lng}
-                  color={stage.color.split(' ')[0]}
+                  color={STAGE_MARKER_COLORS[customer.stage] || "bg-primary"}
+                  labelText={customer.name}
                   onClick={() => openViewDialog(customer)}
                 >
                   <div className="bg-card text-card-foreground p-2 rounded-xl shadow-xl border border-border w-48 text-left cursor-pointer">
@@ -960,12 +1070,22 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               );
             })}
           </MapComponent>
+          
+          {geocodingProgress && (
+            <div className="absolute bottom-4 left-4 z-10 bg-background/95 backdrop-blur shadow-lg border rounded-xl p-3 flex items-center gap-2.5 max-w-sm pointer-events-auto">
+              <div className="h-4 w-4 border-2 border-primary border-t-transparent animate-spin rounded-full shrink-0" />
+              <span className="text-xs font-semibold text-foreground">
+                Đang tìm tọa độ địa chỉ... ({geocodingProgress.current}/{geocodingProgress.total})
+              </span>
+            </div>
+          )}
+
           {filteredCustomers.filter(c => c.location).length === 0 && (
              <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm pointer-events-none">
                 <div className="bg-card p-4 rounded-xl shadow-lg border text-center max-w-sm">
                    <MapPin className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
                    <p className="text-sm font-semibold">Chưa có khách hàng nào được ghim trên bản đồ.</p>
-                   <p className="text-xs text-muted-foreground mt-1">Hãy mở thông tin khách hàng và chọn "Ghim bản đồ".</p>
+                   <p className="text-xs text-muted-foreground mt-1">Hãy mở thông tin khách hàng và chọn "Ghim bản đồ" hoặc nhập địa chỉ.</p>
                 </div>
              </div>
           )}

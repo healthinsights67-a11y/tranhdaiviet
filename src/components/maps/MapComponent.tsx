@@ -103,17 +103,37 @@ export function MapComponent({
 }
 
 // Reusable Custom Marker
-export function CustomMarker({ longitude, latitude, color = "bg-red-500", onClick, children }: { longitude: number, latitude: number, color?: string, onClick?: () => void, children?: React.ReactNode }) {
+export function CustomMarker({ 
+  longitude, 
+  latitude, 
+  color = "bg-red-500", 
+  onClick, 
+  labelText,
+  children 
+}: { 
+  longitude: number; 
+  latitude: number; 
+  color?: string; 
+  onClick?: () => void; 
+  labelText?: string;
+  children?: React.ReactNode; 
+}) {
   return (
     <Marker longitude={longitude} latitude={latitude} anchor="bottom" onClick={(e) => {
       e.originalEvent.stopPropagation();
       onClick?.();
     }}>
-      <div className="relative flex flex-col items-center group cursor-pointer">
-        <div className={cn("p-1.5 rounded-full shadow-lg border-2 border-white", color)}>
+      <div className="relative flex flex-col items-center group cursor-pointer transition-transform duration-200 hover:scale-105">
+        <div className={cn("p-1.5 rounded-full shadow-md border-2 border-white flex items-center justify-center transition-all duration-200", color)}>
           <MapPin className="h-5 w-5 text-white" />
         </div>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black/40 rounded-full blur-[2px]" />
+        <div className="absolute top-[32px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black/40 rounded-full blur-[2px]" />
+        
+        {labelText && (
+          <div className="mt-1.5 px-1.5 py-0.5 rounded-md bg-white text-gray-900 text-[10px] font-bold shadow-md border border-gray-200/80 max-w-[110px] truncate whitespace-nowrap pointer-events-none relative z-0">
+            {labelText}
+          </div>
+        )}
         
         {children && (
           <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">

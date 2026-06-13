@@ -64,6 +64,10 @@ export const CustomerSchema = z.object({
   furnitureCategory: z.string().optional(),
   workshop: z.string().optional(),
   consultedAt: timestampSchema,
+  location: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).optional()
 });
 
 export const TaskSchema = z.object({

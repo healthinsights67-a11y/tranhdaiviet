@@ -46,6 +46,7 @@ export interface Customer {
   furnitureCategory?: string;
   workshop?: string;
   consultedAt?: string;
+  location?: { lat: number; lng: number };
 }
 
 export interface Task {
