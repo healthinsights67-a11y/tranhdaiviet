@@ -32,24 +32,25 @@ const DEFAULT_VIEW_STATE: ViewState = {
 const mapStyle = {
   version: 8,
   sources: {
-    'osm-tiles': {
+    'carto-light': {
       type: 'raster',
       tiles: [
-        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+        'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+        'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
       ],
       tileSize: 256,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }
   },
   layers: [
     {
-      id: 'osm-tiles-layer',
+      id: 'carto-light-layer',
       type: 'raster',
-      source: 'osm-tiles',
+      source: 'carto-light',
       minzoom: 0,
-      maxzoom: 19
+      maxzoom: 20
     }
   ]
 };
