@@ -54,6 +54,26 @@ import { getMaterialMultipliers } from '@/src/services/materialConfigService';
 import { MaterialMultiplier } from '@/src/types';
 
 
+const MATERIAL_COLORS: Record<string, string> = {
+  'ECO': '#1e40af', // Blue (Ecoplast)
+  'LUX': '#0ea5e9', // Light Blue (Luxury)
+  'ECO+': '#16a34a', // Green (Ecoplus)
+  'ECOPVC+': '#86efac', // Light Green (Ecoplus Film)
+  'PENCO': '#7c3aed', // Purple (Penco)
+  'CASAWOOD': '#854d0e', // Brown (Casawood)
+  'THANTRE': '#f97316', // Orange (Than tre)
+  'PKB': '#64748b', // Grey (Phụ kiện bếp)
+  'MSNT': '#64748b', // Grey (Mặt sàn thường)
+  'MSNCC': '#64748b', // Grey (Mặt sàn cao cấp)
+  'PKTA': '#64748b', // Grey (Phụ kiện tủ áo)
+  'PKK': '#64748b', // Grey (Phụ kiện khác)
+};
+
+const getMaterialColor = (code?: string) => {
+  if (!code) return '#1e40af'; // Mặc định Ecoplast
+  return MATERIAL_COLORS[code.toUpperCase()] || '#64748b';
+};
+
 interface QuotationFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -115,7 +135,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     workshop: initialData?.workshop || ''
   });
 
-  
+  const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = React.useState(!initialData);
   const [isConfigOpen, setIsConfigOpen] = React.useState(false);
   const [multipliers, setMultipliers] = React.useState<MaterialMultiplier[]>([]);
 
@@ -375,6 +395,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         constructionType: customer.workshop ? `Thi công ${customer.workshop}` : formData.constructionType,
         workshop: customer.workshop || ''
       });
+      setIsCustomerInfoExpanded(false);
     }
   };
 
@@ -430,102 +451,146 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
         <form id="quotation-form" onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 overflow-y-auto w-full">
-            <div className="p-3 md:p-8 space-y-4 md:space-y-10 max-w-6xl mx-auto">
+            <div className="p-3 md:p-6 space-y-3.5 md:space-y-6 max-w-6xl mx-auto">
             {/* --- Section: Customer Info --- */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-3 border-b-2 border-primary/10 pb-2">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <User className="h-4 w-4" />
+            <section className="space-y-3">
+              <div 
+                className="flex items-center justify-between border-b border-border pb-2 cursor-pointer select-none"
+                onClick={() => setIsCustomerInfoExpanded(!isCustomerInfoExpanded)}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <h3 className="font-bold text-sm md:text-base">Thông tin khách hàng</h3>
                 </div>
-                <h3 className="font-bold text-lg">Thông tin khách hàng</h3>
+                <div className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
+                  {isCustomerInfoExpanded ? 'Thu gọn' : 'Mở rộng'}
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isCustomerInfoExpanded && "rotate-180")} />
+                </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    Khách hàng <span className="text-destructive">*</span>
-                  </Label>
-                  <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
-                    <SelectTrigger className="h-10 w-full">
-                      <SelectValue placeholder="Chọn khách hàng mục tiêu">
-                        {formData.customerName || undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{c.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{c.phone}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-2">SĐT liên hệ</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      className="pl-9 h-10 w-full"
-                      placeholder="09xx xxx xxx"
-                      value={formData.phone} 
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
+              {isCustomerInfoExpanded ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3 rounded-lg border border-border bg-slate-50/50">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      Khách hàng <span className="text-destructive">*</span>
+                    </Label>
+                    <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
+                      <SelectTrigger className="h-9 w-full bg-white">
+                        <SelectValue placeholder="Chọn khách hàng mục tiêu">
+                          {formData.customerName || undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <div className="flex flex-col items-start">
+                              <span className="font-medium text-xs">{c.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{c.phone}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
-                
-                <div className="space-y-1 lg:col-span-1 md:col-span-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">Địa chỉ thi công</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      className="pl-9 h-10 w-full"
-                      placeholder="Nhập địa chỉ chi tiết..."
-                      value={formData.address} 
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    />
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">SĐT liên hệ</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        className="pl-9 h-9 w-full bg-white"
+                        placeholder="09xx xxx xxx"
+                        value={formData.phone} 
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
+                  
+                  <div className="space-y-1 lg:col-span-1 md:col-span-2">
+                    <Label className="text-xs font-bold text-slate-700">Địa chỉ thi công</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        className="pl-9 h-9 w-full bg-white"
+                        placeholder="Nhập địa chỉ chi tiết..."
+                        value={formData.address} 
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-2">Loại công trình</Label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Loại công trình</Label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        className="pl-9 h-9 w-full bg-white"
+                        placeholder="Vd: Tủ bếp, Nội thất trọn gói..."
+                        value={formData.constructionType} 
+                        onChange={(e) => setFormData({ ...formData, constructionType: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Thi công dự kiến (ngày)</Label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        type="number"
+                        className="pl-9 h-9 w-full text-center bg-white"
+                        value={formData.estimatedTime} 
+                        onChange={(e) => setFormData({ ...formData, estimatedTime: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Ngày hiệu lực báo giá</Label>
                     <Input 
-                      className="pl-9 h-10 w-full"
-                      placeholder="Vd: Tủ bếp, Nội thất trọn gói..."
-                      value={formData.constructionType} 
-                      onChange={(e) => setFormData({ ...formData, constructionType: e.target.value })}
+                      type="date"
+                      className="h-9 w-full bg-white"
+                      value={formData.date} 
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     />
                   </div>
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold flex items-center gap-2">Thi công dự kiến (ngày)</Label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      type="number"
-                      className="pl-9 h-10 w-full text-center"
-                      value={formData.estimatedTime} 
-                      onChange={(e) => setFormData({ ...formData, estimatedTime: e.target.value })}
-                    />
+              ) : (
+                <div 
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-slate-50 hover:bg-slate-100/80 transition-colors cursor-pointer"
+                  onClick={() => setIsCustomerInfoExpanded(true)}
+                >
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs md:text-sm font-medium">
+                    <span className="font-bold text-slate-800">{formData.customerName || 'Chưa chọn khách hàng'}</span>
+                    {formData.phone && (
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        {formData.phone}
+                      </span>
+                    )}
+                    {formData.address && (
+                      <span className="text-slate-500 flex items-center gap-1 truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        {formData.address}
+                      </span>
+                    )}
                   </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCustomerInfoExpanded(true);
+                    }}
+                    className="h-7 text-[10px] font-bold text-primary shrink-0 hover:bg-slate-200/60 rounded px-2"
+                  >
+                    Thay đổi
+                  </Button>
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold">Ngày hiệu lực báo giá</Label>
-                  <Input 
-                    type="date"
-                    className="h-10 w-full"
-                    value={formData.date} 
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                </div>
-              </div>
+              )}
             </section>
 
             {/* --- Section: Quotation Items --- */}
@@ -578,7 +643,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     
                     <CardContent className="p-3">
                       {/* Header: Số thứ tự và Nút xóa */}
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
                         <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold font-mono">
                           {index + 1 < 10 ? `0${index + 1}` : index + 1}
                         </div>
@@ -589,29 +654,32 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           className="h-6 w-6 text-destructive hover:bg-destructive/10"
                           onClick={() => handleRemoveItem(item.id)}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
 
                       {/* Body: Form nhập liệu */}
-                      <div className="w-full space-y-3">
-                        <div className="flex gap-2 items-start">
-                          {/* Avatar */}
-                          <div 
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                        {/* Cột trái: Thông tin sản phẩm (md:col-span-7) */}
+                        <div className="md:col-span-7 space-y-2.5">
+                          {/* Dòng 1: Ảnh đại diện + Thư viện mẫu + Vật liệu */}
+                          <div className="flex items-start gap-2">
+                            {/* Avatar */}
+                            <div 
                               className="h-10 w-10 shrink-0 rounded-lg bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-all overflow-hidden relative"
                               onClick={() => document.getElementById(`upload-item-${item.id}`)?.click()}
-                          >
+                            >
                               {item.imageUrl ? (
                                 <img src={item.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
-                                <ImagePlus className="h-3 w-3 text-muted-foreground" />
+                                <ImagePlus className="h-4 w-4 text-muted-foreground" />
                               )}
-                          </div>
-                          
-                          <div className="flex-1 space-y-3">
-                            {/* Hạng mục picker */}
-                            <div className="w-full space-y-1">
-                                <Label className="text-xs font-semibold text-muted-foreground uppercase">Hạng mục</Label>
+                            </div>
+
+                            {/* Nhóm chọn Hạng mục & Vật liệu */}
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Thư viện mẫu</Label>
                                 <Select 
                                   onValueChange={(value) => {
                                     const standard = STANDARD_PRICES.find(p => p.name === value);
@@ -629,8 +697,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                     }
                                   }}
                                 >
-                                  <SelectTrigger className="h-9 text-xs font-bold bg-gray-50 hover:bg-gray-100 transition-colors border-dashed">
-                                    <SelectValue placeholder="Chọn thư viện mẫu..." />
+                                  <SelectTrigger className="h-9 text-xs font-semibold bg-slate-50 hover:bg-slate-100 border-dashed truncate">
+                                    <SelectValue placeholder="Chọn mẫu..." />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {item.category ? (
@@ -652,84 +720,122 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                     )}
                                   </SelectContent>
                                 </Select>
+                              </div>
+
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Vật liệu</Label>
+                                <Select 
+                                  value={item.materialCode || ''}
+                                  onValueChange={(val) => updateItem(item.id, { materialCode: val })}
+                                >
+                                  <SelectTrigger className="h-9 text-xs bg-slate-50 hover:bg-slate-100 border-dashed truncate">
+                                    <SelectValue placeholder="Mặc định" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor('ECO') }} />
+                                        <span className="truncate">Mặc định (ECOPLAST)</span>
+                                      </div>
+                                    </SelectItem>
+                                    {multipliers.map(m => (
+                                      <SelectItem key={m.id} value={m.code}>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor(m.code) }} />
+                                          <span className="truncate">{m.material} ({m.percentage}%)</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Row 1: Khu vực | Đơn vị | Số lượng */}
-                        <div className="grid grid-cols-4 gap-2 w-full items-start">
-                          <div className="col-span-2 space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">Khu vực</Label>
-                            <Input className="h-9 text-sm w-full" placeholder="Phòng khách..." value={item.category} onChange={(e) => updateItem(item.id, { category: e.target.value })} />
-                          </div>
-                          <div className="col-span-1 space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">Đ.vị</Label>
-                            <Input className="h-9 text-sm w-full text-center p-1" placeholder="md" value={item.unit} onChange={(e) => updateItem(item.id, { unit: e.target.value })} />
-                          </div>
-                          <div className="col-span-1 space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">S.lượng</Label>
+                          {/* Tên sản phẩm */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase">Tên sản phẩm</Label>
                             <Input 
-                              type="text" 
-                              className="h-9 text-sm w-full text-center p-1" 
-                              placeholder="1" 
-                              value={getDisplayValue(item.quantity)} 
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
-                                const parsed = parseFloat(val);
-                                updateItem(item.id, { quantity: isNaN(parsed) ? 0 : parsed });
-                              }} 
-                            />
-                          </div>
-                        </div>
-
-                        {/* Material selection Row */}
-                        <div className="w-full space-y-1">
-                          <Label className="text-xs font-semibold text-slate-700">Vật liệu</Label>
-                          <Select 
-                            value={item.materialCode || ''}
-                            onValueChange={(val) => updateItem(item.id, { materialCode: val })}
-                          >
-                            <SelectTrigger className="h-9 text-xs">
-                              <SelectValue placeholder="Chọn vật liệu (Tùy chọn)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">Mặc định (ECOPLAST)</SelectItem>
-                              {multipliers.map(m => (
-                                <SelectItem key={m.id} value={m.code}>{m.material} ({m.percentage}%)</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Rows 2-4: Tên, Kích thước, Mô tả */}
-                        <div className="w-full space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">Tên sản phẩm</Label>
-                            <Input 
-                              className="h-9 font-bold text-xs bg-card text-card-foreground transition-colors"
-                              placeholder="Vd: Tủ bếp..." 
+                              className="h-9 font-bold text-xs bg-card border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary"
+                              placeholder="Vd: Tủ bếp dưới..." 
                               value={item.name} 
                               onChange={(e) => updateItem(item.id, { name: e.target.value })}
                             />
+                          </div>
+
+                          {/* Mô tả / Ghi chú */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase">Mô tả / Ghi chú</Label>
+                            <Textarea 
+                              className="min-h-[50px] resize-none text-xs leading-relaxed bg-card border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary"
+                              placeholder="Mô tả cụ thể..."
+                              value={item.description}
+                              onChange={(e) => updateItem(item.id, { description: e.target.value })}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">
-                              {item.unit === 'md' ? 'Kích thước (Cạnh 1 | Cạnh 2 | Trừ Góc L)' : 'Kích thước (R x S x C)'}
+
+                        {/* Cột phải: Kích thước & Giá cả (md:col-span-5) */}
+                        <div className="md:col-span-5 bg-slate-50/70 p-2.5 rounded-lg border border-slate-100 space-y-2.5">
+                          {/* Hàng 1: Khu vực | Đơn vị | Số lượng */}
+                          <div className="grid grid-cols-10 gap-2 items-end">
+                            <div className="col-span-4 space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Khu vực</Label>
+                              <Input 
+                                className="h-9 text-xs w-full bg-white border-slate-200" 
+                                placeholder="Vd: Phòng khách" 
+                                value={item.category} 
+                                onChange={(e) => updateItem(item.id, { category: e.target.value })} 
+                              />
+                            </div>
+                            <div className="col-span-3 space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase text-center block">Đơn vị</Label>
+                              <Input 
+                                className="h-9 text-xs w-full text-center bg-white border-slate-200" 
+                                placeholder="md" 
+                                value={item.unit} 
+                                onChange={(e) => updateItem(item.id, { unit: e.target.value })} 
+                              />
+                            </div>
+                            <div className="col-span-3 space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase text-center block">S.Lượng</Label>
+                              <Input 
+                                type="text" 
+                                className="h-9 text-xs w-full text-center bg-white border-slate-200 font-bold" 
+                                placeholder="1" 
+                                value={getDisplayValue(item.quantity)} 
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+                                  const parsed = parseFloat(val);
+                                  updateItem(item.id, { quantity: isNaN(parsed) ? 0 : parsed });
+                                }} 
+                              />
+                            </div>
+                          </div>
+
+                          {/* Hàng 2: Kích thước */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase">
+                              {item.unit === 'md' ? 'Kích thước (Cạnh 1 | Cạnh 2 | Trừ Góc L)' : 'Kích thước (Dài x Rộng)'}
                             </Label>
-                            <div className={cn("grid gap-2", item.unit === 'md' ? "grid-cols-3" : "grid-cols-2")}>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <div className="relative">
                                 <Input 
-                                    type="text"
-                                    placeholder={item.unit === 'md' ? "Cạnh 1" : "Dài"}
-                                    className="h-9 bg-background font-bold text-center text-xs"
-                                    value={getDisplayValue(item.width)}
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/[^0-9.,]/g, '');
-                                      updateItem(item.id, { width: val });
-                                    }}
+                                  type="text"
+                                  placeholder={item.unit === 'md' ? "Cạnh 1" : "Dài"}
+                                  className="h-9 bg-white border-slate-200 text-center text-xs font-bold"
+                                  value={getDisplayValue(item.width)}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                    updateItem(item.id, { width: val });
+                                  }}
                                 />
+                              </div>
+                              <div className="relative">
                                 <Input 
                                   type="text"
                                   placeholder={item.unit === 'md' ? "Cạnh 2" : "Rộng"}
-                                  className="h-9 bg-background font-bold text-center text-xs"
+                                  className="h-9 bg-white border-slate-200 text-center text-xs font-bold"
                                   disabled={item.unit !== 'm2' && item.unit !== 'md'}
                                   value={getDisplayValue(item.height)}
                                   onChange={(e) => {
@@ -737,88 +843,87 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                     updateItem(item.id, { height: val });
                                   }}
                                 />
-                                {item.unit === 'md' && (
+                              </div>
+                              <div>
+                                {item.unit === 'md' ? (
                                   <Input 
                                     type="text"
-                                    placeholder="Góc L (0)"
-                                    className="h-9 bg-background font-bold text-center text-xs text-purple-600 border-purple-200"
+                                    placeholder="Trừ L (0)"
+                                    className="h-9 bg-white text-center text-xs font-bold text-purple-600 border-purple-200 focus:border-purple-400 focus:ring-purple-100"
                                     value={getDisplayValue(item.cornerL)}
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/[^0-9.,]/g, '');
                                       updateItem(item.id, { cornerL: val });
                                     }}
                                   />
+                                ) : (
+                                  <div className="h-9 bg-slate-100/50 border border-dashed border-slate-200 rounded-md flex items-center justify-center text-[10px] text-slate-400 select-none">
+                                    N/A
+                                  </div>
                                 )}
+                              </div>
                             </div>
-                        </div>
-                        <div className="w-full space-y-1">
-                            <Label className="text-xs font-semibold text-slate-700">Mô tả / Ghi chú</Label>
-                            <Textarea 
-                              className="min-h-[50px] resize-none text-xs leading-relaxed bg-card text-card-foreground transition-colors"
-                              placeholder="Mô tả cụ thể..."
-                              value={item.description}
-                              onChange={(e) => updateItem(item.id, { description: e.target.value })}
-                            />
-                        </div>
+                          </div>
 
-                        {/* Row 5: Giá tiền */}
-                        <div className="grid grid-cols-3 gap-2">
+                          {/* Hàng 3: Đơn giá gốc | Báo giá | Thành tiền */}
+                          <div className="grid grid-cols-3 gap-1.5 items-end">
                             <div className="space-y-1">
-                                <Label className="text-xs font-semibold text-slate-700">Đơn giá gốc</Label>
-                                <div className="relative">
-                                  <Input 
-                                    type="text"
-                                    className="h-9 font-mono font-bold text-right pr-7 text-xs bg-secondary/5"
-                                    value={formatMoneyInput(item.basePrice !== undefined ? item.basePrice : item.unitPrice)} 
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/[^0-9]/g, '');
-                                      updateItem(item.id, { basePrice: val === '' ? 0 : parseInt(val) });
-                                    }}
-                                  />
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-muted-foreground uppercase">đ</span>
-                                </div>
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Đơn giá gốc</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text"
+                                  className="h-9 font-mono font-bold text-right pr-4 text-xs bg-white border-slate-200"
+                                  value={formatMoneyInput(item.basePrice !== undefined ? item.basePrice : item.unitPrice)} 
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    updateItem(item.id, { basePrice: val === '' ? 0 : parseInt(val) });
+                                  }}
+                                />
+                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-muted-foreground uppercase">đ</span>
+                              </div>
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs font-semibold text-slate-700">Báo giá</Label>
-                                <div className="relative">
-                                  <Input 
-                                    type="text"
-                                    className="h-9 font-mono font-black text-right pr-7 text-xs bg-blue-50/50 border-blue-200"
-                                    value={formatMoneyInput(item.unitPrice)} 
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/[^0-9]/g, '');
-                                      updateItem(item.id, { unitPrice: val === '' ? 0 : parseInt(val) });
-                                    }}
-                                  />
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-blue-500 uppercase">đ</span>
-                                </div>
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Báo giá</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text"
+                                  className="h-9 font-mono font-black text-right pr-4 text-xs bg-blue-50/50 border-blue-200 focus:border-blue-400 focus:ring-blue-100"
+                                  value={formatMoneyInput(item.unitPrice)} 
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    updateItem(item.id, { unitPrice: val === '' ? 0 : parseInt(val) });
+                                  }}
+                                />
+                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-blue-500 uppercase">đ</span>
+                              </div>
                             </div>
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-semibold text-primary uppercase">Thành tiền</Label>
-                                <div className="h-9 flex items-center justify-end px-2 bg-primary/10 rounded-lg font-mono text-xs font-black text-primary border border-primary/20">
-                                  {item.total.toLocaleString()} đ
-                                </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-primary uppercase block text-center">Thành tiền</Label>
+                              <div className="h-9 flex items-center justify-end px-1.5 bg-primary/10 rounded-lg font-mono text-[11px] font-black text-primary border border-primary/20 truncate">
+                                {item.total.toLocaleString()} đ
+                              </div>
                             </div>
-                        </div>
+                          </div>
 
-                        {/* Hidden Image input */}
-                        <input 
+                          {/* Hidden Image input */}
+                          <input 
                             id={`upload-item-${item.id}`} 
                             type="file" 
                             className="hidden" 
                             accept="image/*"
                             onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  toast.info("Đang tải ảnh...");
-                                  const url = await uploadToImgBB(file);
-                                  if (url) {
-                                    updateItem(item.id, { imageUrl: url });
-                                    toast.success("Đã tải ảnh lên");
-                                  }
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                toast.info("Đang tải ảnh...");
+                                const url = await uploadToImgBB(file);
+                                if (url) {
+                                  updateItem(item.id, { imageUrl: url });
+                                  toast.success("Đã tải ảnh lên");
                                 }
+                              }
                             }}
-                        />
+                          />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
