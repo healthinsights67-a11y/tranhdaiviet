@@ -1509,6 +1509,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         isOpen={locationPickerFor !== null}
         onClose={() => setLocationPickerFor(null)}
         initialLocation={locationPickerFor === 'add' ? newCustomer.location : selectedCustomer?.location}
+        addressQuery={locationPickerFor === 'add' ? newCustomer.address : selectedCustomer?.address}
         onSave={(loc) => {
           if (locationPickerFor === 'add') {
             setNewCustomer(prev => ({ ...prev, location: loc }));
