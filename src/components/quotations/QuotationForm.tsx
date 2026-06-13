@@ -732,17 +732,11 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                     <SelectValue placeholder="Mặc định" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor('ECO') }} />
-                                        <span className="truncate">Mặc định (ECOPLAST)</span>
-                                      </div>
-                                    </SelectItem>
                                     {multipliers.map(m => (
                                       <SelectItem key={m.id} value={m.code}>
                                         <div className="flex items-center gap-1.5">
                                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor(m.code) }} />
-                                          <span className="truncate">{m.material}</span>
+                                          <span className="truncate">{m.material} ({m.percentage}%)</span>
                                         </div>
                                       </SelectItem>
                                     ))}
