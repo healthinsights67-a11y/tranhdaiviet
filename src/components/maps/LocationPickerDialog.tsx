@@ -8,13 +8,48 @@ interface LocationPickerDialogProps {
   isOpen: boolean;
   onClose: () => void;
   initialLocation?: { lat: number, lng: number };
+  addressQuery?: string;
   onSave: (location: { lat: number, lng: number }) => void;
 }
 
-export function LocationPickerDialog({ isOpen, onClose, initialLocation, onSave }: LocationPickerDialogProps) {
+export function LocationPickerDialog({ isOpen, onClose, initialLocation, addressQuery, onSave }: LocationPickerDialogProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(
-    initialLocation || { lat: 21.0278, lng: 105.8342 }
+    initialLocation || null
   );
+  const [isSearching, setIsSearching] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialLocation) {
+        setSelectedLocation(initialLocation);
+      } else if (addressQuery && addressQuery.trim().length > 3) {
+        const fetchLocation = async () => {
+          setIsSearching(true);
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`);
+            const data = await res.json();
+            if (data && data.length > 0) {
+              setSelectedLocation({
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon)
+              });
+            } else {
+              setSelectedLocation({ lat: 21.0278, lng: 105.8342 }); // Fallback to Hanoi
+            }
+          } catch (e) {
+            setSelectedLocation({ lat: 21.0278, lng: 105.8342 });
+          } finally {
+            setIsSearching(false);
+          }
+        };
+        fetchLocation();
+      } else {
+        setSelectedLocation({ lat: 21.0278, lng: 105.8342 });
+      }
+    } else {
+      setSelectedLocation(null);
+    }
+  }, [isOpen, initialLocation, addressQuery]);
 
   const handleMapClick = (e: { lngLat: { lng: number; lat: number } }) => {
     setSelectedLocation({
@@ -37,6 +72,7 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, onSave 
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-primary" />
             Chọn vị trí trên bản đồ
+            {isSearching && <span className="text-xs text-muted-foreground font-normal ml-2 animate-pulse">(Đang tìm tự động...)</span>}
           </DialogTitle>
           <DialogDescription>
             Di chuyển bản đồ và nhấn vào vị trí công trình để ghim tọa độ.
