@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ import { LocationPickerDialog } from '../maps/LocationPickerDialog';
 import { MapComponent, CustomMarker } from '../maps/MapComponent';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth } from '@/src/lib/utils';
+import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth, calculateDistance } from '@/src/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +71,7 @@ import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType, getDocs, query, where } from '@/src/lib/firebase';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
+import { fetchSystemSettings, updateSystemSettings } from '@/src/services/dataService';
 
 
 const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
@@ -125,6 +126,31 @@ const STAGE_MARKER_COLORS: Record<CustomerStage, string> = {
 
 export function CustomerPage({ customers, setCustomers, tasks, setTasks, members, quotations, schedules, user, currentUser }: CustomerPageProps) {
   const queryClient = useQueryClient();
+
+  const { data: systemSettings } = useQuery({
+    queryKey: ['systemSettings'],
+    queryFn: fetchSystemSettings,
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: updateSystemSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
+      toast.success("Đã cập nhật vị trí xưởng!");
+    },
+    onError: () => {
+      toast.error("Lỗi khi cập nhật cấu hình hệ thống");
+    }
+  });
+
+  const [isSettingFactory, setIsSettingFactory] = React.useState(false);
+
+  const handleMapClick = (e: { lngLat: { lng: number; lat: number } }) => {
+    if (isSettingFactory) {
+      updateSettingsMutation.mutate({ factoryLocation: e.lngLat });
+      setIsSettingFactory(false);
+    }
+  };
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
@@ -1065,13 +1091,49 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
             <Map className="w-3.5 h-3.5 mr-1.5" /> Bản đồ
           </Button>
         </div>
+        {viewMode === 'map' && (
+          <Button
+            variant={isSettingFactory ? "default" : "outline"}
+            size="sm"
+            className={cn("h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium self-start sm:self-auto", isSettingFactory && "bg-amber-600 hover:bg-amber-700 text-white")}
+            onClick={() => setIsSettingFactory(!isSettingFactory)}
+          >
+            <Factory className="w-3.5 h-3.5 mr-1.5" />
+            {isSettingFactory ? "Click lên bản đồ để cắm xưởng" : "Cắm vị trí xưởng"}
+          </Button>
+        )}
       </div>
 
       {viewMode === 'map' ? (
-        <Card className="h-[600px] border border-border shadow-sm rounded-xl overflow-hidden relative z-0">
-          <MapComponent interactive={true}>
+        <Card className={cn("h-[600px] border border-border shadow-sm rounded-xl overflow-hidden relative z-0", isSettingFactory && "ring-2 ring-amber-500 ring-offset-2")}>
+          <MapComponent interactive={true} onClick={handleMapClick}>
+            {systemSettings?.factoryLocation && (
+              <CustomMarker
+                latitude={systemSettings.factoryLocation.lat}
+                longitude={systemSettings.factoryLocation.lng}
+                color="bg-amber-600"
+                labelText="Xưởng sản xuất"
+              >
+                <div className="bg-amber-600 text-white p-2 rounded-xl shadow-xl border border-amber-700 w-40 text-center">
+                  <Factory className="h-5 w-5 mx-auto mb-1" />
+                  <p className="font-bold text-xs">Vị trí xưởng</p>
+                </div>
+              </CustomMarker>
+            )}
+            
             {filteredCustomers.filter(c => c.location).map(customer => {
               const stage = STAGE_CONFIG[customer.stage];
+              let distanceStr = null;
+              if (systemSettings?.factoryLocation && customer.location) {
+                const dist = calculateDistance(
+                  systemSettings.factoryLocation.lat,
+                  systemSettings.factoryLocation.lng,
+                  customer.location.lat,
+                  customer.location.lng
+                );
+                distanceStr = `${dist} km`;
+              }
+              
               return (
                 <CustomMarker 
                   key={customer.id} 
@@ -1092,6 +1154,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         <span className="text-[10px] font-bold text-primary">{formatCurrency(customer.orderValue)}</span>
                       )}
                     </div>
+                    {distanceStr && (
+                      <div className="mt-1.5 pt-1.5 border-t border-border flex items-center justify-between text-[9px] text-muted-foreground font-medium">
+                        <span className="flex items-center"><Factory className="h-2.5 w-2.5 mr-1" /> Cách xưởng:</span>
+                        <span className="font-bold text-amber-600">{distanceStr}</span>
+                      </div>
+                    )}
                   </div>
                 </CustomMarker>
               );

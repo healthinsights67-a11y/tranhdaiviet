@@ -278,3 +278,12 @@ export interface MaterialMultiplier {
   globalBasePrice?: number;
   percentage: number;
 }
+
+export interface SystemSettings {
+  id?: string;
+  factoryLocation?: {
+    lat: number;
+    lng: number;
+  };
+  updatedAt?: string;
+}

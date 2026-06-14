@@ -239,3 +239,12 @@ export const TrashItemSchema = z.object({
   deletedAt: timestampSchema,
   deletedBy: z.string(),
 });
+
+export const SystemSettingsSchema = z.object({
+  id: z.string().optional(),
+  factoryLocation: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }).optional(),
+  updatedAt: z.string().optional(),
+});
