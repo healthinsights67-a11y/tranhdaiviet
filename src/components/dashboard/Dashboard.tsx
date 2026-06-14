@@ -45,6 +45,7 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
+import { SmartInsights } from './SmartInsights';
 export function Dashboard({ tasks, members, customers, quotations, currentUser }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
@@ -277,8 +278,11 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
             ))}
           </div>
 
-          <div className="grid gap-3 md:gap-6 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="md:col-span-2 lg:col-span-4 border border-border shadow-sm bg-card text-card-foreground">
+          <div className="grid gap-3 md:gap-6 md:grid-cols-1 lg:grid-cols-12">
+            <div className="lg:col-span-3">
+              <SmartInsights tasks={filteredTasks} customers={filteredCustomers} quotations={quotations || []} />
+            </div>
+            <Card className="lg:col-span-5 border border-border shadow-sm bg-card text-card-foreground">
               <CardHeader className="p-3 pb-0">
                 <CardTitle className="text-xs md:text-lg font-bold">Phân bổ việc</CardTitle>
               </CardHeader>
@@ -317,7 +321,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-2 lg:col-span-3 border border-border shadow-sm bg-card text-card-foreground">
+            <Card className="lg:col-span-4 border border-border shadow-sm bg-card text-card-foreground">
               <CardHeader className="p-4 pb-0">
                 <CardTitle className="text-sm md:text-lg font-bold tracking-tight">Trạng thái công việc</CardTitle>
                 <CardDescription className="text-[10px]">Phân bổ nhiệm vụ qua các giai đoạn.</CardDescription>

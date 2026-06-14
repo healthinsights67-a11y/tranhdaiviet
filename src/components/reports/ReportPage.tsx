@@ -68,6 +68,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency, calculateKPIScore } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SmartInsights } from '../dashboard/SmartInsights';
 
 const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981', '#f43f5e', '#64748b'];
 
@@ -444,11 +445,17 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
           <div key={stat.label} className="bg-card text-card-foreground flex items-center gap-3 px-4 py-3 rounded-2xl border border-border">
             <stat.icon className={cn("h-4 w-4", stat.color)} />
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{stat.label}:</span>
+               <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{stat.label}:</span>
               <span className="text-xs font-black">{stat.value}</span>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-12">
+        <div className="lg:col-span-12">
+          <SmartInsights tasks={filteredTasks} customers={filteredCustomers} quotations={quotations} />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
