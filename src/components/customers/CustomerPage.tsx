@@ -250,13 +250,25 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       }
     }
 
+    // Ensure location object is either fully valid coordinates or null
+    const validLocation = (finalLocation && typeof finalLocation.lat === 'number' && !isNaN(finalLocation.lat) && typeof finalLocation.lng === 'number' && !isNaN(finalLocation.lng))
+      ? { lat: finalLocation.lat, lng: finalLocation.lng }
+      : null;
+
     const customerData = {
       ...newCustomer,
-      location: finalLocation,
+      location: validLocation,
       code: customerCode,
       createdAt: nowStr,
       consultedAt: nowStr,
     };
+
+    // Clean undefined values for Firestore compatibility
+    Object.keys(customerData).forEach(key => {
+      if ((customerData as any)[key] === undefined) {
+        delete (customerData as any)[key];
+      }
+    });
 
     try {
       let createdCustomerId = '';
@@ -383,6 +395,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           selectedCustomer.consultedAt = updateData.consultedAt;
           selectedCustomer.createdAt = updateData.createdAt;
         }
+
+        // Ensure location object is either fully valid coordinates or null (no undefined/NaN sub-properties)
+        if (updateData.location !== undefined) {
+          const loc = updateData.location;
+          updateData.location = (loc && typeof loc.lat === 'number' && !isNaN(loc.lat) && typeof loc.lng === 'number' && !isNaN(loc.lng))
+            ? { lat: loc.lat, lng: loc.lng }
+            : null;
+        }
+
+        // Clean undefined values for Firestore compatibility
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] === undefined) {
+            delete updateData[key];
+          }
+        });
 
         await updateDoc(doc(db, 'customers', id), updateData);
 
