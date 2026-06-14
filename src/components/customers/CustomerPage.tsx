@@ -144,11 +144,33 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   });
 
   const [isSettingFactory, setIsSettingFactory] = React.useState(false);
+  const [isFactoryAddressDialogOpen, setIsFactoryAddressDialogOpen] = React.useState(false);
+  const [factoryAddressInput, setFactoryAddressInput] = React.useState('');
+  const [isGeocodingFactory, setIsGeocodingFactory] = React.useState(false);
 
   const handleMapClick = (e: { lngLat: { lng: number; lat: number } }) => {
     if (isSettingFactory) {
       updateSettingsMutation.mutate({ factoryLocation: e.lngLat });
       setIsSettingFactory(false);
+    }
+  };
+
+  const handleSetFactoryByAddress = async () => {
+    if (!factoryAddressInput.trim()) return;
+    setIsGeocodingFactory(true);
+    try {
+      const coords = await geocodeAddress(factoryAddressInput);
+      if (coords) {
+        updateSettingsMutation.mutate({ factoryLocation: coords });
+        setIsFactoryAddressDialogOpen(false);
+        setFactoryAddressInput('');
+      } else {
+        toast.error("Không tìm thấy tọa độ cho địa chỉ này, vui lòng nhập chi tiết hơn.");
+      }
+    } catch (err) {
+      toast.error("Lỗi khi tìm kiếm địa chỉ.");
+    } finally {
+      setIsGeocodingFactory(false);
     }
   };
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -1092,15 +1114,57 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           </Button>
         </div>
         {viewMode === 'map' && (
-          <Button
-            variant={isSettingFactory ? "default" : "outline"}
-            size="sm"
-            className={cn("h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium self-start sm:self-auto", isSettingFactory && "bg-amber-600 hover:bg-amber-700 text-white")}
-            onClick={() => setIsSettingFactory(!isSettingFactory)}
-          >
-            <Factory className="w-3.5 h-3.5 mr-1.5" />
-            {isSettingFactory ? "Click lên bản đồ để cắm xưởng" : "Cắm vị trí xưởng"}
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Dialog open={isFactoryAddressDialogOpen} onOpenChange={setIsFactoryAddressDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium">
+                  <Search className="w-3.5 h-3.5 mr-1.5" />
+                  Nhập địa chỉ xưởng
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] rounded-xl">
+                <DialogHeader>
+                  <DialogTitle>Tìm vị trí xưởng theo địa chỉ</DialogTitle>
+                  <DialogDescription>
+                    Nhập địa chỉ xưởng sản xuất để hệ thống tự động tìm và cắm mốc trên bản đồ.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="factory-address">Địa chỉ chi tiết</Label>
+                    <Input
+                      id="factory-address"
+                      placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM"
+                      value={factoryAddressInput}
+                      onChange={(e) => setFactoryAddressInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSetFactoryByAddress();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsFactoryAddressDialogOpen(false)}>Hủy</Button>
+                  <Button onClick={handleSetFactoryByAddress} disabled={isGeocodingFactory || !factoryAddressInput.trim()}>
+                    {isGeocodingFactory ? "Đang tìm..." : "Lưu vị trí"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              variant={isSettingFactory ? "default" : "outline"}
+              size="sm"
+              className={cn("h-7 md:h-8 text-[10px] md:text-xs rounded-md px-3 font-medium", isSettingFactory && "bg-amber-600 hover:bg-amber-700 text-white")}
+              onClick={() => setIsSettingFactory(!isSettingFactory)}
+            >
+              <Factory className="w-3.5 h-3.5 mr-1.5" />
+              {isSettingFactory ? "Click lên bản đồ để cắm xưởng" : "Cắm xưởng trên bản đồ"}
+            </Button>
+          </div>
         )}
       </div>
 
