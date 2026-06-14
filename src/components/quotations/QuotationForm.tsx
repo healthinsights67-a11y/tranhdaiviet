@@ -17,7 +17,8 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Loader2,
-  Settings
+  Settings,
+  Check
 } from 'lucide-react';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -149,6 +150,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const [pickerSearchTerm, setPickerSearchTerm] = React.useState('');
   const [pickerUnitFilter, setPickerUnitFilter] = React.useState('all');
   const [pickerCategoryFilter, setPickerCategoryFilter] = React.useState('all');
+  const [selectedProductsForBulk, setSelectedProductsForBulk] = React.useState<ProductLibraryItem[]>([]);
 
   const allProducts = React.useMemo(() => {
     const merged = [...STANDARD_PRICES.map(p => ({ 
@@ -231,33 +233,45 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   console.log("DEBUG: QuotationForm products:", allProducts.length, "filtered:", filteredLibraryProducts.length);
 
   const handleSelectFromLibrary = (product: ProductLibraryItem) => {
-    const newItem: QuotationItem = {
+    const isSelected = selectedProductsForBulk.some(p => p.id === product.id);
+    if (isSelected) {
+      setSelectedProductsForBulk(selectedProductsForBulk.filter(p => p.id !== product.id));
+    } else {
+      setSelectedProductsForBulk([...selectedProductsForBulk, product]);
+    }
+  };
+
+  const handleBulkAdd = () => {
+    if (selectedProductsForBulk.length === 0) return;
+    
+    const newItemsToAdd = selectedProductsForBulk.map(product => ({
       id: Math.random().toString(36).substr(2, 9),
       category: product.category || 'Khác',
       name: product.productName,
-      description: product.description,
-      unit: product.unit,
+      description: product.description || '',
+      unit: product.unit || 'md',
       quantity: 1,
       basePrice: product.unitPrice,
       unitPrice: product.unitPrice,
       total: product.unitPrice,
-      imageUrl: product.imageUrl,
+      imageUrl: product.imageUrl || '',
       materialCode: '',
       materialName: ''
-    };
-    
-    const newItems = [...formData.items, newItem];
+    }));
+
+    const newItems = [...formData.items, ...newItemsToAdd];
     const subTotal = newItems.reduce((acc, item) => acc + item.total, 0);
-    
+
     setFormData({ 
       ...formData, 
       items: newItems,
       subTotal,
       totalAmount: subTotal - formData.discount
     });
-    
+
+    setSelectedProductsForBulk([]);
     setIsProductPickerOpen(false);
-    toast.success(`Đã thêm ${product.productName}`);
+    toast.success(`Đã thêm ${newItemsToAdd.length} sản phẩm thành công!`);
   };
 
   const handleAddItem = () => {
@@ -646,7 +660,10 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     type="button" 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => setIsProductPickerOpen(true)} 
+                    onClick={() => {
+                      setSelectedProductsForBulk([]);
+                      setIsProductPickerOpen(true);
+                    }} 
                     className="h-9 text-[11px] sm:text-xs px-1 border-blue-200 hover:bg-blue-50 text-blue-600 font-bold shadow-sm"
                    >
                     <Package className="h-3 w-3 mr-1" />
@@ -1114,57 +1131,72 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
               <div className="flex-1 overflow-y-auto w-full p-8 bg-card text-card-foreground">
                 {filteredLibraryProducts.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredLibraryProducts.map((product) => (
-                      <Card 
-                        key={product.id} 
-                        className="cursor-pointer border border-border hover:border-blue-300 hover:shadow-xl hover:shadow-blue-50 transition-all group relative overflow-hidden flex flex-col rounded-2xl"
-                        onClick={() => handleSelectFromLibrary(product as ProductLibraryItem)}
-                      >
-                        <CardContent className="p-0 flex flex-col h-full">
-                          <div className="aspect-video w-full bg-gray-100 overflow-hidden relative">
-                            {product.imageUrl ? (
-                              <img 
-                                src={product.imageUrl} 
-                                alt={product.productName}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                                <ImageIcon className="h-10 w-10" />
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/40 transition-colors flex items-center justify-center">
-                              <Plus className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100 drop-shadow-lg" />
+                    {filteredLibraryProducts.map((product) => {
+                      const isSelected = selectedProductsForBulk.some(p => p.id === product.id);
+                      return (
+                        <Card 
+                          key={product.id} 
+                          className={cn(
+                            "cursor-pointer border hover:shadow-xl hover:shadow-blue-50 transition-all group relative overflow-hidden flex flex-col rounded-2xl",
+                            isSelected ? "border-blue-500 ring-2 ring-blue-500/20 shadow-md shadow-blue-50" : "border-border hover:border-blue-300"
+                          )}
+                          onClick={() => handleSelectFromLibrary(product as ProductLibraryItem)}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-blue-600 border border-white flex items-center justify-center text-white shadow-md">
+                              <Check className="h-3.5 w-3.5 stroke-[3]" />
                             </div>
-                            <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                              <Badge className="bg-black/40 backdrop-blur-md border-none text-[9px] h-5 px-1.5 font-bold">
-                                {product.unit}
-                              </Badge>
-                              {product.category && (
-                                <Badge className="bg-blue-600/70 backdrop-blur-md border-none text-[8px] h-4.5 px-1 font-bold">
-                                  {product.category}
-                                </Badge>
+                          )}
+                          <CardContent className="p-0 flex flex-col h-full">
+                            <div className="aspect-video w-full bg-gray-100 overflow-hidden relative">
+                              {product.imageUrl ? (
+                                <img 
+                                  src={product.imageUrl} 
+                                  alt={product.productName}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                                  <ImageIcon className="h-10 w-10" />
+                                </div>
                               )}
-                            </div>
-                          </div>
-                          <div className="p-4 space-y-2 flex-1 flex flex-col">
-                            <h4 className="font-extrabold text-sm text-foreground group-hover:text-blue-600 transition-colors line-clamp-1">{product.productName}</h4>
-                            <p className="text-[11px] text-muted-foreground line-clamp-2 min-h-[32px] leading-relaxed font-medium">
-                              {product.description || 'Không có mô tả chi tiết cho sản phẩm này.'}
-                            </p>
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-auto">
-                              <div className="flex flex-col">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mr-2">Đơn giá</span>
-                                <span className="font-black text-blue-700 text-base">
-                                  {product.unitPrice.toLocaleString()} <span className="text-[9px] opacity-60">VNĐ</span>
-                                </span>
+                              <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/40 transition-colors flex items-center justify-center">
+                                {isSelected ? (
+                                  <Check className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100 drop-shadow-lg" />
+                                ) : (
+                                  <Plus className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100 drop-shadow-lg" />
+                                )}
+                              </div>
+                              <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                                <Badge className="bg-black/40 backdrop-blur-md border-none text-[9px] h-5 px-1.5 font-bold">
+                                  {product.unit}
+                                </Badge>
+                                {product.category && (
+                                  <Badge className="bg-blue-600/70 backdrop-blur-md border-none text-[8px] h-4.5 px-1 font-bold">
+                                    {product.category}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <div className="p-4 space-y-2 flex-1 flex flex-col">
+                              <h4 className="font-extrabold text-sm text-foreground group-hover:text-blue-600 transition-colors line-clamp-1">{product.productName}</h4>
+                              <p className="text-[11px] text-muted-foreground line-clamp-2 min-h-[32px] leading-relaxed font-medium">
+                                {product.description || 'Không có mô tả chi tiết cho sản phẩm này.'}
+                              </p>
+                              <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-auto">
+                                <div className="flex flex-col">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mr-2">Đơn giá</span>
+                                  <span className="font-black text-blue-700 text-base">
+                                    {product.unitPrice.toLocaleString()} <span className="text-[9px] opacity-60">VNĐ</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
@@ -1177,8 +1209,25 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                 )}
               </div>
               
-              <DialogFooter className="p-6 border-t bg-card text-card-foreground font-bold">
-                <Button variant="ghost" onClick={() => setIsProductPickerOpen(false)} className="rounded-xl h-12 px-8">HỦY BỎ</Button>
+              <DialogFooter className="p-6 border-t bg-card text-card-foreground font-bold flex flex-row items-center justify-between sm:justify-between w-full shrink-0">
+                <div className="text-xs sm:text-sm font-semibold text-slate-500">
+                  {selectedProductsForBulk.length > 0 
+                    ? `Đã chọn: ${selectedProductsForBulk.length} sản phẩm` 
+                    : 'Chưa chọn sản phẩm nào'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" onClick={() => {
+                    setSelectedProductsForBulk([]);
+                    setIsProductPickerOpen(false);
+                  }} className="rounded-xl h-11 px-6 text-xs sm:text-sm">HỦY BỎ</Button>
+                  <Button 
+                    onClick={handleBulkAdd} 
+                    disabled={selectedProductsForBulk.length === 0} 
+                    className="rounded-xl h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50 text-xs sm:text-sm shadow-md"
+                  >
+                    Thêm vào báo giá
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
