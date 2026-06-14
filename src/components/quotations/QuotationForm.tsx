@@ -143,6 +143,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     getMaterialMultipliers().then(setMultipliers);
   }, [isConfigOpen]);
 
+
+
   const [isProductPickerOpen, setIsProductPickerOpen] = React.useState(false);
   const [pickerSearchTerm, setPickerSearchTerm] = React.useState('');
   const [pickerUnitFilter, setPickerUnitFilter] = React.useState('all');
@@ -178,6 +180,32 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     });
     return merged;
   }, [products]);
+
+  // Auto-heal missing basePrice for old/existing quotation items using the setup price from allProducts
+  React.useEffect(() => {
+    if (initialData && initialData.items && allProducts.length > 0) {
+      let changed = false;
+      const healedItems = formData.items.map(item => {
+        if (item.basePrice === undefined || item.basePrice === null || item.basePrice === 0) {
+          const matchedProduct = allProducts.find(p => p.productName.toLowerCase() === item.name.toLowerCase());
+          if (matchedProduct) {
+            changed = true;
+            return {
+              ...item,
+              basePrice: matchedProduct.unitPrice
+            };
+          }
+        }
+        return item;
+      });
+      if (changed) {
+        setFormData(prev => ({
+          ...prev,
+          items: healedItems
+        }));
+      }
+    }
+  }, [initialData, allProducts]);
 
   const uniqueCategories = React.useMemo(() => {
     const cats = new Set<string>();
