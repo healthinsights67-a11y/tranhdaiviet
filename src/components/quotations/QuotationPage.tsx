@@ -933,19 +933,19 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                  </DropdownMenuTrigger>
                                  <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-white/10" onClick={(e) => e.stopPropagation()}>
                                    {activeQuotation.status !== 'accepted' && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onSelect={() => handleUpdateStatus(activeQuotation.id, 'accepted')}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(activeQuotation.id, 'accepted')}>
                                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                                        Chốt báo giá (Toàn bộ)
                                      </DropdownMenuItem>
                                    )}
                                    {activeQuotation.status !== 'deposit' && activeQuotation.status !== 'accepted' && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onSelect={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: '' })}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: '' })}>
                                        <FileText className="h-4 w-4 text-purple-500" />
                                        Chốt cọc (Một phần)
                                      </DropdownMenuItem>
                                    )}
                                    {activeQuotation.status === 'deposit' && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onSelect={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: String(activeQuotation.depositAmount || '') })}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => setDepositDialog({ isOpen: true, quotationId: activeQuotation.id, amount: String(activeQuotation.depositAmount || '') })}>
                                         <FileText className="h-4 w-4 text-purple-500" />
                                         Sửa tiền cọc
                                      </DropdownMenuItem>
@@ -953,7 +953,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                    {(activeQuotation.status === 'deposit' || activeQuotation.status === 'accepted') && (
                                       <DropdownMenuItem 
                                         className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" 
-                                        onSelect={() => setPendingDesignTask({
+                                        onClick={() => setPendingDesignTask({
                                           quotationId: activeQuotation.id,
                                           customerId: activeQuotation.customerId || '',
                                           customerName: activeQuotation.customerName || 'Khách lẻ'
@@ -964,32 +964,32 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                       </DropdownMenuItem>
                                     )}
                                     {activeQuotation.status !== 'rejected' && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onSelect={() => handleUpdateStatus(activeQuotation.id, 'rejected')}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-amber-600 focus:text-amber-700" onClick={() => handleUpdateStatus(activeQuotation.id, 'rejected')}>
                                        <XCircle className="h-4 w-4 text-amber-500" />
                                        Từ chối báo giá (Hủy)
                                      </DropdownMenuItem>
                                    )}
                                    {activeQuotation.status === 'draft' && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" onSelect={() => handleUpdateStatus(activeQuotation.id, 'sent')}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-blue-600 focus:text-blue-700" onClick={() => handleUpdateStatus(activeQuotation.id, 'sent')}>
                                        <Clock className="h-4 w-4 text-blue-500" />
                                        Đã gửi khách hàng
                                      </DropdownMenuItem>
                                    )}
                                    {(activeQuotation.status === 'sent' || activeQuotation.status === 'rejected') && (
-                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-gray-600" onSelect={() => handleUpdateStatus(activeQuotation.id, 'draft')}>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3 text-gray-600" onClick={() => handleUpdateStatus(activeQuotation.id, 'draft')}>
                                        <Clock className="h-4 w-4 text-gray-500" />
                                        Chuyển thành bản nháp
                                      </DropdownMenuItem>
                                    )}
                                    <DropdownMenuSeparator className="bg-card text-card-foreground/5 my-1" />
-                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onSelect={() => {
+                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => {
                                      setSelectedQuotation(activeQuotation);
                                      setIsFormOpen(true);
                                    }}>
                                      <FileText className="h-4 w-4 text-blue-500" />
                                      Sửa chi tiết
                                    </DropdownMenuItem>
-                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3 font-bold text-destructive" onSelect={() => handleDeleteQuotation(activeQuotation.id)}>
+                                   <DropdownMenuItem className="py-2.5 rounded-lg gap-3 font-bold text-destructive" onClick={() => handleDeleteQuotation(activeQuotation.id)}>
                                      <Trash2 className="h-4 w-4" />
                                      Xóa hồ sơ
                                    </DropdownMenuItem>
