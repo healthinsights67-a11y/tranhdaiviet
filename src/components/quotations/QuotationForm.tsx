@@ -300,12 +300,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
         // Tự động nhảy đơn giá & đơn vị nếu khớp tên hạng mục mẫu
         if (updates.name !== undefined && updates.name.length > 2) {
-          const standard = STANDARD_PRICES.find(p => 
-            updates.name!.toLowerCase().includes(p.name.toLowerCase())
+          const standard = allProducts.find(p => 
+            updates.name!.toLowerCase().includes(p.productName.toLowerCase())
           );
           if (standard) {
-            updated.basePrice = standard.price;
-            updated.unitPrice = standard.price;
+            updated.basePrice = standard.unitPrice;
+            updated.unitPrice = standard.unitPrice;
             updated.unit = standard.unit;
             updated.materialCode = '';
             updated.materialName = '';
@@ -682,13 +682,13 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Thư viện mẫu</Label>
                                 <Select 
                                   onValueChange={(value) => {
-                                    const standard = STANDARD_PRICES.find(p => p.name === value);
+                                    const standard = allProducts.find(p => p.productName === value);
                                     if (standard) {
                                       updateItem(item.id, { 
-                                        name: standard.name,
+                                        name: standard.productName,
                                         unit: standard.unit,
-                                        basePrice: standard.price,
-                                        unitPrice: standard.price,
+                                        basePrice: standard.unitPrice,
+                                        unitPrice: standard.unitPrice,
                                         description: standard.description,
                                         category: standard.category,
                                         materialCode: '',
@@ -704,18 +704,18 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                     {item.category ? (
                                       <>
                                         <SelectLabel className="text-[9px] uppercase font-bold text-primary">Hạng mục {item.category}</SelectLabel>
-                                        {STANDARD_PRICES.filter(p => p.category === item.category).map(p => (
-                                          <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>
+                                        {allProducts.filter(p => p.category === item.category).map(p => (
+                                          <SelectItem key={p.productName} value={p.productName}>{p.productName}</SelectItem>
                                         ))}
                                         <SelectSeparator />
                                         <SelectLabel className="text-[9px] uppercase font-bold">Gợi ý khác</SelectLabel>
-                                        {STANDARD_PRICES.filter(p => p.category !== item.category).map(p => (
-                                          <SelectItem key={p.name} value={p.name}>{p.name} ({p.category})</SelectItem>
+                                        {allProducts.filter(p => p.category !== item.category).map(p => (
+                                          <SelectItem key={p.productName} value={p.productName}>{p.productName} ({p.category})</SelectItem>
                                         ))}
                                       </>
                                     ) : (
-                                      STANDARD_PRICES.map(p => (
-                                        <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>
+                                      allProducts.map(p => (
+                                        <SelectItem key={p.productName} value={p.productName}>{p.productName}</SelectItem>
                                       ))
                                     )}
                                   </SelectContent>
