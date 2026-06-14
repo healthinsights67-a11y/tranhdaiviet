@@ -49,6 +49,7 @@ import { STANDARD_PRICES } from '@/src/constants/priceList';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import { MaterialMultiplierConfig } from './MaterialMultiplierConfig';
 import { getMaterialMultipliers } from '@/src/services/materialConfigService';
@@ -133,12 +134,26 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     status: initialData?.status || 'draft',
     customerId: initialData?.customerId || '',
     imageUrls: initialData?.imageUrls || [],
-    workshop: initialData?.workshop || ''
+    workshop: initialData?.workshop || '',
+    hasVat: initialData?.hasVat || false,
+    vatRate: initialData?.vatRate || 8,
+    vatAmount: initialData?.vatAmount || 0,
   });
 
   const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = React.useState(!initialData);
   const [isConfigOpen, setIsConfigOpen] = React.useState(false);
   const [multipliers, setMultipliers] = React.useState<MaterialMultiplier[]>([]);
+
+  const getUpdatedAmounts = (
+    items: QuotationItem[],
+    discount: number,
+    hasVat: boolean
+  ) => {
+    const subTotal = items.reduce((acc, item) => acc + item.total, 0);
+    const vatAmount = hasVat ? Math.round((subTotal - discount) * 0.08) : 0;
+    const totalAmount = subTotal - discount + vatAmount;
+    return { subTotal, vatAmount, totalAmount };
+  };
 
   React.useEffect(() => {
     getMaterialMultipliers().then(setMultipliers);
@@ -260,13 +275,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     }));
 
     const newItems = [...formData.items, ...newItemsToAdd];
-    const subTotal = newItems.reduce((acc, item) => acc + item.total, 0);
+    const amounts = getUpdatedAmounts(newItems, formData.discount, !!formData.hasVat);
 
     setFormData({ 
       ...formData, 
       items: newItems,
-      subTotal,
-      totalAmount: subTotal - formData.discount
+      ...amounts
     });
 
     setSelectedProductsForBulk([]);
@@ -297,12 +311,11 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
        return;
     }
     const newItems = formData.items.filter(item => item.id !== id);
-    const subTotal = newItems.reduce((acc, item) => acc + item.total, 0);
+    const amounts = getUpdatedAmounts(newItems, formData.discount, !!formData.hasVat);
     setFormData({ 
       ...formData, 
       items: newItems, 
-      subTotal, 
-      totalAmount: subTotal - formData.discount 
+      ...amounts
     });
   };
 
@@ -403,12 +416,11 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       return item;
     });
     
-    const subTotal = newItems.reduce((acc, item) => acc + item.total, 0);
+    const amounts = getUpdatedAmounts(newItems, formData.discount, !!formData.hasVat);
     setFormData({ 
       ...formData, 
       items: newItems, 
-      subTotal, 
-      totalAmount: subTotal - formData.discount 
+      ...amounts
     });
   };
 
@@ -1012,11 +1024,44 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
                           const discount = val === '' ? 0 : parseInt(val);
-                          setFormData({ ...formData, discount, totalAmount: formData.subTotal - discount });
+                          const amounts = getUpdatedAmounts(formData.items, discount, !!formData.hasVat);
+                          setFormData({ 
+                            ...formData, 
+                            discount, 
+                            ...amounts 
+                          });
                         }}
                       />
                     </div>
                   </div>
+
+                  <div className="flex justify-between items-center text-xs gap-4">
+                    <span className="text-muted-foreground font-medium shrink-0">Thuế VAT (8%):</span>
+                    <div className="flex items-center gap-2 flex-1 justify-end">
+                      <Checkbox 
+                        id="hasVat"
+                        checked={formData.hasVat || false}
+                        onCheckedChange={(checked) => {
+                          const hasVat = !!checked;
+                          const amounts = getUpdatedAmounts(formData.items, formData.discount, hasVat);
+                          setFormData({ 
+                            ...formData, 
+                            hasVat,
+                            vatRate: hasVat ? 8 : undefined,
+                            ...amounts 
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {formData.hasVat && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground font-medium">Tiền thuế VAT (8%):</span>
+                      <span className="font-mono font-bold">{(formData.vatAmount || 0).toLocaleString()} VNĐ</span>
+                    </div>
+                  )}
 
                   <div className="pt-2 border-t border-border/50 border-dashed space-y-1">
                       <div className="flex justify-between items-end">
@@ -1025,7 +1070,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           <p className="text-2xl font-black text-primary font-mono tracking-tighter tabular-nums drop-shadow-sm">
                             {formData.totalAmount.toLocaleString()}
                           </p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">VNĐ (Giá chưa bao gồm thuế)</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">
+                            VNĐ {formData.hasVat ? '(Giá đã bao gồm thuế VAT 8%)' : '(Giá chưa bao gồm thuế)'}
+                          </p>
                         </div>
                       </div>
                   </div>

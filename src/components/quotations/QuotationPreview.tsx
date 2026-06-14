@@ -609,9 +609,17 @@ export function QuotationPreview({
                       -{quotation.discount.toLocaleString()}
                     </td>
                   </tr>
+                  {quotation.hasVat && (
+                    <tr className="bg-gray-50 border-t border-black">
+                      <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
+                      <td className="p-2 text-right font-mono font-bold">
+                        {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
                   <tr className="bg-gray-100 border-t-2 border-black">
                     <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
-                       TỔNG GIÁ TRỊ THANH TOÁN (VNĐ)
+                       TỔNG GIÁ TRỊ THANH TOÁN {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
                     </td>
                     <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
                       {quotation.totalAmount.toLocaleString()}

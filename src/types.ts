@@ -176,6 +176,9 @@ export interface Quotation {
   imageUrls?: string[];
   consultedAt?: string;
   workshop?: string;
+  hasVat?: boolean;
+  vatRate?: number;
+  vatAmount?: number;
 }
 
 export interface ProductLibraryItem {

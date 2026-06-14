@@ -179,6 +179,10 @@ export const QuotationSchema = z.object({
   depositAmount: z.number().optional(),
   customerId: z.string().optional(),
   consultedAt: timestampSchema,
+  workshop: z.string().optional(),
+  hasVat: z.boolean().optional(),
+  vatRate: z.number().optional(),
+  vatAmount: z.number().optional(),
 });
 
 export const ProductLibraryItemSchema = z.object({
