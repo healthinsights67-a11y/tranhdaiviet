@@ -333,6 +333,26 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
             await updateDoc(doc(db, 'customers', updatedData.customerId), { 
               stage: 'completed'
             });
+            
+            // Sync Quotation status
+            try {
+              const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', updatedData.customerId));
+              const quotationSnap = await getDocs(quotationQ);
+              let hasUpdated = false;
+              for (const qDoc of quotationSnap.docs) {
+                const qData = qDoc.data();
+                if (qData.status !== 'accepted' && qData.status !== 'rejected') {
+                  await updateDoc(doc(db, 'quotations', qDoc.id), { status: 'accepted' });
+                  hasUpdated = true;
+                }
+              }
+              if (hasUpdated) {
+                queryClient.invalidateQueries({ queryKey: ['quotations'] });
+              }
+            } catch (err) {
+              console.error("Error syncing customer stage to quotations:", err);
+            }
+
             queryClient.invalidateQueries({ queryKey: ['customers'] });
             toast.success(`Đã tự động hoàn tất dự án cho: ${updatedData.customerName}`);
           }

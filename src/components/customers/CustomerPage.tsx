@@ -461,6 +461,32 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
         await updateDoc(doc(db, 'customers', id), updateData);
 
+        // Automated Workflow: Customer Stage -> Quotation Status Sync
+        if (existingStage !== selectedCustomer.stage && 
+            ['contracted', 'completed', 'lost'].includes(selectedCustomer.stage)) {
+          try {
+            const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', id));
+            const quotationSnap = await getDocs(quotationQ);
+            
+            let newQuotationStatus = '';
+            if (selectedCustomer.stage === 'contracted') newQuotationStatus = 'deposit';
+            else if (selectedCustomer.stage === 'completed') newQuotationStatus = 'accepted';
+            else if (selectedCustomer.stage === 'lost') newQuotationStatus = 'rejected';
+
+            if (newQuotationStatus) {
+              for (const qDoc of quotationSnap.docs) {
+                const qData = qDoc.data();
+                if (qData.status !== 'accepted' && qData.status !== 'rejected' && qData.status !== newQuotationStatus) {
+                  await updateDoc(doc(db, 'quotations', qDoc.id), { status: newQuotationStatus });
+                }
+              }
+              queryClient.invalidateQueries({ queryKey: ['quotations'] });
+            }
+          } catch (err) {
+            console.error("Error syncing customer stage to quotations:", err);
+          }
+        }
+
         // Push customer's tasks to current month (closing/accepted date)
         if ((selectedCustomer.stage === 'contracted' || selectedCustomer.stage === 'completed') && 
             existingStage !== 'contracted' && existingStage !== 'completed') {
