@@ -336,35 +336,39 @@ export function QuotationPreview({
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
 
-      // Convert canvas to blob (Use JPEG to avoid iOS PNG transparency bugs in Share Sheet)
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          toast.error("Không thể tạo tệp ảnh báo giá.");
-          setIsExporting(false);
-          return;
-        }
+      // Convert canvas to Data URL first (Safest method on iOS Safari to avoid toBlob bugs)
+      const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+      
+      // Convert Data URL to Blob
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
 
-        const file = new File([blob], `${getFileName()}.jpg`, { type: 'image/jpeg' });
-
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: `Báo giá ${getFileName()}`,
-              text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
-            });
-            toast.success("Chia sẻ báo giá thành công!");
-          } catch (err: any) {
-            if (err.name !== 'AbortError') {
-              console.error('Error sharing file:', err);
-              fallbackShare();
-            }
-          }
-        } else {
-          fallbackShare();
-        }
+      if (!blob) {
+        toast.error("Không thể tạo tệp ảnh báo giá.");
         setIsExporting(false);
-      }, 'image/jpeg', 1.0);
+        return;
+      }
+
+      const file = new File([blob], `${getFileName()}.jpg`, { type: 'image/jpeg' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Báo giá ${getFileName()}`,
+            text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
+          });
+          toast.success("Chia sẻ báo giá thành công!");
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            console.error('Error sharing file:', err);
+            fallbackShare();
+          }
+        }
+      } else {
+        fallbackShare();
+      }
+      setIsExporting(false);
 
     } catch (error) {
       console.error('Share Error:', error);
