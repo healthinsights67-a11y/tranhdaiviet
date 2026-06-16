@@ -174,6 +174,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     }
   };
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all'>('all');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
   );
@@ -701,6 +702,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
   const filteredCustomers = customers.filter(c => 
     (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
+    (selectedStage === 'all' || c.stage === selectedStage) &&
     (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
     (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.phone.includes(searchTerm) ||
@@ -1081,7 +1083,10 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         
         {/* Stages Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-1.5 md:gap-3">
-          <Card className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
+          <Card 
+            className={cn("border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group cursor-pointer transition-all hover:border-primary/50", selectedStage === 'all' && "ring-2 ring-primary border-primary")}
+            onClick={() => setSelectedStage('all')}
+          >
              <div className="absolute top-0 right-0 p-1 text-primary">
                 <Users className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
              </div>
@@ -1094,7 +1099,11 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           {Object.entries(STAGE_CONFIG).map(([key, config]) => {
             const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
             return (
-              <Card key={key} className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
+              <Card 
+                key={key} 
+                className={cn("border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group cursor-pointer transition-all hover:border-primary/50", selectedStage === key && "ring-2 ring-primary border-primary")}
+                onClick={() => setSelectedStage(key as CustomerStage)}
+              >
                  <div className={cn("absolute top-0 right-0 p-1", config.color.split(' ')[1])}>
                     <config.icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
                  </div>
