@@ -267,6 +267,9 @@ export function QuotationPreview({
       element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
       element.style.transform = "none";
 
+      // Allow Safari DOM to recalculate layout before cloning
+      await new Promise(resolve => setTimeout(resolve, 150));
+
       // 3. Render canvas with high resolution
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
@@ -318,6 +321,9 @@ export function QuotationPreview({
       element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
       element.style.transform = "none";
 
+      // Allow Safari DOM to recalculate layout before cloning
+      await new Promise(resolve => setTimeout(resolve, 150));
+
       // 3. Render canvas
       const canvas = await toCanvas(element, {
         pixelRatio: 2,
@@ -330,7 +336,7 @@ export function QuotationPreview({
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
 
-      // Convert canvas to blob
+      // Convert canvas to blob (Use JPEG to avoid iOS PNG transparency bugs in Share Sheet)
       canvas.toBlob(async (blob) => {
         if (!blob) {
           toast.error("Không thể tạo tệp ảnh báo giá.");
@@ -338,7 +344,7 @@ export function QuotationPreview({
           return;
         }
 
-        const file = new File([blob], `${getFileName()}.png`, { type: 'image/png' });
+        const file = new File([blob], `${getFileName()}.jpg`, { type: 'image/jpeg' });
 
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
@@ -358,7 +364,7 @@ export function QuotationPreview({
           fallbackShare();
         }
         setIsExporting(false);
-      }, 'image/png', 1.0);
+      }, 'image/jpeg', 1.0);
 
     } catch (error) {
       console.error('Share Error:', error);
@@ -380,29 +386,32 @@ export function QuotationPreview({
     element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
     element.style.transform = "none";
 
-    toCanvas(element, { 
-      pixelRatio: 2, 
-      backgroundColor: '#ffffff',
-      width: 794,
-      height: 1123
-    }).then((canvas) => {
-      // Restore styles
-      element.className = originalClassName;
-      element.style.transform = originalStyleTransform;
+    // Allow Safari DOM to recalculate
+    setTimeout(() => {
+      toCanvas(element, { 
+        pixelRatio: 2, 
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: 1123
+      }).then((canvas) => {
+        // Restore styles
+        element.className = originalClassName;
+        element.style.transform = originalStyleTransform;
 
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `${getFileName()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success("Đã tải ảnh báo giá thành công! Bạn có thể chọn ảnh này để gửi sang Zalo/Facebook.");
-    }).catch(err => {
-      console.error(err);
-      element.className = originalClassName;
-      element.style.transform = originalStyleTransform;
-      toast.error("Không hỗ trợ chia sẻ tự động trên trình duyệt này.");
-    });
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/jpeg', 1.0);
+        link.download = `${getFileName()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Đã tải ảnh báo giá thành công! Bạn có thể chọn ảnh này để gửi sang Zalo/Facebook.");
+      }).catch(err => {
+        console.error(err);
+        element.className = originalClassName;
+        element.style.transform = originalStyleTransform;
+        toast.error("Không hỗ trợ chia sẻ tự động trên trình duyệt này.");
+      });
+    }, 150);
   };
 
   const handleAccept = () => {
