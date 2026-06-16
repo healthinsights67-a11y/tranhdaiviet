@@ -284,19 +284,35 @@ export function QuotationPreview({
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
-      // Calculate dynamic PDF height based on aspect ratio to avoid squishing or cropping
+      const pdfWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const pdfWidth = 210; // A4 width in mm
-      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      // Calculate how high the entire image will be in the PDF
+      const pdfTotalHeight = (imgHeight * pdfWidth) / imgWidth;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [pdfWidth, Math.max(297, pdfHeight)] // Make PDF page as long as needed
+        format: 'a4'
       });
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = pdfTotalHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfTotalHeight);
+      heightLeft -= pageHeight;
+
+      // Add subsequent pages if the content overflows A4
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfTotalHeight);
+        heightLeft -= pageHeight;
+      }
+
       pdf.save(`${getFileName()}.pdf`);
       
       toast.success("Đã tải xuống PDF thành công");
