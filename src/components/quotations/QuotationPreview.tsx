@@ -272,7 +272,7 @@ export function QuotationPreview({
 
       // 3. Render canvas with high resolution, capturing full height
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5, // Reduced from 2 to prevent iOS Safari canvas memory limit crashes on long invoices
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false
@@ -345,7 +345,7 @@ export function QuotationPreview({
 
       // 3. Render canvas
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5, // Reduced to prevent iOS Safari memory crash on very long invoices
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false
@@ -420,7 +420,7 @@ export function QuotationPreview({
     // Allow Safari DOM to recalculate
     setTimeout(() => {
       html2canvas(element, { 
-        scale: 2, 
+        scale: 1.5, 
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false
