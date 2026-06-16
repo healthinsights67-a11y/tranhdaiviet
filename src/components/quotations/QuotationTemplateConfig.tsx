@@ -110,8 +110,8 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Kích thước ảnh quá lớn (tối đa 5MB)');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Kích thước ảnh quá lớn (tối đa 10MB)');
       return;
     }
 
@@ -119,56 +119,15 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
     
     try {
       setUploading(true);
-      
-      // Convert image to Base64 locally to avoid any CORS issues later when printing
-      const reader = new FileReader();
-      reader.onloadend = () => {
-         const img = new Image();
-         img.onload = () => {
-            const canvas = document.createElement('canvas');
-            // Limit size to prevent Firestore document limits (1MB)
-            const MAX_WIDTH = field === 'logoUrl' ? 600 : 400;
-            const MAX_HEIGHT = field === 'logoUrl' ? 600 : 400;
-            let width = img.width;
-            let height = img.height;
-
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-              }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width *= MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
-              }
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0, width, height);
-            
-            // Get base64 string as PNG to preserve transparency
-            const base64String = canvas.toDataURL('image/png');
-            
-            // Check approximate size (must be under ~800KB for safety)
-            if (base64String.length > 800 * 1024) {
-               toast.error('Ảnh sau khi xử lý vẫn quá lớn. Vui lòng chọn ảnh đơn giản hơn hoặc nén ảnh trước khi tải lên.');
-               setUploading(false);
-               return;
-            }
-
-            handleChange(field, base64String);
-            toast.success(`Đã xử lý và lưu ảnh ${field === 'logoUrl' ? 'Logo' : 'QR Code'} thành công!`);
-            setUploading(false);
-         };
-         img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
+      const url = await uploadToImgBB(file);
+      if (url) {
+        handleChange(field, url);
+        toast.success(`Tải ảnh ${field === 'logoUrl' ? 'Logo' : 'QR Code'} lên thành công!`);
+      }
     } catch (error) {
       console.error('Lỗi khi tải ảnh:', error);
-      toast.error('Có lỗi xảy ra khi xử lý ảnh.');
+      toast.error('Có lỗi xảy ra khi tải ảnh lên.');
+    } finally {
       setUploading(false);
     }
   };
