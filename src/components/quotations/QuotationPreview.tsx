@@ -135,7 +135,9 @@ export function QuotationPreview({
         console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
         try {
           // Fallback to our own internal API proxy which guarantees 100% success rate without rate limits
-          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+          // We MUST add a cache-buster here because Safari has a bug where images served from disk cache 
+          // lose their CORS status and taint the canvas on the second export.
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
           const proxyResponse = await fetch(proxyUrl);
           if (!proxyResponse.ok) throw new Error('Internal Proxy failed');
           const proxyBlob = await proxyResponse.blob();
