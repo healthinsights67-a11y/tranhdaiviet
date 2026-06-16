@@ -9,7 +9,9 @@ import {
   FileText,
   CheckCircle2,
   Loader2,
-  Pencil
+  Pencil,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +69,17 @@ export function QuotationPreview({
   const [imagesLoading, setImagesLoading] = React.useState<boolean>(true);
   const [shareImageUrl, setShareImageUrl] = React.useState<string>('');
   const [isShareModalOpen, setIsShareModalOpen] = React.useState<boolean>(false);
+  const [zoom, setZoom] = React.useState<number>(1);
+  const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 640) setZoom(0.45);
+      else if (window.innerWidth < 768) setZoom(0.7);
+      else if (window.innerWidth < 1024) setZoom(0.85);
+      else setZoom(1);
+    }
+  }, [isOpen]);
 
   const { data: dbConfig } = useQuery<QuotationTemplate>({
     queryKey: ['quotation_template_config'],
@@ -166,7 +179,11 @@ export function QuotationPreview({
       const promises = [];
       if (template.logoUrl) promises.push(fetchAsDataUrl(template.logoUrl, setLogoDataUrl));
       if (template.qrCodeUrl) promises.push(fetchAsDataUrl(template.qrCodeUrl, setQrCodeDataUrl));
-      await Promise.all(promises);
+      if (template.companyWebsite) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(template.companyWebsite)}&margin=0`;
+        promises.push(fetchAsDataUrl(qrUrl, setWebsiteQrCodeDataUrl));
+      }
+      await Promise.allSettled(promises);
       setImagesLoading(false);
     };
 
@@ -578,6 +595,18 @@ export function QuotationPreview({
               <span className="sm:hidden">Sửa</span>
             </Button>
             
+            <div className="flex items-center mx-1 border-2 border-gray-100 rounded-md overflow-hidden bg-white">
+               <button type="button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="h-8 md:h-10 px-2 md:px-3 text-gray-500 hover:bg-gray-100 transition-colors" title="Thu nhỏ">
+                  <ZoomOut className="h-4 w-4" />
+               </button>
+               <div className="w-8 md:w-12 text-center text-[10px] md:text-xs font-bold text-gray-700 bg-gray-50 h-8 md:h-10 flex items-center justify-center border-x border-gray-100">
+                  {Math.round(zoom * 100)}%
+               </div>
+               <button type="button" onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="h-8 md:h-10 px-2 md:px-3 text-gray-500 hover:bg-gray-100 transition-colors" title="Phóng to">
+                  <ZoomIn className="h-4 w-4" />
+               </button>
+            </div>
+
             <Button 
                variant="outline" 
                size="sm" 
@@ -617,16 +646,24 @@ export function QuotationPreview({
         </DialogHeader>
 
         <div className="flex-1 bg-gray-100 overflow-auto custom-scrollbar flex justify-center items-start p-4">
-          <div className="p-2 md:p-8 w-full min-w-max flex justify-center">
+          <div className="p-2 md:p-8 w-full min-w-max flex justify-center h-fit">
             <div 
-              ref={printRef}
-              className="bg-white text-black shadow-2xl p-[10mm] min-h-[297mm] w-[210mm] ring-1 ring-gray-200 relative overflow-hidden print:shadow-none print:p-0 print:m-0 origin-top transform scale-[0.45] sm:scale-[0.7] md:scale-[0.85] lg:scale-100 transition-transform"
-              style={{ width: '210mm', minHeight: '297mm', padding: '10mm', background: '#ffffff', color: '#000000' }}
+              className="origin-top transition-transform"
+              style={{ transform: `scale(${zoom})` }}
             >
-            {/* Background Texture Element */}
-            <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none select-none print:hidden">
-                <FileText className="h-64 w-64 rotate-12" />
-            </div>
+              <div 
+                ref={printRef}
+                className="bg-white text-black shadow-2xl p-[10mm] min-h-[297mm] w-[210mm] ring-1 ring-gray-200 relative overflow-visible print:shadow-none print:p-0 print:m-0"
+                style={{ width: '210mm', minHeight: '297mm', padding: '10mm', background: '#ffffff', color: '#000000' }}
+              >
+              {/* Background Texture Element */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none print:hidden z-0">
+                  {logoDataUrl || template.logoUrl ? (
+                    <img src={logoDataUrl || template.logoUrl} crossOrigin="anonymous" className="w-[70%] max-w-[500px] object-contain grayscale" alt="Watermark" />
+                  ) : (
+                    <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">{template.companyName}</div>
+                  )}
+              </div>
 
             <div className="text-black font-serif text-[12px] leading-snug relative z-10 w-full">
               {/* Header Table */}
@@ -687,7 +724,7 @@ export function QuotationPreview({
               </table>
 
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
-                Kính gửi: I NỘI THẤT xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi báo giá thi công thực tế như sau:
+                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi báo giá thi công thực tế như sau:
               </div>
 
               {/* Customer Information Grid Style */}
@@ -850,8 +887,19 @@ export function QuotationPreview({
               </div>
 
               {/* System Footer */}
-              <div className="mt-8 pt-4 text-center">
-                <p className="text-[7.5px] text-gray-300 font-mono tracking-[0.5em] uppercase italic">Hệ thống quản lý I NỘI THẤT — Mã hồ sơ: {quotation.id.slice(0, 10).toUpperCase()}</p>
+              <div className="mt-8 pt-4 flex flex-col items-center justify-center text-center">
+                {template.companyWebsite && (
+                  <div className="mb-2 flex flex-col items-center">
+                    {websiteQrCodeDataUrl ? (
+                      <img src={websiteQrCodeDataUrl} crossOrigin="anonymous" alt="Website QR Code" className="w-12 h-12 object-contain mix-blend-multiply opacity-80" />
+                    ) : (
+                      <div className="w-12 h-12 border border-dashed border-gray-300 flex items-center justify-center text-[5px] text-gray-400">QR CODE</div>
+                    )}
+                    <span className="text-[6px] uppercase tracking-widest text-gray-400 mt-1 font-bold">Truy cập Website</span>
+                  </div>
+                )}
+                <p className="text-[7.5px] text-gray-300 font-mono tracking-[0.5em] uppercase italic">Hệ thống quản lý {template.companyName.toUpperCase()} — Mã hồ sơ: {quotation.id.slice(0, 10).toUpperCase()}</p>
+              </div>
               </div>
             </div>
           </div>
