@@ -291,7 +291,15 @@ export function QuotationPreview({
       const imgHeight = canvas.height;
       
       // Calculate how high the entire image will be in the PDF
-      const pdfTotalHeight = (imgHeight * pdfWidth) / imgWidth;
+      let pdfImageWidth = pdfWidth;
+      let pdfImageHeight = (imgHeight * pdfWidth) / imgWidth;
+
+      // Ensure it fits exactly on 1 page by scaling down if needed
+      if (pdfImageHeight > pageHeight) {
+        const ratio = pageHeight / pdfImageHeight;
+        pdfImageHeight = pageHeight;
+        pdfImageWidth = pdfWidth * ratio;
+      }
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -299,20 +307,10 @@ export function QuotationPreview({
         format: 'a4'
       });
 
-      let heightLeft = pdfTotalHeight;
-      let position = 0;
+      // Center horizontally if it was scaled down
+      const xOffset = (pdfWidth - pdfImageWidth) / 2;
 
-      // Add first page
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfTotalHeight);
-      heightLeft -= pageHeight;
-
-      // Add subsequent pages if the content overflows A4
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfTotalHeight);
-        heightLeft -= pageHeight;
-      }
+      pdf.addImage(imgData, 'JPEG', xOffset, 0, pdfImageWidth, pdfImageHeight);
 
       pdf.save(`${getFileName()}.pdf`);
       
