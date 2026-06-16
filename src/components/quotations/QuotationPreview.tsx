@@ -24,7 +24,7 @@ import { Quotation, Member } from '@/src/types';
 import { format } from 'date-fns';
 import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toCanvas, toJpeg } from 'html-to-image';
 import { toast } from 'sonner';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
 import { cn } from '@/src/lib/utils';
@@ -274,11 +274,9 @@ export function QuotationPreview({
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // 3. Render canvas with high resolution, capturing full height
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Reduced from 2 to prevent iOS Safari canvas memory limit crashes on long invoices
+      const canvas = await toCanvas(element, {
+        pixelRatio: 1.5, // Reduced to prevent iOS Safari memory crashes on long invoices
         backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false
       });
 
       // 4. Restore original styles immediately
@@ -351,23 +349,20 @@ export function QuotationPreview({
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 3. Render canvas
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Reduced to prevent iOS Safari memory crash on very long invoices
+      // 3. Render image directly to Data URL
+      const dataUrl = await toJpeg(element, {
+        pixelRatio: 1.5, // Reduced to prevent iOS Safari memory crash on very long invoices
         backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false
+        quality: 1.0
       });
 
       // 4. Restore original styles immediately
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
       stylesReset = false;
-
-      // Convert canvas to Data URL first (Safest method on iOS Safari to avoid toBlob bugs)
-      const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+      
       if (!dataUrl || !dataUrl.startsWith('data:')) {
-        throw new Error('Không thể chuyển đổi canvas thành dữ liệu ảnh.');
+        throw new Error('Không thể tạo dữ liệu ảnh từ nội dung.');
       }
       
       try {
@@ -475,17 +470,15 @@ export function QuotationPreview({
 
     // Allow Safari DOM to recalculate
     setTimeout(() => {
-      html2canvas(element, { 
-        scale: 1.5, 
+      toJpeg(element, { 
+        pixelRatio: 1.5, 
         backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false
-      }).then((canvas) => {
+        quality: 1.0
+      }).then((dataUrl) => {
         // Restore styles
         element.className = originalClassName;
         element.style.transform = originalStyleTransform;
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
         triggerFallbackWithData(dataUrl);
       }).catch(err => {
         console.error(err);
