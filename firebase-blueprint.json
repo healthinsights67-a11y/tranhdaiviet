@@ -22,7 +22,7 @@
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "address": { "type": "string" },
-        "stage": { "type": "string", "enum": ["consulting", "surveying", "contracted", "lost"], "description": "Giai đoạn: Đã tư vấn, Đã đo đạc, Đã chốt, Tạm dừng" },
+        "stage": { "type": "string", "enum": ["consulting", "surveying", "contracted", "lost"], "description": "Giai đoạn: Đã tư vấn, Đã đo đạc, Chốt Cọc, Tạm dừng" },
         "notes": { "type": "string" },
         "assignedSaleId": { "type": "string" },
         "orderValue": { "type": "number" },

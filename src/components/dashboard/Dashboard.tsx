@@ -393,7 +393,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
                          <Badge variant={project.stage === 'completed' ? 'default' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
                            {project.stage === 'completed' ? 'Hoàn thành' : 
                             project.stage === 'installation' ? 'Lắp đặt' : 
-                            project.stage === 'production' ? 'Sản xuất' : 'Đã chốt'}
+                            project.stage === 'production' ? 'Sản xuất' : 'Chốt Cọc'}
                          </Badge>
                          <p className="text-[10px] font-mono mt-1 font-semibold">{formatVNTime(project.createdAt)}</p>
                        </div>
@@ -438,7 +438,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
                              )}>
                                {customer.stage === 'consulting' ? 'Đã tư vấn' :
                                 customer.stage === 'surveying' ? 'Đã đo đạc' :
-                                customer.stage === 'contracted' ? 'Đã chốt' : 'Tạm dừng'}
+                                customer.stage === 'contracted' ? 'Chốt Cọc' : 'Tạm dừng'}
                              </Badge>
                            </div>
                            <div className="flex items-center gap-2 mt-0.5">

@@ -76,7 +76,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   consulting: 'Đã tư vấn',
   surveying: 'Đã đo đạc',
-  contracted: 'Đã chốt',
+  contracted: 'Chốt Cọc',
   production: 'Sản xuất',
   installation: 'Lắp đặt',
   completed: 'Hoàn thành',

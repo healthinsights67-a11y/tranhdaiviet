@@ -359,7 +359,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       }
       
       const designerName = members.find(m => m.id === targetDesignerId)?.name || 'Nhân viên';
-      toast.success(`Hợp đồng đã chốt! Đã giao việc thiết kế cho ${designerName}`);
+      toast.success(`Hợp đồng Chốt Cọc! Đã giao việc thiết kế cho ${designerName}`);
       setPendingDesignTask(null);
       setTargetDesignerId('');
     } catch (error: any) {
@@ -492,7 +492,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       if (status === 'deposit' && prevStatus === 'deposit') {
         toast.success("Đã cập nhật số tiền cọc");
       } else {
-        toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Đã chốt' : status === 'deposit' ? 'Đã cọc' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
+        toast.success(`Đã chuyển trạng thái sang: ${status === 'accepted' ? 'Chốt Cọc' : status === 'deposit' ? 'Đã cọc' : status === 'sent' ? 'Đã gửi' : 'Từ chối'}`);
       }
       
       // Update selected quotation if it's currently being previewed
@@ -635,7 +635,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
               {[
                 { label: 'Tổng báo giá', value: quotations.length, icon: FileText, color: 'bg-primary' },
-                { label: 'Đã chốt', value: quotations.filter(q => q.status === 'accepted').length, icon: CheckCircle2, color: 'bg-emerald-500' },
+                { label: 'Chốt Cọc', value: quotations.filter(q => q.status === 'accepted').length, icon: CheckCircle2, color: 'bg-emerald-500' },
                 { label: 'Đã cọc', value: quotations.filter(q => q.status === 'deposit').length, icon: Clock, color: 'bg-purple-500' },
                 { label: 'Doanh thu', value: `${(quotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((acc, q) => acc + q.totalAmount, 0) / 1000000).toFixed(1)}M`, icon: TrendingDown, color: 'bg-amber-500' },
               ].map((stat, i) => (
@@ -697,7 +697,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                           <SelectItem value="all">Tất cả trạng thái</SelectItem>
                           <SelectItem value="draft">Bản nháp</SelectItem>
                           <SelectItem value="sent">Đã gửi</SelectItem>
-                          <SelectItem value="accepted">Đã chốt</SelectItem>
+                          <SelectItem value="accepted">Chốt Cọc</SelectItem>
                           <SelectItem value="deposit">Đã cọc</SelectItem>
                           <SelectItem value="rejected">Từ chối</SelectItem>
                         </SelectContent>
@@ -771,7 +771,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                          {status === 'all' ? 'Tất cả hồ sơ' : 
                           status === 'draft' ? 'Bản nháp' :
                           status === 'sent' ? 'Đã gửi khách' :
-                          status === 'accepted' ? 'Đã chốt' : 
+                          status === 'accepted' ? 'Chốt Cọc' : 
                           status === 'deposit' ? 'Đã cọc' : 'Từ chối'}
                         </button>
                      ))}

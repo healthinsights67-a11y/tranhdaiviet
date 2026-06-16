@@ -556,7 +556,7 @@ export function QuotationPreview({
               <div className="flex items-center gap-2 flex-wrap mt-0.5">
                 <span className="text-[8px] md:text-[10px] font-bold text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">{quotation.quotationNumber}</span>
                 {quotation.status === 'accepted' && (
-                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[8px] md:text-[9px] h-3.5 md:h-4">Đã chốt</Badge>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[8px] md:text-[9px] h-3.5 md:h-4">Chốt Cọc</Badge>
                 )}
                 {quotation.status === 'deposit' && (
                   <Badge className="bg-purple-500 hover:bg-purple-600 text-[8px] md:text-[9px] h-3.5 md:h-4">Đã cọc</Badge>
