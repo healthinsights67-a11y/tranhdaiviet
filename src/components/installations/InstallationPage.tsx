@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType, collection, getDocs, query } from '@/src/lib/firebase';
+import { doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, getDoc, db, handleFirestoreError, OperationType, collection, getDocs, query, where } from '@/src/lib/firebase';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { z } from 'zod';
 import { InstallationScheduleSchema } from '@/src/schemas';

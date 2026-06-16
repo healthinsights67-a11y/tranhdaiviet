@@ -126,7 +126,7 @@ export const fetchSystemSettings = async (): Promise<SystemSettings> => {
     }
     return { id: 'system' }; // Return empty settings if not found
   } catch (error) {
-    handleFirestoreError(error, OperationType.READ, 'settings');
+    handleFirestoreError(error, OperationType.GET, 'settings');
     return { id: 'system' };
   }
 };

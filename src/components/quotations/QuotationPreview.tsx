@@ -17,7 +17,8 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Quotation, Member } from '@/src/types';
 import { format } from 'date-fns';
@@ -64,6 +65,8 @@ export function QuotationPreview({
   const [logoDataUrl, setLogoDataUrl] = React.useState<string>('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string>('');
   const [imagesLoading, setImagesLoading] = React.useState<boolean>(true);
+  const [shareImageUrl, setShareImageUrl] = React.useState<string>('');
+  const [isShareModalOpen, setIsShareModalOpen] = React.useState<boolean>(false);
 
   const { data: dbConfig } = useQuery<QuotationTemplate>({
     queryKey: ['quotation_template_config'],
@@ -328,17 +331,22 @@ export function QuotationPreview({
     const element = printRef.current;
     if (!element) return;
 
+    let originalClassName = element.className;
+    let originalStyleTransform = element.style.transform;
+    let stylesReset = false;
+
     try {
       setIsExporting(true);
       toast.info("Đang khởi tạo tệp ảnh báo giá...");
 
       // 1. Save original styles and classes
-      const originalClassName = element.className;
-      const originalStyleTransform = element.style.transform;
+      originalClassName = element.className;
+      originalStyleTransform = element.style.transform;
 
       // 2. Temporarily reset styles to allow full height rendering
       element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-visible";
       element.style.transform = "none";
+      stylesReset = true;
 
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -354,58 +362,106 @@ export function QuotationPreview({
       // 4. Restore original styles immediately
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
+      stylesReset = false;
 
       // Convert canvas to Data URL first (Safest method on iOS Safari to avoid toBlob bugs)
       const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+      if (!dataUrl || !dataUrl.startsWith('data:')) {
+        throw new Error('Không thể chuyển đổi canvas thành dữ liệu ảnh.');
+      }
       
-      // Convert Data URL to Blob manually to avoid iOS Safari fetch() URL length limits
-      const arr = dataUrl.split(',');
-      const mimeMatch = arr[0].match(/:(.*?);/);
-      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-      }
-      const blob = new Blob([u8arr], { type: mime });
-
-      if (!blob) {
-        toast.error("Không thể tạo tệp ảnh báo giá.");
-        setIsExporting(false);
-        return;
-      }
-
-      const file = new File([blob], `${getFileName()}.jpg`, { type: 'image/jpeg' });
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: `Báo giá ${getFileName()}`,
-            text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
-          });
-          toast.success("Chia sẻ báo giá thành công!");
-        } catch (err: any) {
-          if (err.name !== 'AbortError') {
-            console.error('Error sharing file:', err);
-            fallbackShare();
-          }
+      try {
+        const arr = dataUrl.split(',');
+        if (arr.length < 2) {
+          throw new Error('Dữ liệu ảnh canvas không đúng định dạng.');
         }
-      } else {
-        fallbackShare();
+
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+
+        if (!blob) {
+          throw new Error("Không thể tạo tệp ảnh blob từ canvas.");
+        }
+
+        const file = new File([blob], `${getFileName()}.jpg`, { type: 'image/jpeg' });
+
+        // Wrap in try-catch to protect against browser canShare quirks in WebView / Zalo
+        let canShareFiles = false;
+        try {
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            canShareFiles = true;
+          }
+        } catch (shareCheckError) {
+          console.warn('Browser threw error when checking navigator.canShare:', shareCheckError);
+        }
+
+        if (canShareFiles) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Báo giá ${getFileName()}`,
+              text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
+            });
+            toast.success("Chia sẻ báo giá thành công!");
+          } catch (err: any) {
+            if (err.name !== 'AbortError') {
+              console.error('Error sharing file:', err);
+              fallbackShare(dataUrl);
+            }
+          }
+        } else {
+          fallbackShare(dataUrl);
+        }
+      } catch (fileError: any) {
+        console.warn('File constructor or blob generation failed, using fallback mode:', fileError);
+        fallbackShare(dataUrl);
       }
       setIsExporting(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Share Error:', error);
-      toast.error("Gặp lỗi trong quá trình chia sẻ báo giá.");
+      // Restore styles if they were reset and not yet restored
+      if (stylesReset) {
+        element.className = originalClassName;
+        element.style.transform = originalStyleTransform;
+      }
+      toast.error(`Gặp lỗi trong quá trình chia sẻ báo giá: ${error?.message || error?.toString() || 'Lỗi hệ thống'}`);
       setIsExporting(false);
     }
   };
 
-  const fallbackShare = () => {
-    toast.info("Trình duyệt không hỗ trợ chia sẻ tệp trực tiếp. Đang tải ảnh xuống để bạn gửi thủ công...");
+  const fallbackShare = (customDataUrl?: string) => {
+    const triggerFallbackWithData = (dataUrl: string) => {
+      setShareImageUrl(dataUrl);
+      setIsShareModalOpen(true);
+      
+      // Also try to download automatically for standard browsers
+      try {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${getFileName()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Đã chuẩn bị ảnh gửi qua Zalo! Nếu ảnh chưa được tải về máy, vui lòng chạm giữ ảnh phía dưới để lưu.");
+      } catch (err) {
+        console.warn("Auto-download failed:", err);
+      }
+    };
+
+    if (customDataUrl) {
+      triggerFallbackWithData(customDataUrl);
+      return;
+    }
+
+    toast.info("Đang chuẩn bị ảnh báo giá...");
     const element = printRef.current;
     if (!element) return;
     
@@ -413,8 +469,8 @@ export function QuotationPreview({
     const originalClassName = element.className;
     const originalStyleTransform = element.style.transform;
 
-    // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
-    element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+    // 2. Temporarily reset styles to allow full height rendering
+    element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-visible";
     element.style.transform = "none";
 
     // Allow Safari DOM to recalculate
@@ -429,18 +485,13 @@ export function QuotationPreview({
         element.className = originalClassName;
         element.style.transform = originalStyleTransform;
 
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/jpeg', 1.0);
-        link.download = `${getFileName()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success("Đã tải ảnh báo giá thành công! Bạn có thể chọn ảnh này để gửi sang Zalo/Facebook.");
+        const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+        triggerFallbackWithData(dataUrl);
       }).catch(err => {
         console.error(err);
         element.className = originalClassName;
         element.style.transform = originalStyleTransform;
-        toast.error("Không hỗ trợ chia sẻ tự động trên trình duyệt này.");
+        toast.error("Không thể tạo ảnh báo giá. Vui lòng thử lại hoặc dùng nút Tải PDF.");
       });
     }, 150);
   };
@@ -452,7 +503,8 @@ export function QuotationPreview({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-card text-card-foreground border border-gray-200 shadow-2xl">
         <DialogHeader className="p-3 md:p-6 border-b bg-gray-50 flex flex-row items-center justify-between shrink-0">
           <div className="flex items-center gap-2 md:gap-3 flex-wrap">
@@ -593,7 +645,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-[30%] p-2 text-center align-middle border-r-2 border-black">
                        <div className="flex flex-col items-center justify-center h-[80px]">
                           {template.logoUrl ? (
-                            <img src={logoDataUrl || template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" style={{ height: '80px', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
+                            <img src={logoDataUrl || template.logoUrl} crossOrigin="anonymous" alt="Logo" className="max-h-full max-w-full object-contain" style={{ height: '80px', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
                           ) : (
                             <>
                               <div className="flex items-baseline leading-none">
@@ -620,7 +672,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-20 p-1 text-center align-middle">
                       {template.qrCodeUrl ? (
                          <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                           <img src={qrCodeDataUrl || template.qrCodeUrl} className="max-h-full max-w-full object-contain" alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            <img src={qrCodeDataUrl || template.qrCodeUrl} crossOrigin="anonymous" className="max-h-full max-w-full object-contain" alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                       ) : (
                         <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400 font-bold uppercase tracking-tighter mx-auto">QR CODE</div>
@@ -773,7 +825,7 @@ export function QuotationPreview({
                        </div>
                        {template.qrCodeUrl && (
                          <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
-                           <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            <img src={qrCodeDataUrl || template.qrCodeUrl} crossOrigin="anonymous" alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                        )}
                     </div>
@@ -816,5 +868,40 @@ export function QuotationPreview({
       </div>
     </DialogContent>
     </Dialog>
+
+    {/* Fallback Share Dialog */}
+    <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+      <DialogContent className="max-w-md w-[90vw] rounded-2xl p-4 bg-card text-card-foreground border border-gray-200 shadow-xl flex flex-col items-center">
+        <DialogHeader className="w-full text-center pb-2 border-b">
+          <DialogTitle className="text-base font-bold text-center w-full">Gửi Báo Giá</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-3 my-4 w-full">
+          <p className="text-xs text-center text-slate-500 font-medium px-2">
+            Trình duyệt không hỗ trợ chia sẻ tự động. <br />
+            <strong className="text-primary">Chạm giữ vào ảnh bên dưới</strong> rồi chọn <strong className="text-primary">"Lưu ảnh"</strong> hoặc <strong className="text-primary">"Chia sẻ"</strong> để gửi sang Zalo.
+          </p>
+          {shareImageUrl ? (
+            <div className="border border-slate-200 rounded-xl overflow-y-auto max-h-[50vh] w-full bg-slate-50 shadow-inner p-2 flex justify-center">
+              <img 
+                src={shareImageUrl} 
+                alt="Báo giá" 
+                className="w-full h-auto object-contain rounded-lg max-w-[280px]" 
+                style={{ userSelect: 'auto', WebkitUserSelect: 'auto' }} 
+              />
+            </div>
+          ) : (
+            <div className="h-40 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+        </div>
+        <DialogFooter className="w-full flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setIsShareModalOpen(false)} className="w-full font-bold">
+            Đóng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

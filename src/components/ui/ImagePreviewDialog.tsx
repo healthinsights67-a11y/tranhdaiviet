@@ -68,7 +68,16 @@ export function ImagePreviewDialog({
       const file = new File([blob], `i_noi_that_${Date.now()}.${extension}`, { type: blob.type || 'image/png' });
 
       // 2. Check if file sharing is supported natively
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      let canShareFiles = false;
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          canShareFiles = true;
+        }
+      } catch (shareCheckError) {
+        console.warn('Browser threw error when checking navigator.canShare:', shareCheckError);
+      }
+
+      if (canShareFiles) {
         await navigator.share({
           files: [file],
           title: 'Chia sẻ hình ảnh mẫu',
