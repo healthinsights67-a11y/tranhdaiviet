@@ -71,6 +71,35 @@ export function QuotationPreview({
   const [isShareModalOpen, setIsShareModalOpen] = React.useState<boolean>(false);
   const [zoom, setZoom] = React.useState<number>(1);
   const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
+  
+  // Pinch to zoom state
+  const touchStartRef = React.useRef<{ distance: number; zoom: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchStartRef.current = { distance: dist, zoom: zoom };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartRef.current) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scale = dist / touchStartRef.current.distance;
+      const newZoom = Math.min(2, Math.max(0.3, touchStartRef.current.zoom * scale));
+      setZoom(newZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -514,8 +543,8 @@ export function QuotationPreview({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-card text-card-foreground border border-gray-200 shadow-2xl">
-        <DialogHeader className="p-3 md:p-6 border-b bg-gray-50 flex flex-row items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+        <DialogHeader className="p-3 md:p-6 border-b bg-gray-50 flex flex-col xl:flex-row items-start xl:items-center justify-between shrink-0 gap-3 xl:gap-0">
+          <div className="flex items-start md:items-center gap-2 md:gap-3 flex-wrap w-full xl:w-auto">
             <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-blue-50 flex items-center justify-center text-primary shrink-0">
               <Eye className="h-4 w-4 md:h-6 md:w-6" />
             </div>
@@ -588,7 +617,7 @@ export function QuotationPreview({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 md:gap-2 pr-2 md:pr-8">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 w-full xl:w-auto pb-1 md:pb-0">
             <Button variant="outline" size="sm" onClick={onEdit} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-blue-600 border-blue-100 hover:bg-blue-50 text-[10px] md:text-sm">
               <Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Chỉnh sửa</span>
@@ -645,7 +674,12 @@ export function QuotationPreview({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 bg-gray-100 overflow-auto custom-scrollbar flex justify-center items-start p-4">
+        <div 
+          className="flex-1 bg-gray-100 overflow-auto custom-scrollbar flex justify-center items-start p-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="p-2 md:p-8 w-full min-w-max flex justify-center h-fit">
             <div 
               className="origin-top transition-transform"
