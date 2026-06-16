@@ -263,19 +263,17 @@ export function QuotationPreview({
       const originalClassName = element.className;
       const originalStyleTransform = element.style.transform;
 
-      // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
-      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+      // 2. Temporarily reset styles to allow full height rendering
+      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-visible";
       element.style.transform = "none";
 
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 3. Render canvas with high resolution
+      // 3. Render canvas with high resolution, capturing full height
       const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: '#ffffff',
-        width: 794,
-        height: 1123,
         useCORS: true,
         logging: false
       });
@@ -285,16 +283,19 @@ export function QuotationPreview({
       element.style.transform = originalStyleTransform;
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
+      // Calculate dynamic PDF height based on aspect ratio to avoid squishing or cropping
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: [pdfWidth, Math.max(297, pdfHeight)] // Make PDF page as long as needed
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // Fit A4 exactly
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${getFileName()}.pdf`);
       
@@ -319,8 +320,8 @@ export function QuotationPreview({
       const originalClassName = element.className;
       const originalStyleTransform = element.style.transform;
 
-      // 2. Temporarily reset styles to force A4 rendering at 1:1 scale
-      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-hidden";
+      // 2. Temporarily reset styles to allow full height rendering
+      element.className = "bg-white text-black p-[10mm] w-[210mm] relative overflow-visible";
       element.style.transform = "none";
 
       // Allow Safari DOM to recalculate layout before cloning
@@ -330,8 +331,6 @@ export function QuotationPreview({
       const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: '#ffffff',
-        width: 794,
-        height: 1123,
         useCORS: true,
         logging: false
       });
@@ -399,8 +398,6 @@ export function QuotationPreview({
       html2canvas(element, { 
         scale: 2, 
         backgroundColor: '#ffffff',
-        width: 794,
-        height: 1123,
         useCORS: true,
         logging: false
       }).then((canvas) => {
