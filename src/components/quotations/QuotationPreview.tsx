@@ -342,9 +342,17 @@ export function QuotationPreview({
       // Convert canvas to Data URL first (Safest method on iOS Safari to avoid toBlob bugs)
       const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
       
-      // Convert Data URL to Blob
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      // Convert Data URL to Blob manually to avoid iOS Safari fetch() URL length limits
+      const arr = dataUrl.split(',');
+      const mimeMatch = arr[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
 
       if (!blob) {
         toast.error("Không thể tạo tệp ảnh báo giá.");
