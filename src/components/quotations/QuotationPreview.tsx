@@ -23,7 +23,7 @@ import { Quotation, Member } from '@/src/types';
 import { format } from 'date-fns';
 import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
-import { toCanvas } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
 import { cn } from '@/src/lib/utils';
@@ -271,11 +271,13 @@ export function QuotationPreview({
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // 3. Render canvas with high resolution
-      const canvas = await toCanvas(element, {
-        pixelRatio: 2,
+      const canvas = await html2canvas(element, {
+        scale: 2,
         backgroundColor: '#ffffff',
         width: 794,
-        height: 1123
+        height: 1123,
+        useCORS: true,
+        logging: false
       });
 
       // 4. Restore original styles immediately
@@ -325,11 +327,13 @@ export function QuotationPreview({
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // 3. Render canvas
-      const canvas = await toCanvas(element, {
-        pixelRatio: 2,
+      const canvas = await html2canvas(element, {
+        scale: 2,
         backgroundColor: '#ffffff',
         width: 794,
-        height: 1123
+        height: 1123,
+        useCORS: true,
+        logging: false
       });
 
       // 4. Restore original styles immediately
@@ -392,11 +396,13 @@ export function QuotationPreview({
 
     // Allow Safari DOM to recalculate
     setTimeout(() => {
-      toCanvas(element, { 
-        pixelRatio: 2, 
+      html2canvas(element, { 
+        scale: 2, 
         backgroundColor: '#ffffff',
         width: 794,
-        height: 1123
+        height: 1123,
+        useCORS: true,
+        logging: false
       }).then((canvas) => {
         // Restore styles
         element.className = originalClassName;
