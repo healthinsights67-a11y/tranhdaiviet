@@ -708,28 +708,28 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ thi công sản xuất & lắp đặt thực tế.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 px-2">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 px-2">
         <Card className="rounded-xl border bg-card hover:shadow-md transition-all">
-          <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Đang sx</CardTitle>
+          <CardHeader className="p-2 sm:p-3 pb-0 sm:pb-1">
+            <CardTitle className="text-[7.5px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-tight">Đang sx</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-2 sm:p-3 pt-1 sm:pt-0 pb-2 sm:pb-3">
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-extrabold text-blue-600">
+              <div className="text-xl sm:text-2xl font-extrabold text-blue-600">
                 {customers.filter(c => c.stage === 'production').length}
               </div>
-              <Package className="h-5 w-5 text-blue-600/30" />
+              <Package className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600/30" />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Đơn hàng đang tại cơ sở</p>
+            <p className="text-[7.5px] sm:text-[10px] text-muted-foreground mt-0.5 leading-tight">Đang tại xưởng</p>
           </CardContent>
         </Card>
         <Card className="rounded-xl border bg-card hover:shadow-md transition-all">
-          <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Chờ lắp tháng này</CardTitle>
+          <CardHeader className="p-2 sm:p-3 pb-0 sm:pb-1">
+            <CardTitle className="text-[7.5px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-tight">Chờ lắp tháng này</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-2 sm:p-3 pt-1 sm:pt-0 pb-2 sm:pb-3">
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-extrabold text-purple-600">
+              <div className="text-xl sm:text-2xl font-extrabold text-purple-600">
                 {
                   tasks.filter(t => {
                     if (t.type !== 'production' || t.status !== 'waiting_install' || !t.waiting_install_at) return false;
@@ -738,18 +738,18 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                   }).length
                 }
               </div>
-              <Truck className="h-5 w-5 text-purple-600/30" />
+              <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600/30" />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Đã hoàn thiện, chờ lắp</p>
+            <p className="text-[7.5px] sm:text-[10px] text-muted-foreground mt-0.5 leading-tight">Hoàn thiện, chờ lắp</p>
           </CardContent>
         </Card>
         <Card className="rounded-xl border bg-card hover:shadow-md transition-all">
-          <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Hoàn thành tháng này</CardTitle>
+          <CardHeader className="p-2 sm:p-3 pb-0 sm:pb-1">
+            <CardTitle className="text-[7.5px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-tight">Hoàn thành tháng này</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-2 sm:p-3 pt-1 sm:pt-0 pb-2 sm:pb-3">
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-extrabold text-green-600">
+              <div className="text-xl sm:text-2xl font-extrabold text-green-600">
                 {
                   customers.filter(c => {
                     if (c.stage !== 'completed') return false;
