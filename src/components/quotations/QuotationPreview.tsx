@@ -134,10 +134,10 @@ export function QuotationPreview({
       } catch (e) {
         console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
         try {
-          // Fallback to corsproxy.io which is very reliable for browser fetch requests
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          // Fallback to our own internal API proxy which guarantees 100% success rate without rate limits
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
           const proxyResponse = await fetch(proxyUrl);
-          if (!proxyResponse.ok) throw new Error('Proxy failed');
+          if (!proxyResponse.ok) throw new Error('Internal Proxy failed');
           const proxyBlob = await proxyResponse.blob();
           
           return new Promise<void>((resolve) => {

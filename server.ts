@@ -167,6 +167,31 @@ async function startServer() {
     }
   });
 
+  // Local Image Proxy to bypass Safari CORS canvas taint
+  app.get("/api/proxy-image", async (req, res) => {
+    try {
+      const imageUrl = req.query.url as string;
+      if (!imageUrl) {
+        return res.status(400).send("Missing URL parameter");
+      }
+      
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        return res.status(response.status).send("Failed to fetch upstream image");
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("Proxy image error:", err.message);
+      res.status(500).send("Error proxying image");
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
