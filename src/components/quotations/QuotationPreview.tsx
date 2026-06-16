@@ -134,9 +134,8 @@ export function QuotationPreview({
       } catch (e) {
         console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
         try {
-          // Use a public CORS proxy as fallback for Firebase Storage images without CORS config
-          // images.weserv.nl is a very stable image proxy/cache that supports CORS.
-          const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+          // Fallback to corsproxy.io which is very reliable for browser fetch requests
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
           const proxyResponse = await fetch(proxyUrl);
           if (!proxyResponse.ok) throw new Error('Proxy failed');
           const proxyBlob = await proxyResponse.blob();
@@ -552,7 +551,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-[30%] p-2 text-center align-middle border-r-2 border-black">
                        <div className="flex flex-col items-center justify-center h-[80px]">
                           {template.logoUrl ? (
-                            <img src={logoDataUrl || template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                            <img src={logoDataUrl || template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" style={{ height: '80px', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
                           ) : (
                             <>
                               <div className="flex items-baseline leading-none">
@@ -579,7 +578,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-20 p-1 text-center align-middle">
                       {template.qrCodeUrl ? (
                          <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                           <img src={qrCodeDataUrl || template.qrCodeUrl} className="max-h-full max-w-full object-contain" alt="QR Code" />
+                           <img src={qrCodeDataUrl || template.qrCodeUrl} className="max-h-full max-w-full object-contain" alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                       ) : (
                         <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400 font-bold uppercase tracking-tighter mx-auto">QR CODE</div>
@@ -732,7 +731,7 @@ export function QuotationPreview({
                        </div>
                        {template.qrCodeUrl && (
                          <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
-                           <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" />
+                           <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                        )}
                     </div>
