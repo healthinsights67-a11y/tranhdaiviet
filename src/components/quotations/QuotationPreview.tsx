@@ -61,6 +61,9 @@ export function QuotationPreview({
   const [template, setTemplate] = React.useState<QuotationTemplate>(defaultTemplate);
   const [customerCode, setCustomerCode] = React.useState<string>('KH000');
   const [quotationIndex, setQuotationIndex] = React.useState<number>(1);
+  const [logoDataUrl, setLogoDataUrl] = React.useState<string>('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string>('');
+  const [imagesLoading, setImagesLoading] = React.useState<boolean>(true);
 
   const { data: dbConfig } = useQuery<QuotationTemplate>({
     queryKey: ['quotation_template_config'],
@@ -93,6 +96,77 @@ export function QuotationPreview({
       setTemplate(dbConfig);
     }
   }, [dbConfig, isOpen]);
+
+  React.useEffect(() => {
+    const fetchAsDataUrl = async (url: string, setter: (val: string) => void) => {
+      if (!url) {
+        setter('');
+        return;
+      }
+      // If it's already a data URL, just use it
+      if (url.startsWith('data:')) {
+        setter(url);
+        return;
+      }
+      try {
+        // Force no-cache and add a cache-buster query string to prevent CORS issues with cached images on mobile/Safari
+        const cacheBuster = url.includes('?') ? `&cb=${new Date().getTime()}` : `?cb=${new Date().getTime()}`;
+        const fetchUrl = url + cacheBuster;
+        
+        const response = await fetch(fetchUrl, { 
+          mode: 'cors',
+          cache: 'no-cache' 
+        });
+        
+        if (!response.ok) {
+           throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        return new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setter(reader.result as string);
+            resolve();
+          };
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
+        try {
+          // Use a public CORS proxy as fallback for Firebase Storage images without CORS config
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const proxyResponse = await fetch(proxyUrl);
+          if (!proxyResponse.ok) throw new Error('Proxy failed');
+          const proxyBlob = await proxyResponse.blob();
+          
+          return new Promise<void>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setter(reader.result as string);
+              resolve();
+            };
+            reader.readAsDataURL(proxyBlob);
+          });
+        } catch (e2) {
+          console.error('Failed to convert image to data URL even with proxy', e2);
+          // Fallback to original URL
+          setter(url);
+        }
+      }
+    };
+
+    const loadImages = async () => {
+      setImagesLoading(true);
+      const promises = [];
+      if (template.logoUrl) promises.push(fetchAsDataUrl(template.logoUrl, setLogoDataUrl));
+      if (template.qrCodeUrl) promises.push(fetchAsDataUrl(template.qrCodeUrl, setQrCodeDataUrl));
+      await Promise.all(promises);
+      setImagesLoading(false);
+    };
+
+    loadImages();
+  }, [template.logoUrl, template.qrCodeUrl]);
 
   React.useEffect(() => {
     if (isOpen && quotation.customerId) {
@@ -423,10 +497,10 @@ export function QuotationPreview({
                variant="outline" 
                size="sm" 
                onClick={handleShare}
-               disabled={isExporting}
+               disabled={isExporting || imagesLoading}
                className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 border-emerald-100 hover:bg-emerald-50 text-emerald-600 text-[10px] md:text-sm"
             >
-              {isExporting ? (
+              {isExporting || imagesLoading ? (
                 <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
               ) : (
                 <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -435,7 +509,7 @@ export function QuotationPreview({
               <span className="sm:hidden">Gửi</span>
             </Button>
 
-            <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-[10px] md:text-sm">
+            <Button variant="outline" size="sm" onClick={handlePrint} disabled={imagesLoading} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-[10px] md:text-sm">
               <Printer className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">In báo giá</span>
               <span className="sm:hidden">In</span>
@@ -444,15 +518,15 @@ export function QuotationPreview({
                variant="default" 
                size="sm" 
                onClick={handleDownloadPDF}
-               disabled={isExporting}
+               disabled={isExporting || imagesLoading}
                className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold shadow-sm text-[10px] md:text-sm"
             >
-              {isExporting ? (
+              {isExporting || imagesLoading ? (
                 <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
               ) : (
                 <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
               )}
-              {isExporting ? 'Đang tạo...' : 'Tải PDF'}
+              {isExporting ? 'Đang tạo...' : (imagesLoading ? 'Đang tải...' : 'Tải PDF')}
             </Button>
           </div>
         </DialogHeader>
@@ -477,7 +551,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-[30%] p-2 text-center align-middle border-r-2 border-black">
                        <div className="flex flex-col items-center justify-center h-[80px]">
                           {template.logoUrl ? (
-                            <img src={template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                            <img src={logoDataUrl || template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
                           ) : (
                             <>
                               <div className="flex items-baseline leading-none">
@@ -504,7 +578,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-20 p-1 text-center align-middle">
                       {template.qrCodeUrl ? (
                          <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                           <img src={template.qrCodeUrl} className="max-w-full max-h-full object-contain" alt="QR Code" />
+                           <img src={qrCodeDataUrl || template.qrCodeUrl} className="max-h-full max-w-full object-contain" alt="QR Code" />
                          </div>
                       ) : (
                         <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400 font-bold uppercase tracking-tighter mx-auto">QR CODE</div>
@@ -657,7 +731,7 @@ export function QuotationPreview({
                        </div>
                        {template.qrCodeUrl && (
                          <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
-                           <img src={template.qrCodeUrl} alt="QR Code" className="max-w-full max-h-full object-contain" />
+                           <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" />
                          </div>
                        )}
                     </div>
