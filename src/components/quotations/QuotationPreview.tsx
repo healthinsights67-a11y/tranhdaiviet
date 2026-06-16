@@ -74,9 +74,11 @@ export function QuotationPreview({
   
   // Pinch to zoom state
   const touchStartRef = React.useRef<{ distance: number; zoom: number } | null>(null);
+  const [isPinching, setIsPinching] = React.useState(false);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
+      setIsPinching(true);
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -99,6 +101,7 @@ export function QuotationPreview({
 
   const handleTouchEnd = () => {
     touchStartRef.current = null;
+    setIsPinching(false);
   };
 
   React.useEffect(() => {
@@ -679,10 +682,11 @@ export function QuotationPreview({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          style={{ touchAction: 'pan-x pan-y' }}
         >
           <div className="p-2 md:p-8 w-full min-w-max flex justify-center h-fit">
             <div 
-              className="origin-top transition-transform"
+              className={cn("origin-top", !isPinching && "transition-transform")}
               style={{ transform: `scale(${zoom})` }}
             >
               <div 
