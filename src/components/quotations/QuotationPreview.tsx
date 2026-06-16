@@ -135,7 +135,8 @@ export function QuotationPreview({
         console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
         try {
           // Use a public CORS proxy as fallback for Firebase Storage images without CORS config
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          // images.weserv.nl is a very stable image proxy/cache that supports CORS.
+          const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
           const proxyResponse = await fetch(proxyUrl);
           if (!proxyResponse.ok) throw new Error('Proxy failed');
           const proxyBlob = await proxyResponse.blob();
