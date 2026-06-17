@@ -505,6 +505,15 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
           }
         }
         
+        // Automated Workflow: Production Done -> Completed Stage
+        if (type === 'production' && newStatus === 'done' && task.status !== 'done') {
+          if (task.customerId) {
+            await updateDoc(doc(db, 'customers', task.customerId), { stage: 'completed' });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+            toast.success(`Dự án ${task.title.replace('Sản xuất: ', '')} đã hoàn thành!`);
+          }
+        }
+        
         // Automated Workflow: Design Done -> Production Stage & Task
         if (type === 'design' && newStatus === 'done' && task.status !== 'done') {
           const projectTitle = task.title.replace('Thiết kế: ', '');
