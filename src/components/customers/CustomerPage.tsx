@@ -1176,7 +1176,15 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           </Card>
           
           {Object.entries(STAGE_CONFIG).map(([key, config]) => {
-            const count = customers.filter(c => c.stage === key && (selectedWorkshop === 'all' || c.workshop === selectedWorkshop)).length;
+            const count = customers.filter(c => 
+              c.stage === key && 
+              (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
+              (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
+              (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              c.phone.includes(searchTerm) ||
+              (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+              (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
+            ).length;
             return (
               <Card 
                 key={key} 
@@ -1188,7 +1196,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                  </div>
                  <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
                     <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{config.label}</p>
-                    <h3 className="text-base md:text-xl font-black tabular-nums">{count}</h3>
+                    <h3 className={cn("text-base md:text-xl font-black tabular-nums", config.color.split(' ')[1])}>{count}</h3>
                  </CardContent>
               </Card>
             );
