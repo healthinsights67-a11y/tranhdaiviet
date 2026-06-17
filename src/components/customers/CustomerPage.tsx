@@ -408,6 +408,77 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     }
   };
 
+  const handleQuickCompleteCustomer = async (customerId: string) => {
+    try {
+      const existingCustomer = customers.find(c => c.id === customerId);
+      if (!existingCustomer || existingCustomer.stage === 'completed') return;
+      
+      const updateData: any = { stage: 'completed' };
+      const nowStr = new Date().toISOString();
+      
+      if (existingCustomer.stage !== 'contracted' && existingCustomer.stage !== 'completed') {
+        updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
+        updateData.createdAt = nowStr;
+      }
+      
+      await updateDoc(doc(db, 'customers', customerId), updateData);
+      
+      // Update tasks
+      try {
+        const taskQ = query(collection(db, 'tasks'));
+        const taskSnap = await getDocs(taskQ);
+        const cleanPhone = existingCustomer.phone?.trim()?.replace(/\D/g, '');
+        
+        for (const taskDoc of taskSnap.docs) {
+          const tData = taskDoc.data();
+          if (tData.status === 'done' || tData.status === 'archived') continue;
+          
+          let matches = false;
+          if (tData.customerId === customerId) {
+            matches = true;
+          } else if (cleanPhone) {
+            const tPhone = tData.phone?.trim()?.replace(/\D/g, '') || 
+                           tData.description?.replace(/\D/g, '').slice(-10);
+            if (tPhone && (cleanPhone.includes(tPhone) || tPhone.includes(cleanPhone))) {
+              matches = true;
+            }
+          }
+          
+          if (matches) {
+            await updateDoc(doc(db, 'tasks', taskDoc.id), {
+              createdAt: nowStr,
+              ...(tData.customerId ? {} : { customerId }),
+              status: 'done',
+              completedAt: nowStr
+            });
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      } catch (err) {
+        console.error("Error updating tasks on quick complete:", err);
+      }
+      
+      // Update quotations
+      try {
+        const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', customerId));
+        const quotationSnap = await getDocs(quotationQ);
+        for (const qDoc of quotationSnap.docs) {
+          const qData = qDoc.data();
+          if (qData.status !== 'accepted' && qData.status !== 'rejected') {
+            await updateDoc(doc(db, 'quotations', qDoc.id), { status: 'accepted' });
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      } catch (err) {
+        console.error("Error syncing customer stage to quotations:", err);
+      }
+      
+      toast.success("Đã hoàn thành bàn giao dự án!");
+    } catch (err) {
+      toast.error("Có lỗi xảy ra khi hoàn thành dự án");
+    }
+  };
+
   const handleUpdateCustomer = async () => {
     if (!selectedCustomer) return;
     if (!selectedCustomer.name || !selectedCustomer.phone) {
@@ -1347,6 +1418,14 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                             className="text-xs text-blue-600 font-medium"
                           >
                             Giao việc thiết kế
+                          </DropdownMenuItem>
+                        )}
+                        {customer.stage !== 'completed' && customer.stage !== 'lost' && (
+                          <DropdownMenuItem 
+                            onClick={() => handleQuickCompleteCustomer(customer.id)} 
+                            className="text-xs text-emerald-600 font-medium"
+                          >
+                            Hoàn thành đơn hàng
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem className="text-destructive text-xs" onClick={() => handleDeleteCustomer(customer.id)}>Xóa</DropdownMenuItem>
