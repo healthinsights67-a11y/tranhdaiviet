@@ -167,7 +167,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
 
   const consultingCustomers = customers;
   const unscheduledMeasurements = customers.filter(c => 
-    c.stage === 'consulting' && 
+    (c.stage === 'consulting' || c.stage === 'contracted') && 
     !schedules.some(s => {
       if (s.status === 'cancelled') return false;
       if (s.customerId === c.id) return true;
