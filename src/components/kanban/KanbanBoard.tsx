@@ -514,49 +514,58 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
             queryClient.invalidateQueries({ queryKey: ['customers'] });
           }
 
-          await addDoc(collection(db, 'tasks'), {
-            title: `Sản xuất: ${projectTitle}`,
-            description: task.description,
-            status: 'todo',
-            type: 'production',
-            priority: task.priority,
-            assigneeId: preSelectedAssigneeId || '',
-            customerId: task.customerId || '',
-            workshop: task.workshop || linkedCustomer?.workshop || '',
-            createdAt: new Date().toISOString(),
-            dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            files2D3D: finalFileLinks,
-            checklists: task.checklists || [],
-            materialList: task.materialList || [],
-            materialRequisition: task.materialRequisition || null,
-          });
-          queryClient.invalidateQueries({ queryKey: ['tasks'] });
-          toast.success(`Thiết kế hoàn tất! Đã chuyển sản xuất cho: ${assigneeName}`);
+          const allTasks = queryClient.getQueryData<Task[]>(['tasks']) || [];
+          const existingProdTask = allTasks.find(t => t.type === 'production' && t.customerId === task.customerId && t.customerId);
+          
+          if (!existingProdTask) {
+            await addDoc(collection(db, 'tasks'), {
+              title: `Sản xuất: ${projectTitle}`,
+              description: task.description,
+              status: 'todo',
+              type: 'production',
+              priority: task.priority,
+              assigneeId: preSelectedAssigneeId || '',
+              customerId: task.customerId || '',
+              workshop: task.workshop || linkedCustomer?.workshop || '',
+              createdAt: new Date().toISOString(),
+              dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              files2D3D: finalFileLinks,
+              checklists: task.checklists || [],
+              materialList: task.materialList || [],
+              materialRequisition: task.materialRequisition || null,
+            });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            toast.success(`Thiết kế hoàn tất! Đã chuyển sản xuất cho: ${assigneeName}`);
+          }
         }
 
         // Automated Workflow: Sale Done -> Design Task
         if (type === 'sale' && newStatus === 'done' && task.status !== 'done') {
           const customerName = task.title.replace('Sale: ', '');
           
-          await addDoc(collection(db, 'tasks'), {
-            title: `Thiết kế: ${customerName}`,
-            description: task.description,
-            status: 'todo',
-            type: 'design',
-            priority: 'medium',
-            assigneeId: preSelectedAssigneeId || '',
-            customerId: task.customerId || '',
-            workshop: task.workshop || '',
-            createdAt: new Date().toISOString(),
-            dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            files2D3D: finalFileLinks,
-            checklists: task.checklists || [],
-            materialList: task.materialList || [],
-            materialRequisition: task.materialRequisition || null,
-          });
-          queryClient.invalidateQueries({ queryKey: ['tasks'] });
-
-          toast.success(`Sale hoàn tất! Đã chuyển thiết kế cho: ${assigneeName}`);
+          const allTasks = queryClient.getQueryData<Task[]>(['tasks']) || [];
+          const existingDesignTask = allTasks.find(t => t.type === 'design' && t.customerId === task.customerId && t.customerId);
+          
+          if (!existingDesignTask) {
+            await addDoc(collection(db, 'tasks'), {
+              title: `Thiết kế: ${customerName}`,
+              description: task.description,
+              status: 'todo',
+              type: 'design',
+              priority: 'medium',
+              assigneeId: preSelectedAssigneeId || '',
+              customerId: task.customerId || '',
+              workshop: task.workshop || '',
+              createdAt: new Date().toISOString(),
+              dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              files2D3D: finalFileLinks,
+              checklists: task.checklists || [],
+              materialList: task.materialList || [],
+              materialRequisition: task.materialRequisition || null,
+            });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            toast.success(`Sale hoàn tất! Đã chuyển thiết kế cho: ${assigneeName}`);
+          }
         }
       } else {
         queryClient.setQueryData(['tasks'], (prevTasks: Task[] = []) => {

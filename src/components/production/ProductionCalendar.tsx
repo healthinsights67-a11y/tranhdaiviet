@@ -680,11 +680,15 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     const derivedTasks: Task[] = customers
       .filter(customer => 
         (customer.stage === 'production' || customer.stage === 'installation' || customer.stage === 'completed') &&
-        !existingTitles.has(`sản xuất: ${customer.name.toLowerCase()}`) && 
-        !existingTitles.has(customer.name.toLowerCase())
+        !existingCustomerIds.has(customer.id) &&
+        !existingTitles.has(`sản xuất: ${customer.name.toLowerCase().trim()}`) && 
+        !existingTitles.has(customer.name.toLowerCase().trim())
       )
       .map(customer => ({
         id: `virtual-${customer.id}`,
+        customerId: customer.id,
+        customerName: customer.name,
+        phone: customer.phone,
         title: customer.name,
         description: customer.notes || '',
         status: customer.stage === 'completed' ? 'done' : 
