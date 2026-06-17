@@ -403,7 +403,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
             const customerStage = customerData?.stage;
 
             const customerUpdate: any = {
-              stage: status === 'accepted' ? 'completed' : 'contracted',
+              stage: 'contracted',
               orderValue: prevData.totalAmount
             };
 
@@ -540,7 +540,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
     switch (status) {
       case 'draft': return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 px-2.5 py-0.5">Bản nháp</Badge>;
       case 'sent': return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-2.5 py-0.5">Đã gửi</Badge>;
-      case 'accepted': return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 px-2.5 py-0.5 font-bold">Hoàn Thành</Badge>;
+      case 'accepted': return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 px-2.5 py-0.5 font-bold">Chốt Báo Giá</Badge>;
       case 'deposit': return <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 px-2.5 py-0.5 font-bold">Đã cọc</Badge>;
       case 'rejected': return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 px-2.5 py-0.5">Từ chối</Badge>;
     }
@@ -642,7 +642,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
               {[
                 { label: 'Tổng báo giá', value: quotations.length, icon: FileText, color: 'bg-primary' },
-                { label: 'Hoàn Thành', value: quotations.filter(q => q.status === 'accepted').length, icon: CheckCircle2, color: 'bg-emerald-500' },
+                { label: 'Chốt Báo Giá', value: quotations.filter(q => q.status === 'accepted').length, icon: CheckCircle2, color: 'bg-emerald-500' },
                 { label: 'Đã cọc', value: quotations.filter(q => q.status === 'deposit').length, icon: Clock, color: 'bg-purple-500' },
                 { label: 'Doanh thu', value: `${(quotations.filter(q => q.status === 'accepted' || q.status === 'deposit').reduce((acc, q) => acc + q.totalAmount, 0) / 1000000).toFixed(1)}M`, icon: TrendingDown, color: 'bg-amber-500' },
               ].map((stat, i) => (
@@ -704,7 +704,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                           <SelectItem value="all">Tất cả trạng thái</SelectItem>
                           <SelectItem value="draft">Bản nháp</SelectItem>
                           <SelectItem value="sent">Đã gửi</SelectItem>
-                          <SelectItem value="accepted">Hoàn Thành</SelectItem>
+                          <SelectItem value="accepted">Chốt Báo Giá</SelectItem>
                           <SelectItem value="deposit">Đã cọc</SelectItem>
                           <SelectItem value="rejected">Từ chối</SelectItem>
                         </SelectContent>
@@ -778,7 +778,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                          {status === 'all' ? 'Tất cả hồ sơ' : 
                           status === 'draft' ? 'Bản nháp' :
                           status === 'sent' ? 'Đã gửi khách' :
-                          status === 'accepted' ? 'Hoàn Thành' : 
+                          status === 'accepted' ? 'Chốt Báo Giá' : 
                           status === 'deposit' ? 'Đã cọc' : 'Từ chối'}
                         </button>
                      ))}
@@ -945,7 +945,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                      {activeQuotation.status !== 'accepted' && (
                                        <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleUpdateStatus(activeQuotation.id, 'accepted')}>
                                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                         Hoàn Thành báo giá
+                                         Chốt báo giá
                                        </DropdownMenuItem>
                                      )}
                                      {activeQuotation.status !== 'deposit' && activeQuotation.status !== 'accepted' && (
