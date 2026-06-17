@@ -513,10 +513,18 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               }
               
               if (matches) {
-                await updateDoc(doc(db, 'tasks', taskDoc.id), {
+                const taskUpdate: any = {
                   createdAt: nowStr,
                   ...(tData.customerId ? {} : { customerId: id })
-                });
+                };
+                
+                // If customer is completed, auto-complete their tasks
+                if (selectedCustomer.stage === 'completed') {
+                  taskUpdate.status = 'done';
+                  taskUpdate.completedAt = nowStr;
+                }
+                
+                await updateDoc(doc(db, 'tasks', taskDoc.id), taskUpdate);
               }
             }
             queryClient.invalidateQueries({ queryKey: ['tasks'] });

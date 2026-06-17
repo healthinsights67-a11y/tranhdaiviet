@@ -440,10 +440,17 @@ export function QuotationPage({ quotations, user, customers, members, products =
                   }
                   
                   if (matches) {
-                    await updateDoc(doc(db, 'tasks', taskDoc.id), {
+                    const taskUpdate: any = {
                       createdAt: nowStr,
                       ...(tData.customerId ? {} : { customerId: prevData.customerId })
-                    });
+                    };
+                    
+                    if (status === 'accepted') {
+                      taskUpdate.status = 'done';
+                      taskUpdate.completedAt = nowStr;
+                    }
+                    
+                    await updateDoc(doc(db, 'tasks', taskDoc.id), taskUpdate);
                   }
                 }
                 queryClient.invalidateQueries({ queryKey: ['tasks'] });
