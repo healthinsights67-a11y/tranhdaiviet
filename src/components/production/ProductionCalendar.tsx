@@ -674,7 +674,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   };
 
   const virtualProductionTasks: Task[] = React.useMemo(() => {
-    const existingTitles = new Set(productionTasks.map(t => t.title.toLowerCase()));
+    const existingTitles = new Set(productionTasks.map(t => t.title.toLowerCase().trim()));
+    const existingCustomerIds = new Set(productionTasks.filter(t => t.customerId).map(t => t.customerId));
     
     const derivedTasks: Task[] = customers
       .filter(customer => 
