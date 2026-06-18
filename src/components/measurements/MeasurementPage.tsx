@@ -788,7 +788,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         </Card>
 
         {/* Right Column: Unscheduled measurements list */}
-        <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0">
+        <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0 lg:self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-220px)]">
           <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0">
             <CardTitle className="text-sm font-bold flex items-center gap-1.5">
               <ClipboardList className="h-4.5 w-4.5 text-primary" />

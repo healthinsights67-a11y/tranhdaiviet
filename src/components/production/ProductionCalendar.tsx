@@ -930,7 +930,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               </div>
             </Card>
 
-            <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0">
+            <Card className="w-full lg:w-[350px] flex flex-col border border-gray-200 dark:border-zinc-800 rounded-2xl bg-card overflow-hidden shadow-sm shrink-0 lg:self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-220px)]">
               <CardHeader className="p-4 border-b bg-gray-50 dark:bg-zinc-900 shrink-0 pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold flex items-center gap-1.5">
