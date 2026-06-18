@@ -144,19 +144,19 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
   }, [currentUserId]);
 
   const unreadCount = notifications.filter(n => !(n.readBy || []).includes(currentUserId)).length;
+  const prevUnreadCount = React.useRef(unreadCount);
 
   React.useEffect(() => {
-    if (unreadCount > 0) {
-      const dismissedCount = sessionStorage.getItem('notif_dismissed_count');
-      if (dismissedCount !== unreadCount.toString()) {
-        setShowPopup(true);
-      }
+    // Only show popup when unreadCount INCREASES (e.g. new notification arrived or initial load)
+    // This prevents the popup from reopening when marking as read (which decreases the count)
+    if (unreadCount > prevUnreadCount.current && unreadCount > 0) {
+      setShowPopup(true);
     }
+    prevUnreadCount.current = unreadCount;
   }, [unreadCount]);
 
   const handleDismissPopup = () => {
     setShowPopup(false);
-    sessionStorage.setItem('notif_dismissed_count', unreadCount.toString());
   };
 
   const markAllAsRead = async () => {
