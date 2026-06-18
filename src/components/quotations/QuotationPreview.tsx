@@ -151,56 +151,35 @@ export function QuotationPreview({
         setter('');
         return;
       }
-      // If it's already a data URL, just use it
       if (url.startsWith('data:')) {
         setter(url);
         return;
       }
-      try {
-        // Force no-cache and add a cache-buster query string to prevent CORS issues with cached images on mobile/Safari
-        const cacheBuster = url.includes('?') ? `&cb=${new Date().getTime()}` : `?cb=${new Date().getTime()}`;
-        const fetchUrl = url + cacheBuster;
-        
-        const response = await fetch(fetchUrl, { 
-          mode: 'cors',
-          cache: 'no-cache' 
-        });
-        
-        if (!response.ok) {
-           throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
+      
+      const toBase64 = async (fetchUrl: string) => {
+        const response = await fetch(fetchUrl, { mode: 'cors', cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const blob = await response.blob();
-        return new Promise<void>((resolve) => {
+        if (blob.type.includes('text/html')) throw new Error('Received HTML instead of image');
+        return new Promise<string>((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => {
-            setter(reader.result as string);
-            resolve();
-          };
+          reader.onloadend = () => resolve(reader.result as string);
           reader.readAsDataURL(blob);
         });
+      };
+
+      try {
+        const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
+        const dataUrl = await toBase64(url + cacheBuster);
+        setter(dataUrl);
       } catch (e) {
-        console.warn('Direct fetch failed, likely due to CORS. Trying proxy...', e);
+        console.warn('Direct fetch failed. Trying allorigins proxy...', e);
         try {
-          // Fallback to our own internal API proxy which guarantees 100% success rate without rate limits
-          // We MUST add a cache-buster here because Safari has a bug where images served from disk cache 
-          // lose their CORS status and taint the canvas on the second export.
-          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
-          const proxyResponse = await fetch(proxyUrl);
-          if (!proxyResponse.ok) throw new Error('Internal Proxy failed');
-          const proxyBlob = await proxyResponse.blob();
-          
-          return new Promise<void>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              setter(reader.result as string);
-              resolve();
-            };
-            reader.readAsDataURL(proxyBlob);
-          });
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const dataUrl = await toBase64(proxyUrl);
+          setter(dataUrl);
         } catch (e2) {
-          console.error('Failed to convert image to data URL even with proxy', e2);
-          // Fallback to original URL
+          console.error('All proxies failed', e2);
           setter(url);
         }
       }
