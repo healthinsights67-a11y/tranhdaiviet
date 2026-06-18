@@ -15,7 +15,7 @@ import { BarChart,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MOCK_TASKS, MOCK_MEMBERS } from '../../lib/mockData';
-import { CheckCircle2, Clock, AlertCircle, Users, Mail, Calendar, FileText, ChevronRight, Archive, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Users, Mail, Calendar, FileText, ChevronRight, Archive, ChevronLeft, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -46,7 +46,7 @@ import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
 import { SmartInsights } from './SmartInsights';
-export function Dashboard({ tasks, members, customers, quotations, currentUser }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any }) {
+export function Dashboard({ tasks, members, customers, quotations, currentUser, schedules, installations }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any, schedules?: any[], installations?: any[] }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
   const activeCustomers = customers || [];
@@ -56,6 +56,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
   const [announcementTarget, setAnnouncementTarget] = React.useState<TargetGroup>('all');
   const [isSendingAnnouncement, setIsSendingAnnouncement] = React.useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
+  const [hasShownAlerts, setHasShownAlerts] = React.useState(false);
 
   const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
@@ -157,6 +158,37 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
     { label: 'Dự án triển khai', value: activeProjects.length, icon: Package, color: 'text-indigo-500' },
     { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-blue-500' },
   ];
+
+  const todayDate = new Date();
+  todayDate.setHours(0,0,0,0);
+  const isToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    d.setHours(0,0,0,0);
+    return d.getTime() === todayDate.getTime();
+  };
+
+  const todaySchedules = (schedules || []).filter(s => isToday(s.date) || isToday(s.dateStr));
+  const todayInstallations = (installations || []).filter(i => isToday(i.date) || isToday(i.dateStr));
+  const todayTasks = filteredTasks.filter(t => t.dueDate && isToday(t.dueDate) && t.status !== 'done');
+  const overdueTasks = filteredTasks.filter(t => t.dueDate && new Date(t.dueDate).getTime() < todayDate.getTime() && t.status !== 'done');
+  
+  const hasTodayItems = todaySchedules.length > 0 || todayInstallations.length > 0 || todayTasks.length > 0;
+
+  React.useEffect(() => {
+    if (!hasShownAlerts) {
+      if (todaySchedules.length > 0) {
+        toast.info(`Bạn có ${todaySchedules.length} lịch đo đạc/khảo sát trong ngày hôm nay!`, { duration: 5000 });
+      }
+      if (todayInstallations.length > 0) {
+        toast.info(`Bạn có ${todayInstallations.length} lịch lắp đặt trong ngày hôm nay!`, { duration: 5000 });
+      }
+      if (overdueTasks.length > 0) {
+        toast.error(`Cảnh báo: Bạn đang có ${overdueTasks.length} nhiệm vụ bị trễ hạn!`, { duration: 8000 });
+      }
+      setHasShownAlerts(true);
+    }
+  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-16 px-0.5">
@@ -277,6 +309,65 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser }
               </motion.div>
             ))}
           </div>
+
+          {hasTodayItems && (
+            <div className="mb-4">
+              <Card className="border-l-4 border-l-blue-500 bg-blue-50/50 shadow-sm border-y border-r border-border overflow-hidden">
+                <CardHeader className="py-3 px-4 pb-0 bg-transparent flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-blue-900">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    Việc cần làm hôm nay
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-3 px-4 flex flex-col gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {todaySchedules.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Lịch đo đạc / Khảo sát</p>
+                        {todaySchedules.map((s, i) => (
+                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-orange-500 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{s.customerName}</p>
+                              <p className="text-[10px] text-gray-500 line-clamp-1">{s.address || s.addressStr}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {todayInstallations.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Lịch lắp đặt</p>
+                        {todayInstallations.map((inst, i) => (
+                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
+                            <Package className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{inst.customerName}</p>
+                              <p className="text-[10px] text-gray-500 line-clamp-1">{inst.address || inst.addressStr}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {todayTasks.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Nhiệm vụ đến hạn</p>
+                        {todayTasks.map((t, i) => (
+                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{t.title}</p>
+                              <p className="text-[10px] text-gray-500">{t.customerName}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <div className="grid gap-3 md:gap-6 md:grid-cols-1 lg:grid-cols-12">
             <div className="lg:col-span-3">

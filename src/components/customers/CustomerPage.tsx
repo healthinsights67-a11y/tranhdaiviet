@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as XLSX from 'xlsx';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,7 +26,7 @@ import {
   Calendar,
   Palette, 
   Factory, Package, 
-  UserCheck, Users, Target, Map, LayoutGrid
+  UserCheck, Users, Target, Map, LayoutGrid, Upload
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
 import { LocationPickerDialog } from '../maps/LocationPickerDialog';
@@ -142,6 +143,77 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       toast.error("Lỗi khi cập nhật cấu hình hệ thống");
     }
   });
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const bstr = evt.target?.result;
+        if (typeof bstr !== 'string') return;
+        
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) {
+          toast.error("File Excel trống");
+          return;
+        }
+
+        let importedCount = 0;
+        const nowStr = new Date().toISOString();
+
+        for (const row of data as any[]) {
+          // Map columns (Tên, SĐT, Địa chỉ, Nhu cầu)
+          const name = row['Tên'] || row['Name'] || row['Khách hàng'] || '';
+          const phone = row['SĐT'] || row['Phone'] || row['Số điện thoại'] || '';
+          const address = row['Địa chỉ'] || row['Address'] || '';
+          const notes = row['Ghi chú'] || row['Nhu cầu'] || '';
+          const stageStr = row['Trạng thái'] || row['Stage'] || '';
+          
+          if (!name || !phone) continue; // Skip rows without name or phone
+
+          let stage: CustomerStage = 'consulting';
+          if (stageStr.toLowerCase().includes('khảo sát')) stage = 'surveying';
+          else if (stageStr.toLowerCase().includes('chốt cọc')) stage = 'contracted';
+          else if (stageStr.toLowerCase().includes('sản xuất')) stage = 'production';
+          else if (stageStr.toLowerCase().includes('lắp đặt')) stage = 'installation';
+          else if (stageStr.toLowerCase().includes('hoàn thành')) stage = 'completed';
+          else if (stageStr.toLowerCase().includes('tạm dừng')) stage = 'lost';
+
+          const newId = Math.random().toString(36).substr(2, 9);
+          const newCode = `KH${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          
+          await addDoc(collection(db, 'customers'), {
+            id: newId,
+            code: newCode,
+            name,
+            phone: String(phone),
+            address,
+            stage,
+            notes,
+            assignedSaleId: currentUser?.id || '',
+            createdAt: nowStr,
+            orderValue: 0
+          });
+          importedCount++;
+        }
+
+        toast.success(`Đã nhập thành công ${importedCount} khách hàng`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      reader.readAsBinaryString(file);
+    } catch (error) {
+      console.error("Lỗi khi đọc file Excel:", error);
+      toast.error("Lỗi khi đọc file. Vui lòng kiểm tra lại định dạng.");
+    }
+  };
 
   const [isSettingFactory, setIsSettingFactory] = React.useState(false);
   const [isFactoryAddressDialogOpen, setIsFactoryAddressDialogOpen] = React.useState(false);
@@ -984,6 +1056,23 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportExcel} 
+            accept=".xlsx, .xls, .csv" 
+            className="hidden" 
+          />
+
+          <Button 
+            variant="outline"
+            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Nhập Excel</span>
+          </Button>
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger 
