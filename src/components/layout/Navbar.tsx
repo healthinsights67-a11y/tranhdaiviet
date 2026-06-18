@@ -223,6 +223,46 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
                         Đánh dấu tất cả là đã đọc
                       </Button>
                     </DropdownMenuLabel>
+                    <ScrollArea className="h-[400px]">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Không có thông báo nào.
+                        </div>
+                      ) : (
+                        notifications.map((n) => {
+                          const isUnread = !(n.readBy || []).includes(currentUserId);
+                          return (
+                            <DropdownMenuItem key={n.id} className={cn("flex flex-col items-start gap-1 p-3 cursor-default focus:bg-transparent", isUnread ? "bg-blue-50/50" : "")}>
+                              <div className="flex items-start justify-between w-full gap-2">
+                                <span className={cn("text-sm", isUnread ? "font-bold text-blue-900" : "font-medium text-foreground")}>{n.title}</span>
+                                <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{getRelativeTime(n.createdAt)}</span>
+                              </div>
+                              <p className={cn("text-xs leading-relaxed whitespace-pre-wrap line-clamp-2", isUnread ? "text-blue-800" : "text-muted-foreground")}>
+                                {n.message}
+                              </p>
+                              {isUnread && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 mt-1 -ml-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (currentUserId) {
+                                      // Optimistically update
+                                      setNotifications(notifications.map(notif => notif.id === n.id ? { ...notif, readBy: [...(notif.readBy || []), currentUserId] } : notif));
+                                      await updateDoc(doc(db, 'notifications', n.id), { readBy: arrayUnion(currentUserId) });
+                                    }
+                                  }}
+                                >
+                                  Đánh dấu đã đọc
+                                </Button>
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })
+                      )}
+                    </ScrollArea>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>

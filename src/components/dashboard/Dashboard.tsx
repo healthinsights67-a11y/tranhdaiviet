@@ -45,6 +45,7 @@ const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
 import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
 import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
 import { clearAllAppData } from '@/src/services/dataService';
+import { db, collection, addDoc } from '@/src/lib/firebase';
 import { SmartInsights } from './SmartInsights';
 export function Dashboard({ tasks, members, customers, quotations, currentUser, schedules, installations }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any, schedules?: any[], installations?: any[] }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
@@ -176,19 +177,67 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   const hasTodayItems = todaySchedules.length > 0 || todayInstallations.length > 0 || todayTasks.length > 0;
 
   React.useEffect(() => {
-    if (!hasShownAlerts) {
+    if (!currentUser?.id || hasShownAlerts) return;
+
+    const generateSmartAlerts = async () => {
+      const todayStr = todayDate.toDateString();
+      const storageKey = `smart_alerts_gen_${currentUser.id}`;
+      
+      if (localStorage.getItem(storageKey) === todayStr) {
+        setHasShownAlerts(true);
+        return; // Already generated today
+      }
+
+      let generated = false;
+
       if (todaySchedules.length > 0) {
         toast.info(`Bạn có ${todaySchedules.length} lịch đo đạc/khảo sát trong ngày hôm nay!`, { duration: 5000 });
+        await addDoc(collection(db, 'notifications'), {
+          title: 'Lịch khảo sát/đo đạc hôm nay',
+          message: `Bạn có ${todaySchedules.length} lịch đo đạc/khảo sát cần thực hiện trong ngày hôm nay!`,
+          type: 'smart_alert',
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          isGlobal: false,
+          userId: currentUser.id
+        });
+        generated = true;
       }
       if (todayInstallations.length > 0) {
         toast.info(`Bạn có ${todayInstallations.length} lịch lắp đặt trong ngày hôm nay!`, { duration: 5000 });
+        await addDoc(collection(db, 'notifications'), {
+          title: 'Lịch lắp đặt hôm nay',
+          message: `Bạn có ${todayInstallations.length} lịch lắp đặt cần thực hiện trong ngày hôm nay!`,
+          type: 'smart_alert',
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          isGlobal: false,
+          userId: currentUser.id
+        });
+        generated = true;
       }
       if (overdueTasks.length > 0) {
         toast.error(`Cảnh báo: Bạn đang có ${overdueTasks.length} nhiệm vụ bị trễ hạn!`, { duration: 8000 });
+        await addDoc(collection(db, 'notifications'), {
+          title: 'Nhiệm vụ trễ hạn',
+          message: `Cảnh báo: Bạn đang có ${overdueTasks.length} nhiệm vụ đã bị trễ hạn! Vui lòng kiểm tra và xử lý ngay.`,
+          type: 'smart_alert',
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          isGlobal: false,
+          userId: currentUser.id
+        });
+        generated = true;
+      }
+      
+      if (generated) {
+        localStorage.setItem(storageKey, todayStr);
       }
       setHasShownAlerts(true);
-    }
-  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length]);
+    };
+
+    generateSmartAlerts();
+  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length, currentUser?.id]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-16 px-0.5">
