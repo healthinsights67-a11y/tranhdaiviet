@@ -1,10 +1,10 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, FileText, Ruler, Hammer, Truck, CheckCircle2, ChevronRight, PlayCircle } from 'lucide-react';
+import { Users, FileText, Ruler, Hammer, Truck, CheckCircle2, ChevronRight, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/src/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface WorkflowGuideWidgetProps {
   setActiveTab?: (tab: string) => void;
@@ -18,42 +18,51 @@ const WORKFLOW_STEPS = [
     icon: Users,
     color: 'text-blue-500',
     bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    indicatorColor: 'bg-blue-500',
     description: 'Bắt đầu bằng việc nhập thông tin khách hàng tiềm năng.',
     details: [
       'Vào mục Khách hàng.',
       'Nhấn "Thêm khách hàng".',
       'Điền thông tin liên hệ và nhu cầu (tủ bếp, tủ quần áo, giường...).',
       'Phân công nhân viên Sale chăm sóc.'
-    ]
+    ],
+    tips: 'Lấy càng nhiều thông tin chi tiết về nhu cầu và ngân sách của khách hàng càng tốt để dễ dàng chốt sales.'
   },
   {
     id: 'step-2',
-    title: '2. Lên Báo giá & Chốt cọc',
-    tab: 'quotations',
-    icon: FileText,
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-50',
-    description: 'Tạo báo giá chi tiết và nhận tiền cọc của khách hàng.',
-    details: [
-      'Vào mục Báo giá hoặc Sale Planner.',
-      'Tạo file báo giá dựa trên kích thước dự kiến.',
-      'Chuyển trạng thái khách hàng sang "Chốt Cọc".'
-    ]
-  },
-  {
-    id: 'step-3',
-    title: '3. Khảo sát Đo đạc',
+    title: '2. Khảo sát Đo đạc',
     tab: 'measurements',
     icon: Ruler,
     color: 'text-purple-500',
     bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    indicatorColor: 'bg-purple-500',
     description: 'Lên lịch hẹn thợ đến nhà khách hàng để đo đạc thực tế.',
     details: [
       'Vào mục Lịch Đo Đạc.',
       'Tạo lịch hẹn mới, chọn khách hàng và thời gian.',
       'Giao việc cho thợ đo đạc.',
       'Cập nhật kết quả đo đạc (hình ảnh, bản vẽ phác thảo).'
-    ]
+    ],
+    tips: 'Nhắc thợ chụp ảnh hiện trạng các góc cạnh và đường điện nước để thiết kế chính xác.'
+  },
+  {
+    id: 'step-3',
+    title: '3. Lên Báo giá & Chốt cọc',
+    tab: 'quotations',
+    icon: FileText,
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-200',
+    indicatorColor: 'bg-amber-500',
+    description: 'Tạo báo giá chi tiết và nhận tiền cọc của khách hàng.',
+    details: [
+      'Vào mục Báo giá hoặc Sale Planner.',
+      'Tạo file báo giá dựa trên kích thước dự kiến.',
+      'Chuyển trạng thái khách hàng sang "Chốt Cọc".'
+    ],
+    tips: 'Sử dụng các mẫu báo giá có sẵn để tiết kiệm thời gian.'
   },
   {
     id: 'step-4',
@@ -62,13 +71,16 @@ const WORKFLOW_STEPS = [
     icon: Hammer,
     color: 'text-indigo-500',
     bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    indicatorColor: 'bg-indigo-500',
     description: 'Lên bản vẽ 3D/2D và chuyển xuống xưởng sản xuất.',
     details: [
       'Vào mục Sản Xuất.',
       'Cập nhật trạng thái bản vẽ (Đang thiết kế -> Chốt thiết kế).',
       'Giao việc cắt CNC, dán cạnh, khoan cam cho thợ.',
       'Theo dõi tiến độ ra ván và đóng gói.'
-    ]
+    ],
+    tips: 'Kiểm tra kỹ kích thước trên bản vẽ 2D trước khi xuất file cắt CNC để tránh sai sót ván.'
   },
   {
     id: 'step-5',
@@ -77,129 +89,152 @@ const WORKFLOW_STEPS = [
     icon: Truck,
     color: 'text-teal-500',
     bgColor: 'bg-teal-50',
+    borderColor: 'border-teal-200',
+    indicatorColor: 'bg-teal-500',
     description: 'Chuyển hàng đến nhà khách và tiến hành thi công lắp ráp.',
     details: [
       'Vào mục Lịch Lắp Đặt.',
       'Tạo lịch đi lắp, sắp xếp xe tải và thợ lắp ráp.',
       'Thợ cập nhật hình ảnh thi công thực tế tại công trình.'
-    ]
+    ],
+    tips: 'Bọc lót ván cẩn thận khi vận chuyển và chú ý vệ sinh công trình sau khi lắp đặt xong.'
   },
   {
     id: 'step-6',
     title: '6. Hoàn thiện & Thu tiền',
-    tab: 'customers', // Can point to customers or orders to update status
+    tab: 'customers', 
     icon: CheckCircle2,
     color: 'text-green-500',
     bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    indicatorColor: 'bg-green-500',
     description: 'Nghiệm thu, thu hồi công nợ và chuyển sang bảo hành.',
     details: [
       'Khách hàng nghiệm thu sản phẩm.',
       'Cập nhật thanh toán đợt cuối.',
       'Đổi trạng thái khách hàng sang "Hoàn thành".'
-    ]
+    ],
+    tips: 'Xin đánh giá (feedback) của khách hàng để làm tư liệu marketing.'
   }
 ];
 
 export function WorkflowGuideWidget({ setActiveTab }: WorkflowGuideWidgetProps) {
+  const [activeStepId, setActiveStepId] = useState(WORKFLOW_STEPS[0].id);
+
+  const activeStep = WORKFLOW_STEPS.find(s => s.id === activeStepId) || WORKFLOW_STEPS[0];
+
   return (
-    <Card className="col-span-full border border-primary/20 shadow-sm bg-gradient-to-br from-white to-primary/5">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <PlayCircle className="h-5 w-5 text-primary" />
-              Quy trình làm việc chuẩn
-            </CardTitle>
-            <CardDescription>
-              Hướng dẫn các bước thực hiện một đơn hàng từ khi bắt đầu đến lúc hoàn thiện.
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {WORKFLOW_STEPS.map((step, index) => {
-            const Icon = step.icon;
-            return (
-              <Dialog key={step.id}>
-                <div className="relative group">
-                  <div className={cn("p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-200 h-full flex flex-col cursor-pointer", "hover:border-" + step.color.split('-')[1] + "-200")}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={cn("p-2.5 rounded-lg", step.bgColor)}>
-                        <Icon className={cn("h-5 w-5", step.color)} />
-                      </div>
-                      <Badge variant="outline" className="text-[10px] font-semibold text-gray-400">
-                        Bước {index + 1}
-                      </Badge>
-                    </div>
-                    
-                    <h4 className="font-bold text-gray-800 text-sm mb-1 group-hover:text-primary transition-colors">
+    <Card className="col-span-full border-0 shadow-none bg-transparent">
+      <CardContent className="p-0">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Sidebar - Steps */}
+          <div className="w-full lg:w-1/3 flex flex-col space-y-2">
+            {WORKFLOW_STEPS.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = step.id === activeStepId;
+              
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => setActiveStepId(step.id)}
+                  className={cn(
+                    "w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-center gap-4 group relative overflow-hidden",
+                    isActive 
+                      ? `bg-white shadow-md ${step.borderColor}` 
+                      : "bg-transparent border-transparent hover:bg-gray-50 hover:border-gray-200"
+                  )}
+                >
+                  {isActive && (
+                    <motion.div 
+                      layoutId="active-step-indicator"
+                      className={cn("absolute left-0 top-0 bottom-0 w-1.5 rounded-r-full", step.indicatorColor)}
+                    />
+                  )}
+                  
+                  <div className={cn("p-2.5 rounded-lg flex-shrink-0 transition-colors", isActive ? step.bgColor : "bg-gray-100 group-hover:bg-gray-200")}>
+                    <Icon className={cn("h-5 w-5", isActive ? step.color : "text-gray-500")} />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h4 className={cn("font-bold text-sm transition-colors", isActive ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900")}>
                       {step.title}
                     </h4>
-                    <p className="text-xs text-gray-500 line-clamp-2 mb-4 flex-1">
-                      {step.description}
-                    </p>
-                    
-                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-50">
-                      <DialogTrigger className="h-7 text-xs px-2 text-primary hover:bg-primary/10 inline-flex items-center justify-center rounded-md font-medium transition-colors">
-                        Xem chi tiết
-                      </DialogTrigger>
-                      {setActiveTab && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-7 text-xs px-2 gap-1"
-                          onClick={() => setActiveTab(step.tab)}
-                        >
-                          Tới trang <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
+                  </div>
+                  
+                  <ChevronRight className={cn("h-4 w-4 transition-transform", isActive ? step.color : "text-transparent")} />
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Right Pane - Details */}
+          <div className="w-full lg:w-2/3">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeStep.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className={cn("h-full bg-white rounded-2xl border shadow-sm p-6 lg:p-8 flex flex-col", activeStep.borderColor)}
+              >
+                <div className="flex items-start gap-4 mb-6">
+                  <div className={cn("p-4 rounded-2xl", activeStep.bgColor)}>
+                    <activeStep.icon className={cn("h-8 w-8", activeStep.color)} />
+                  </div>
+                  <div>
+                    <Badge variant="outline" className="mb-2 text-[10px] font-semibold text-gray-400">
+                      BƯỚC {WORKFLOW_STEPS.findIndex(s => s.id === activeStep.id) + 1} / {WORKFLOW_STEPS.length}
+                    </Badge>
+                    <h2 className="text-2xl font-bold text-gray-900">{activeStep.title}</h2>
+                    <p className="text-gray-500 mt-1 leading-relaxed">{activeStep.description}</p>
                   </div>
                 </div>
 
-                <DialogContent className="sm:max-w-md rounded-2xl">
-                  <DialogHeader>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={cn("p-3 rounded-xl", step.bgColor)}>
-                        <Icon className={cn("h-6 w-6", step.color)} />
-                      </div>
-                      <div>
-                        <DialogTitle className="text-xl">{step.title}</DialogTitle>
-                        <DialogDescription className="mt-1">
-                          {step.description}
-                        </DialogDescription>
-                      </div>
-                    </div>
-                  </DialogHeader>
-                  <div className="p-4 bg-gray-50 rounded-xl mt-2">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Các thao tác cần làm</h4>
-                    <ul className="space-y-3">
-                      {step.details.map((detail, idx) => (
-                        <li key={idx} className="flex gap-3 text-sm text-gray-600 leading-relaxed">
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[11px] font-bold mt-0.5">
+                <div className="flex-1 space-y-6">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Các thao tác cần làm
+                    </h4>
+                    <div className="space-y-4">
+                      {activeStep.details.map((detail, idx) => (
+                        <div key={idx} className="flex gap-4 text-gray-700 bg-gray-50/50 p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+                          <span className={cn("flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-sm", activeStep.bgColor, activeStep.color)}>
                             {idx + 1}
                           </span>
-                          {detail}
-                        </li>
+                          <span className="leading-relaxed font-medium mt-0.5">{detail}</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                  {setActiveTab && (
-                    <div className="mt-4 flex justify-end">
-                      <DialogTrigger 
-                        onClick={() => setActiveTab(step.tab)}
-                        className="w-full sm:w-auto font-semibold gap-2 shadow-sm rounded-xl inline-flex items-center justify-center h-9 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                      >
-                        Đi tới trang {step.title.split('. ')[1]}
-                        <ChevronRight className="h-4 w-4" />
-                      </DialogTrigger>
+
+                  {activeStep.tips && (
+                    <div className={cn("p-5 rounded-xl border flex gap-4", activeStep.bgColor, activeStep.borderColor)}>
+                      <Lightbulb className={cn("h-6 w-6 flex-shrink-0 mt-0.5", activeStep.color)} />
+                      <div className="text-sm font-medium text-gray-700 leading-relaxed">
+                        <span className={cn("font-bold block mb-1 uppercase text-xs tracking-wider", activeStep.color)}>Mẹo tối ưu: </span>
+                        {activeStep.tips}
+                      </div>
                     </div>
                   )}
-                </DialogContent>
-              </Dialog>
-            );
-          })}
+                </div>
+
+                {setActiveTab && (
+                  <div className="mt-8 pt-6 border-t flex justify-end">
+                    <Button 
+                      onClick={() => setActiveTab(activeStep.tab)}
+                      size="lg"
+                      className="w-full sm:w-auto font-semibold gap-2 shadow-md rounded-xl h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:-translate-y-0.5"
+                    >
+                      Bắt đầu thao tác
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </CardContent>
     </Card>
