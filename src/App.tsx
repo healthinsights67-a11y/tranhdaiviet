@@ -709,68 +709,68 @@ function AppContent() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />;
+        return <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'reports':
         return redirect(perms.menuReports)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <ReportPage tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} />;
       case 'production':
         return redirect(perms.menuProduction)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'sale':
         return redirect(perms.menuSale)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'marketing':
         return redirect(perms.menuMarketing)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'marketing')} setTasks={setTasks} members={activeMembers} type="marketing" user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'design':
         return redirect(perms.menuDesign)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <KanbanBoard tasks={filteredTasks.filter(t => t.type === 'design')} setTasks={setTasks} members={activeMembers} type="design" user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'employees':
         return redirect(perms.menuMembers)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <MemberPage members={activeMembers} setMembers={setMembers} tasks={filteredTasks} user={user} currentUser={currentMember} />;
       case 'media':
         return redirect(perms.menuMedia)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <MediaLibrary folders={folders} user={user} />;
       case 'documents':
         return redirect(perms.menuMedia)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <ProductDocuments />;
       case 'quotations':
         return redirect(perms.menuQuotations)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <QuotationPage quotations={filteredQuotations} user={user} customers={filteredCustomers} members={activeMembers} products={productLibraryData} />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <MeasurementPage schedules={filteredSchedulesData} members={activeMembers} customers={filteredCustomers} user={user} currentUser={currentMember} />;
       case 'installations':
         return redirect(perms.menuProduction)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={filteredTasks} setTasks={setTasks} members={activeMembers} quotations={filteredQuotations} schedules={filteredSchedulesData} user={user} currentUser={currentMember} />;
       case 'ai-render':
         return redirect(perms.menuAi)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <AIRenderPage />;
       case 'users':
-        return isAdmin ? <UserManagement /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />;
+        return isAdmin ? <UserManagement /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'materials':
         return <MaterialConfigPage tasks={filteredTasks} quotations={filteredQuotations} />;
       case 'trash':
         return <TrashPage currentUser={currentMember} />;
       case 'ecoplast-learning':
         return redirect(perms.menuSale)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} />
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <EcoplastLearningPage />;
       default:
         return (
