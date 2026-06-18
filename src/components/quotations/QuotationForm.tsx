@@ -278,21 +278,29 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const handleBulkAdd = () => {
     if (selectedProductsForBulk.length === 0) return;
     
-    const newItemsToAdd = selectedProductsForBulk.map(product => ({
-      id: Math.random().toString(36).substr(2, 9),
-      category: product.category || 'Khác',
-      name: product.productName,
-      description: product.description || '',
-      unit: product.unit || 'md',
-      quantity: 1,
-      basePrice: product.unitPrice,
-      unitPrice: product.unitPrice,
-      total: product.unitPrice,
-      imageUrl: product.imageUrl || '',
-      // Mặc định ECO cho hạng mục nội thất, bỏ trống cho phụ kiện
-      materialCode: isAccessoryItem(product.productName, product.category) ? '' : 'ECO',
-      materialName: isAccessoryItem(product.productName, product.category) ? '' : 'ECO'
-    }));
+    const ecoMultiplier = multipliers.find(m => m.code === 'ECO');
+    const ecoRatio = ecoMultiplier ? ecoMultiplier.percentage / 100 : 1;
+
+    const newItemsToAdd = selectedProductsForBulk.map(product => {
+      const isAccessory = isAccessoryItem(product.productName, product.category);
+      const basePrice = product.unitPrice;
+      const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        category: product.category || 'Khác',
+        name: product.productName,
+        description: product.description || '',
+        unit: product.unit || 'md',
+        quantity: 1,
+        basePrice,
+        unitPrice,
+        total: unitPrice,
+        imageUrl: product.imageUrl || '',
+        // Mặc định ECO (105%) cho hạng mục nội thất, bỏ trống cho phụ kiện
+        materialCode: isAccessory ? '' : 'ECO',
+        materialName: isAccessory ? '' : 'ECO'
+      };
+    });
 
     const newItems = [...formData.items, ...newItemsToAdd];
     const amounts = getUpdatedAmounts(newItems, formData.discount, !!formData.hasVat);
@@ -762,15 +770,20 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                   onValueChange={(value) => {
                                     const standard = allProducts.find(p => p.productName === value);
                                     if (standard) {
+                                      const isAccessory = isAccessoryItem(standard.productName, standard.category);
+                                      const ecoMultiplier = multipliers.find(m => m.code === 'ECO');
+                                      const ecoRatio = ecoMultiplier ? ecoMultiplier.percentage / 100 : 1;
+                                      const basePrice = standard.unitPrice;
+                                      const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
                                       updateItem(item.id, { 
                                         name: standard.productName,
                                         unit: standard.unit,
-                                        basePrice: standard.unitPrice,
-                                        unitPrice: standard.unitPrice,
+                                        basePrice,
+                                        unitPrice,
                                         description: standard.description,
                                         category: standard.category,
-                                        materialCode: isAccessoryItem(standard.productName, standard.category) ? '' : 'ECO',
-                                        materialName: isAccessoryItem(standard.productName, standard.category) ? '' : 'ECO'
+                                        materialCode: isAccessory ? '' : 'ECO',
+                                        materialName: isAccessory ? '' : 'ECO'
                                       });
                                     }
                                   }}
