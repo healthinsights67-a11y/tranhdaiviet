@@ -71,6 +71,25 @@ const MATERIAL_COLORS: Record<string, string> = {
   'PKK': '#64748b', // Grey (Phụ kiện khác)
 };
 
+// Danh sách mã vật liệu là PHỤ KIỀN (không áp mặc định ECO)
+const ACCESSORY_MATERIAL_CODES = new Set(['PKB', 'MSNT', 'MSNCC', 'PKTA', 'PKK']);
+
+// Kiểm tra tên sản phẩm / danh mục có phải phụ kiện không
+const isAccessoryItem = (name: string, category?: string): boolean => {
+  const lower = (name + ' ' + (category || '')).toLowerCase();
+  return (
+    lower.includes('phụ kiện') ||
+    lower.includes('phụkiện') ||
+    lower.includes('bản lề') ||
+    lower.includes('tay nắm') ||
+    lower.includes('ray trượt') ||
+    lower.includes('khóa') ||
+    lower.includes('khóa tủ') ||
+    lower.includes('giảm chấn') ||
+    lower.includes('mặt sàn')
+  );
+};
+
 const getMaterialColor = (code?: string) => {
   if (!code) return '#1e40af'; // Mặc định Ecoplast
   return MATERIAL_COLORS[code.toUpperCase()] || '#64748b';
@@ -270,8 +289,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       unitPrice: product.unitPrice,
       total: product.unitPrice,
       imageUrl: product.imageUrl || '',
-      materialCode: '',
-      materialName: ''
+      // Mặc định ECO cho hạng mục nội thất, bỏ trống cho phụ kiện
+      materialCode: isAccessoryItem(product.productName, product.category) ? '' : 'ECO',
+      materialName: isAccessoryItem(product.productName, product.category) ? '' : 'ECO'
     }));
 
     const newItems = [...formData.items, ...newItemsToAdd];
@@ -299,8 +319,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       basePrice: 0,
       unitPrice: 0,
       total: 0,
-      materialCode: '',
-      materialName: ''
+      // Mặc định ECO cho hạng mục nội thất mới
+      materialCode: 'ECO',
+      materialName: 'ECO'
     };
     setFormData({ ...formData, items: [...formData.items, newItem] });
   };
@@ -748,8 +769,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                         unitPrice: standard.unitPrice,
                                         description: standard.description,
                                         category: standard.category,
-                                        materialCode: '',
-                                        materialName: ''
+                                        materialCode: isAccessoryItem(standard.productName, standard.category) ? '' : 'ECO',
+                                        materialName: isAccessoryItem(standard.productName, standard.category) ? '' : 'ECO'
                                       });
                                     }
                                   }}
