@@ -25,6 +25,13 @@ const DEFAULT_VIEW_STATE: ViewState = {
   zoom: 12
 };
 
+const lightMapStyle = [
+  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "road", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "transit", "stylers": [{ "visibility": "off" }] }
+];
+
 // Map options
 const defaultOptions = {
   disableDefaultUI: false,
@@ -32,6 +39,8 @@ const defaultOptions = {
   mapTypeControl: false,
   streetViewControl: false,
   fullscreenControl: false,
+  mapTypeId: 'roadmap',
+  styles: lightMapStyle,
 };
 
 export function MapComponent({

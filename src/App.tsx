@@ -922,11 +922,11 @@ function AppContent() {
         {/* Floating Workflow Guide Button */}
         <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50">
           <Dialog open={isWorkflowGuideOpen} onOpenChange={setIsWorkflowGuideOpen}>
-            <DialogTrigger className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl rounded-full h-12 md:h-14 px-4 md:px-6 flex items-center justify-center gap-2 transition-all duration-300 hover:-translate-y-1 group border-2 border-white">
-              <div className="bg-white/20 p-1.5 rounded-full group-hover:scale-110 transition-transform">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.35 2.22 1.45 3.02 1.45 1.63 0 3-1.35 3-3.02 0-.12-.01-.24-.03-.35L14.6 14c-.06.22-.1.45-.1.7 0 1.66 1.35 3 3.02 3s3.02-1.35 3.02-3-1.35-3-3.02-3c-.26 0-.5.04-.73.11l-3.95-3.95"/></svg>
+            <DialogTrigger className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl rounded-full h-10 md:h-11 px-3 md:px-4 flex items-center justify-center gap-2 transition-all duration-300 hover:-translate-y-1 group border-2 border-white">
+              <div className="bg-white/20 p-1 rounded-full group-hover:scale-110 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.35 2.22 1.45 3.02 1.45 1.63 0 3-1.35 3-3.02 0-.12-.01-.24-.03-.35L14.6 14c-.06.22-.1.45-.1.7 0 1.66 1.35 3 3.02 3s3.02-1.35 3.02-3-1.35-3-3.02-3c-.26 0-.5.04-.73.11l-3.95-3.95"/></svg>
               </div>
-              <span className="font-bold text-sm hidden md:inline">Quy trình chuẩn</span>
+              <span className="font-bold text-xs md:text-sm hidden md:inline">Hướng Dẫn</span>
             </DialogTrigger>
             <DialogContent className="max-w-[calc(100vw-2rem)] md:max-w-4xl max-h-[85vh] overflow-y-auto p-1 bg-gradient-to-br from-white to-gray-50 border-0 rounded-2xl md:rounded-3xl shadow-2xl">
               <DialogTitle className="sr-only">Hướng dẫn quy trình</DialogTitle>
