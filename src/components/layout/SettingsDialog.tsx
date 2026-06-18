@@ -46,6 +46,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogProps) {
   const [configs, setConfigs] = React.useState({
     imgbbKey: '',
+    googleMapsKey: '',
     systemName: 'I NỘI THẤT',
     systemDescription: 'Quản lý sản xuất & thiết kế chuyên nghiệp',
     contactSupport: '',
@@ -62,6 +63,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             const data = docSnap.data();
             setConfigs({
               imgbbKey: data.imgbbKey || '',
+              googleMapsKey: data.googleMapsKey || '',
               systemName: data.systemName || 'I NỘI THẤT',
               systemDescription: data.systemDescription || 'Quản lý sản xuất & thiết kế chuyên nghiệp',
               contactSupport: data.contactSupport || '',
@@ -228,6 +230,42 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                       <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                       <p className="text-xs text-muted-foreground font-medium italic">
                         Truy cập <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">trang quản trị API</a> để tạo hoặc lấy khóa mới.
+                      </p>
+                    </div>
+
+                    <div className="mt-8 mb-4 border-t border-gray-100 pt-8" />
+                    
+                    <div className="space-y-1 mb-4">
+                      <h3 className="text-lg font-bold text-foreground">Cấu hình Google Maps API</h3>
+                      <p className="text-xs text-muted-foreground font-medium">Bật các tính năng bản đồ chỉ đường, định vị và tự động điền địa chỉ.</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mb-1">
+                      <Label htmlFor="gmaps-key" className="text-[13px] font-bold text-foreground/80 ml-1">Google Maps API Key</Label>
+                      {configs.googleMapsKey && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 shadow-sm">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          ĐÃ LƯU
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative group">
+                      <Input 
+                        id="gmaps-key"
+                        type="password"
+                        placeholder="AIzaSy... (Để trống sẽ dùng bản đồ Demo)"
+                        value={configs.googleMapsKey}
+                        onChange={(e) => setConfigs(prev => ({ ...prev, googleMapsKey: e.target.value }))}
+                        className="pr-12 h-12 font-mono tracking-[0.2em] text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-400 rounded-xl px-5 transition-all"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Globe className="h-4 w-4 text-muted-foreground/40" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-1">
+                      <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                      <p className="text-xs text-muted-foreground font-medium italic">
+                        Tạo khóa API tại <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Google Cloud Console</a>.
                       </p>
                     </div>
                   </div>

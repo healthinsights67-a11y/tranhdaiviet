@@ -1,8 +1,8 @@
-import React, { useRef, useState, useEffect } from 'react';
-import Map, { NavigationControl, Marker, GeolocateControl, MapRef } from 'react-map-gl/maplibre';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapPin } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { GoogleMap, useJsApiLoader, MarkerF, OverlayViewF } from '@react-google-maps/api';
+import { MapPin, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { db, doc, onSnapshot } from '@/src/lib/firebase';
 
 export interface ViewState {
   longitude: number;
@@ -25,34 +25,13 @@ const DEFAULT_VIEW_STATE: ViewState = {
   zoom: 12
 };
 
-// We use a free vector tile source from MapTiler or OSM. 
-// For production without an API key, we can use CartoDB Positron or standard OSM.
-// Here we use standard OSM raster tiles since it doesn't require a key, 
-// or a free vector style if available.
-const mapStyle = {
-  version: 8,
-  sources: {
-    'carto-light': {
-      type: 'raster',
-      tiles: [
-        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-        'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-        'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
-      ],
-      tileSize: 256,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }
-  },
-  layers: [
-    {
-      id: 'carto-light-layer',
-      type: 'raster',
-      source: 'carto-light',
-      minzoom: 0,
-      maxzoom: 20
-    }
-  ]
+// Map options
+const defaultOptions = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: false,
 };
 
 export function MapComponent({
@@ -63,46 +42,114 @@ export function MapComponent({
   children,
   interactive = true
 }: MapComponentProps) {
-  const mapRef = useRef<MapRef>(null);
-  const [viewState, setViewState] = useState<ViewState>(initialViewState);
-
-  // Allow controlled or uncontrolled
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  
   useEffect(() => {
-    if (initialViewState.longitude !== viewState.longitude || initialViewState.latitude !== viewState.latitude) {
-      setViewState(initialViewState);
-      mapRef.current?.flyTo({ center: [initialViewState.longitude, initialViewState.latitude], zoom: initialViewState.zoom || 14 });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialViewState.longitude, initialViewState.latitude]);
+    // Fetch API key from Firebase settings
+    const unsub = onSnapshot(doc(db, 'configs', 'storage'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().googleMapsKey) {
+        setApiKey(docSnap.data().googleMapsKey);
+      } else {
+        // Fallback to empty string which might show "Development purposes only" 
+        // or trigger an error if Google enforces it.
+        setApiKey(''); 
+      }
+    });
+    return () => unsub();
+  }, []);
 
-  return (
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: apiKey || '',
+    language: 'vi',
+    region: 'VN'
+  });
+
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+
+  const center = useMemo(() => ({
+    lat: initialViewState.latitude,
+    lng: initialViewState.longitude
+  }), [initialViewState.latitude, initialViewState.longitude]);
+
+  const onLoad = useCallback(function callback(map: google.maps.Map) {
+    setMap(map);
+  }, []);
+
+  const onUnmount = useCallback(function callback() {
+    setMap(null);
+  }, []);
+
+  const handleCenterChanged = () => {
+    if (map && onViewStateChange) {
+      const newCenter = map.getCenter();
+      if (newCenter) {
+        onViewStateChange({
+          latitude: newCenter.lat(),
+          longitude: newCenter.lng(),
+          zoom: map.getZoom() || 14
+        });
+      }
+    }
+  };
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (interactive && onClick && e.latLng) {
+      onClick({
+        lngLat: {
+          lat: e.latLng.lat(),
+          lng: e.latLng.lng()
+        }
+      });
+    }
+  };
+
+  if (apiKey === null) {
+    return (
+      <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-gray-100", className)}>
+        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-red-50 text-red-500 font-medium text-sm", className)}>
+        Không thể tải Google Maps
+      </div>
+    );
+  }
+
+  return isLoaded ? (
     <div className={cn("relative w-full h-full overflow-hidden rounded-md", className)}>
-      <Map
-        ref={mapRef}
-        {...viewState}
-        onMove={evt => {
-          setViewState(evt.viewState);
-          onViewStateChange?.(evt.viewState);
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={center}
+        zoom={initialViewState.zoom || 14}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onCenterChanged={handleCenterChanged}
+        onClick={handleMapClick}
+        options={{
+          ...defaultOptions,
+          draggable: interactive,
+          scrollwheel: interactive,
+          disableDoubleClickZoom: !interactive,
         }}
-        onClick={(e) => {
-          if (interactive && onClick) onClick(e);
-        }}
-        mapStyle={mapStyle as any}
-        dragPan={interactive}
-        dragRotate={interactive}
-        scrollZoom={interactive}
-        doubleClickZoom={interactive}
       >
-        {interactive && <NavigationControl position="bottom-right" />}
-        {interactive && <GeolocateControl position="bottom-right" trackUserLocation={true} />}
-        
         {children}
-      </Map>
+      </GoogleMap>
+    </div>
+  ) : (
+    <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-gray-100", className)}>
+      <Loader2 className="h-6 w-6 text-primary animate-spin" />
     </div>
   );
 }
 
-// Reusable Custom Marker
+// Reusable Custom Marker using OverlayViewF
+import { OverlayView } from '@react-google-maps/api';
+
 export function CustomMarker({ 
   longitude, 
   latitude, 
@@ -119,11 +166,21 @@ export function CustomMarker({
   children?: React.ReactNode; 
 }) {
   return (
-    <Marker longitude={longitude} latitude={latitude} anchor="bottom" onClick={(e) => {
-      e.originalEvent.stopPropagation();
-      onClick?.();
-    }}>
-      <div className="relative flex flex-col items-center group cursor-pointer transition-transform duration-200 hover:scale-105">
+    <OverlayViewF
+      position={{ lat: latitude, lng: longitude }}
+      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+      getPixelPositionOffset={(width, height) => ({
+        x: -(width / 2),
+        y: -height
+      })}
+    >
+      <div 
+        className="relative flex flex-col items-center group cursor-pointer transition-transform duration-200 hover:scale-105"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.();
+        }}
+      >
         <div className={cn("p-1.5 rounded-full shadow-md border-2 border-white flex items-center justify-center transition-all duration-200", color)}>
           <MapPin className="h-5 w-5 text-white" />
         </div>
@@ -141,6 +198,6 @@ export function CustomMarker({
           </div>
         )}
       </div>
-    </Marker>
+    </OverlayViewF>
   );
 }
