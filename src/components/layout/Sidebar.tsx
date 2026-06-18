@@ -25,7 +25,8 @@ import {
   Trash2,
   Folder,
   BookOpen,
-  Calculator
+  Calculator,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ const navGroups = [
     title: 'Chung',
     items: [
       { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+      { id: 'workflow-guide', label: 'Hướng dẫn', icon: HelpCircle },
       { id: 'reports', label: 'Báo cáo', icon: BarChart3, permission: 'menuReports' },
     ]
   },

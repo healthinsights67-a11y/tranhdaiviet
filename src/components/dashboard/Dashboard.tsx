@@ -47,7 +47,6 @@ import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, Targ
 import { clearAllAppData } from '@/src/services/dataService';
 import { db, collection, addDoc } from '@/src/lib/firebase';
 import { SmartInsights } from './SmartInsights';
-import { WorkflowGuideWidget } from './WorkflowGuideWidget';
 export function Dashboard({ tasks, members, customers, quotations, currentUser, schedules, installations, setActiveTab }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any, schedules?: any[], installations?: any[], setActiveTab?: (tab: string) => void }) {
   const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
   const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
@@ -339,7 +338,6 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-0">
-          <WorkflowGuideWidget setActiveTab={setActiveTab} />
           <div className="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4">
             {[...financialStats, ...stats].map((stat, i) => (
               <motion.div
