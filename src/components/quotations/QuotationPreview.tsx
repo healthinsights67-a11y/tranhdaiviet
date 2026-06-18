@@ -375,14 +375,39 @@ export function QuotationPreview({
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 3. Render image directly to Data URL
-      const dataUrl = await toJpeg(element, {
-        pixelRatio: 1.5, // Reduced to prevent iOS Safari memory crash on very long invoices
-        backgroundColor: '#ffffff',
-        quality: 1.0
+      // 3. Inject preloaded base64 data URLs directly into img elements
+      // This prevents html-to-image from re-fetching images from external URLs
+      // which iOS Safari CORS blocks, causing logos to disappear in exported images
+      const imgElements = element.querySelectorAll('img');
+      const imgOriginalSrcs: string[] = [];
+      imgElements.forEach((img) => {
+        imgOriginalSrcs.push(img.src);
+        if (img.src && !img.src.startsWith('data:')) {
+          if (logoDataUrl && (img.src.includes(template.logoUrl || '__NO_MATCH__') || img.getAttribute('alt') === 'Logo' || img.getAttribute('alt') === 'Watermark')) {
+            img.src = logoDataUrl;
+          } else if (qrCodeDataUrl && img.getAttribute('alt') === 'QR Code') {
+            img.src = qrCodeDataUrl;
+          } else if (websiteQrCodeDataUrl && img.getAttribute('alt') === 'Website QR Code') {
+            img.src = websiteQrCodeDataUrl;
+          }
+        }
       });
 
-      // 4. Restore original styles immediately
+      // 4. Render image directly to Data URL
+      const dataUrl = await toJpeg(element, {
+        pixelRatio: 1.5,
+        backgroundColor: '#ffffff',
+        quality: 1.0,
+        skipFonts: false,
+        includeQueryParams: true,
+      });
+
+      // 5. Restore original img srcs
+      imgElements.forEach((img, i) => {
+        img.src = imgOriginalSrcs[i];
+      });
+
+      // 6. Restore original styles immediately
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
       stylesReset = false;
@@ -495,23 +520,43 @@ export function QuotationPreview({
     element.style.transform = "none";
 
     // Allow Safari DOM to recalculate
-    setTimeout(() => {
-      toJpeg(element, { 
-        pixelRatio: 1.5, 
-        backgroundColor: '#ffffff',
-        quality: 1.0
-      }).then((dataUrl) => {
-        // Restore styles
+    setTimeout(async () => {
+      // Inject preloaded base64 data URLs to prevent iOS CORS re-fetch
+      const imgElements = element.querySelectorAll('img');
+      const imgOriginalSrcs: string[] = [];
+      imgElements.forEach((img) => {
+        imgOriginalSrcs.push(img.src);
+        if (img.src && !img.src.startsWith('data:')) {
+          if (logoDataUrl && (img.getAttribute('alt') === 'Logo' || img.getAttribute('alt') === 'Watermark')) {
+            img.src = logoDataUrl;
+          } else if (qrCodeDataUrl && img.getAttribute('alt') === 'QR Code') {
+            img.src = qrCodeDataUrl;
+          } else if (websiteQrCodeDataUrl && img.getAttribute('alt') === 'Website QR Code') {
+            img.src = websiteQrCodeDataUrl;
+          }
+        }
+      });
+
+      try {
+        const dataUrl = await toJpeg(element, { 
+          pixelRatio: 1.5, 
+          backgroundColor: '#ffffff',
+          quality: 1.0,
+          skipFonts: false,
+          includeQueryParams: true,
+        });
+        // Restore img srcs and styles
+        imgElements.forEach((img, i) => { img.src = imgOriginalSrcs[i]; });
         element.className = originalClassName;
         element.style.transform = originalStyleTransform;
-
         triggerFallbackWithData(dataUrl);
-      }).catch(err => {
+      } catch (err) {
         console.error(err);
+        imgElements.forEach((img, i) => { img.src = imgOriginalSrcs[i]; });
         element.className = originalClassName;
         element.style.transform = originalStyleTransform;
         toast.error("Không thể tạo ảnh báo giá. Vui lòng thử lại hoặc dùng nút Tải PDF.");
-      });
+      }
     }, 150);
   };
 
