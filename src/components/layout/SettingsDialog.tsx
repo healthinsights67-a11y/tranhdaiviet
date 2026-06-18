@@ -141,8 +141,8 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             </TabsList>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-10 h-full max-h-full overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-10 flex-1 min-h-0 overflow-hidden">
               {/* Cột trái: Nội dung cấu hình (70%) */}
               <div className="md:col-span-7 overflow-y-auto min-h-0 h-full p-8 border-r bg-card text-card-foreground">
                 <TabsContent value="general" className="mt-0 space-y-8 animate-in fade-in-50 duration-300">
