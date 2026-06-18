@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileText, Ruler, Hammer, Truck, CheckCircle2, ChevronRight, Lightbulb } from 'lucide-react';
+import { Users, FileText, Ruler, Hammer, Truck, CheckCircle2, ChevronRight, Lightbulb, UserPlus, FileEdit, Stamp, Settings, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,7 +24,7 @@ const WORKFLOW_STEPS = [
     details: [
       'Vào mục Khách hàng.',
       'Nhấn "Thêm khách hàng".',
-      'Điền thông tin liên hệ và nhu cầu (tủ bếp, tủ quần áo, giường...).',
+      'Điền thông tin liên hệ và nhu cầu.',
       'Phân công nhân viên Sale chăm sóc.'
     ],
     tips: 'Lấy càng nhiều thông tin chi tiết về nhu cầu và ngân sách của khách hàng càng tốt để dễ dàng chốt sales.'
@@ -43,7 +43,7 @@ const WORKFLOW_STEPS = [
       'Vào mục Lịch Đo Đạc.',
       'Tạo lịch hẹn mới, chọn khách hàng và thời gian.',
       'Giao việc cho thợ đo đạc.',
-      'Cập nhật kết quả đo đạc (hình ảnh, bản vẽ phác thảo).'
+      'Cập nhật kết quả đo đạc.'
     ],
     tips: 'Nhắc thợ chụp ảnh hiện trạng các góc cạnh và đường điện nước để thiết kế chính xác.'
   },
@@ -59,7 +59,7 @@ const WORKFLOW_STEPS = [
     description: 'Tạo báo giá chi tiết và nhận tiền cọc của khách hàng.',
     details: [
       'Vào mục Báo giá hoặc Sale Planner.',
-      'Tạo file báo giá dựa trên kích thước dự kiến.',
+      'Tạo file báo giá dựa trên kích thước.',
       'Chuyển trạng thái khách hàng sang "Chốt Cọc".'
     ],
     tips: 'Sử dụng các mẫu báo giá có sẵn để tiết kiệm thời gian.'
@@ -76,7 +76,7 @@ const WORKFLOW_STEPS = [
     description: 'Lên bản vẽ 3D/2D và chuyển xuống xưởng sản xuất.',
     details: [
       'Vào mục Sản Xuất.',
-      'Cập nhật trạng thái bản vẽ (Đang thiết kế -> Chốt thiết kế).',
+      'Cập nhật trạng thái bản vẽ.',
       'Giao việc cắt CNC, dán cạnh, khoan cam cho thợ.',
       'Theo dõi tiến độ ra ván và đóng gói.'
     ],
@@ -117,6 +117,166 @@ const WORKFLOW_STEPS = [
     tips: 'Xin đánh giá (feedback) của khách hàng để làm tư liệu marketing.'
   }
 ];
+
+const StepSimulation = ({ stepId }: { stepId: string }) => {
+  return (
+    <div className="w-full h-[200px] md:h-[240px] bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center border-4 border-slate-800 shadow-inner">
+      <div className="absolute top-3 left-4 flex gap-1.5">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+      </div>
+      
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={stepId}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.3 }}
+          className="w-full h-full flex items-center justify-center"
+        >
+          {stepId === 'step-1' && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="w-48 h-32 bg-white/10 rounded-lg p-4 border border-white/20 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <UserPlus className="h-8 w-8 text-blue-400" />
+                  <div className="space-y-2 flex-1">
+                    <motion.div animate={{ width: ['0%', '100%'] }} transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }} className="h-2 bg-blue-400/50 rounded"></motion.div>
+                    <motion.div animate={{ width: ['0%', '70%'] }} transition={{ duration: 1, delay: 0.2, repeat: Infinity, repeatType: "reverse" }} className="h-2 bg-blue-400/30 rounded"></motion.div>
+                  </div>
+                </div>
+                <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} className="w-full h-8 bg-blue-500 text-white rounded text-[10px] flex items-center justify-center font-bold">
+                  LƯU THÔNG TIN
+                </motion.div>
+              </motion.div>
+            </div>
+          )}
+
+          {stepId === 'step-2' && (
+            <div className="flex flex-col items-center">
+              <div className="relative">
+                <Ruler className="h-16 w-16 text-purple-400" />
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: 120 }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute top-1/2 left-full ml-4 h-0.5 bg-purple-400 border-dashed border-t border-purple-400"
+                >
+                  <div className="absolute -top-3 right-0 text-[10px] text-purple-300">4500mm</div>
+                </motion.div>
+                <motion.div 
+                  initial={{ height: 0 }}
+                  animate={{ height: 80 }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                  className="absolute top-full left-1/2 mt-4 w-0.5 bg-purple-400 border-dashed border-l border-purple-400"
+                >
+                  <div className="absolute top-1/2 -left-10 text-[10px] text-purple-300">2200mm</div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {stepId === 'step-3' && (
+            <div className="flex flex-col items-center relative">
+              <motion.div 
+                animate={{ y: [20, 0, 20] }} 
+                transition={{ duration: 3, repeat: Infinity }}
+                className="w-40 h-48 bg-white/10 rounded-lg p-4 border border-white/20 flex flex-col gap-3"
+              >
+                <div className="h-3 w-1/2 bg-amber-400/50 rounded"></div>
+                <div className="h-2 w-full bg-white/20 rounded"></div>
+                <div className="h-2 w-full bg-white/20 rounded"></div>
+                <div className="h-2 w-3/4 bg-white/20 rounded"></div>
+                <div className="mt-auto h-6 w-full bg-amber-500/20 border border-amber-500/50 rounded flex items-center justify-between px-2">
+                  <span className="text-[10px] text-amber-200">Tổng cộng:</span>
+                  <span className="text-[10px] text-amber-400 font-bold">45.000.000đ</span>
+                </div>
+              </motion.div>
+              <motion.div 
+                initial={{ scale: 3, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 1, repeat: Infinity, repeatDelay: 2 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div className="border-4 border-red-500 text-red-500 font-black text-xl px-4 py-1 rounded rotate-[-15deg] uppercase">ĐÃ CHỐT CỌC</div>
+              </motion.div>
+            </div>
+          )}
+
+          {stepId === 'step-4' && (
+            <div className="flex gap-8 items-center">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, ease: "linear", repeat: Infinity }}>
+                <Settings className="h-16 w-16 text-indigo-400" />
+              </motion.div>
+              <div className="flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 50, opacity: 0 }}
+                    transition={{ duration: 2, delay: i * 0.6, repeat: Infinity, ease: "linear" }}
+                    className="w-12 h-12 bg-indigo-500/20 border-2 border-indigo-500/50 rounded-sm flex items-center justify-center"
+                  >
+                    <div className="w-8 h-8 border border-indigo-400/50"></div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {stepId === 'step-5' && (
+            <div className="w-full relative h-32 overflow-hidden flex items-center">
+              <div className="absolute bottom-4 w-full border-b-2 border-dashed border-teal-500/30"></div>
+              <motion.div 
+                initial={{ x: -100 }}
+                animate={{ x: 400 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute bottom-4 text-teal-400 flex items-center"
+              >
+                <Truck className="h-16 w-16" />
+                <motion.div 
+                  animate={{ opacity: [1, 0] }} 
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  className="w-8 h-8 ml-2 border-2 border-teal-500/50 rounded-sm bg-teal-500/20"
+                />
+              </motion.div>
+            </div>
+          )}
+
+          {stepId === 'step-6' && (
+            <div className="flex flex-col items-center gap-6">
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: [0, 1.2, 1] }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/50"
+              >
+                <CheckCircle2 className="h-12 w-12 text-white" />
+              </motion.div>
+              <div className="flex gap-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.8 + (i * 0.1) }}
+                  >
+                    <Star className="h-8 w-8 text-yellow-400 fill-yellow-400" />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export function WorkflowGuideWidget({ setActiveTab }: WorkflowGuideWidgetProps) {
   const [activeStepId, setActiveStepId] = useState(WORKFLOW_STEPS[0].id);
@@ -178,6 +338,11 @@ export function WorkflowGuideWidget({ setActiveTab }: WorkflowGuideWidgetProps) 
                 transition={{ duration: 0.2 }}
                 className={cn("h-full bg-white rounded-2xl border shadow-sm p-6 lg:p-8 flex flex-col", activeStep.borderColor)}
               >
+                {/* Simulation / Video Mock Area */}
+                <div className="mb-8">
+                  <StepSimulation stepId={activeStep.id} />
+                </div>
+
                 <div className="flex items-start gap-4 mb-6">
                   <div className={cn("p-4 rounded-2xl", activeStep.bgColor)}>
                     <activeStep.icon className={cn("h-8 w-8", activeStep.color)} />
