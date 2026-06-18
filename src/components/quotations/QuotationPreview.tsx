@@ -175,7 +175,9 @@ export function QuotationPreview({
       } catch (e) {
         console.warn('Direct fetch failed. Trying allorigins proxy...', e);
         try {
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          // Add cache-buster to allorigins too — Safari caches proxy responses without CORS headers
+          // which causes subsequent exports to fail with a tainted canvas error
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
           const dataUrl = await toBase64(proxyUrl);
           setter(dataUrl);
         } catch (e2) {
@@ -184,6 +186,9 @@ export function QuotationPreview({
         }
       }
     };
+
+    // Guard: only load images when dialog is open
+    if (!isOpen) return;
 
     const loadImages = async () => {
       setImagesLoading(true);
@@ -199,7 +204,7 @@ export function QuotationPreview({
     };
 
     loadImages();
-  }, [template.logoUrl, template.qrCodeUrl]);
+  }, [template.logoUrl, template.qrCodeUrl, template.companyWebsite, isOpen]);
 
   React.useEffect(() => {
     if (isOpen && quotation.customerId) {
