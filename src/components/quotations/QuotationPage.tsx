@@ -205,6 +205,29 @@ export function QuotationPage({ quotations, user, customers, members, products =
     setIsFormOpen(true);
   };
 
+  const handleDuplicateQuotation = (quotation: Quotation) => {
+    const nowStr = new Date().toISOString();
+    
+    // Generate a temporary new quotation number
+    const cleanNumber = `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    const newDuplicateData: Quotation = {
+      ...quotation,
+      id: Math.random().toString(36).substr(2, 9),
+      quotationNumber: cleanNumber,
+      createdAt: nowStr,
+      consultedAt: nowStr,
+      status: 'draft',
+      // Clear customer specific info to allow assigning to a new customer
+      customerId: '',
+      customerName: '',
+      phone: '',
+      address: '',
+    };
+    setSelectedQuotation(newDuplicateData);
+    setIsFormOpen(true);
+  };
+
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
     try {
       if (user) {
@@ -918,7 +941,6 @@ export function QuotationPage({ quotations, user, customers, members, products =
                              </Button>
                            </div>
                            <div className='flex items-center gap-2'>
-                               {activeQuotation.status !== 'uncreated' && (
                                  <Button 
                                    variant="secondary" 
                                    size="sm" 
@@ -932,8 +954,6 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                    <Eye className="h-3.5 w-3.5" />
                                    Xem
                                  </Button>
-                               )}
-                               {activeQuotation.status !== 'uncreated' && (
                                  <DropdownMenu>
                                    <DropdownMenuTrigger 
                                      className="h-8 w-8 rounded-lg hover:bg-secondary/50 flex items-center justify-center"
@@ -999,13 +1019,17 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                        <FileText className="h-4 w-4 text-blue-500" />
                                        Sửa chi tiết
                                      </DropdownMenuItem>
+                                     <DropdownMenuItem className="py-2.5 rounded-lg gap-3" onClick={() => handleDuplicateQuotation(activeQuotation)}>
+                                       <Copy className="h-4 w-4 text-emerald-500" />
+                                       Nhân bản cho khách mới
+                                     </DropdownMenuItem>
                                      <DropdownMenuItem className="py-2.5 rounded-lg gap-3 font-bold text-destructive" onClick={() => handleDeleteQuotation(activeQuotation.id)}>
                                        <Trash2 className="h-4 w-4" />
                                        Xóa hồ sơ
                                      </DropdownMenuItem>
                                    </DropdownMenuContent>
                                  </DropdownMenu>
-                               )}
+
                            </div>
                         </div>
                       </Card>

@@ -21,6 +21,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { db, doc, onSnapshot, setDoc, serverTimestamp, auth } from '@/src/lib/firebase';
@@ -286,21 +297,28 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                       <p className="text-sm font-bold text-red-600">Xóa dữ liệu</p>
                       <p className="text-[11px] text-red-500 font-medium leading-[1.3]">Xóa toàn bộ dữ liệu test của hệ thống.</p>
                     </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="w-full h-10 text-[11px] font-black uppercase tracking-wider rounded-xl shadow-sm hover:scale-[1.02] transition-transform"
-                      onClick={async () => {
-                          if (window.confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu test? Hành động này không thể hoàn tác.")) {
+                    <AlertDialog>
+                      <AlertDialogTrigger className="w-full h-10 text-[11px] font-black uppercase tracking-wider rounded-xl shadow-sm hover:scale-[1.02] transition-transform bg-destructive text-destructive-foreground hover:bg-destructive/90 inline-flex items-center justify-center">
+                        Bắt đầu xóa
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Xóa toàn bộ dữ liệu test?</AlertDialogTitle>
+                          <AlertDialogDescription>Bạn có chắc chắn muốn xóa toàn bộ dữ liệu test? Hành động này không thể hoàn tác.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Hủy</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={async () => {
                               toast.info("Đang xóa dữ liệu...");
                               await clearAllAppData();
                               toast.success("Đã xóa dữ liệu thành công!");
                               window.location.reload();
-                          }
-                      }}
-                    >
-                      Bắt đầu xóa
-                    </Button>
+                            }}
+                          >Xóa</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>

@@ -36,6 +36,7 @@ export const MemberPermissionsSchema = z.object({
   menuMedia: z.boolean().optional().catch(true),
   menuMembers: z.boolean().optional().catch(true),
   menuCustomers: z.boolean().optional().catch(true),
+  menuInstallations: z.boolean().optional().catch(true),
   menuAi: z.boolean().optional().catch(true),
 });
 
@@ -136,6 +137,20 @@ export const MediaFolderSchema = z.object({
   createdAt: timestampSchema,
 });
 
+export const ProductLibraryItemSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  productName: z.string(),
+  description: z.string().optional().catch(''),
+  imageUrl: z.string().optional().catch(''),
+  unit: z.string(),
+  unitPrice: z.number(),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema,
+  category: z.string().optional(),
+  isStandard: z.boolean().optional(),
+});
+
 export const QuotationItemSchema = z.object({
   id: z.string(),
   category: z.string(),
@@ -185,17 +200,7 @@ export const QuotationSchema = z.object({
   vatAmount: z.number().optional(),
 });
 
-export const ProductLibraryItemSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  productName: z.string(),
-  description: z.string().optional().default(''),
-  imageUrl: z.string().optional().or(z.literal('')).default(''),
-  unit: z.string(),
-  unitPrice: z.number(),
-  createdAt: timestampSchema.optional(),
-  updatedAt: timestampSchema.optional(),
-});
+
 
 export const MeasurementScheduleSchema = z.object({
   id: z.string(),

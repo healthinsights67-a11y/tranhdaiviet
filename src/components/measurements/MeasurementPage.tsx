@@ -8,6 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,7 +42,7 @@ interface MeasurementPageProps {
 
 export function MeasurementPage({ schedules, members, customers, user, currentUser }: MeasurementPageProps) {
   const queryClient = useQueryClient();
-  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || (user && ['nhoanhkoem01@gmail.com', 'haanhtran.cv02@gmail.com'].includes(user.email));
+  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || !!currentUser?.permissions?.menuMeasurement;
 
   const filteredSchedules = isManager 
     ? schedules 
@@ -486,9 +497,6 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
   };
 
   const handleDelete = async (schedule: MeasurementSchedule) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa lịch đo đạc của khách hàng "${schedule.customerName}"?`)) {
-      return;
-    }
 
     try {
       await moveToTrash(
@@ -1034,27 +1042,35 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                                       <div key={i} className="relative group/img">
                                         <img src={url} alt="Measurement" className="w-20 h-20 object-cover rounded shadow-sm border" />
                                         {(currentUser?.id === schedule.assigneeId || isManager) && (
-                                          <button 
-                                            onClick={async () => {
-                                              if (!window.confirm('Xóa ảnh này?')) return;
-                                              const docRef = doc(db, 'measurement_schedules', schedule.id);
-                                              await updateDoc(docRef, {
-                                                imageUrls: arrayRemove(url)
-                                              });
+                                          <AlertDialog>
+                                            <AlertDialogTrigger className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity shadow hover:bg-red-600 z-10" onClick={(e: any) => e.stopPropagation()}>
+                                                <X className="h-3 w-3" />
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent onClick={(e: any) => e.stopPropagation()}>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Xóa ảnh</AlertDialogTitle>
+                                                <AlertDialogDescription>Bạn có chắc chắn muốn xóa ảnh này?</AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                                <AlertDialogAction onClick={async () => {
+                                                  const docRef = doc(db, 'measurement_schedules', schedule.id);
+                                                  await updateDoc(docRef, {
+                                                    imageUrls: arrayRemove(url)
+                                                  });
 
-                                              const freshSnap = await getDoc(docRef);
-                                              if (freshSnap.exists()) {
-                                                const freshSchedule = { ...schedule, ...freshSnap.data() } as MeasurementSchedule;
-                                                await syncMeasurementToDesignTask(freshSchedule);
-                                              }
+                                                  const freshSnap = await getDoc(docRef);
+                                                  if (freshSnap.exists()) {
+                                                    const freshSchedule = { ...schedule, ...freshSnap.data() } as MeasurementSchedule;
+                                                    await syncMeasurementToDesignTask(freshSchedule);
+                                                  }
 
-                                              queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
-                                              toast.success('Đã xóa ảnh');
-                                            }}
-                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                          >
-                                            <X className="w-3 h-3" />
-                                          </button>
+                                                  queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
+                                                  toast.success('Đã xóa ảnh');
+                                                }}>Xóa</AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
                                         )}
                                       </div>
                                     ))}
@@ -1112,9 +1128,21 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
                                 </Button>
                               )}
                               {isManager && (
-                                <Button variant="outline" size="sm" onClick={() => handleDelete(schedule)} className="text-red-500 hover:text-red-600 hover:bg-red-50" title="Xóa lịch">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 text-red-500 hover:text-red-600 hover:bg-red-50" title="Xóa lịch" onClick={(e: any) => e.stopPropagation()}>
+                                      <Trash2 className="h-4 w-4" />
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent onClick={(e: any) => e.stopPropagation()}>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Xóa lịch đo đạc</AlertDialogTitle>
+                                      <AlertDialogDescription>Bạn có chắc chắn muốn xóa lịch đo đạc của khách hàng "{schedule.customerName}"?</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(schedule)}>Xóa</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               )}
                             </div>
                           </div>

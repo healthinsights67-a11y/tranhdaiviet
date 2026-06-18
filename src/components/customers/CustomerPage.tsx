@@ -184,6 +184,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+  const [newNoteContent, setNewNoteContent] = React.useState('');
   const [pendingContract, setPendingContract] = React.useState<{
     customer: Customer;
     isNew: boolean;
@@ -416,7 +417,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       const updateData: any = { stage: 'completed' };
       const nowStr = new Date().toISOString();
       
-      if (existingCustomer.stage !== 'contracted' && existingCustomer.stage !== 'completed') {
+      if (existingCustomer.stage !== 'contracted') {
         updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
         updateData.createdAt = nowStr;
       }
@@ -758,7 +759,39 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     setIsViewDialogOpen(true);
   };
 
-  const matchesTime = (dateStr?: string) => {
+  const handleAddNote = async () => {
+    if (!selectedCustomer || !newNoteContent.trim()) return;
+    try {
+      const newNote = {
+        id: Math.random().toString(36).substr(2, 9),
+        content: newNoteContent.trim(),
+        createdBy: currentUser?.name || 'Hệ thống',
+        createdAt: new Date().toISOString()
+      };
+      const customerRef = doc(db, 'customers', selectedCustomer.id);
+      
+      const updatedNotesList = [...(selectedCustomer.notesList || []), newNote];
+      
+      await updateDoc(customerRef, {
+        notesList: updatedNotesList
+      });
+      
+      setSelectedCustomer({
+        ...selectedCustomer,
+        notesList: updatedNotesList
+      });
+      
+      // Update local state to avoid waiting for snapshot if needed
+      setCustomers(customers.map(c => c.id === selectedCustomer.id ? { ...c, notesList: updatedNotesList } : c));
+      
+      toast.success('Đã thêm ghi chú');
+      setNewNoteContent('');
+    } catch (err) {
+      toast.error('Lỗi khi thêm ghi chú');
+    }
+  };
+
+  const matchesTime = React.useCallback((dateStr?: string) => {
     if (!selectedMonth || selectedMonth === 'all') return true;
     if (!dateStr) return false;
     const date = new Date(dateStr);
@@ -777,47 +810,53 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       return date >= firstDay && date <= lastDay;
     }
     return getVNMonth(dateStr) === selectedMonth;
-  };
+  }, [selectedMonth]);
 
-  const filteredCustomers = customers.filter(c => 
-    (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
-    (selectedStage === 'all' || c.stage === selectedStage) &&
-    (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
-    (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm) ||
-    (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
-  ).sort((a, b) => {
-    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    return timeB - timeA;
-  });
+  const filteredCustomers = React.useMemo(() => {
+    return customers.filter(c => 
+      (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
+      (selectedStage === 'all' || c.stage === selectedStage) &&
+      (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
+      (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phone.includes(searchTerm) ||
+      (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
+    ).sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [customers, selectedWorkshop, selectedStage, selectedMonth, searchTerm, matchesTime]);
 
   const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
 
-  const actualRevenue = filteredCustomers.reduce((sum, c) => {
-    if (c.stage === 'completed') {
-      return sum + (c.orderValue || 0);
-    }
-    if (['contracted', 'production', 'installation'].includes(c.stage)) {
-      const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-      const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-      return sum + deposit;
-    }
-    return sum;
-  }, 0);
+  const { actualRevenue, expectedRevenue, totalCustomers, wonCustomers, winRate } = React.useMemo(() => {
+    const actual = filteredCustomers.reduce((sum, c) => {
+      if (c.stage === 'completed') {
+        return sum + (c.orderValue || 0);
+      }
+      if (['contracted', 'production', 'installation'].includes(c.stage)) {
+        const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+        return sum + deposit;
+      }
+      return sum;
+    }, 0);
 
-  const expectedRevenue = filteredCustomers.reduce((sum, c) => {
-    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
-      return sum + (c.orderValue || 0);
-    }
-    return sum;
-  }, 0);
+    const expected = filteredCustomers.reduce((sum, c) => {
+      if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+        return sum + (c.orderValue || 0);
+      }
+      return sum;
+    }, 0);
 
-  const totalCustomers = filteredCustomers.length;
-  const wonCustomers = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
-  const winRate = totalCustomers > 0 ? Math.round((wonCustomers / totalCustomers) * 100) : 0;
+    const total = filteredCustomers.length;
+    const won = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+    const rate = total > 0 ? Math.round((won / total) * 100) : 0;
+
+    return { actualRevenue: actual, expectedRevenue: expected, totalCustomers: total, wonCustomers: won, winRate: rate };
+  }, [filteredCustomers, quotations]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
@@ -1783,12 +1822,28 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Ghi chú</Label>
-                  <div className="p-3 rounded-xl bg-secondary/20 border border-dashed border-border/50 min-h-[60px]">
-                    <p className="text-xs text-muted-foreground italic leading-relaxed">
-                      "{selectedCustomer.notes || 'Không có ghi chú nào'}"
-                    </p>
+                  <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Nhật ký & Ghi chú</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Thêm ghi chú chăm sóc khách hàng mới..." 
+                      className="text-xs h-9 bg-secondary/20"
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddNote();
+                      }}
+                    />
+                    <Button onClick={handleAddNote} size="sm" className="h-9 px-4 text-xs font-bold shrink-0">
+                      Thêm
+                    </Button>
                   </div>
+                  {selectedCustomer.notes && (!selectedCustomer.notesList || selectedCustomer.notesList.length === 0) && (
+                    <div className="p-3 rounded-xl bg-secondary/20 border border-dashed border-border/50 min-h-[60px] mt-2">
+                      <p className="text-xs text-muted-foreground italic leading-relaxed">
+                        "{selectedCustomer.notes}"
+                      </p>
+                    </div>
+                  )}
                 </div>
 
             <div className="bg-slate-50/50 rounded-2xl p-3 sm:p-4 ring-1 ring-slate-100 min-h-[300px]">
@@ -1829,6 +1884,14 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         note: s.notes || 'Không có ghi chú',
                         updatedBy: members.find(m => m.id === s.assigneeId)?.name || 'Hệ thống',
                         files2D3D: s.imageUrls 
+                      })),
+                      ...(selectedCustomer.notesList || []).map(n => ({
+                        id: n.id,
+                        type: 'other' as const,
+                        timestamp: n.createdAt,
+                        action: `Nhật ký ghi chú`,
+                        note: n.content,
+                        updatedBy: n.createdBy
                       }))
                     ].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())}
                   />

@@ -6,6 +6,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { uploadToImgBB } from '../../services/uploadService';
 
@@ -71,9 +82,7 @@ export const ProductDocuments = () => {
     }
   };
 
-  const handleDeleteFolder = async (folderId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm('Bạn có chắc chắn muốn xóa thư mục này và TOÀN BỘ tài liệu bên trong?')) return;
+  const handleDeleteFolder = async (folderId: string) => {
     try {
       // Find all docs in this folder
       const docsInFolder = documents.filter(d => d.folderId === folderId);
@@ -93,63 +102,6 @@ export const ProductDocuments = () => {
     }
   };
 
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      if (!file.type.startsWith('image/')) {
-        resolve(file);
-        return;
-      }
-      
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_WIDTH = 1920;
-        const MAX_HEIGHT = 1920;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            resolve(compressedFile);
-          } else {
-            resolve(file);
-          }
-        }, 'image/jpeg', 0.8);
-      };
-      
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        resolve(file);
-      };
-      
-      img.src = objectUrl;
-    });
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !selectedFolder) return;
@@ -157,7 +109,7 @@ export const ProductDocuments = () => {
     setIsUploading(true);
     let successCount = 0;
     try {
-      const uploadFile = async (file: File, index: number) => {
+      const uploadFile = async (file: File) => {
         try {
           const ext = file.name.split('.').pop()?.toLowerCase() || '';
           const isImage = file.type?.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
@@ -167,7 +119,6 @@ export const ProductDocuments = () => {
           let size = file.size;
 
           if (isImage) {
-            // Try uploading to ImgBB first
             const imgbbUrl = await uploadToImgBB(file);
             if (imgbbUrl) {
               url = imgbbUrl;
@@ -175,9 +126,7 @@ export const ProductDocuments = () => {
             }
           }
 
-          // Fallback to Firebase Storage via backend if not an image or if ImgBB upload failed
           if (!url) {
-            // Read file as Base64
             const base64 = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
               reader.readAsDataURL(file);
@@ -191,9 +140,7 @@ export const ProductDocuments = () => {
 
             const response = await fetch('/api/upload-document', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 name: file.name,
                 type: file.type || 'application/octet-stream',
@@ -211,12 +158,6 @@ export const ProductDocuments = () => {
             url = data.url;
             type = file.type || 'application/octet-stream';
             size = data.size;
-
-            if (data.isFallback) {
-              toast.warning(`Lưu tệp tạm thời thành công: ${data.warning}`, {
-                duration: 8000
-              });
-            }
           }
           
           await addDoc(collection(db, 'product_documents'), {
@@ -235,17 +176,15 @@ export const ProductDocuments = () => {
         }
       };
 
-      const chunkSize = 3; // Reduced chunk size to 3 for stability on weaker devices
+      const chunkSize = 3;
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
-        const results = await Promise.all(chunk.map((f, idx) => uploadFile(f, i + idx)));
+        const results = await Promise.all(chunk.map((f) => uploadFile(f)));
         successCount += results.filter(Boolean).length;
       }
       
       if (successCount > 0) {
         toast.success(`Đã tải lên thành công ${successCount}/${files.length} tài liệu`);
-      } else {
-        toast.error('Không thể tải lên tài liệu nào. Vui lòng kiểm tra thông báo lỗi chi tiết ở trên.');
       }
     } catch (error: any) {
       toast.error('Lỗi tải file: ' + error.message);
@@ -256,7 +195,6 @@ export const ProductDocuments = () => {
   };
 
   const handleDeleteDocument = async (docObj: ProductDocument) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
     try {
       const fileRef = ref(storage, docObj.url);
       await deleteObject(fileRef).catch(e => console.warn('Storage delete error:', e));
@@ -277,64 +215,21 @@ export const ProductDocuments = () => {
 
   const getFileMeta = (name: string, type: string) => {
     const ext = name.split('.').pop()?.toLowerCase() || '';
-    
     if (type.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
-      return {
-        icon: <ImageIcon className="h-10 w-10 text-sky-500" />,
-        typeName: ext.toUpperCase() || 'IMAGE'
-      };
+      return { icon: <ImageIcon className="h-10 w-10 text-sky-500" />, typeName: ext.toUpperCase() || 'IMAGE' };
     }
-    if (ext === 'pdf' || type.includes('pdf')) {
-      return {
-        icon: <FileText className="h-10 w-10 text-rose-500" />,
-        typeName: 'PDF'
-      };
-    }
-    if (['doc', 'docx'].includes(ext) || type.includes('word') || type.includes('msword')) {
-      return {
-        icon: <FileText className="h-10 w-10 text-blue-600" />,
-        typeName: ext.toUpperCase() || 'WORD'
-      };
-    }
-    if (['xls', 'xlsx', 'csv'].includes(ext) || type.includes('excel') || type.includes('sheet') || type.includes('csv')) {
-      return {
-        icon: <FileText className="h-10 w-10 text-emerald-600" />,
-        typeName: ext.toUpperCase() || 'EXCEL'
-      };
-    }
-    if (['ppt', 'pptx'].includes(ext) || type.includes('powerpoint') || type.includes('presentation')) {
-      return {
-        icon: <FileText className="h-10 w-10 text-orange-500" />,
-        typeName: ext.toUpperCase() || 'POWERPOINT'
-      };
-    }
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext) || type.includes('zip') || type.includes('compressed')) {
-      return {
-        icon: <FileIcon className="h-10 w-10 text-amber-500" />,
-        typeName: ext.toUpperCase() || 'ARCHIVE'
-      };
-    }
-    if (['txt', 'md'].includes(ext) || type.includes('text')) {
-      return {
-        icon: <FileText className="h-10 w-10 text-slate-500" />,
-        typeName: ext.toUpperCase() || 'TEXT'
-      };
-    }
-    if (['cad', 'dwg', 'dxf'].includes(ext)) {
-      return {
-        icon: <FileIcon className="h-10 w-10 text-indigo-500" />,
-        typeName: ext.toUpperCase() || 'CAD'
-      };
-    }
-    return {
-      icon: <FileIcon className="h-10 w-10 text-gray-400" />,
-      typeName: ext.toUpperCase() || 'FILE'
-    };
+    if (ext === 'pdf' || type.includes('pdf')) return { icon: <FileText className="h-10 w-10 text-rose-500" />, typeName: 'PDF' };
+    if (['doc', 'docx'].includes(ext) || type.includes('word') || type.includes('msword')) return { icon: <FileText className="h-10 w-10 text-blue-600" />, typeName: ext.toUpperCase() || 'WORD' };
+    if (['xls', 'xlsx', 'csv'].includes(ext) || type.includes('excel') || type.includes('sheet') || type.includes('csv')) return { icon: <FileText className="h-10 w-10 text-emerald-600" />, typeName: ext.toUpperCase() || 'EXCEL' };
+    if (['ppt', 'pptx'].includes(ext) || type.includes('powerpoint') || type.includes('presentation')) return { icon: <FileText className="h-10 w-10 text-orange-500" />, typeName: ext.toUpperCase() || 'POWERPOINT' };
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext) || type.includes('zip') || type.includes('compressed')) return { icon: <FileIcon className="h-10 w-10 text-amber-500" />, typeName: ext.toUpperCase() || 'ARCHIVE' };
+    if (['txt', 'md'].includes(ext) || type.includes('text')) return { icon: <FileText className="h-10 w-10 text-slate-500" />, typeName: ext.toUpperCase() || 'TEXT' };
+    if (['cad', 'dwg', 'dxf'].includes(ext)) return { icon: <FileIcon className="h-10 w-10 text-indigo-500" />, typeName: ext.toUpperCase() || 'CAD' };
+    return { icon: <FileIcon className="h-10 w-10 text-gray-400" />, typeName: ext.toUpperCase() || 'FILE' };
   };
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
-      {/* Sidebar Folders */}
       <div className={`${selectedFolder ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-64 border-r bg-card/50`}>
         <div className="p-4 border-b flex items-center justify-between">
           <h2 className="font-semibold">Thư mục Tài liệu</h2>
@@ -347,15 +242,27 @@ export const ProductDocuments = () => {
             <div 
               key={folder.id}
               onClick={() => setSelectedFolder(folder)}
-              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${selectedFolder?.id === folder.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'}`}
+              className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${selectedFolder?.id === folder.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'}`}
             >
               <div className="flex items-center gap-3 overflow-hidden">
                 <Folder className={`h-5 w-5 shrink-0 ${selectedFolder?.id === folder.id ? 'fill-primary/20 text-primary' : 'text-muted-foreground'}`} />
                 <span className="truncate font-medium text-sm">{folder.name}</span>
               </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:text-destructive" onClick={(e) => handleDeleteFolder(folder.id, e)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:text-destructive" onClick={(e: any) => e.stopPropagation()}>
+                  <Trash2 className="h-4 w-4" />
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e: any) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Xóa thư mục</AlertDialogTitle>
+                    <AlertDialogDescription>Bạn có chắc chắn muốn xóa thư mục này và TOÀN BỘ tài liệu bên trong?</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDeleteFolder(folder.id)}>Xóa</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           ))}
           {folders.length === 0 && (
@@ -364,7 +271,6 @@ export const ProductDocuments = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className={`${!selectedFolder ? 'hidden md:flex items-center justify-center' : 'flex'} flex-1 flex-col`}>
         {!selectedFolder ? (
           <div className="text-center text-muted-foreground">
@@ -386,41 +292,19 @@ export const ProductDocuments = () => {
                   <p className="text-xs text-muted-foreground">{documents.length} tài liệu</p>
                 </div>
               </div>
-              
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative hidden sm:block">
                   <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Tìm tài liệu..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 h-9 bg-secondary border-none"
-                  />
+                  <Input placeholder="Tìm tài liệu..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-9 bg-secondary border-none" />
                 </div>
                 <div>
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                  />
+                  <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
                   <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="h-9 gap-2">
                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
                     <span className="hidden sm:inline">Tải lên</span>
                   </Button>
                 </div>
               </div>
-            </div>
-
-            <div className="p-4 relative block sm:hidden">
-                <Search className="absolute left-6 top-6 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Tìm tài liệu..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 h-9 bg-secondary border-none w-full"
-                />
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-secondary/20">
@@ -433,14 +317,25 @@ export const ProductDocuments = () => {
                       ) : (
                         getFileMeta(doc.name, doc.type).icon
                       )}
-                      
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                          <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-colors">
                            <Download className="h-4 w-4" />
                          </a>
-                         <button onClick={() => handleDeleteDocument(doc)} className="p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white backdrop-blur-sm transition-colors">
-                           <Trash2 className="h-4 w-4" />
-                         </button>
+                         <AlertDialog>
+                          <AlertDialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 p-2 bg-red-500/80 hover:bg-red-600 text-white backdrop-blur-sm transition-colors h-8 w-8">
+                            <Trash2 className="h-4 w-4" />
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Xóa tài liệu</AlertDialogTitle>
+                              <AlertDialogDescription>Bạn có chắc chắn muốn xóa tài liệu này?</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Hủy</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteDocument(doc)}>Xóa</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                     <div className="p-3 flex flex-col justify-between flex-1">

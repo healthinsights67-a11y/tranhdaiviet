@@ -31,6 +31,13 @@ export interface Member {
   permissions?: MemberPermissions;
 }
 
+export interface CustomerNote {
+  id: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface Customer {
   id: string;
   code?: string;
@@ -47,6 +54,7 @@ export interface Customer {
   workshop?: string;
   consultedAt?: string;
   location?: { lat: number; lng: number };
+  notesList?: CustomerNote[];
 }
 
 export interface Task {

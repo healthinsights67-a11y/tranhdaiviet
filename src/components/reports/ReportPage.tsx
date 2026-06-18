@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   BarChart, 
@@ -87,7 +88,7 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
   const [deptFilter, setDeptFilter] = React.useState<DepartmentFilter>('all');
 
-  const matchesTime = (dateStr?: string) => {
+  const matchesTime = React.useCallback((dateStr?: string) => {
     if (!selectedMonth || selectedMonth === 'all') return true;
     if (!dateStr) return false;
     const date = new Date(dateStr);
@@ -106,148 +107,167 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
       return date >= firstDay && date <= lastDay;
     }
     return getVNMonth(dateStr) === selectedMonth;
-  };
+  }, [selectedMonth]);
 
-  // Comprehensive Data Filtering
-  const activeProjects = customers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
-  const filteredProjects = activeProjects.filter(o => !selectedMonth || (o.createdAt && matchesTime(o.createdAt)));
-  const filteredCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
-  const filteredTasks = tasks.filter(t => !selectedMonth || (t.completedAt && matchesTime(t.completedAt)));
+  const {
+    filteredCustomers,
+    filteredProjects,
+    filteredTasks,
+    memberStats,
+    totalRevenue,
+    totalExpectedRevenue,
+    totalTasksCount
+  } = React.useMemo(() => {
+    const activeProjects = customers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
+    const fProjects = activeProjects.filter(o => !selectedMonth || (o.createdAt && matchesTime(o.createdAt)));
+    const fCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
+    const fTasks = tasks.filter(t => !selectedMonth || (t.completedAt && matchesTime(t.completedAt)));
 
-  const memberStats = members
-    .filter(m => deptFilter === 'all' || m.role === deptFilter)
-    .map(member => {
-      const memberCustomers = filteredCustomers.filter(c => c.assignedSaleId === member.id);
-      const memberWorkCustomers = customers.filter(c => c.assignedSaleId === member.id);
-      const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
-      
-      const memberProjects = filteredProjects.filter(o => memberCustomerNames.has(o.name));
-      const revenue = memberCustomers.reduce((sum, c) => {
-        if (c.stage === 'completed') {
-          return sum + (c.orderValue || 0);
-        }
-        if (['contracted', 'production', 'installation'].includes(c.stage)) {
-          const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-          const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-          return sum + deposit;
-        }
-        return sum;
-      }, 0);
-      
-      const memberTasks = filteredTasks.filter(t => t.assigneeId === member.id);
-      const completedTasks = memberTasks.filter(t => t.status === 'done');
-      
-      let totalKPI = 0;
-      let lateTasks = 0;
-      let earlyTasks = 0;
-      const itemsHistory: any[] = [];
-
-      completedTasks.forEach(t => {
-        const metrics = calculateKPIScore(t.dueDate, t.completedAt);
-        totalKPI += metrics.score;
-        if (metrics.status === 'early') earlyTasks++;
-        if (metrics.status === 'late' || metrics.status === 'very-late') lateTasks++;
+    const mStats = members
+      .filter(m => deptFilter === 'all' || m.role === deptFilter)
+      .map(member => {
+        const memberCustomers = fCustomers.filter(c => c.assignedSaleId === member.id);
+        const memberWorkCustomers = customers.filter(c => c.assignedSaleId === member.id);
+        const memberCustomerNames = new Set(memberWorkCustomers.map(c => c.name));
         
-        itemsHistory.push({
-          id: t.id,
-          type: 'task',
-          title: t.title,
-          customer: t.customerName || 'N/A',
-          activity: 'Hoàn thành nhiệm vụ',
-          timestamp: t.completedAt,
-          status: metrics.status,
-          points: metrics.score
-        });
-      });
+        const memberProjects = fProjects.filter(o => memberCustomerNames.has(o.name));
+        const revenue = memberCustomers.reduce((sum, c) => {
+          if (c.stage === 'completed') {
+            return sum + (c.orderValue || 0);
+          }
+          if (['contracted', 'production', 'installation'].includes(c.stage)) {
+            const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+            const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+            return sum + deposit;
+          }
+          return sum;
+        }, 0);
+        
+        const memberTasks = fTasks.filter(t => t.assigneeId === member.id);
+        const completedTasks = memberTasks.filter(t => t.status === 'done');
+        
+        let totalKPI = 0;
+        let lateTasks = 0;
+        let earlyTasks = 0;
+        const itemsHistory: any[] = [];
 
-      let checklistWorkUnits = 0;
-      tasks.forEach(task => {
-        const checklist = task.productionChecklist;
-        if (checklist && Array.isArray(checklist.items)) {
-          checklist.items.forEach((item: any) => {
-            if (item.confirmedBy === member.name) {
-              if (item.timestamp) {
-                const dateParts = item.timestamp.split(' ')[0].split('/');
-                if (dateParts.length === 3) {
-                  const itemMonth = `${dateParts[2]}-${dateParts[1]}`;
-                  if (!selectedMonth || selectedMonth === 'all' || 
-                     (selectedMonth !== 'today' && selectedMonth !== 'week' && itemMonth === selectedMonth) || 
-                     (selectedMonth === 'today' || selectedMonth === 'week') // Simplified for checklists
-                  ) {
-                    checklistWorkUnits++;
-                    const points = 5;
-                    totalKPI += points;
-                    
-                    itemsHistory.push({
-                      id: `${task.id}-${item.id}`,
-                      type: 'checklist',
-                      title: task.title,
-                      customer: task.customerName || 'N/A',
-                      activity: item.label,
-                      timestamp: item.timestamp,
-                      status: 'confirmed',
-                      points
-                    });
+        completedTasks.forEach(t => {
+          const metrics = calculateKPIScore(t.dueDate, t.completedAt);
+          totalKPI += metrics.score;
+          if (metrics.status === 'early') earlyTasks++;
+          if (metrics.status === 'late' || metrics.status === 'very-late') lateTasks++;
+          
+          itemsHistory.push({
+            id: t.id,
+            type: 'task',
+            title: t.title,
+            customer: t.customerName || 'N/A',
+            activity: 'Hoàn thành nhiệm vụ',
+            timestamp: t.completedAt,
+            status: metrics.status,
+            points: metrics.score
+          });
+        });
+
+        let checklistWorkUnits = 0;
+        tasks.forEach(task => {
+          const checklist = task.productionChecklist;
+          if (checklist && Array.isArray(checklist.items)) {
+            checklist.items.forEach((item: any) => {
+              if (item.confirmedBy === member.name) {
+                if (item.timestamp) {
+                  const dateParts = item.timestamp.split(' ')[0].split('/');
+                  if (dateParts.length === 3) {
+                    const itemMonth = `${dateParts[2]}-${dateParts[1]}`;
+                    if (!selectedMonth || selectedMonth === 'all' || 
+                       (selectedMonth !== 'today' && selectedMonth !== 'week' && itemMonth === selectedMonth) || 
+                       (selectedMonth === 'today' || selectedMonth === 'week') // Simplified for checklists
+                    ) {
+                      checklistWorkUnits++;
+                      const points = 5;
+                      totalKPI += points;
+                      
+                      itemsHistory.push({
+                        id: `${task.id}-${item.id}`,
+                        type: 'checklist',
+                        title: task.title,
+                        customer: task.customerName || 'N/A',
+                        activity: item.label,
+                        timestamp: item.timestamp,
+                        status: 'confirmed',
+                        points
+                      });
+                    }
                   }
                 }
               }
-            }
-          });
-        }
+            });
+          }
+        });
+
+        const totalPossibleKPI = (memberTasks.length * 10) + (checklistWorkUnits * 5);
+        const efficiency = totalPossibleKPI > 0 ? (totalKPI / totalPossibleKPI) * 100 : 0;
+        
+        const conversionRate = memberCustomers.length > 0 
+          ? (memberProjects.filter(o => o.stage === 'completed').length / memberCustomers.length) * 100 
+          : 0;
+
+        return {
+          id: member.id,
+          name: member.name,
+          avatar: member.avatar,
+          role: member.role,
+          revenue,
+          orderCount: memberProjects.length,
+          customerCount: memberCustomers.length,
+          taskCount: completedTasks.length,
+          totalTasks: memberTasks.length,
+          checklistCount: checklistWorkUnits,
+          lateTasks,
+          earlyTasks,
+          kpi: totalKPI,
+          efficiency,
+          conversionRate,
+          history: itemsHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+        };
+      })
+      .sort((a, b) => {
+        if (deptFilter === 'SALE' || (a.revenue > 0 && b.revenue > 0)) return b.revenue - a.revenue;
+        return b.kpi - a.kpi;
       });
 
-      const totalPossibleKPI = (memberTasks.length * 10) + (checklistWorkUnits * 5);
-      const efficiency = totalPossibleKPI > 0 ? (totalKPI / totalPossibleKPI) * 100 : 0;
-      
-      const conversionRate = memberCustomers.length > 0 
-        ? (memberProjects.filter(o => o.stage === 'completed').length / memberCustomers.length) * 100 
-        : 0;
+    const tRevenue = fCustomers.reduce((sum, c) => {
+      if (c.stage === 'completed') {
+        return sum + (c.orderValue || 0);
+      }
+      if (['contracted', 'production', 'installation'].includes(c.stage)) {
+        const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+        return sum + deposit;
+      }
+      return sum;
+    }, 0);
 
-      return {
-        id: member.id,
-        name: member.name,
-        avatar: member.avatar,
-        role: member.role,
-        revenue,
-        orderCount: memberProjects.length,
-        customerCount: memberCustomers.length,
-        taskCount: completedTasks.length,
-        totalTasks: memberTasks.length,
-        checklistCount: checklistWorkUnits,
-        lateTasks,
-        earlyTasks,
-        kpi: totalKPI,
-        efficiency,
-        conversionRate,
-        history: itemsHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      };
-    })
-    .sort((a, b) => {
-      if (deptFilter === 'SALE' || (a.revenue > 0 && b.revenue > 0)) return b.revenue - a.revenue;
-      return b.kpi - a.kpi;
-    });
+    const tExpectedRevenue = fCustomers.reduce((sum, c) => {
+      if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+        return sum + (c.orderValue || 0);
+      }
+      return sum;
+    }, 0);
+    const tTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt))).length;
+
+    return {
+      filteredCustomers: fCustomers,
+      filteredProjects: fProjects,
+      filteredTasks: fTasks,
+      memberStats: mStats,
+      totalRevenue: tRevenue,
+      totalExpectedRevenue: tExpectedRevenue,
+      totalTasksCount: tTasksCount
+    };
+  }, [customers, members, tasks, quotations, selectedMonth, deptFilter, matchesTime]);
 
   const selectedMemberStats = memberStats.find(s => s.id === selectedMemberId);
-
-  const totalRevenue = filteredCustomers.reduce((sum, c) => {
-    if (c.stage === 'completed') {
-      return sum + (c.orderValue || 0);
-    }
-    if (['contracted', 'production', 'installation'].includes(c.stage)) {
-      const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-      const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-      return sum + deposit;
-    }
-    return sum;
-  }, 0);
-
-  const totalExpectedRevenue = filteredCustomers.reduce((sum, c) => {
-    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
-      return sum + (c.orderValue || 0);
-    }
-    return sum;
-  }, 0);
-  const totalTasksCount = tasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt))).length;
   const completedTasksGlobal = filteredTasks.length;
   const overdueTasksGlobal = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
   const totalCustomers = filteredCustomers.length;
@@ -337,6 +357,30 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
     { label: 'Đúng hạn', value: '92%', icon: Clock, color: 'text-sky-500' },
   ];
 
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = memberStats.map(member => ({
+        'Họ và tên': member.name,
+        'Phòng ban': member.role,
+        'Doanh thu (VNĐ)': member.revenue,
+        'Số công trình': member.orderCount,
+        'Số nhiệm vụ': member.taskCount,
+        'Số công việc (Checklist)': member.checklistCount,
+        'Hiệu suất KPI (%)': member.efficiency ? member.efficiency.toFixed(1) : 0,
+        'Tỉ lệ chốt (%)': member.conversionRate ? member.conversionRate.toFixed(1) : 0
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Báo cáo KPI');
+      
+      const fileName = `Bao_Cao_Hieu_Suat_${selectedMonth || 'Tat_Ca'}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } catch (error) {
+      console.error('Error exporting excel:', error);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -402,11 +446,19 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('all')}>Tất cả</Button>
                 </div>
               </div>
             </PopoverContent>
           </Popover>
+
+          <Button 
+            variant="outline" 
+            className="h-10 px-4 font-bold rounded-md bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
+            onClick={handleExportExcel}
+          >
+            Xuất Excel
+          </Button>
         </div>
       </div>
 

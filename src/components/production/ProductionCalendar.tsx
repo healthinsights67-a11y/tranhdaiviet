@@ -89,10 +89,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
   const [rightTab, setRightTab] = React.useState<'production' | 'installation'>('production');
 
-  const isTopManager = (user && (user.email === 'nhoanhkoem01@gmail.com' || user.email === 'haanhtran.cv02@gmail.com')) || 
-    !!(currentUser?.role?.toLowerCase()?.includes('giám đốc')) || 
-    !!(currentUser?.role?.toLowerCase()?.includes('quản lý tổng')) ||
-    !!(currentUser?.role?.toLowerCase()?.includes('quản lý')) ||
+  const isTopManager = !!currentUser?.permissions?.menuProduction || 
+    !!currentUser?.role?.toLowerCase()?.includes('quản lý tổng') ||
+    !!currentUser?.role?.toLowerCase()?.includes('quản lý') ||
     (currentUser?.permissions?.viewPrice === true);
 
   const { startDate, endDate } = React.useMemo(() => {

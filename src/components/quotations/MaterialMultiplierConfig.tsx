@@ -12,6 +12,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getMaterialMultipliers, saveMaterialMultipliers, DEFAULT_MATERIAL_MULTIPLIERS } from '@/src/services/materialConfigService';
 import { MaterialMultiplier } from '@/src/types';
 import { Plus, Trash2, Save, RotateCcw, Settings, Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 
 interface MaterialMultiplierConfigProps {
@@ -57,10 +68,8 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
   };
 
   const handleReset = () => {
-    if (window.confirm('Bạn có chắc chắn muốn khôi phục về cấu hình mặc định ban đầu? Các thay đổi hiện tại sẽ bị ghi đè.')) {
-      setItems([...DEFAULT_MATERIAL_MULTIPLIERS]);
-      toast.success('Đã khôi phục cấu hình mặc định (chưa lưu). Vui lòng nhấn Lưu thay đổi.');
-    }
+    setItems([...DEFAULT_MATERIAL_MULTIPLIERS]);
+    toast.success('Đã khôi phục cấu hình mặc định (chưa lưu). Vui lòng nhấn Lưu thay đổi.');
   };
 
   const handleAddItem = () => {
@@ -218,9 +227,22 @@ export function MaterialMultiplierConfig({ isOpen, onClose }: MaterialMultiplier
         </div>
 
         <DialogFooter className="px-6 py-4 border-t bg-background shrink-0 flex items-center justify-between">
-          <Button variant="outline" onClick={handleReset} className="text-muted-foreground" disabled={isLoading || isSaving}>
-            <RotateCcw className="w-4 h-4 mr-2" /> Khôi phục mặc định
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 text-muted-foreground">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Khôi phục mặc định
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Khôi phục mặc định</AlertDialogTitle>
+                <AlertDialogDescription>Bạn có chắc chắn muốn khôi phục về cấu hình mặc định ban đầu? Các thay đổi hiện tại sẽ bị ghi đè.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReset}>Khôi phục</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onClose} disabled={isSaving}>Hủy bỏ</Button>
             <Button onClick={handleSave} disabled={isLoading || isSaving} className="font-bold px-6 shadow-md">

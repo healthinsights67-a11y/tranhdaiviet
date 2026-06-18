@@ -1,6 +1,6 @@
 import { db, collection, doc, getDoc, getDocs, setDoc, handleFirestoreError, OperationType, deleteDoc } from '../lib/firebase';
-import { Task, Customer, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule, TrashItem, SystemSettings } from '../types';
-import { TaskSchema, CustomerSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema, TrashItemSchema, SystemSettingsSchema } from '../schemas';
+import { Task, Customer, Member, MediaFolder, Quotation, MeasurementSchedule, InstallationSchedule, TrashItem, SystemSettings, ProductLibraryItem } from '../types';
+import { TaskSchema, CustomerSchema, MemberSchema, MediaFolderSchema, QuotationSchema, MeasurementScheduleSchema, InstallationScheduleSchema, TrashItemSchema, SystemSettingsSchema, ProductLibraryItemSchema } from '../schemas';
 import { z } from 'zod';
 
 const validateData = <T>(schema: z.ZodSchema<T>, data: any): T => {
@@ -80,7 +80,7 @@ export const fetchInstallationSchedules = async (): Promise<InstallationSchedule
 export const fetchProductLibrary = async (): Promise<any[]> => {
   try {
     const snapshot = await getDocs(collection(db, 'product_library'));
-    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    return snapshot.docs.map(doc => validateData(ProductLibraryItemSchema, { ...doc.data(), id: doc.id }) as ProductLibraryItem);
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'product_library');
     throw new Error('Failed to fetch product library');
