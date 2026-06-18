@@ -676,7 +676,7 @@ export function QuotationPreview({
               {/* Background Texture Element */}
               <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none print:hidden z-0">
                   {logoDataUrl || template.logoUrl ? (
-                    <img src={logoDataUrl || template.logoUrl} crossOrigin="anonymous" className="w-[70%] max-w-[500px] object-contain grayscale" alt="Watermark" />
+                    <img src={logoDataUrl || template.logoUrl} className="w-[70%] max-w-[500px] object-contain grayscale" alt="Watermark" />
                   ) : (
                     <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">{template.companyName}</div>
                   )}
@@ -690,7 +690,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-[30%] p-2 text-center align-middle border-r-2 border-black">
                        <div className="flex flex-col items-center justify-center h-[80px]">
                           {template.logoUrl ? (
-                            <img src={logoDataUrl || template.logoUrl} crossOrigin="anonymous" alt="Logo" className="max-h-full max-w-full object-contain" style={{ height: '80px', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
+                            <img src={logoDataUrl || template.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" style={{ height: '80px', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} />
                           ) : (
                             <>
                               <div className="flex items-baseline leading-none">
@@ -717,7 +717,7 @@ export function QuotationPreview({
                     <td rowSpan={2} className="w-20 p-1 text-center align-middle">
                       {template.qrCodeUrl ? (
                          <div className="w-16 h-16 flex items-center justify-center mx-auto">
-                            <img src={qrCodeDataUrl || template.qrCodeUrl} crossOrigin="anonymous" className="max-h-full max-w-full object-contain" alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            <img src={qrCodeDataUrl || template.qrCodeUrl} className="max-h-full max-w-full object-contain" alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                       ) : (
                         <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400 font-bold uppercase tracking-tighter mx-auto">QR CODE</div>
@@ -870,7 +870,7 @@ export function QuotationPreview({
                        </div>
                        {template.qrCodeUrl && (
                          <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
-                            <img src={qrCodeDataUrl || template.qrCodeUrl} crossOrigin="anonymous" alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                          </div>
                        )}
                     </div>
@@ -899,7 +899,7 @@ export function QuotationPreview({
                  {template.companyWebsite ? (
                    <div className="w-1/3 flex flex-col items-center justify-center pt-2">
                      {websiteQrCodeDataUrl ? (
-                       <img src={websiteQrCodeDataUrl} crossOrigin="anonymous" alt="Website QR Code" className="w-16 h-16 object-contain mix-blend-multiply opacity-80" />
+                       <img src={websiteQrCodeDataUrl} alt="Website QR Code" className="w-16 h-16 object-contain mix-blend-multiply opacity-80" />
                      ) : (
                        <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400">QR CODE</div>
                      )}
