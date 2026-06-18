@@ -70,7 +70,6 @@ const DEFAULT_COLUMNS: { id: Status; title: string }[] = [
   { id: 'todo', title: 'Chờ xử lý' },
   { id: 'in-progress', title: 'Đang sản xuất' },
   { id: 'waiting_install', title: 'Chờ Lắp Đặt' },
-  { id: 'done', title: 'Bàn giao' },
 ];
 
 const DESIGN_COLUMNS: { id: Status; title: string }[] = [

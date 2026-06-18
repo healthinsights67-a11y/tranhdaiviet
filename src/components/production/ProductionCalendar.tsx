@@ -183,6 +183,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   const [editingInstallId, setEditingInstallId] = React.useState<string | null>(null);
   const [isSavingInstall, setIsSavingInstall] = React.useState(false);
+  const [isSavingNewInstall, setIsSavingNewInstall] = React.useState(false);
+  const [isSavingSchedule, setIsSavingSchedule] = React.useState(false);
   const [editInstallFormData, setEditInstallFormData] = React.useState<Partial<InstallationSchedule>>({});
   const [isUploadingInstall, setIsUploadingInstall] = React.useState<string | null>(null);
 
@@ -348,6 +350,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   }, [unscheduledInstallations, installFormData.taskId, installFormData.customerName, tasks]);
 
   const handleSaveSchedule = async () => {
+    if (isSavingSchedule) return;
     if (!formData.customerName || formData.customerName.trim() === '') {
       toast.error('Vui lòng nhập tên khách hàng');
       return;
@@ -357,6 +360,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       return;
     }
 
+    setIsSavingSchedule(true);
     try {
       let taskId = formData.id;
       const dueDateIso = new Date(formData.date).toISOString();
@@ -414,10 +418,13 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     } catch (error) {
       console.error('Lỗi khi xếp lịch sản xuất:', error);
       toast.error('Có lỗi xảy ra khi xếp lịch');
+    } finally {
+      setIsSavingSchedule(false);
     }
   };
 
   const handleSaveInstall = async () => {
+    if (isSavingNewInstall) return;
     if (!user) {
       toast.error('Vui lòng đăng nhập để lưu');
       return;
@@ -431,6 +438,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       return;
     }
 
+    setIsSavingNewInstall(true);
     try {
       const id = Date.now().toString();
       const schedule: InstallationSchedule = {
@@ -500,6 +508,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       } else {
         toast.error('Có lỗi xảy ra khi xếp lịch lắp đặt');
       }
+    } finally {
+      setIsSavingNewInstall(false);
     }
   };
 
@@ -1590,8 +1600,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
             <Button variant="outline" onClick={() => setIsOpen(false)} className="h-9 rounded-lg">
               Hủy
             </Button>
-            <Button onClick={handleSaveSchedule} className="h-9 rounded-lg text-white bg-primary">
-              Lưu Lịch Hẹn
+            <Button onClick={handleSaveSchedule} disabled={isSavingSchedule} className="h-9 rounded-lg text-white bg-primary">
+              {isSavingSchedule ? 'Đang lưu...' : 'Lưu Lịch Hẹn'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1752,7 +1762,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsInstallOpen(false)} className="rounded-xl">Hủy</Button>
-            <Button onClick={handleSaveInstall} className="rounded-xl bg-primary text-white hover:bg-primary/90">Lưu thông tin</Button>
+            <Button onClick={handleSaveInstall} disabled={isSavingNewInstall} className="rounded-xl bg-primary text-white hover:bg-primary/90">
+              {isSavingNewInstall ? 'Đang lưu...' : 'Lưu thông tin'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
