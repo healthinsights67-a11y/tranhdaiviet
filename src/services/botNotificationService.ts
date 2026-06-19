@@ -82,27 +82,27 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
   }
 
   try {
-    // Zalo Bot API endpoint (bot.zaloplatforms.com)
-    // Dùng API tương tự Telegram: https://bot-api.zaloplatforms.com/bot<TOKEN>/sendMessage
-    const response = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
+    // Gọi qua backend của chúng ta (Express server) để tránh lỗi CORS
+    const response = await fetch(`/api/test-zalo-bot`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chat_id: userId,
+        botToken: botToken,
+        chatId: userId,
         text: message
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || errorData.description || 'Gửi tin nhắn Zalo Bot thất bại');
+      throw new Error(errorData.message || errorData.description || errorData.error || 'Gửi tin nhắn Zalo Bot thất bại');
     }
 
     const data = await response.json();
     if (data.error || !data.ok) {
-      throw new Error(data.message || data.description || 'Lỗi từ Zalo Bot API');
+      throw new Error(data.message || data.description || data.error || 'Lỗi từ Zalo Bot API');
     }
 
     return true;

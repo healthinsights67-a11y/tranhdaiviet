@@ -161,6 +161,34 @@ async function startServer() {
     }
   });
 
+  // Proxy for Zalo Bot API to bypass CORS
+  app.post("/api/test-zalo-bot", async (req, res) => {
+    const { botToken, chatId, text } = req.body;
+    
+    if (!botToken || !chatId || !text) {
+      return res.status(400).json({ error: "Missing botToken, chatId, or text" });
+    }
+
+    try {
+      const response = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text
+        }),
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error: any) {
+      console.error("Zalo Bot proxy error:", error);
+      res.status(500).json({ error: "Failed to fetch from Zalo Bot API", details: error.message });
+    }
+  });
+
   app.post("/api/upload-document", async (req, res) => {
     const { name, type, folderId, base64 } = req.body;
     if (!name || !folderId || !base64) {
