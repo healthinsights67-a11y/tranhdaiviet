@@ -176,19 +176,26 @@ async function startServer() {
             const path = require('path');
             
             let firebaseApp;
+            let dbId = undefined;
             if (getApps().length === 0) {
               const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
               if (fs.existsSync(configPath)) {
                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 firebaseApp = initializeApp(config);
+                dbId = config.firestoreDatabaseId;
               } else {
                  throw new Error('firebase-applet-config.json not found');
               }
             } else {
               firebaseApp = getApp();
+              const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+              if (fs.existsSync(configPath)) {
+                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                 dbId = config.firestoreDatabaseId;
+              }
             }
             
-            const db = getFirestore(firebaseApp);
+            const db = getFirestore(firebaseApp, dbId);
             
             // 1. Find which member this zaloUserId belongs to
             const q = query(collection(db, 'members'), where('zaloUserId', '==', senderId));
