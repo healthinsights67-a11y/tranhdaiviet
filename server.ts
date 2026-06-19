@@ -170,18 +170,22 @@ async function startServer() {
           
           try {
             // Use Firebase Client SDK instead of Admin SDK to avoid requiring Service Account
-            const { initializeApp } = require('firebase/app');
+            const { initializeApp, getApp, getApps } = require('firebase/app');
             const { getFirestore, collection, addDoc, getDocs, query, where } = require('firebase/firestore');
             const fs = require('fs');
             const path = require('path');
             
             let firebaseApp;
-            const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-            if (fs.existsSync(configPath)) {
-              const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-              firebaseApp = initializeApp(config, 'webhook-app');
+            if (getApps().length === 0) {
+              const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+              if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                firebaseApp = initializeApp(config);
+              } else {
+                 throw new Error('firebase-applet-config.json not found');
+              }
             } else {
-               throw new Error('firebase-applet-config.json not found');
+              firebaseApp = getApp();
             }
             
             const db = getFirestore(firebaseApp);
