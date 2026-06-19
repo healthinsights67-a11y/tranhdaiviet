@@ -124,7 +124,8 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
           materialList: [],
         });
         await updateDoc(doc(db, 'measurement_schedules', schedule.id), {
-          isPushedToDesign: true
+          isPushedToDesign: true,
+          imageUrls: urlsToSync
         });
       }
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -277,6 +278,9 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         schedule.assigneeId
       );
 
+      // Send to external bot platforms (Zalo/Telegram)
+      sendSystemNotification(`📅 <b>Lịch đo đạc mới!</b>\n\n👤 Khách hàng: <b>${schedule.customerName}</b>\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+
       // Automatically update customer stage to 'surveying' if created as completed
       if (schedule.status === 'completed' && schedule.customerId) {
         const customerRef = doc(db, 'customers', schedule.customerId);
@@ -392,6 +396,10 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         // Remove id or createdAt if necessary
         const { id, createdAt, ...dataToUpdate } = updatedData as any;
         await updateDoc(scheduleRef, dataToUpdate);
+
+        // Send to external bot platforms (Zalo/Telegram)
+        sendSystemNotification(`✏️ <b>Cập nhật lịch đo đạc!</b>\n\n👤 Khách hàng: <b>${updatedData.customerName}</b>\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+
         toast.success('Đã cập nhật lịch đo');
         setEditingId(null);
         setEditFormData({});
@@ -481,6 +489,12 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
       await updateDoc(scheduleRef, {
         status: newStatus
       });
+
+      // Send to external bot platforms (Zalo/Telegram)
+      let statusText = 'Chờ đo đạc';
+      if (newStatus === 'completed') statusText = 'Hoàn tất';
+      else if (newStatus === 'cancelled') statusText = 'Đã hủy';
+      sendSystemNotification(`📊 <b>Cập nhật trạng thái lịch đo đạc!</b>\n\n👤 Khách hàng: <b>${freshItem.customerName}</b>\n🏷 Trạng thái mới: <b>${statusText}</b>\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
 
       queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
       
