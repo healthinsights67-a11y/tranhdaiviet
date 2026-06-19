@@ -108,6 +108,13 @@ async function startServer() {
     }
   });
 
+  // Store recent webhooks in memory for debugging
+  const recentWebhooks: any[] = [];
+  
+  app.get("/api/webhook-logs", (req, res) => {
+    res.json(recentWebhooks);
+  });
+
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {
     // We should ideally use a secret token from env or database
@@ -123,13 +130,10 @@ async function startServer() {
     try {
       const body = req.body;
       console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
-
-      // Zalo Webhook structure usually has `event_name` directly or inside `result`.
-      // According to the new docs, it's inside `req.body` or sometimes wrapped.
-      // Based on the provided sample response image:
-      // { "ok": true, "result": { "message": { ... }, "event_name": "message.text.received" } }
-      // Or in some API versions it might just be the root level payload depending on the type of webhook.
       
+      recentWebhooks.unshift({ time: new Date().toISOString(), body });
+      if (recentWebhooks.length > 20) recentWebhooks.pop();
+
       let event_name = body.event_name;
       let message = body.message;
       let senderId = body.sender?.id;
