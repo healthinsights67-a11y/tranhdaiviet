@@ -1,22 +1,26 @@
 import { z } from 'zod';
 
-const timestampSchema = z.union([
-  z.string(),
-  z.object({
-    toDate: z.function().returns(z.date()),
-  }).transform((val) => val.toDate().toISOString()),
-  z.any().transform((val) => {
-    if (!val) return new Date().toISOString(); // Default to now if null (e.g. pending server timestamp)
-    if (typeof val === 'object' && 'seconds' in val && 'nanoseconds' in val) {
+const timestampSchema = z.any().transform((val) => {
+  if (!val) return new Date().toISOString(); // Default to now if null (e.g. pending server timestamp)
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    if (typeof val.toDate === 'function') {
+      try {
+        return val.toDate().toISOString();
+      } catch (e) {
+        return new Date().toISOString();
+      }
+    }
+    if ('seconds' in val && 'nanoseconds' in val) {
        return new Date(val.seconds * 1000).toISOString();
     }
-    try {
-      return new Date(val).toISOString();
-    } catch {
-      return new Date().toISOString();
-    }
-  })
-]).optional().nullable();
+  }
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  } catch {}
+  return new Date().toISOString();
+}).optional().nullable();
 
 export const PrioritySchema = z.enum(['low', 'medium', 'high']);
 export const StatusSchema = z.enum(['todo', 'in-progress', 'review', 'done', 'waiting_install', 'archived']);
@@ -107,7 +111,7 @@ export const TaskSchema = z.object({
     receiver: z.string().optional(),
     department: z.string().optional(),
     items: z.array(z.any()).optional(),
-  }).optional(),
+  }).optional().nullable(),
   productionChecklist: z.object({
     customerName: z.string().optional(),
     customerId: z.string().optional(),
@@ -127,7 +131,7 @@ export const TaskSchema = z.object({
       timestamp: z.string().optional(),
       notes: z.string().optional(),
     })).optional(),
-  }).optional(),
+  }).optional().nullable(),
 });
 
 export const MediaFolderSchema = z.object({
