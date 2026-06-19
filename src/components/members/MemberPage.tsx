@@ -103,7 +103,8 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
     role: 'Sale',
     avatar: '',
     workshop: 'all',
-    permissions: { ...DEFAULT_PERMISSIONS }
+    permissions: { ...DEFAULT_PERMISSIONS },
+    zaloUserId: ''
   });
   const [editingMember, setEditingMember] = React.useState<Member | null>(null);
   const [showPermissions, setShowPermissions] = React.useState(false);
@@ -163,7 +164,8 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
           role: editingMember.role,
           avatar: editingMember.avatar,
           workshop: editingMember.workshop || 'all',
-          permissions: editingMember.permissions || DEFAULT_PERMISSIONS
+          permissions: editingMember.permissions || DEFAULT_PERMISSIONS,
+          zaloUserId: editingMember.zaloUserId || ''
         }, { merge: true });
 
         await Promise.race([updatePromise, timeoutPromise]);
@@ -208,7 +210,7 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
         setMembers([...members, member]);
       }
       setIsAddDialogOpen(false);
-      setNewMember({ name: '', email: '', role: 'Sale', avatar: '', workshop: 'all', permissions: { ...DEFAULT_PERMISSIONS } });
+      setNewMember({ name: '', email: '', role: 'Sale', avatar: '', workshop: 'all', permissions: { ...DEFAULT_PERMISSIONS }, zaloUserId: '' });
       toast.success("Đã thêm thành viên");
     } catch (error: any) {
       toast.error(error.message);
@@ -297,6 +299,10 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
                   <div className="grid gap-1.5">
                     <Label className="text-xs">Email</Label>
                     <Input value={newMember.email} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Zalo User ID (Tùy chọn)</Label>
+                    <Input placeholder="Dùng để Bot nhận diện hành trình" value={newMember.zaloUserId || ''} className="h-9 text-xs" onChange={(e) => setNewMember({ ...newMember, zaloUserId: e.target.value })} />
                   </div>
                   <div className="grid gap-2 grid-cols-2">
                     <div className="grid gap-1.5">
@@ -463,6 +469,10 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
               <div className="grid gap-1.5">
                 <Label className="text-xs">Email</Label>
                 <Input value={editingMember.email} className="h-9 text-xs" onChange={(e) => setEditingMember({ ...editingMember, email: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Zalo User ID (Tùy chọn)</Label>
+                <Input placeholder="Dùng để Bot nhận diện hành trình" value={editingMember.zaloUserId || ''} className="h-9 text-xs" onChange={(e) => setEditingMember({ ...editingMember, zaloUserId: e.target.value })} />
               </div>
               <div className="grid gap-2 grid-cols-2">
                 <div className="grid gap-1.5">

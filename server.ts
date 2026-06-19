@@ -150,6 +150,62 @@ async function startServer() {
         senderId = message.from?.id || senderId;
         const photoUrl = message.photo;
         console.log(`Received image message from ${senderId}: ${photoUrl}`);
+      } else if ((event_name === 'user_send_location' || event_name === 'user_send_text' || event_name === 'message.location.received') && message) {
+        senderId = message.from?.id || body.sender?.id || senderId;
+        let lat, lng;
+        
+        if (message.attachments && Array.isArray(message.attachments)) {
+          const locationAttachment = message.attachments.find((a: any) => a.type === 'location');
+          if (locationAttachment && locationAttachment.payload && locationAttachment.payload.coordinates) {
+            lat = parseFloat(locationAttachment.payload.coordinates.latitude);
+            lng = parseFloat(locationAttachment.payload.coordinates.longitude);
+          }
+        } else if (message.location) {
+          lat = parseFloat(message.location.latitude || message.location.lat);
+          lng = parseFloat(message.location.longitude || message.location.lng);
+        }
+
+        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          console.log(`Received location from ${senderId}: ${lat}, ${lng}`);
+          
+          try {
+            initializeFirebaseAdmin();
+            const db = admin.firestore();
+            
+            // 1. Find which member this zaloUserId belongs to
+            const membersSnapshot = await db.collection('members').where('zaloUserId', '==', senderId).get();
+            
+            let memberId = 'unknown';
+            let memberName = 'Unknown Sale';
+            
+            if (!membersSnapshot.empty) {
+              const memberDoc = membersSnapshot.docs[0];
+              memberId = memberDoc.id;
+              memberName = memberDoc.data().name || 'Unknown Sale';
+            }
+            
+            // 2. Save location route
+            const now = new Date().toISOString();
+            await db.collection('sales_routes').add({
+              memberId,
+              memberName,
+              zaloUserId: senderId,
+              latitude: lat,
+              longitude: lng,
+              timestamp: now,
+              note: 'Check-in qua Zalo'
+            });
+            console.log(`Saved location for member ${memberName} (${memberId})`);
+            
+            // Optional: send a reply back to the user via Zalo API acknowledging the check-in
+            // This requires the OA Access Token. Since we don't have it globally stored, we might just log it for now.
+            // But if we have it in configs:
+            // const configDoc = await db.collection('configs').doc('storage').get();
+            // ...
+          } catch (dbErr) {
+            console.error("Failed to save location to Firestore", dbErr);
+          }
+        }
       }
 
       // Always return Success for Zalo to stop retrying

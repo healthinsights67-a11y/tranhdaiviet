@@ -25,6 +25,7 @@ const UserManagement = React.lazy(() => import('./components/admin/UserManagemen
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
 const EcoplastLearningPage = React.lazy(() => import('./components/learning/EcoplastLearningPage'));
 const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
+const SalesRoutePage = React.lazy(() => import('./components/members/SalesRoutePage').then(module => ({ default: module.SalesRoutePage })));
 import { WorkflowGuideWidget } from './components/dashboard/WorkflowGuideWidget';
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
@@ -736,6 +737,10 @@ function AppContent() {
         return redirect(perms.menuMembers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <MemberPage members={activeMembers} setMembers={setMembers} tasks={filteredTasks} user={user} currentUser={currentMember} />;
+      case 'sales-routes':
+        return redirect(perms.menuMembers)
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
+          : <SalesRoutePage />;
       case 'media':
         return redirect(perms.menuMedia)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />

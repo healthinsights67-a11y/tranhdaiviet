@@ -52,6 +52,18 @@ export const MemberSchema = z.object({
   email: z.string().optional().or(z.literal('')).catch(''),
   workshop: z.string().optional(),
   permissions: MemberPermissionsSchema.optional(),
+  zaloUserId: z.string().optional(),
+});
+
+export const SalesRouteSchema = z.object({
+  id: z.string(),
+  memberId: z.string(),
+  memberName: z.string(),
+  zaloUserId: z.string().optional(),
+  latitude: z.number(),
+  longitude: z.number(),
+  timestamp: timestampSchema,
+  note: z.string().optional(),
 });
 
 export const CustomerSchema = z.object({

@@ -26,7 +26,8 @@ import {
   Folder,
   BookOpen,
   Calculator,
-  HelpCircle
+  HelpCircle,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ const navGroups = [
       { id: 'marketing', label: 'Marketing', icon: Megaphone, permission: 'menuMarketing' },
       { id: 'ai-render', label: 'Thiết kế AI', icon: Sparkles, permission: 'menuAi' },
       { id: 'ecoplast-learning', label: 'Học tập Ecoplast', icon: BookOpen, permission: 'menuSale' },
+      { id: 'sales-routes', label: 'Lịch trình Sale', icon: MapPin, permission: 'menuMembers' },
     ]
   },
   {

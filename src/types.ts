@@ -29,6 +29,18 @@ export interface Member {
   email: string;
   workshop?: string;
   permissions?: MemberPermissions;
+  zaloUserId?: string;
+}
+
+export interface SalesRoute {
+  id: string;
+  memberId: string;
+  memberName: string;
+  zaloUserId?: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  note?: string;
 }
 
 export interface CustomerNote {
