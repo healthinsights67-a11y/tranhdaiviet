@@ -197,31 +197,19 @@ async function startServer() {
             
             const db = getFirestore(firebaseApp, dbId);
             
-            // 1. Find which member this zaloUserId belongs to
-            const q = query(collection(db, 'members'), where('zaloUserId', '==', senderId));
-            const membersSnapshot = await getDocs(q);
-            
-            let memberId = 'unknown';
-            let memberName = 'Unknown Sale';
-            
-            if (!membersSnapshot.empty) {
-              const memberDoc = membersSnapshot.docs[0];
-              memberId = memberDoc.id;
-              memberName = memberDoc.data().name || 'Unknown Sale';
-            }
-            
-            // 2. Save location route
+            // Note: We bypass querying the `members` collection because the webhook is unauthenticated and would get Permission Denied.
+            // We just save the zaloUserId, and the frontend will match it with the correct member.
             const now = new Date().toISOString();
             await addDoc(collection(db, 'sales_routes'), {
-              memberId,
-              memberName,
+              memberId: senderId, // We use zaloUserId as a fallback memberId
+              memberName: 'Zalo User',
               zaloUserId: senderId,
               latitude: lat,
               longitude: lng,
               timestamp: now,
               note: 'Check-in qua Zalo'
             });
-            console.log(`Saved location for member ${memberName} (${memberId})`);
+            console.log(`Saved location for Zalo User ${senderId}`);
           } catch (dbErr) {
             console.error("Failed to save location to Firestore", dbErr);
           }

@@ -54,17 +54,28 @@ export function SalesRoutePage() {
     }
   });
 
-  // Group routes by memberId
+  // Group routes by actual member matched via zaloUserId
   const routesByMember = React.useMemo(() => {
     const grouped: Record<string, SalesRoute[]> = {};
     routes.forEach(route => {
-      if (!grouped[route.memberId]) {
-        grouped[route.memberId] = [];
+      // Find the real member based on zaloUserId
+      const realMember = members.find(m => m.zaloUserId === route.zaloUserId);
+      const targetMemberId = realMember ? realMember.id : route.memberId;
+      const targetMemberName = realMember ? realMember.name : route.memberName;
+      
+      const enrichedRoute = {
+        ...route,
+        memberId: targetMemberId,
+        memberName: targetMemberName
+      };
+
+      if (!grouped[targetMemberId]) {
+        grouped[targetMemberId] = [];
       }
-      grouped[route.memberId].push(route);
+      grouped[targetMemberId].push(enrichedRoute);
     });
     return grouped;
-  }, [routes]);
+  }, [routes, members]);
 
   const filteredMembers = Object.keys(routesByMember).filter(memberId => {
     const name = routesByMember[memberId][0]?.memberName || '';
