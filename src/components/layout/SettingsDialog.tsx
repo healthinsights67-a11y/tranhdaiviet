@@ -7,7 +7,8 @@ import {
   Shield,
   Save,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  BellRing
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -36,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { db, doc, onSnapshot, setDoc, serverTimestamp, auth } from '@/src/lib/firebase';
 import { clearAllAppData } from '@/src/services/dataService';
+import { NotificationSettings } from '@/src/components/settings/NotificationSettings';
 
 interface SettingsDialogProps {
   trigger?: React.ReactNode;
@@ -118,8 +120,8 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-8 bg-background border-b shrink-0">
-            <TabsList className="bg-transparent h-auto p-0 gap-8">
+          <div className="px-8 bg-background border-b shrink-0 overflow-x-auto">
+            <TabsList className="bg-transparent h-auto p-0 gap-8 min-w-max">
               <TabsTrigger 
                 value="general" 
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 py-4 text-sm font-bold transition-all flex items-center gap-2"
@@ -137,6 +139,12 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 py-4 text-sm font-bold transition-all flex items-center gap-2"
               >
                 <Shield className="h-4 w-4" /> Bảo mật & Sao lưu
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notifications" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 py-4 text-sm font-bold transition-all flex items-center gap-2"
+              >
+                <BellRing className="h-4 w-4" /> Bot Thông Báo
               </TabsTrigger>
             </TabsList>
           </div>
@@ -362,6 +370,10 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
               </div>
             </div>
           </div>
+          
+          <TabsContent value="notifications" className="m-0 h-full overflow-y-auto">
+            <NotificationSettings />
+          </TabsContent>
         </Tabs>
 
         <DialogFooter className="p-8 pt-4 bg-card text-card-foreground border-t shrink-0 flex-row items-center justify-between gap-4">
