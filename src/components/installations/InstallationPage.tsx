@@ -232,7 +232,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       );
 
       // Send to external bot platforms (Zalo/Telegram)
-      sendSystemNotification(`🔧 <b>Lịch lắp đặt mới!</b>\n\n👤 Khách hàng: <b>${schedule.customerName}</b>\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+      sendSystemNotification(`🔧 Lịch lắp đặt mới!\n\n👤 Khách hàng: ${schedule.customerName}\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
 
       // If completing directly, update linked task status and order status
       if (schedule.status === 'completed') {
@@ -368,7 +368,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
         await updateDoc(scheduleRef, dataToUpdate);
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`✏️ <b>Cập nhật lịch lắp đặt!</b>\n\n👤 Khách hàng: <b>${updatedData.customerName}</b>\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian mới: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        sendSystemNotification(`✏️ Cập nhật lịch lắp đặt!\n\n👤 Khách hàng: ${updatedData.customerName}\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian mới: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
 
         toast.success('Đã cập nhật lịch lắp đặt');
         setEditingId(null);
@@ -436,7 +436,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       let statusText = 'Chờ lắp đặt';
       if (newStatus === 'completed') statusText = 'Hoàn thành';
       else if (newStatus === 'cancelled') statusText = 'Đã hủy';
-      sendSystemNotification(`📊 <b>Cập nhật trạng thái lịch lắp đặt!</b>\n\n👤 Khách hàng: <b>${freshItem.customerName}</b>\n🏷 Trạng thái mới: <b>${statusText}</b>\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+      sendSystemNotification(`📊 Cập nhật trạng thái lịch lắp đặt!\n\n👤 Khách hàng: ${freshItem.customerName}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
 
       // Update linked task status if completed
       if (newStatus === 'completed') {

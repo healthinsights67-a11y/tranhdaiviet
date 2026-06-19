@@ -374,7 +374,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         });
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`✏️ <b>Cập nhật lịch sản xuất!</b>\n\n👤 Khách hàng: <b>${formData.customerName}</b>\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót mới: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        sendSystemNotification(`✏️ Cập nhật lịch sản xuất!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót mới: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
       } else {
         taskId = `prod-${formData.customerId || 'manual'}-${Date.now()}`;
         const prodTask = {
@@ -395,7 +395,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         await setDoc(doc(db, 'tasks', taskId), prodTask);
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🔨 <b>Lịch sản xuất mới!</b>\n\n👤 Khách hàng: <b>${formData.customerName}</b>\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        sendSystemNotification(`🔨 Lịch sản xuất mới!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
       }
 
       if (formData.customerId) {

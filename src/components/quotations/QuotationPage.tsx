@@ -243,7 +243,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
           });
 
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`✏️ <b>Cập nhật báo giá!</b>\n\n👤 Khách hàng: <b>${data.customerName}</b>\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+          sendSystemNotification(`✏️ Cập nhật báo giá!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
 
           // Automatically update customer order value
           if (data.customerId) {
@@ -263,7 +263,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
           });
 
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`📄 <b>Báo giá mới!</b>\n\n👤 Khách hàng: <b>${data.customerName}</b>\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📝 Trạng thái: Bản nháp\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+          sendSystemNotification(`📄 Báo giá mới!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📝 Trạng thái: Bản nháp\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
 
           // Automatically update customer order value
           if (data.customerId) {
@@ -433,7 +433,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
       else if (status === 'deposit') statusText = 'Đã đặt cọc';
       
       if (prevData && prevData.status !== status) {
-        sendSystemNotification(`📊 <b>Cập nhật trạng thái báo giá!</b>\n\n👤 Khách hàng: <b>${prevData.customerName}</b>\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}\n🏷 Trạng thái mới: <b>${statusText}</b>\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        sendSystemNotification(`📊 Cập nhật trạng thái báo giá!\n\n👤 Khách hàng: ${prevData.customerName}\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
       }
 
       // Automatically update customer stage and order value if quotation is accepted or deposited

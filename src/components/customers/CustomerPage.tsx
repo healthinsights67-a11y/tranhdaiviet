@@ -208,7 +208,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
         // Notify managers about bulk import
         if (importedCount > 0) {
-          sendSystemNotification(`🌟 <b>Khách hàng mới (Import từ Excel)!</b>\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công <b>${importedCount}</b> khách hàng mới vào hệ thống.`);
+          sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới vào hệ thống.`);
         }
 
         toast.success(`Đã nhập thành công ${importedCount} khách hàng`);
@@ -411,7 +411,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         );
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🌟 <b>Khách hàng mới!</b>\n\n👤 Tên: <b>${customerData.name}</b>\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Nhu cầu: ${customerData.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
@@ -518,7 +518,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       const oldStageName = stageNames[existingCustomer.stage] || existingCustomer.stage;
       const newStageName = 'Hoàn thành';
       
-      sendSystemNotification(`🔄 <b>Cập nhật trạng thái khách hàng</b>\n\n👤 Tên: <b>${existingCustomer.name}</b>\n📞 SĐT: ${existingCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ <b>${newStageName}</b>\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+      sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${existingCustomer.name}\n📞 SĐT: ${existingCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
       
       // Update tasks
       try {
@@ -644,7 +644,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           const oldStageName = stageNames[existingStage] || existingStage;
           const newStageName = stageNames[selectedCustomer.stage] || selectedCustomer.stage;
           
-          sendSystemNotification(`🔄 <b>Cập nhật trạng thái khách hàng</b>\n\n👤 Tên: <b>${selectedCustomer.name}</b>\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ <b>${newStageName}</b>\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+          sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
         }
 
         // Automated Workflow: Customer Stage -> Quotation Status Sync
