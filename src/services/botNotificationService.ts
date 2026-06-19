@@ -111,3 +111,35 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
     throw error;
   }
 }
+
+/**
+ * Send a notification to all enabled bot platforms
+ */
+export async function sendSystemNotification(message: string): Promise<void> {
+  try {
+    const config = await getBotNotificationConfig();
+    if (!config) return;
+
+    const promises: Promise<any>[] = [];
+
+    // Send to Telegram if enabled
+    if (config.telegram?.enabled && config.telegram.botToken && config.telegram.chatId) {
+      promises.push(
+        sendTelegramTestMessage(config.telegram.botToken, config.telegram.chatId, message)
+          .catch(err => console.error('Failed to send Telegram notification:', err))
+      );
+    }
+
+    // Send to Zalo if enabled
+    if (config.zalo?.enabled && config.zalo.botToken && config.zalo.userId) {
+      promises.push(
+        sendZaloTestMessage(config.zalo.botToken, config.zalo.userId, message)
+          .catch(err => console.error('Failed to send Zalo notification:', err))
+      );
+    }
+
+    await Promise.allSettled(promises);
+  } catch (error) {
+    console.error('Error sending system notification:', error);
+  }
+}

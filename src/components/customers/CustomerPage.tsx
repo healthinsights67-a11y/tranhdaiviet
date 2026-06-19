@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as XLSX from 'xlsx';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
+import { sendSystemNotification } from '@/src/services/botNotificationService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -205,6 +206,11 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           importedCount++;
         }
 
+        // Notify managers about bulk import
+        if (importedCount > 0) {
+          sendSystemNotification(`🌟 <b>Khách hàng mới (Import từ Excel)!</b>\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công <b>${importedCount}</b> khách hàng mới vào hệ thống.`);
+        }
+
         toast.success(`Đã nhập thành công ${importedCount} khách hàng`);
         if (fileInputRef.current) fileInputRef.current.value = '';
       };
@@ -403,6 +409,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           'Khách hàng mới',
           `Sale ${currentUser?.name || 'nào đó'} vừa tạo khách hàng mới: ${customerData.name} (${customerData.phone})`
         );
+
+        // Send to external bot platforms (Zalo/Telegram)
+        sendSystemNotification(`🌟 <b>Khách hàng mới!</b>\n\n👤 Tên: <b>${customerData.name}</b>\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Nhu cầu: ${customerData.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
