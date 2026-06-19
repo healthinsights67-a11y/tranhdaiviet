@@ -505,6 +505,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       
       await updateDoc(doc(db, 'customers', customerId), updateData);
       
+      // Send System Notification for Stage Change
+      const stageNames: Record<string, string> = {
+        'consulting': 'Đã tư vấn',
+        'surveying': 'Đã đo đạc',
+        'contracted': 'Chốt cọc',
+        'production': 'Sản xuất',
+        'installation': 'Lắp đặt',
+        'completed': 'Hoàn thành',
+        'lost': 'Tạm dừng',
+      };
+      const oldStageName = stageNames[existingCustomer.stage] || existingCustomer.stage;
+      const newStageName = 'Hoàn thành';
+      
+      sendSystemNotification(`🔄 <b>Cập nhật trạng thái khách hàng</b>\n\n👤 Tên: <b>${existingCustomer.name}</b>\n📞 SĐT: ${existingCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ <b>${newStageName}</b>\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+      
       // Update tasks
       try {
         const taskQ = query(collection(db, 'tasks'));
@@ -614,6 +629,23 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         });
 
         await updateDoc(doc(db, 'customers', id), updateData);
+
+        // Send System Notification for Stage Change
+        if (existingStage && existingStage !== selectedCustomer.stage) {
+          const stageNames: Record<string, string> = {
+            'consulting': 'Đã tư vấn',
+            'surveying': 'Đã đo đạc',
+            'contracted': 'Chốt cọc',
+            'production': 'Sản xuất',
+            'installation': 'Lắp đặt',
+            'completed': 'Hoàn thành',
+            'lost': 'Tạm dừng',
+          };
+          const oldStageName = stageNames[existingStage] || existingStage;
+          const newStageName = stageNames[selectedCustomer.stage] || selectedCustomer.stage;
+          
+          sendSystemNotification(`🔄 <b>Cập nhật trạng thái khách hàng</b>\n\n👤 Tên: <b>${selectedCustomer.name}</b>\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ <b>${newStageName}</b>\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+        }
 
         // Automated Workflow: Customer Stage -> Quotation Status Sync
         if (existingStage !== selectedCustomer.stage && 
