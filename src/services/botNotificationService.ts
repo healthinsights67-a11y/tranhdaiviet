@@ -123,7 +123,7 @@ export async function sendSystemNotification(message: string): Promise<void> {
     const promises: Promise<any>[] = [];
 
     // Send to Telegram if enabled
-    if (config.telegram?.enabled && config.telegram.botToken && config.telegram.chatId) {
+    if (config.telegram?.isActive && config.telegram.botToken && config.telegram.chatId) {
       promises.push(
         sendTelegramTestMessage(config.telegram.botToken, config.telegram.chatId, message)
           .catch(err => console.error('Failed to send Telegram notification:', err))
@@ -131,9 +131,9 @@ export async function sendSystemNotification(message: string): Promise<void> {
     }
 
     // Send to Zalo if enabled
-    if (config.zalo?.enabled && config.zalo.botToken && config.zalo.userId) {
+    if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
       promises.push(
-        sendZaloTestMessage(config.zalo.botToken, config.zalo.userId, message)
+        sendZaloTestMessage(config.zalo.botToken, config.zalo.chatId, message)
           .catch(err => console.error('Failed to send Zalo notification:', err))
       );
     }
