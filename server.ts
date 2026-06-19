@@ -108,6 +108,59 @@ async function startServer() {
     }
   });
 
+  // Zalo Webhook Endpoint
+  app.post("/webhooks/zalo", async (req, res) => {
+    // We should ideally use a secret token from env or database
+    const WEBHOOK_SECRET_TOKEN = process.env.ZALO_WEBHOOK_SECRET || 'your-secret-token';
+    const secretToken = req.headers["x-bot-api-secret-token"];
+    
+    // Only check if secret is configured in environment, otherwise allow for easy testing
+    if (process.env.ZALO_WEBHOOK_SECRET && secretToken !== WEBHOOK_SECRET_TOKEN) {
+      console.warn("Zalo webhook unauthorized access attempt");
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const body = req.body;
+      console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
+
+      // Zalo Webhook structure usually has `event_name` directly or inside `result`.
+      // According to the new docs, it's inside `req.body` or sometimes wrapped.
+      // Based on the provided sample response image:
+      // { "ok": true, "result": { "message": { ... }, "event_name": "message.text.received" } }
+      // Or in some API versions it might just be the root level payload depending on the type of webhook.
+      
+      let event_name = body.event_name;
+      let message = body.message;
+      let senderId = body.sender?.id;
+
+      // Handle the nested 'result' structure if it exists
+      if (body.result) {
+        event_name = body.result.event_name || event_name;
+        message = body.result.message || message;
+      }
+
+      // Handle the event
+      if (event_name === 'message.text.received' && message) {
+        senderId = message.from?.id || senderId;
+        const text = message.text;
+        console.log(`Received text message from ${senderId}: ${text}`);
+        // Handle your logic here (e.g., save to Firestore, auto-reply, etc.)
+      } else if (event_name === 'message.image.received' && message) {
+        senderId = message.from?.id || senderId;
+        const photoUrl = message.photo;
+        console.log(`Received image message from ${senderId}: ${photoUrl}`);
+      }
+
+      // Always return Success for Zalo to stop retrying
+      res.json({ message: "Success" });
+    } catch (error) {
+      console.error("Zalo webhook error:", error);
+      // Still return 200 OK to Zalo so it doesn't retry infinitely, but log the error
+      res.json({ message: "Error processed", details: String(error) });
+    }
+  });
+
   app.post("/api/upload-document", async (req, res) => {
     const { name, type, folderId, base64 } = req.body;
     if (!name || !folderId || !base64) {
