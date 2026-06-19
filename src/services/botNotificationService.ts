@@ -74,7 +74,7 @@ export async function sendTelegramTestMessage(botToken: string, chatId: string, 
 }
 
 /**
- * Send a test message via Zalo API (Warning: Client-side Zalo API calls often fail due to CORS. This is a basic implementation for testing purposes).
+ * Send a test message via Zalo Bot Platform API
  */
 export async function sendZaloTestMessage(botToken: string, userId: string, message: string = "Đây là tin nhắn test từ hệ thống I NỘI THẤT."): Promise<boolean> {
   if (!botToken || !userId) {
@@ -82,31 +82,27 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
   }
 
   try {
-    // Zalo API endpoint for sending messages
-    const response = await fetch(`https://openapi.zalo.me/v2.0/oa/message`, {
+    // Zalo Bot API endpoint (bot.zaloplatforms.com)
+    // Dùng API tương tự Telegram: https://bot-api.zaloplatforms.com/bot<TOKEN>/sendMessage
+    const response = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: {
-        'access_token': botToken,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        recipient: {
-          user_id: userId
-        },
-        message: {
-          text: message
-        }
+        chat_id: userId,
+        text: message
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Gửi tin nhắn Zalo thất bại');
+      throw new Error(errorData.message || errorData.description || 'Gửi tin nhắn Zalo Bot thất bại');
     }
 
     const data = await response.json();
-    if (data.error) {
-      throw new Error(data.message || 'Lỗi từ Zalo API');
+    if (data.error || !data.ok) {
+      throw new Error(data.message || data.description || 'Lỗi từ Zalo Bot API');
     }
 
     return true;
