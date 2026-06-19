@@ -242,8 +242,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
             updatedAt: new Date().toISOString()
           });
 
+          const itemsListText = data.items.slice(0, 5).map(item => `- ${item.quantity} ${item.unit} ${item.name}`).join('\n');
+          const moreItemsText = data.items.length > 5 ? `\n... và ${data.items.length - 5} hạng mục khác` : '';
+
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`✏️ Cập nhật báo giá!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
+          sendSystemNotification(`✏️ Cập nhật báo giá!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
 
           // Automatically update customer order value
           if (data.customerId) {
@@ -262,8 +265,11 @@ export function QuotationPage({ quotations, user, customers, members, products =
             updatedAt: nowStr
           });
 
+          const itemsListText = data.items.slice(0, 5).map(item => `- ${item.quantity} ${item.unit} ${item.name}`).join('\n');
+          const moreItemsText = data.items.length > 5 ? `\n... và ${data.items.length - 5} hạng mục khác` : '';
+
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`📄 Báo giá mới!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📝 Trạng thái: Bản nháp\n\nĐược tạo bởi: ${user?.displayName || 'Hệ thống'}`);
+          sendSystemNotification(`📄 Báo giá mới!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n📝 Trạng thái: Bản nháp\n\nĐược tạo bởi: ${user?.displayName || 'Hệ thống'}`);
 
           // Automatically update customer order value
           if (data.customerId) {
