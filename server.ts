@@ -169,11 +169,26 @@ async function startServer() {
           console.log(`Received location from ${senderId}: ${lat}, ${lng}`);
           
           try {
-            initializeFirebaseAdmin();
-            const db = admin.firestore();
+            // Use Firebase Client SDK instead of Admin SDK to avoid requiring Service Account
+            const { initializeApp } = require('firebase/app');
+            const { getFirestore, collection, addDoc, getDocs, query, where } = require('firebase/firestore');
+            const fs = require('fs');
+            const path = require('path');
+            
+            let firebaseApp;
+            const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+            if (fs.existsSync(configPath)) {
+              const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+              firebaseApp = initializeApp(config, 'webhook-app');
+            } else {
+               throw new Error('firebase-applet-config.json not found');
+            }
+            
+            const db = getFirestore(firebaseApp);
             
             // 1. Find which member this zaloUserId belongs to
-            const membersSnapshot = await db.collection('members').where('zaloUserId', '==', senderId).get();
+            const q = query(collection(db, 'members'), where('zaloUserId', '==', senderId));
+            const membersSnapshot = await getDocs(q);
             
             let memberId = 'unknown';
             let memberName = 'Unknown Sale';
@@ -186,7 +201,7 @@ async function startServer() {
             
             // 2. Save location route
             const now = new Date().toISOString();
-            await db.collection('sales_routes').add({
+            await addDoc(collection(db, 'sales_routes'), {
               memberId,
               memberName,
               zaloUserId: senderId,
@@ -196,12 +211,6 @@ async function startServer() {
               note: 'Check-in qua Zalo'
             });
             console.log(`Saved location for member ${memberName} (${memberId})`);
-            
-            // Optional: send a reply back to the user via Zalo API acknowledging the check-in
-            // This requires the OA Access Token. Since we don't have it globally stored, we might just log it for now.
-            // But if we have it in configs:
-            // const configDoc = await db.collection('configs').doc('storage').get();
-            // ...
           } catch (dbErr) {
             console.error("Failed to save location to Firestore", dbErr);
           }

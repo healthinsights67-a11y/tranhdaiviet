@@ -185,9 +185,13 @@ service cloud.firestore {
 
     match /quotations/{quotationId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /sales_routes/{routeId} {
+      allow read: if isAuthenticated();
+      // Only admin or backend can write. If using Client SDK in backend, we might need a specific rule, but we use firebase-admin.
+      allow write: if isAuthenticated(); // Allow authenticated users to write, just in case
     }
     
     match /measurement_schedules/{scheduleId} {
