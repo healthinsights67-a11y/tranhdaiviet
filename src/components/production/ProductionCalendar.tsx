@@ -41,6 +41,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { InstallationScheduleSchema } from '@/src/schemas';
 import { z } from 'zod';
 import { notifyManagers } from '@/src/services/notificationService';
+import { sendSystemNotification } from '@/src/services/botNotificationService';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { fetchInstallationSchedules } from '@/src/services/dataService';
 
