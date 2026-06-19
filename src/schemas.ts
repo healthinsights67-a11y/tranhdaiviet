@@ -68,7 +68,7 @@ export const CustomerSchema = z.object({
   location: z.object({
     lat: z.number(),
     lng: z.number()
-  }).optional()
+  }).optional().nullable()
 });
 
 export const TaskSchema = z.object({

@@ -116,24 +116,30 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
  * Send a notification to all enabled bot platforms
  */
 export async function sendSystemNotification(message: string): Promise<void> {
+  console.log('sendSystemNotification called with message:', message);
   try {
     const config = await getBotNotificationConfig();
+    console.log('Fetched bot config:', config);
     if (!config) return;
 
     const promises: Promise<any>[] = [];
 
     // Send to Telegram if enabled
     if (config.telegram?.isActive && config.telegram.botToken && config.telegram.chatId) {
+      console.log('Sending to Telegram...');
       promises.push(
         sendTelegramTestMessage(config.telegram.botToken, config.telegram.chatId, message)
+          .then(() => console.log('Telegram message sent successfully!'))
           .catch(err => console.error('Failed to send Telegram notification:', err))
       );
     }
 
     // Send to Zalo if enabled
     if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
+      console.log('Sending to Zalo...');
       promises.push(
         sendZaloTestMessage(config.zalo.botToken, config.zalo.chatId, message)
+          .then(() => console.log('Zalo message sent successfully!'))
           .catch(err => console.error('Failed to send Zalo notification:', err))
       );
     }
