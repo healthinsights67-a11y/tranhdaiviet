@@ -78,7 +78,7 @@ import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 import { toast } from 'sonner';
-import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth } from '@/src/lib/utils';
+import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency } from '@/src/lib/utils';
 
 interface QuotationPageProps {
   quotations: Quotation[];
