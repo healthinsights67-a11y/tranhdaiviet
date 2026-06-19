@@ -223,10 +223,13 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       const assignee = members.find(m => m.id === schedule.assigneeId);
       notifyManagers(
         'Lịch lắp đặt mới',
-        `Điều phối lịch lắp đặt cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}. Phụ trách: ${assignee?.name || 'Chưa rõ'}`,
+        `Thợ ${assignee?.name || 'nào đó'} vừa được xếp lịch lắp đặt cho khách ${schedule.customerName} lúc ${format(new Date(schedule.date), 'HH:mm dd/MM')}`,
         { taskId: schedule.id, type: 'installation' },
         schedule.assigneeId
       );
+
+      // Send to external bot platforms (Zalo/Telegram)
+      sendSystemNotification(`🔧 <b>Lịch lắp đặt mới!</b>\n\n👤 Khách hàng: <b>${schedule.customerName}</b>\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
 
       // If completing directly, update linked task status and order status
       if (schedule.status === 'completed') {
@@ -360,6 +363,10 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
 
         const { id, createdAt, ...dataToUpdate } = updatedData as any;
         await updateDoc(scheduleRef, dataToUpdate);
+
+        // Send to external bot platforms (Zalo/Telegram)
+        sendSystemNotification(`✏️ <b>Cập nhật lịch lắp đặt!</b>\n\n👤 Khách hàng: <b>${updatedData.customerName}</b>\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian mới: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
+
         toast.success('Đã cập nhật lịch lắp đặt');
         setEditingId(null);
         setEditFormData({});
@@ -421,6 +428,12 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
       await updateDoc(scheduleRef, {
         status: newStatus
       });
+
+      // Send to external bot platforms (Zalo/Telegram)
+      let statusText = 'Chờ lắp đặt';
+      if (newStatus === 'completed') statusText = 'Hoàn thành';
+      else if (newStatus === 'cancelled') statusText = 'Đã hủy';
+      sendSystemNotification(`📊 <b>Cập nhật trạng thái lịch lắp đặt!</b>\n\n👤 Khách hàng: <b>${freshItem.customerName}</b>\n🏷 Trạng thái mới: <b>${statusText}</b>\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
 
       // Update linked task status if completed
       if (newStatus === 'completed') {

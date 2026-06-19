@@ -371,6 +371,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
           assigneeId: formData.assigneeId || '',
           description: formData.notes || ''
         });
+
+        // Send to external bot platforms (Zalo/Telegram)
+        sendSystemNotification(`✏️ <b>Cập nhật lịch sản xuất!</b>\n\n👤 Khách hàng: <b>${formData.customerName}</b>\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót mới: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\n<i>Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
       } else {
         taskId = `prod-${formData.customerId || 'manual'}-${Date.now()}`;
         const prodTask = {
@@ -389,6 +392,9 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
           address: formData.address || ''
         };
         await setDoc(doc(db, 'tasks', taskId), prodTask);
+
+        // Send to external bot platforms (Zalo/Telegram)
+        sendSystemNotification(`🔨 <b>Lịch sản xuất mới!</b>\n\n👤 Khách hàng: <b>${formData.customerName}</b>\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\n<i>Được tạo bởi: ${currentUser?.name || 'Hệ thống'}</i>`);
       }
 
       if (formData.customerId) {
