@@ -253,3 +253,18 @@ export const SystemSettingsSchema = z.object({
   }).optional(),
   updatedAt: z.string().optional(),
 });
+
+export const BotNotificationConfigSchema = z.object({
+  telegram: z.object({
+    botToken: z.string().optional(),
+    chatId: z.string().optional(),
+    isActive: z.boolean().optional(),
+  }).optional(),
+  zalo: z.object({
+    botToken: z.string().optional(),
+    chatId: z.string().optional(),
+    isActive: z.boolean().optional(),
+  }).optional(),
+  updatedAt: timestampSchema,
+  updatedBy: z.string().optional(),
+});
