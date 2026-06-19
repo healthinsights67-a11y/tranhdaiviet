@@ -439,7 +439,8 @@ export function QuotationPage({ quotations, user, customers, members, products =
       else if (status === 'deposit') statusText = 'Đã đặt cọc';
       
       if (prevData && prevData.status !== status) {
-        sendSystemNotification(`📊 Cập nhật trạng thái báo giá!\n\n👤 Khách hàng: ${prevData.customerName}\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
+        const depositText = (status === 'deposit' && depositAmount !== undefined) ? `\n💵 Tiền cọc: ${formatCurrency(depositAmount)}` : '';
+        sendSystemNotification(`📊 Cập nhật trạng thái báo giá!\n\n👤 Khách hàng: ${prevData.customerName}\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}${depositText}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
       }
 
       // Automatically update customer stage and order value if quotation is accepted or deposited
