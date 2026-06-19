@@ -312,6 +312,10 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                     </div>
                   </div>
                 </TabsContent>
+
+                <TabsContent value="notifications" className="mt-0 space-y-8 animate-in fade-in-50 duration-300">
+                  <NotificationSettings />
+                </TabsContent>
               </div>
 
               {/* Cột phải: Actions & Danger Zone (30%) */}
@@ -370,10 +374,6 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
               </div>
             </div>
           </div>
-          
-          <TabsContent value="notifications" className="m-0 h-full overflow-y-auto">
-            <NotificationSettings />
-          </TabsContent>
         </Tabs>
 
         <DialogFooter className="p-8 pt-4 bg-card text-card-foreground border-t shrink-0 flex-row items-center justify-between gap-4">
