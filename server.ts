@@ -169,14 +169,17 @@ async function startServer() {
       return res.status(400).json({ error: "Missing botToken, chatId, or text" });
     }
 
+    const cleanToken = botToken.trim();
+    const cleanChatId = chatId.trim();
+
     try {
-      const response = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
+      const response = await fetch(`https://bot-api.zaloplatforms.com/bot${cleanToken}/sendMessage`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          chat_id: chatId,
+          chat_id: cleanChatId,
           text: text
         }),
       });
