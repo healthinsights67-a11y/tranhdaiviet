@@ -25,7 +25,6 @@ const UserManagement = React.lazy(() => import('./components/admin/UserManagemen
 const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
 const EcoplastLearningPage = React.lazy(() => import('./components/learning/EcoplastLearningPage'));
 const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
-const SettingsPage = React.lazy(() => import('./components/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
 import { WorkflowGuideWidget } from './components/dashboard/WorkflowGuideWidget';
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
@@ -767,8 +766,6 @@ function AppContent() {
           : <AIRenderPage />;
       case 'users':
         return isAdmin ? <UserManagement /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
-      case 'settings':
-        return isAdmin ? <SettingsPage /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'materials':
         return <MaterialConfigPage tasks={filteredTasks} quotations={filteredQuotations} />;
       case 'trash':

@@ -90,7 +90,6 @@ const navGroups = [
         { id: 'documents', label: 'Tài liệu Sản Phẩm', icon: Folder, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },
-      { id: 'settings', label: 'Cài đặt', icon: Settings, isAdminOnly: true },
       { id: 'trash', label: 'Thùng rác', icon: Trash2 },
     ]
   }
