@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Search, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { db, collection, query, where, getDocs, orderBy } from '@/src/lib/firebase';
+import { fetchMembers } from '@/src/services/dataService';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -26,6 +27,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export function SalesRoutePage() {
   const [date, setDate] = React.useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  const { data: members = [] } = useQuery({
+    queryKey: ['members'],
+    queryFn: fetchMembers
+  });
 
   const { data: routes = [], isLoading } = useQuery({
     queryKey: ['sales_routes', date],
