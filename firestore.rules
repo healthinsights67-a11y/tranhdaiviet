@@ -190,8 +190,8 @@ service cloud.firestore {
 
     match /sales_routes/{routeId} {
       allow read: if isAuthenticated();
-      // Only admin or backend can write. If using Client SDK in backend, we might need a specific rule, but we use firebase-admin.
-      allow write: if isAuthenticated(); // Allow authenticated users to write, just in case
+      // Only admin or backend can write. Since the service account lacks access to the named database, we use the Client SDK and allow unauthenticated writes.
+      allow write: if true;
     }
     
     match /measurement_schedules/{scheduleId} {

@@ -3,6 +3,8 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { SalesRouteSchema } from './src/schemas';
 
 let isFirebaseInitialized = false;
 
@@ -156,66 +158,87 @@ async function startServer() {
         console.log(`Received image message from ${senderId}: ${photoUrl}`);
       } else if ((event_name === 'user_send_location' || event_name === 'user_send_text' || event_name === 'message.location.received') && message) {
         senderId = message.from?.id || body.sender?.id || senderId;
-        let lat, lng;
+        let lat: number | undefined;
+        let lng: number | undefined;
         
         if (message.attachments && Array.isArray(message.attachments)) {
           const locationAttachment = message.attachments.find((a: any) => a.type === 'location');
           if (locationAttachment && locationAttachment.payload && locationAttachment.payload.coordinates) {
-            lat = parseFloat(locationAttachment.payload.coordinates.latitude);
-            lng = parseFloat(locationAttachment.payload.coordinates.longitude);
+            const coords = locationAttachment.payload.coordinates;
+            lat = parseFloat(coords.latitude || coords.lat);
+            lng = parseFloat(coords.longitude || coords.long || coords.lng);
           }
         } else if (message.location) {
           lat = parseFloat(message.location.latitude || message.location.lat);
-          lng = parseFloat(message.location.longitude || message.location.lng);
+          lng = parseFloat(message.location.longitude || message.location.lng || message.location.long);
+        } else {
+          lat = parseFloat(message.lat || message.latitude);
+          lng = parseFloat(message.long || message.lng || message.longitude);
         }
 
-        if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
           console.log(`Received location from ${senderId}: ${lat}, ${lng}`);
           
           try {
-            // Use Firebase Client SDK instead of Admin SDK to avoid requiring Service Account
-            const { initializeApp, getApp, getApps } = require('firebase/app');
-            const { getFirestore, collection, addDoc, getDocs, query, where } = require('firebase/firestore');
-            const fs = require('fs');
-            const path = require('path');
-            
-            let firebaseApp;
-            let dbId = undefined;
-            if (getApps().length === 0) {
-              const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-              if (fs.existsSync(configPath)) {
-                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                firebaseApp = initializeApp(config);
-                dbId = config.firestoreDatabaseId;
-              } else {
-                 throw new Error('firebase-applet-config.json not found');
-              }
-            } else {
-              firebaseApp = getApp();
-              const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-              if (fs.existsSync(configPath)) {
-                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                 dbId = config.firestoreDatabaseId;
-              }
-            }
-            
-            const db = getFirestore(firebaseApp, dbId);
-            
-            // Note: We bypass querying the `members` collection because the webhook is unauthenticated and would get Permission Denied.
-            // We just save the zaloUserId, and the frontend will match it with the correct member.
             const now = new Date().toISOString();
-            await addDoc(collection(db, 'sales_routes'), {
-              memberId: senderId, // We use zaloUserId as a fallback memberId
+            const routeData = {
+              memberId: senderId || 'unknown',
               memberName: 'Zalo User',
-              zaloUserId: senderId,
+              zaloUserId: senderId || 'unknown',
               latitude: lat,
               longitude: lng,
               timestamp: now,
               note: 'Check-in qua Zalo'
-            });
-            console.log(`Saved location for Zalo User ${senderId}`);
+            };
+
+            // Validate data structure using Zod before writing
+            const validatedData = SalesRouteSchema.omit({ id: true }).parse(routeData);
+
+            let dbId = undefined;
+            const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+            if (fs.existsSync(configPath)) {
+              try {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                dbId = config.firestoreDatabaseId;
+              } catch (e) {
+                console.error("Failed to parse firebase-applet-config.json", e);
+              }
+            }
+
+            let writeSucceeded = false;
+            if (isFirebaseInitialized) {
+              try {
+                const db = getFirestore(dbId);
+                await db.collection('sales_routes').add(validatedData);
+                console.log(`Saved location for Zalo User ${senderId} using Firebase Admin SDK`);
+                writeSucceeded = true;
+              } catch (adminErr) {
+                console.warn(`Failed to write using Firebase Admin SDK, trying Client SDK fallback:`, adminErr instanceof Error ? adminErr.message : String(adminErr));
+              }
+            }
+
+            if (!writeSucceeded) {
+              // Fallback to Client SDK
+              const { initializeApp, getApp, getApps } = require('firebase/app');
+              const { getFirestore: getClientFirestore, collection, addDoc } = require('firebase/firestore');
+              
+              let firebaseApp;
+              if (getApps().length === 0) {
+                if (fs.existsSync(configPath)) {
+                  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                  firebaseApp = initializeApp(config);
+                } else {
+                  throw new Error('firebase-applet-config.json not found');
+                }
+              } else {
+                firebaseApp = getApp();
+              }
+              const db = getClientFirestore(firebaseApp, dbId);
+              await addDoc(collection(db, 'sales_routes'), validatedData);
+              console.log(`Saved location for Zalo User ${senderId} using Firebase Client SDK fallback`);
+            }
           } catch (dbErr) {
-            console.error("Failed to save location to Firestore", dbErr);
+            console.error("Failed to validate or save location to Firestore:", dbErr);
           }
         }
       }
