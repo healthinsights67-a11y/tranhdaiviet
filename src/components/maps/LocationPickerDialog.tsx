@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { MapComponent, CustomMarker } from './MapComponent';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Loader2 } from 'lucide-react';
 
 interface LocationPickerDialogProps {
   isOpen: boolean;
@@ -17,6 +17,26 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, address
     initialLocation || null
   );
   const [isSearching, setIsSearching] = useState(false);
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
+
+  const handleManualSearch = async () => {
+    if (!manualSearchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(manualSearchQuery)}&format=json&limit=1&accept-language=vi`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSelectedLocation({
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        });
+      }
+    } catch (e) {
+      console.error("Search failed", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -104,11 +124,18 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, address
           
           {/* A floating crosshair in center (optional) but we use click instead */}
           <div className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none">
-             <div className="bg-white/90 backdrop-blur shadow-lg rounded-xl p-3 border border-primary/20 pointer-events-auto">
-               <div className="flex items-center gap-2 text-sm text-gray-600">
-                 <Search className="h-4 w-4" />
-                 <span className="flex-1 truncate font-medium">Bạn có thể bấm biểu tượng Định vị ở góc dưới bên phải để tìm vị trí hiện tại.</span>
-               </div>
+             <div className="bg-white/90 backdrop-blur shadow-lg rounded-xl p-2 border border-primary/20 pointer-events-auto flex items-center gap-2">
+               <input
+                 type="text"
+                 placeholder="Nhập địa chỉ để tìm kiếm nhanh..."
+                 className="flex-1 bg-transparent border-none text-sm outline-none px-2 h-8 text-gray-800 placeholder:text-gray-400"
+                 value={manualSearchQuery}
+                 onChange={(e) => setManualSearchQuery(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
+               />
+               <Button size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0 rounded-lg text-primary hover:bg-primary/10" onClick={handleManualSearch} disabled={isSearching}>
+                 {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+               </Button>
              </div>
           </div>
         </div>
