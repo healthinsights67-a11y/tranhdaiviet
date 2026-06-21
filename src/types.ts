@@ -42,6 +42,8 @@ export interface SalesRoute {
   timestamp: string;
   note?: string;
   address?: string;
+  customerId?: string;
+  customerName?: string;
 }
 
 export interface CustomerNote {

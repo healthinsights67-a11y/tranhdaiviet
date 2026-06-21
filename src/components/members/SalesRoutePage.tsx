@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Search, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { db, collection, query, where, getDocs, orderBy, addDoc } from '@/src/lib/firebase';
-import { fetchMembers } from '@/src/services/dataService';
+import { fetchMembers, fetchCustomers } from '@/src/services/dataService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -78,6 +78,7 @@ export function SalesRoutePage() {
   const [isCheckingIn, setIsCheckingIn] = React.useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [noteInput, setNoteInput] = React.useState('');
+  const [customerInput, setCustomerInput] = React.useState('');
   const [tempCoords, setTempCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -87,6 +88,11 @@ export function SalesRoutePage() {
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
     queryFn: fetchMembers
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: fetchCustomers
   });
 
   // Helper to fetch address from OpenStreetMap Nominatim with a timeout fallback
@@ -161,6 +167,21 @@ export function SalesRoutePage() {
 
       // Find matching member
       const currentMember = members.find(m => m.email?.toLowerCase() === user?.email?.toLowerCase());
+      
+      // Attempt to match customer
+      const selectedCustomer = customers.find(c => 
+        c.id === customerInput || 
+        customerInput === `${c.name} - ${c.phone}` ||
+        customerInput === c.name
+      );
+
+      // Determine final customer name string
+      let finalCustomerName = '';
+      if (selectedCustomer) {
+        finalCustomerName = selectedCustomer.name;
+      } else if (customerInput.trim() && customerInput !== 'none') {
+        finalCustomerName = customerInput.trim();
+      }
 
       const routeData = {
         memberId: currentMember ? currentMember.id : (user?.uid || 'unknown'),
@@ -170,7 +191,9 @@ export function SalesRoutePage() {
         longitude: lng,
         timestamp: now,
         note: noteInput.trim() || 'Check-in trực tiếp trên Web',
-        address: address || ''
+        address: address || '',
+        customerId: selectedCustomer ? selectedCustomer.id : '',
+        customerName: finalCustomerName
       };
 
       await addDoc(collection(db, 'sales_routes'), routeData);
@@ -178,6 +201,7 @@ export function SalesRoutePage() {
 
       // Reset states
       setNoteInput('');
+      setCustomerInput('');
       setTempCoords(null);
       setIsNoteModalOpen(false);
 
@@ -371,6 +395,13 @@ export function SalesRoutePage() {
                                 <span className="leading-relaxed">{route.address}</span>
                               </div>
                             )}
+                            {route.customerName && (
+                              <div className="text-xs text-primary font-bold mb-1.5 flex items-center gap-1.5">
+                                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md inline-block border border-primary/20">
+                                  Khách hàng: {route.customerName}
+                                </span>
+                              </div>
+                            )}
                             <div className="text-[10px] text-slate-400 font-medium">
                               Tọa độ: {route.latitude.toFixed(5)}, {route.longitude.toFixed(5)}
                             </div>
@@ -410,15 +441,32 @@ export function SalesRoutePage() {
                 Tọa độ GPS đã xác định thành công. Vui lòng nhập ghi chú hoặc mục đích check-in của bạn tại đây (tùy chọn).
               </p>
             </div>
-            <div className="p-5 space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mục đích / Ghi chú</label>
-              <Input
-                placeholder="Ví dụ: Gặp KH Nguyễn Văn A, đo đạc công trình..."
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                className="h-10 text-xs rounded-xl"
-                autoFocus
-              />
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Khách hàng (Chọn hoặc Nhập mới)</label>
+                <Input
+                  list="customers-list"
+                  placeholder="Nhập tên KH mới hoặc chọn..."
+                  value={customerInput}
+                  onChange={(e) => setCustomerInput(e.target.value)}
+                  className="h-10 text-xs rounded-xl w-full"
+                />
+                <datalist id="customers-list">
+                  {customers.map(c => (
+                    <option key={c.id} value={`${c.name} - ${c.phone}`}></option>
+                  ))}
+                </datalist>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mục đích / Ghi chú</label>
+                <Input
+                  placeholder="Ví dụ: Đo đạc công trình..."
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  className="h-10 text-xs rounded-xl"
+                  autoFocus
+                />
+              </div>
             </div>
             <div className="flex items-center justify-end gap-2 p-4 bg-slate-50 border-t border-border/60">
               <Button
@@ -428,6 +476,7 @@ export function SalesRoutePage() {
                 onClick={() => {
                   setIsNoteModalOpen(false);
                   setNoteInput('');
+                  setCustomerInput('');
                   setTempCoords(null);
                 }}
                 className="h-9 text-xs rounded-xl font-medium cursor-pointer"
