@@ -62,6 +62,8 @@ const navGroups = [
   {
     title: 'Đơn hàng & Khách',
     items: [
+      { id: 'sale', label: 'SALE', icon: BadgeDollarSign, permission: 'menuSale' },
+      { id: 'sales-routes', label: 'Lịch trình Sale', icon: MapPin, permission: 'menuMembers' },
       { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
       { id: 'quotations', label: 'Báo Giá', icon: FileText, permission: 'menuQuotations' },
     ]
@@ -76,12 +78,10 @@ const navGroups = [
   {
     title: 'Phòng ban',
     items: [
-      { id: 'sale', label: 'SALE', icon: BadgeDollarSign, permission: 'menuSale' },
       { id: 'design', label: 'Thiết kế', icon: Briefcase, permission: 'menuDesign' },
       { id: 'marketing', label: 'Marketing', icon: Megaphone, permission: 'menuMarketing' },
       { id: 'ai-render', label: 'Thiết kế AI', icon: Sparkles, permission: 'menuAi' },
       { id: 'ecoplast-learning', label: 'Học tập Ecoplast', icon: BookOpen, permission: 'menuSale' },
-      { id: 'sales-routes', label: 'Lịch trình Sale', icon: MapPin, permission: 'menuMembers' },
     ]
   },
   {
