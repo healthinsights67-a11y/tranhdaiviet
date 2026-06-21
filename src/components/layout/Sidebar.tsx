@@ -55,7 +55,6 @@ const navGroups = [
     title: 'Chung',
     items: [
       { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-      { id: 'workflow-guide', label: 'Hướng dẫn', icon: HelpCircle },
       { id: 'reports', label: 'Báo cáo', icon: BarChart3, permission: 'menuReports' },
     ]
   },
@@ -92,6 +91,7 @@ const navGroups = [
         { id: 'documents', label: 'Tài liệu Sản Phẩm', icon: Folder, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },
+      { id: 'workflow-guide', label: 'Hướng dẫn', icon: HelpCircle },
       { id: 'trash', label: 'Thùng rác', icon: Trash2 },
     ]
   }
@@ -104,9 +104,9 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
 
   const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {
-      'Chung': true,
+      'Chung': false,
       'Đơn hàng & Khách': true,
-      'Sản xuất & Thi công': false,
+      'Sản xuất & Thi công': true,
       'Phòng ban': false,
       'Hệ thống': false,
     };
