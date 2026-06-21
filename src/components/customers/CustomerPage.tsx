@@ -34,7 +34,7 @@ import { LocationPickerDialog } from '../maps/LocationPickerDialog';
 import { MapComponent, CustomMarker } from '../maps/MapComponent';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth, calculateDistance } from '@/src/lib/utils';
+import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth, calculateDistance, geocodeAddressOSM } from '@/src/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,21 +77,7 @@ import { fetchSystemSettings, updateSystemSettings } from '@/src/services/dataSe
 
 
 const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
-  if (!address || address.trim().length < 3) return undefined;
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
-    if (!res.ok) return undefined;
-    const data = await res.json();
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon)
-      };
-    }
-  } catch (error) {
-    console.error("Geocoding error for address:", address, error);
-  }
-  return undefined;
+  return await geocodeAddressOSM(address);
 };
 
 interface CustomerPageProps {

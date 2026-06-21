@@ -139,6 +139,51 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   return Number(d.toFixed(1));
 }
 
+export const geocodeAddressOSM = async (address: string): Promise<{ lat: number; lng: number } | undefined> => {
+  if (!address || address.trim().length < 2) return undefined;
+  
+  const search = async (q: string) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=vi`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          return {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+          };
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return undefined;
+  };
+
+  // Try exact address
+  let result = await search(address);
+  if (result) return result;
+
+  // Fallback 1: Append Vietnam
+  if (!address.toLowerCase().includes('việt nam') && !address.toLowerCase().includes('vietnam')) {
+    result = await search(`${address}, Việt Nam`);
+    if (result) return result;
+  }
+
+  // Fallback 2: Strip specific numbers at the beginning (e.g. "Số 70 Đồng Xung" -> "Đồng Xung")
+  const strippedAddress = address.replace(/^(Số\s*\d+|^\d+)\s*/i, '').trim();
+  if (strippedAddress && strippedAddress !== address) {
+    result = await search(strippedAddress);
+    if (result) return result;
+    
+    // Fallback 3: stripped + Vietnam
+    result = await search(`${strippedAddress}, Việt Nam`);
+    if (result) return result;
+  }
+
+  return undefined;
+};
+
 function deg2rad(deg: number): number {
   return deg * (Math.PI/180);
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { MapComponent, CustomMarker } from './MapComponent';
+import { geocodeAddressOSM } from '@/src/lib/utils';
 import { MapPin, Search, Loader2 } from 'lucide-react';
 
 interface LocationPickerDialogProps {
@@ -23,13 +24,9 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, address
     if (!manualSearchQuery.trim()) return;
     setIsSearching(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(manualSearchQuery)}&format=json&limit=1&accept-language=vi`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        setSelectedLocation({
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon)
-        });
+      const coords = await geocodeAddressOSM(manualSearchQuery);
+      if (coords) {
+        setSelectedLocation(coords);
       }
     } catch (e) {
       console.error("Search failed", e);
@@ -46,13 +43,9 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, address
         const fetchLocation = async () => {
           setIsSearching(true);
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`);
-            const data = await res.json();
-            if (data && data.length > 0) {
-              setSelectedLocation({
-                lat: parseFloat(data[0].lat),
-                lng: parseFloat(data[0].lon)
-              });
+            const coords = await geocodeAddressOSM(addressQuery);
+            if (coords) {
+              setSelectedLocation(coords);
             } else {
               setSelectedLocation({ lat: 21.0278, lng: 105.8342 }); // Fallback to Hanoi
             }
