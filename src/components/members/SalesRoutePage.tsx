@@ -38,11 +38,20 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
+const openMapLink = (url: string) => {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank');
+  }
+};
+
 const openFullRouteOnGoogleMaps = (routes: SalesRoute[]) => {
   if (routes.length === 0) return;
 
   if (routes.length === 1) {
-    window.open(`https://www.google.com/maps/search/?api=1&query=${routes[0].latitude},${routes[0].longitude}`, '_blank');
+    openMapLink(`https://www.google.com/maps/search/?api=1&query=${routes[0].latitude},${routes[0].longitude}`);
     return;
   }
 
@@ -50,7 +59,7 @@ const openFullRouteOnGoogleMaps = (routes: SalesRoute[]) => {
   const destination = `${routes[routes.length - 1].latitude},${routes[routes.length - 1].longitude}`;
 
   if (routes.length === 2) {
-    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+    openMapLink(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`);
     return;
   }
 
@@ -60,7 +69,7 @@ const openFullRouteOnGoogleMaps = (routes: SalesRoute[]) => {
     .map(r => `${r.latitude},${r.longitude}`)
     .join('|');
 
-  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`, '_blank');
+  openMapLink(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`);
 };
 
 export function SalesRoutePage() {
@@ -373,7 +382,7 @@ export function SalesRoutePage() {
                             )}
                           </div>
                           <div className="shrink-0">
-                            <Button variant="outline" size="sm" className="h-7 text-[10px] cursor-pointer" onClick={() => window.open(`https://www.google.com/maps?q=${route.latitude},${route.longitude}`, '_blank')}>
+                            <Button variant="outline" size="sm" className="h-7 text-[10px] cursor-pointer" onClick={() => openMapLink(`https://www.google.com/maps?q=${route.latitude},${route.longitude}`)}>
                               Xem Bản đồ
                             </Button>
                           </div>
