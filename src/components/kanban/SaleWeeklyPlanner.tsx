@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import { Task, Member, Customer, Status, WORKSHOPS } from '@/src/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -1001,11 +1002,9 @@ export function SaleWeeklyPlanner({
             {/* Scheduled date override */}
             <div className="grid gap-1.5">
               <Label htmlFor="nw-date" className="text-xs font-semibold">Ngày thực hiện</Label>
-              <Input
-                id="nw-date"
-                type="date"
-                value={addDialogDate ?? ''}
-                onChange={e => setAddDialogDate(e.target.value)}
+              <DatePicker
+                value={addDialogDate}
+                onChange={setAddDialogDate}
                 className="h-9 text-xs rounded-lg"
               />
             </div>

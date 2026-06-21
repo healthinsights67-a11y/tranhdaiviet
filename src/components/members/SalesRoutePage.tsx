@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Search, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { db, collection, query, where, getDocs, orderBy, addDoc } from '@/src/lib/firebase';
 import { fetchMembers, fetchCustomers } from '@/src/services/dataService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -301,10 +302,9 @@ export function SalesRoutePage() {
             {isCheckingIn ? "Đang định vị..." : "Check-in Vị Trí"}
           </Button>
           <div className="relative flex-1 md:w-40 min-w-[120px]">
-            <Input 
-              type="date"
+            <DatePicker 
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
               className="h-9 text-xs bg-card w-full"
             />
           </div>

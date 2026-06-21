@@ -24,6 +24,7 @@ import { uploadToImgBB } from '@/src/services/uploadService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -632,11 +633,10 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
                   <div className="space-y-1">
                     <Label className="text-xs font-bold text-slate-700">Ngày hiệu lực báo giá</Label>
-                    <Input 
-                      type="date"
+                    <DatePicker 
                       className="h-9 w-full bg-white"
                       value={formData.date} 
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      onChange={(val) => setFormData({ ...formData, date: val })}
                     />
                   </div>
                 </div>
