@@ -119,6 +119,16 @@ async function startServer() {
 
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {
+    const body = req.body;
+    console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
+    
+    recentWebhooks.unshift({ 
+      time: new Date().toISOString(), 
+      headers: req.headers,
+      body 
+    });
+    if (recentWebhooks.length > 20) recentWebhooks.pop();
+
     // We should ideally use a secret token from env or database
     const WEBHOOK_SECRET_TOKEN = process.env.ZALO_WEBHOOK_SECRET || 'your-secret-token';
     const secretToken = req.headers["x-bot-api-secret-token"];
@@ -130,12 +140,6 @@ async function startServer() {
     }
 
     try {
-      const body = req.body;
-      console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
-      
-      recentWebhooks.unshift({ time: new Date().toISOString(), body });
-      if (recentWebhooks.length > 20) recentWebhooks.pop();
-
       let event_name = body.event_name;
       let message = body.message;
       let senderId = body.sender?.id;
