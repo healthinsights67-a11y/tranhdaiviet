@@ -25,6 +25,19 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return d;
 }
 
+function formatDistance(km: number): string {
+  if (km === 0) return '0 m';
+  if (km < 0.1) {
+    const meters = Math.round(km * 1000);
+    return `${meters} m`;
+  }
+  if (km < 1.0) {
+    const meters = Math.round(km * 1000);
+    return `${Math.round(meters / 10) * 10} m`;
+  }
+  return `${km.toFixed(1)} km`;
+}
+
 export function SalesRoutePage() {
   const [date, setDate] = React.useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -206,11 +219,11 @@ export function SalesRoutePage() {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Lịch trình Sale</h1>
           <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Theo dõi lịch trình và quãng đường di chuyển của nhân viên Sale qua Zalo.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Button 
             onClick={handleCheckIn} 
             disabled={isCheckingIn}
-            className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-lg flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 md:flex-initial h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
           >
             {isCheckingIn ? (
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
@@ -219,21 +232,21 @@ export function SalesRoutePage() {
             )}
             {isCheckingIn ? "Đang định vị..." : "Check-in Vị Trí"}
           </Button>
-          <div className="relative w-full md:w-56 shrink-0">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Tìm nhân viên..." 
-              className="pl-8 h-8 text-xs bg-card text-card-foreground border border-border shadow-sm rounded-lg" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="relative w-40 shrink-0">
+          <div className="relative flex-1 md:w-40 min-w-[120px]">
             <Input 
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-8 text-xs bg-card"
+              className="h-9 text-xs bg-card w-full"
+            />
+          </div>
+          <div className="relative w-full md:w-56 mt-1 md:mt-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input 
+              placeholder="Tìm nhân viên..." 
+              className="pl-8.5 h-9 text-xs bg-card text-card-foreground border border-border shadow-sm rounded-lg w-full" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -273,7 +286,7 @@ export function SalesRoutePage() {
                       </CardDescription>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-black text-primary">{totalDistance.toFixed(1)} km</div>
+                      <div className="text-sm font-black text-primary">{formatDistance(totalDistance)}</div>
                       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Tổng quãng đường</div>
                     </div>
                   </div>
@@ -304,7 +317,7 @@ export function SalesRoutePage() {
                               {index > 0 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center gap-1">
                                   <Navigation className="h-3 w-3" />
-                                  Cách điểm trước: {distanceFromPrev.toFixed(1)} km
+                                  Cách điểm trước: {formatDistance(distanceFromPrev)}
                                 </span>
                               )}
                             </div>
