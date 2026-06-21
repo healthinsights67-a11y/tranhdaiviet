@@ -64,6 +64,7 @@ export const SalesRouteSchema = z.object({
   longitude: z.number(),
   timestamp: timestampSchema,
   note: z.string().optional(),
+  address: z.string().optional(),
 });
 
 export const CustomerSchema = z.object({

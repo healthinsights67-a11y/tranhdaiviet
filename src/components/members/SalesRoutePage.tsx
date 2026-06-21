@@ -29,6 +29,10 @@ export function SalesRoutePage() {
   const [date, setDate] = React.useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isCheckingIn, setIsCheckingIn] = React.useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
+  const [noteInput, setNoteInput] = React.useState('');
+  const [tempCoords, setTempCoords] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -38,6 +42,26 @@ export function SalesRoutePage() {
     queryFn: fetchMembers
   });
 
+  // Helper to fetch address from OpenStreetMap Nominatim with a timeout fallback
+  const fetchAddressWithTimeout = async (lat: number, lng: number): Promise<string> => {
+    const fetchPromise = fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`, {
+      headers: {
+        'User-Agent': 'i-noi-that-v2-sales-tracking'
+      }
+    }).then(async (res) => {
+      if (res.ok) {
+        const data = await res.json();
+        return data.display_name || '';
+      }
+      return '';
+    }).catch(() => '');
+
+    // Timeout after 2.5 seconds to avoid locking user flow if OSM is slow
+    const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve(''), 2500));
+
+    return Promise.race([fetchPromise, timeoutPromise]);
+  };
+
   const handleCheckIn = () => {
     if (!navigator.geolocation) {
       toast.error("Trình duyệt của bạn không hỗ trợ định vị GPS.");
@@ -46,36 +70,12 @@ export function SalesRoutePage() {
 
     setIsCheckingIn(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const now = new Date().toISOString();
-          
-          // Find matching member
-          const currentMember = members.find(m => m.email?.toLowerCase() === user?.email?.toLowerCase());
-          
-          const routeData = {
-            memberId: currentMember ? currentMember.id : (user?.uid || 'unknown'),
-            memberName: currentMember ? currentMember.name : (user?.displayName || user?.email || 'Người dùng Web'),
-            zaloUserId: currentMember?.zaloUserId || '',
-            latitude: lat,
-            longitude: lng,
-            timestamp: now,
-            note: 'Check-in trực tiếp trên Web'
-          };
-
-          await addDoc(collection(db, 'sales_routes'), routeData);
-          toast.success("Đã ghi nhận vị trí check-in thành công!");
-          
-          // Refetch today's routes
-          queryClient.invalidateQueries({ queryKey: ['sales_routes', date] });
-        } catch (error) {
-          console.error("Lỗi lưu vị trí:", error);
-          toast.error("Không thể lưu vị trí check-in.");
-        } finally {
-          setIsCheckingIn(false);
-        }
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setTempCoords({ lat, lng });
+        setIsCheckingIn(false);
+        setIsNoteModalOpen(true);
       },
       (error) => {
         setIsCheckingIn(false);
@@ -99,6 +99,49 @@ export function SalesRoutePage() {
         maximumAge: 0
       }
     );
+  };
+
+  const confirmCheckIn = async () => {
+    if (!tempCoords) return;
+
+    setIsSaving(true);
+    try {
+      const { lat, lng } = tempCoords;
+      const now = new Date().toISOString();
+
+      // Get address asynchronously
+      const address = await fetchAddressWithTimeout(lat, lng);
+
+      // Find matching member
+      const currentMember = members.find(m => m.email?.toLowerCase() === user?.email?.toLowerCase());
+
+      const routeData = {
+        memberId: currentMember ? currentMember.id : (user?.uid || 'unknown'),
+        memberName: currentMember ? currentMember.name : (user?.displayName || user?.email || 'Người dùng Web'),
+        zaloUserId: currentMember?.zaloUserId || '',
+        latitude: lat,
+        longitude: lng,
+        timestamp: now,
+        note: noteInput.trim() || 'Check-in trực tiếp trên Web',
+        address: address || ''
+      };
+
+      await addDoc(collection(db, 'sales_routes'), routeData);
+      toast.success("Đã ghi nhận vị trí check-in thành công!");
+
+      // Reset states
+      setNoteInput('');
+      setTempCoords(null);
+      setIsNoteModalOpen(false);
+
+      // Refetch today's routes
+      queryClient.invalidateQueries({ queryKey: ['sales_routes', date] });
+    } catch (error) {
+      console.error("Lỗi lưu vị trí:", error);
+      toast.error("Không thể lưu vị trí check-in.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const { data: routes = [], isLoading } = useQuery({
@@ -265,17 +308,24 @@ export function SalesRoutePage() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 font-medium">
+                            {route.address && (
+                              <div className="text-xs text-slate-800 font-semibold mb-1.5 flex items-start gap-1">
+                                <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5 animate-bounce" />
+                                <span className="leading-relaxed">{route.address}</span>
+                              </div>
+                            )}
+                            <div className="text-[10px] text-slate-400 font-medium">
                               Tọa độ: {route.latitude.toFixed(5)}, {route.longitude.toFixed(5)}
                             </div>
                             {route.note && (
-                              <div className="mt-1 text-xs text-slate-700 bg-slate-100 p-2 rounded inline-block">
+                              <div className="mt-2 text-xs text-slate-700 bg-blue-50/65 border border-blue-100/60 px-2.5 py-1.5 rounded-lg inline-block font-medium">
+                                <span className="font-bold text-blue-800 mr-1">Ghi chú:</span>
                                 {route.note}
                               </div>
                             )}
                           </div>
                           <div className="shrink-0">
-                            <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => window.open(`https://www.google.com/maps?q=${route.latitude},${route.longitude}`, '_blank')}>
+                            <Button variant="outline" size="sm" className="h-7 text-[10px] cursor-pointer" onClick={() => window.open(`https://www.google.com/maps?q=${route.latitude},${route.longitude}`, '_blank')}>
                               Xem Bản đồ
                             </Button>
                           </div>
@@ -289,6 +339,63 @@ export function SalesRoutePage() {
           })
         )}
       </div>
+
+      {/* Note Input Modal */}
+      {isNoteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-border/80">
+              <h3 className="font-bold text-base text-card-foreground flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Xác nhận Check-in
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tọa độ GPS đã xác định thành công. Vui lòng nhập ghi chú hoặc mục đích check-in của bạn tại đây (tùy chọn).
+              </p>
+            </div>
+            <div className="p-5 space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mục đích / Ghi chú</label>
+              <Input
+                placeholder="Ví dụ: Gặp KH Nguyễn Văn A, đo đạc công trình..."
+                value={noteInput}
+                onChange={(e) => setNoteInput(e.target.value)}
+                className="h-10 text-xs rounded-xl"
+                autoFocus
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 p-4 bg-slate-50 border-t border-border/60">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isSaving}
+                onClick={() => {
+                  setIsNoteModalOpen(false);
+                  setNoteInput('');
+                  setTempCoords(null);
+                }}
+                className="h-9 text-xs rounded-xl font-medium cursor-pointer"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                size="sm"
+                disabled={isSaving}
+                onClick={confirmCheckIn}
+                className="h-9 text-xs rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 cursor-pointer"
+              >
+                {isSaving ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  "Đồng ý & Lưu"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

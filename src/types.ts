@@ -41,6 +41,7 @@ export interface SalesRoute {
   longitude: number;
   timestamp: string;
   note?: string;
+  address?: string;
 }
 
 export interface CustomerNote {
