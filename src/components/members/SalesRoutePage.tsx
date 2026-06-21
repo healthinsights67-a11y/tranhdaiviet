@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Search, Navigation } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { db, collection, query, where, getDocs, orderBy } from '@/src/lib/firebase';
+import { db, collection, query, where, getDocs, orderBy, addDoc } from '@/src/lib/firebase';
 import { fetchMembers } from '@/src/services/dataService';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 // Haversine formula to calculate distance between two coordinates in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -27,11 +28,78 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export function SalesRoutePage() {
   const [date, setDate] = React.useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [isCheckingIn, setIsCheckingIn] = React.useState(false);
+
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
     queryFn: fetchMembers
   });
+
+  const handleCheckIn = () => {
+    if (!navigator.geolocation) {
+      toast.error("Trình duyệt của bạn không hỗ trợ định vị GPS.");
+      return;
+    }
+
+    setIsCheckingIn(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const now = new Date().toISOString();
+          
+          // Find matching member
+          const currentMember = members.find(m => m.email?.toLowerCase() === user?.email?.toLowerCase());
+          
+          const routeData = {
+            memberId: currentMember ? currentMember.id : (user?.uid || 'unknown'),
+            memberName: currentMember ? currentMember.name : (user?.displayName || user?.email || 'Người dùng Web'),
+            zaloUserId: currentMember?.zaloUserId || '',
+            latitude: lat,
+            longitude: lng,
+            timestamp: now,
+            note: 'Check-in trực tiếp trên Web'
+          };
+
+          await addDoc(collection(db, 'sales_routes'), routeData);
+          toast.success("Đã ghi nhận vị trí check-in thành công!");
+          
+          // Refetch today's routes
+          queryClient.invalidateQueries({ queryKey: ['sales_routes', date] });
+        } catch (error) {
+          console.error("Lỗi lưu vị trí:", error);
+          toast.error("Không thể lưu vị trí check-in.");
+        } finally {
+          setIsCheckingIn(false);
+        }
+      },
+      (error) => {
+        setIsCheckingIn(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error("Vui lòng cấp quyền truy cập GPS cho trang web để check-in.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error("Không thể xác định vị trí GPS hiện tại.");
+            break;
+          case error.TIMEOUT:
+            toast.error("Yêu cầu lấy vị trí hết thời gian chờ.");
+            break;
+          default:
+            toast.error("Lỗi xác định vị trí.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
 
   const { data: routes = [], isLoading } = useQuery({
     queryKey: ['sales_routes', date],
@@ -96,6 +164,18 @@ export function SalesRoutePage() {
           <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Theo dõi lịch trình và quãng đường di chuyển của nhân viên Sale qua Zalo.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleCheckIn} 
+            disabled={isCheckingIn}
+            className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-lg flex items-center gap-1.5 cursor-pointer"
+          >
+            {isCheckingIn ? (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+            ) : (
+              <MapPin className="h-3.5 w-3.5" />
+            )}
+            {isCheckingIn ? "Đang định vị..." : "Check-in Vị Trí"}
+          </Button>
           <div className="relative w-full md:w-56 shrink-0">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
