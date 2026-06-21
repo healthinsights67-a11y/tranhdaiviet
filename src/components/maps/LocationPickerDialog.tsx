@@ -103,7 +103,7 @@ export function LocationPickerDialog({ isOpen, onClose, initialLocation, address
           </MapComponent>
           
           {/* A floating crosshair in center (optional) but we use click instead */}
-          <div className="absolute top-4 left-4 right-4 z-10 pointer-events-none">
+          <div className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none">
              <div className="bg-white/90 backdrop-blur shadow-lg rounded-xl p-3 border border-primary/20 pointer-events-auto">
                <div className="flex items-center gap-2 text-sm text-gray-600">
                  <Search className="h-4 w-4" />

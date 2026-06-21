@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF, OverlayViewF } from '@react-google-maps/api';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { MapPin, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { db, doc, onSnapshot } from '@/src/lib/firebase';
+import { renderToString } from 'react-dom/server';
 
 export interface ViewState {
   longitude: number;
@@ -25,27 +27,44 @@ const DEFAULT_VIEW_STATE: ViewState = {
   zoom: 12
 };
 
-const lightMapStyle = [
-  { "featureType": "administrative", "elementType": "labels.text.fill", "stylers": [{ "color": "#444444" }] },
-  { "featureType": "landscape", "elementType": "all", "stylers": [{ "color": "#f2f2f2" }] },
-  { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "road", "elementType": "all", "stylers": [{ "saturation": -100 }, { "lightness": 45 }] },
-  { "featureType": "road.highway", "elementType": "all", "stylers": [{ "visibility": "simplified" }] },
-  { "featureType": "road.arterial", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "transit", "elementType": "all", "stylers": [{ "visibility": "off" }] },
-  { "featureType": "water", "elementType": "all", "stylers": [{ "color": "#cbd2d9" }, { "visibility": "on" }] }
-];
+// Component to handle map events
+function MapEvents({ onViewStateChange, onClick, interactive }: { 
+  onViewStateChange?: (viewState: ViewState) => void, 
+  onClick?: (e: { lngLat: { lng: number; lat: number } }) => void,
+  interactive: boolean 
+}) {
+  useMapEvents({
+    click(e) {
+      if (interactive && onClick) {
+        onClick({
+          lngLat: {
+            lat: e.latlng.lat,
+            lng: e.latlng.lng
+          }
+        });
+      }
+    },
+    moveend(e) {
+      if (onViewStateChange) {
+        const map = e.target;
+        const center = map.getCenter();
+        onViewStateChange({
+          latitude: center.lat,
+          longitude: center.lng,
+          zoom: map.getZoom()
+        });
+      }
+    }
+  });
+  return null;
+}
 
-// Map options
-const defaultOptions = {
-  disableDefaultUI: false,
-  zoomControl: true,
-  mapTypeControl: false,
-  streetViewControl: false,
-  fullscreenControl: false,
-  mapTypeId: 'roadmap',
-  styles: lightMapStyle,
-};
+// Component to handle dynamic center updates
+function ChangeView({ center, zoom }: { center: [number, number], zoom: number }) {
+  const map = useMap();
+  map.setView(center, zoom);
+  return null;
+}
 
 export function MapComponent({
   initialViewState = DEFAULT_VIEW_STATE,
@@ -55,114 +74,35 @@ export function MapComponent({
   children,
   interactive = true
 }: MapComponentProps) {
-  const [apiKey, setApiKey] = useState<string | null>(null);
   
-  useEffect(() => {
-    // Fetch API key from Firebase settings
-    const unsub = onSnapshot(doc(db, 'configs', 'storage'), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().googleMapsKey) {
-        setApiKey(docSnap.data().googleMapsKey);
-      } else {
-        // Fallback to empty string which might show "Development purposes only" 
-        // or trigger an error if Google enforces it.
-        setApiKey(''); 
-      }
-    });
-    return () => unsub();
-  }, []);
+  const center: [number, number] = useMemo(() => [
+    initialViewState.latitude,
+    initialViewState.longitude
+  ], [initialViewState.latitude, initialViewState.longitude]);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: apiKey || '',
-    language: 'vi',
-    region: 'VN'
-  });
-
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-
-  const center = useMemo(() => ({
-    lat: initialViewState.latitude,
-    lng: initialViewState.longitude
-  }), [initialViewState.latitude, initialViewState.longitude]);
-
-  const onLoad = useCallback(function callback(map: google.maps.Map) {
-    setMap(map);
-  }, []);
-
-  const onUnmount = useCallback(function callback() {
-    setMap(null);
-  }, []);
-
-  const handleCenterChanged = () => {
-    if (map && onViewStateChange) {
-      const newCenter = map.getCenter();
-      if (newCenter) {
-        onViewStateChange({
-          latitude: newCenter.lat(),
-          longitude: newCenter.lng(),
-          zoom: map.getZoom() || 14
-        });
-      }
-    }
-  };
-
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (interactive && onClick && e.latLng) {
-      onClick({
-        lngLat: {
-          lat: e.latLng.lat(),
-          lng: e.latLng.lng()
-        }
-      });
-    }
-  };
-
-  if (apiKey === null) {
-    return (
-      <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-gray-100", className)}>
-        <Loader2 className="h-6 w-6 text-primary animate-spin" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-red-50 text-red-500 font-medium text-sm", className)}>
-        Không thể tải Google Maps
-      </div>
-    );
-  }
-
-  return isLoaded ? (
-    <div className={cn("relative w-full h-full overflow-hidden rounded-md", className)}>
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height: '100%' }}
-        center={center}
-        zoom={initialViewState.zoom || 14}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
-        onCenterChanged={handleCenterChanged}
-        onClick={handleMapClick}
-        options={{
-          ...defaultOptions,
-          draggable: interactive,
-          scrollwheel: interactive,
-          disableDoubleClickZoom: !interactive,
-        }}
+  return (
+    <div className={cn("relative w-full h-full overflow-hidden rounded-md z-0", className)}>
+      <MapContainer 
+        center={center} 
+        zoom={initialViewState.zoom || 14} 
+        scrollWheelZoom={interactive}
+        dragging={interactive}
+        doubleClickZoom={interactive}
+        className="w-full h-full z-0"
       >
+        <ChangeView center={center} zoom={initialViewState.zoom || 14} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        />
+        <MapEvents onViewStateChange={onViewStateChange} onClick={onClick} interactive={interactive} />
         {children}
-      </GoogleMap>
-    </div>
-  ) : (
-    <div className={cn("relative w-full h-full overflow-hidden rounded-md flex items-center justify-center bg-gray-100", className)}>
-      <Loader2 className="h-6 w-6 text-primary animate-spin" />
+      </MapContainer>
     </div>
   );
 }
 
-// Reusable Custom Marker using OverlayViewF
-import { OverlayView } from '@react-google-maps/api';
-
+// Reusable Custom Marker using react-leaflet
 export function CustomMarker({ 
   longitude, 
   latitude, 
@@ -178,39 +118,42 @@ export function CustomMarker({
   labelText?: string;
   children?: React.ReactNode; 
 }) {
-  return (
-    <OverlayViewF
-      position={{ lat: latitude, lng: longitude }}
-      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-      getPixelPositionOffset={(width, height) => ({
-        x: -(width / 2),
-        y: -height
-      })}
-    >
-      <div 
-        className="relative flex flex-col items-center group cursor-pointer transition-transform duration-200 hover:scale-105"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.();
-        }}
-      >
-        <div className={cn("p-1.5 rounded-full shadow-md border-2 border-white flex items-center justify-center transition-all duration-200", color)}>
-          <MapPin className="h-5 w-5 text-white" />
-        </div>
-        <div className="absolute top-[32px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black/40 rounded-full blur-[2px]" />
-        
-        {labelText && (
-          <div className="mt-1.5 px-1.5 py-0.5 rounded-md bg-white text-gray-900 text-[10px] font-bold shadow-md border border-gray-200/80 max-w-[110px] truncate whitespace-nowrap pointer-events-none relative z-0">
-            {labelText}
-          </div>
-        )}
-        
-        {children && (
-          <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
-            {children}
-          </div>
-        )}
+  const iconHtml = renderToString(
+    <div className="relative flex flex-col items-center group cursor-pointer transition-transform duration-200 hover:scale-105">
+      <div className={cn(`p-1.5 rounded-full shadow-md border-2 border-white flex items-center justify-center transition-all duration-200`, color)}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map-pin text-white"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
       </div>
-    </OverlayViewF>
+      <div className="absolute top-[32px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black/40 rounded-full blur-[2px]" />
+      
+      {labelText && (
+        <div className="mt-1.5 px-1.5 py-0.5 rounded-md bg-white text-gray-900 text-[10px] font-bold shadow-md border border-gray-200/80 max-w-[110px] truncate whitespace-nowrap pointer-events-none relative z-0">
+          {labelText}
+        </div>
+      )}
+    </div>
+  );
+
+  const customIcon = L.divIcon({
+    html: iconHtml,
+    className: 'custom-leaflet-icon',
+    iconSize: [32, 42],
+    iconAnchor: [16, 42],
+    popupAnchor: [0, -42]
+  });
+
+  return (
+    <Marker 
+      position={[latitude, longitude]} 
+      icon={customIcon}
+      eventHandlers={{
+        click: () => onClick && onClick()
+      }}
+    >
+      {children && (
+        <Popup className="custom-popup" closeButton={false}>
+          {children}
+        </Popup>
+      )}
+    </Marker>
   );
 }
