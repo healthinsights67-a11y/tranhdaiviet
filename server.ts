@@ -113,7 +113,7 @@ async function startServer() {
   // Store recent webhooks in memory for debugging
   const recentWebhooks: any[] = [];
   
-  app.get("/api/webhook-logs", (req, res) => {
+  app.get(["/api/webhook-logs", "/api/webhook_logs"], (req, res) => {
     res.json(recentWebhooks);
   });
 
