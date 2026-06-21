@@ -38,6 +38,31 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
+const openFullRouteOnGoogleMaps = (routes: SalesRoute[]) => {
+  if (routes.length === 0) return;
+
+  if (routes.length === 1) {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${routes[0].latitude},${routes[0].longitude}`, '_blank');
+    return;
+  }
+
+  const origin = `${routes[0].latitude},${routes[0].longitude}`;
+  const destination = `${routes[routes.length - 1].latitude},${routes[routes.length - 1].longitude}`;
+
+  if (routes.length === 2) {
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`, '_blank');
+    return;
+  }
+
+  // 3 or more points: construct waypoints parameter
+  const waypoints = routes
+    .slice(1, -1)
+    .map(r => `${r.latitude},${r.longitude}`)
+    .join('|');
+
+  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`, '_blank');
+};
+
 export function SalesRoutePage() {
   const [date, setDate] = React.useState<string>(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -281,8 +306,18 @@ export function SalesRoutePage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base font-bold text-slate-800">{memberName}</CardTitle>
-                      <CardDescription className="text-xs">
-                        {memberRoutes.length} điểm check-in
+                      <CardDescription className="text-xs flex items-center gap-2 mt-1">
+                        <span>{memberRoutes.length} điểm check-in</span>
+                        {memberRoutes.length > 1 && (
+                          <Button 
+                            variant="link" 
+                            className="h-auto p-0 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                            onClick={() => openFullRouteOnGoogleMaps(memberRoutes)}
+                          >
+                            <Navigation className="h-3 w-3" />
+                            Xem lộ trình đi
+                          </Button>
+                        )}
                       </CardDescription>
                     </div>
                     <div className="text-right">
