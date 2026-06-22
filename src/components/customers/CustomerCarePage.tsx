@@ -25,7 +25,9 @@ import {
   Calendar,
   AlertCircle,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Pencil,
+  X
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, addYears, isValid } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -47,6 +49,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
   const [selectedCustomerForLog, setSelectedCustomerForLog] = useState<Customer | null>(null);
   const [logNote, setLogNote] = useState('');
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
   // State for editing warranty
   const [selectedCustomerForWarranty, setSelectedCustomerForWarranty] = useState<Customer | null>(null);
@@ -197,19 +200,35 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
       return;
     }
 
-    const newLog = {
-      id: crypto.randomUUID(),
-      date: format(new Date(), 'yyyy-MM-dd HH:mm'),
-      note: logNote.trim(),
-      createdBy: currentUser?.id || 'unknown',
-      createdByName: currentUser?.name || 'Nhân viên'
-    };
+    let updatedCustomer: Customer;
 
-    const currentLogs = selectedCustomerForLog.careLogs || [];
-    const updatedCustomer: Customer = {
-      ...selectedCustomerForLog,
-      careLogs: [newLog, ...currentLogs]
-    };
+    if (editingLogId) {
+      const currentLogs = selectedCustomerForLog.careLogs || [];
+      const updatedLogs = currentLogs.map(log => 
+        log.id === editingLogId 
+          ? { ...log, note: logNote.trim() } 
+          : log
+      );
+
+      updatedCustomer = {
+        ...selectedCustomerForLog,
+        careLogs: updatedLogs
+      };
+    } else {
+      const newLog = {
+        id: crypto.randomUUID(),
+        date: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        note: logNote.trim(),
+        createdBy: currentUser?.id || 'unknown',
+        createdByName: currentUser?.name || 'Nhân viên'
+      };
+
+      const currentLogs = selectedCustomerForLog.careLogs || [];
+      updatedCustomer = {
+        ...selectedCustomerForLog,
+        careLogs: [newLog, ...currentLogs]
+      };
+    }
 
     toast.promise(
       updateCustomerMutation.mutateAsync(updatedCustomer),
@@ -217,12 +236,23 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
         loading: 'Đang ghi nhận nhật ký...',
         success: () => {
           setLogNote('');
-          setIsLogDialogOpen(false);
-          return 'Đã lưu nhật ký chăm sóc khách hàng!';
+          setEditingLogId(null);
+          setSelectedCustomerForLog(updatedCustomer);
+          return editingLogId ? 'Đã cập nhật nhật ký!' : 'Đã lưu nhật ký chăm sóc khách hàng!';
         },
         error: 'Không thể lưu nhật ký.'
       }
     );
+  };
+
+  const handleEditLog = (log: any) => {
+    setEditingLogId(log.id);
+    setLogNote(log.note);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLogId(null);
+    setLogNote('');
   };
 
   const handleUpdateWarrantySubmit = async (e: React.FormEvent) => {
@@ -260,6 +290,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
   const openLogDialog = (customer: Customer) => {
     setSelectedCustomerForLog(customer);
     setLogNote('');
+    setEditingLogId(null);
     setIsLogDialogOpen(true);
   };
 
@@ -556,24 +587,38 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
               <h4 className="text-sm font-bold text-foreground">Lịch sử chăm sóc ({selectedCustomerForLog?.careLogs?.length || 0})</h4>
               {selectedCustomerForLog?.careLogs && selectedCustomerForLog.careLogs.length > 0 ? (
                 <div className="relative border-l border-border pl-4 ml-2 space-y-5">
-                  {selectedCustomerForLog.careLogs.map((log) => (
-                    <div key={log.id} className="relative">
+                  {selectedCustomerForLog.careLogs.map((log, index) => {
+                    const totalLogs = selectedCustomerForLog.careLogs!.length;
+                    const iteration = totalLogs - index;
+                    return (
+                    <div key={log.id} className="relative group">
                       {/* Timeline dot */}
                       <span className="absolute -left-[21px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-primary shadow-sm" />
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-bold text-foreground flex items-center gap-1">
-                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-primary mr-1">Lần {iteration}</span>
+                            <User className="h-3.5 w-3.5 text-muted-foreground ml-1" />
                             {log.createdByName || 'Người tạo'}
                           </span>
-                          <span className="text-muted-foreground">{log.date}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">{log.date}</span>
+                            <button 
+                              type="button"
+                              onClick={() => handleEditLog(log)}
+                              className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity"
+                              title="Sửa ghi chú"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                         <div className="bg-secondary/40 rounded-xl p-3 border border-secondary/20">
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{log.note}</p>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-secondary/10 rounded-xl text-center">
@@ -586,13 +631,22 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
             {/* Add note form */}
             <form onSubmit={handleAddCareLogSubmit} className="space-y-3 pt-4 border-t border-border">
               <div className="space-y-1.5">
-                <Label htmlFor="careNote" className="text-sm font-bold text-foreground">Thêm ghi chú chăm sóc mới</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="careNote" className="text-sm font-bold text-foreground">
+                    {editingLogId ? 'Sửa ghi chú chăm sóc' : 'Thêm ghi chú chăm sóc mới'}
+                  </Label>
+                  {editingLogId && (
+                    <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit} className="h-6 text-xs text-muted-foreground hover:text-foreground flex gap-1 px-2">
+                      <X className="h-3 w-3" /> Hủy sửa
+                    </Button>
+                  )}
+                </div>
                 <Textarea
                   id="careNote"
                   placeholder="Ghi chú nội dung cuộc gọi hỏi thăm (ví dụ: khách rất hài lòng với tủ bếp nhựa, bản lề dùng êm, chưa cần sửa chữa...)"
                   value={logNote}
                   onChange={(e) => setLogNote(e.target.value)}
-                  className="min-h-[100px] resize-none bg-white border border-border"
+                  className="min-h-[100px] resize-none bg-white border border-border focus-visible:ring-primary/50"
                 />
               </div>
               <DialogFooter className="pt-2 flex justify-end gap-2">
@@ -601,7 +655,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                 </Button>
                 <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/95 text-white">
                   <Save className="h-4 w-4" />
-                  Lưu Ghi Chú
+                  {editingLogId ? 'Cập Nhật Ghi Chú' : 'Lưu Ghi Chú'}
                 </Button>
               </DialogFooter>
             </form>
