@@ -237,12 +237,13 @@ async function startServer() {
             }
           });
 
-          // 3. Báo giá
+          // 3. Báo giá & Doanh thu
           const quoteQuery = query(collection(clientDb, 'quotations'));
           const quoteSnap = await getDocs(quoteQuery);
           let acceptedQuotes = 0;
           let newQuotes = 0;
-          let acceptedRevenue = 0;
+          let acceptedRevenue = 0; // expected revenue
+          let actualRevenue = 0; // actual money collected
           
           quoteSnap.forEach((doc: any) => {
              const q = doc.data();
@@ -256,6 +257,25 @@ async function startServer() {
                   acceptedRevenue += q.totalAmount || 0;
                }
              }
+             // Tiền cọc thu được trong ngày
+             if (q.updatedAt && q.updatedAt >= startOfDayStr && q.updatedAt <= endOfDayStr) {
+               if (q.status === 'deposit' && q.depositAmount) {
+                 actualRevenue += q.depositAmount;
+               }
+             }
+          });
+
+          // Tiền thu từ công trình hoàn thành trong ngày
+          const custUpdatedQuery = query(
+            collection(clientDb, 'customers')
+          );
+          const custAllSnap = await getDocs(custUpdatedQuery);
+          custAllSnap.forEach((doc: any) => {
+            const c = doc.data();
+            // Nếu khách hàng được đánh dấu hoàn thành trong ngày hôm nay
+            if (c.stage === 'completed' && c.updatedAt && c.updatedAt >= startOfDayStr && c.updatedAt <= endOfDayStr) {
+              actualRevenue += (c.orderValue || 0);
+            }
           });
 
           const dateStr = now.toLocaleDateString('vi-VN');
@@ -265,6 +285,9 @@ async function startServer() {
           reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
           if (acceptedQuotes > 0) {
             reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
+          }
+          if (actualRevenue > 0) {
+            reportText += `\n💵 Doanh thu thực tế: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
           }
           reportText += `\n----------------------`;
           reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
