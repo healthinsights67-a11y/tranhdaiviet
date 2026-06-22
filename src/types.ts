@@ -81,6 +81,14 @@ export interface Customer {
   }[];
 }
 
+export interface InstallationProgressImage {
+  id: string;
+  url: string;
+  stage: 'Phá dỡ' | 'Lên khung' | 'Vào cánh' | 'Nghiệm thu' | 'Khác';
+  timestamp: string;
+  uploaderName?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -130,6 +138,7 @@ export interface Task {
     }[];
   };
   installationImages?: string[];
+  installationProgressImages?: InstallationProgressImage[];
   installationIssues?: string;
   checkinLocation?: { lat: number; lng: number };
   checkinTime?: string;

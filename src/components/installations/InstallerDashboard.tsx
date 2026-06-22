@@ -141,14 +141,14 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
   };
 
   // Image Upload handler
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, task: Task) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, task: Task, stage: 'Phá dỡ' | 'Lên khung' | 'Vào cánh' | 'Nghiệm thu' | 'Khác') => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
     const uploadedUrls: string[] = [];
 
-    toast.info(`Bắt đầu tải lên ${files.length} ảnh...`);
+    toast.info(`Bắt đầu tải lên ${files.length} ảnh ${stage}...`);
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -160,14 +160,32 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
       }
 
       if (uploadedUrls.length > 0) {
-        const currentImages = task.installationImages || [];
+        const currentProgressImages = task.installationProgressImages || [];
+        const newProgressImages = uploadedUrls.map(url => ({
+          id: crypto.randomUUID(),
+          url,
+          stage,
+          timestamp: new Date().toISOString(),
+          uploaderName: currentUser?.name || 'Nhân viên'
+        }));
+
         const updatedTask: Task = {
           ...task,
-          installationImages: [...currentImages, ...uploadedUrls]
+          installationProgressImages: [...currentProgressImages, ...newProgressImages]
         };
 
         await updateTaskMutation.mutateAsync(updatedTask);
-        toast.success(`Đã tải lên thành công ${uploadedUrls.length} ảnh nghiệm thu!`);
+        
+        // Notify managers about progress
+        notifyManagers(
+          `Cập nhật tiến độ: ${stage}`,
+          `Công trình ${task.customerName || task.title} vừa được tải lên ${uploadedUrls.length} ảnh mới lúc ${new Date().toLocaleTimeString('vi-VN')} bởi thợ ${currentUser?.name || 'Nhân viên'}.`,
+          { taskId: task.id, type: 'progress' },
+          undefined,
+          ['quản lý', 'xưởng']
+        );
+
+        toast.success(`Đã tải lên thành công ${uploadedUrls.length} ảnh ${stage}!`);
         
         if (selectedTask && selectedTask.id === task.id) {
           setSelectedTask(updatedTask);
@@ -181,13 +199,23 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
   };
 
   // Image Delete handler
-  const handleImageDelete = async (task: Task, imageUrl: string) => {
-    const currentImages = task.installationImages || [];
-    const updatedImages = currentImages.filter(url => url !== imageUrl);
+  const handleImageDelete = async (task: Task, imageUrl: string, imageId?: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa ảnh này?')) return;
+
+    let newImages = task.installationImages || [];
+    if (!imageId) {
+      newImages = newImages.filter(url => url !== imageUrl);
+    }
+
+    let newProgressImages = task.installationProgressImages || [];
+    if (imageId) {
+      newProgressImages = newProgressImages.filter(img => img.id !== imageId);
+    }
 
     const updatedTask: Task = {
       ...task,
-      installationImages: updatedImages
+      installationImages: newImages,
+      installationProgressImages: newProgressImages
     };
 
     toast.promise(
@@ -369,65 +397,106 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
         </Card>
 
         {/* Action 2: Image upload */}
-        <Card className="border border-border shadow-sm overflow-hidden">
+        <Card className="border border-border shadow-sm overflow-hidden bg-secondary/5">
           <CardHeader className="bg-secondary/10 py-4">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Camera className="h-4 w-4 text-primary" />
-              2. Ảnh nghiệm thu / Tiến độ ({selectedTask.installationImages?.length || 0})
+              2. Ảnh nghiệm thu / Tiến độ ({(selectedTask.installationImages?.length || 0) + (selectedTask.installationProgressImages?.length || 0)})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
             <p className="text-xs text-muted-foreground">
-              Tải lên ảnh quá trình thi công và ảnh nghiệm thu sản phẩm sau khi lắp đặt hoàn thiện.
+              Tải lên ảnh theo từng giai đoạn thi công. Hệ thống sẽ lưu lại thời gian và báo cáo trực tiếp về Zalo.
             </p>
 
-            {/* Input file upload */}
-            <div className="relative">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, selectedTask)}
-                id="installer-photo-upload"
-                disabled={isUploading}
-                className="hidden"
-              />
-              <label 
-                htmlFor="installer-photo-upload"
-                className={cn(
-                  "flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-xl p-6 cursor-pointer hover:bg-secondary/30 hover:border-primary/50 transition-all",
-                  isUploading && "pointer-events-none opacity-50"
-                )}
-              >
-                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                <span className="text-xs font-bold text-foreground">
-                  {isUploading ? 'Đang upload ảnh...' : 'Chụp/Tải ảnh từ điện thoại'}
-                </span>
-                <span className="text-[10px] text-muted-foreground mt-1">Hỗ trợ tải nhiều ảnh một lúc</span>
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {['Phá dỡ', 'Lên khung', 'Vào cánh', 'Nghiệm thu'].map(stage => {
+                 const stageImages = (selectedTask.installationProgressImages || []).filter(img => img.stage === stage);
+                 
+                 return (
+                   <div key={stage} className="border border-border rounded-xl p-3 bg-white space-y-3 shadow-sm hover:shadow-md transition-shadow">
+                     <div className="flex items-center justify-between">
+                       <h4 className="font-bold text-sm text-foreground">{stage} ({stageImages.length})</h4>
+                       <div className="relative">
+                         <input
+                           type="file"
+                           multiple
+                           accept="image/*"
+                           onChange={(e) => handleImageUpload(e, selectedTask, stage as any)}
+                           id={`upload-${stage}`}
+                           disabled={isUploading}
+                           className="hidden"
+                         />
+                         <label
+                           htmlFor={`upload-${stage}`}
+                           className="inline-flex items-center justify-center h-8 px-3 text-[10px] font-bold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 cursor-pointer transition-colors"
+                         >
+                           {isUploading ? 'Đang tải...' : 'Tải ảnh lên'}
+                         </label>
+                       </div>
+                     </div>
+                     
+                     {/* Gallery for this stage */}
+                     {stageImages.length > 0 ? (
+                       <div className="grid grid-cols-3 gap-2">
+                         {stageImages.map(img => (
+                           <div key={img.id} className="relative group flex flex-col items-center">
+                             <div className="w-full aspect-square rounded-lg overflow-hidden border border-border bg-secondary relative">
+                               <img 
+                                 src={img.url} 
+                                 alt={img.stage} 
+                                 className="w-full h-full object-cover"
+                               />
+                               {selectedTask.status !== 'done' && (
+                                 <button 
+                                   onClick={() => handleImageDelete(selectedTask, img.url, img.id)}
+                                   className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/80 hover:bg-red-600 flex items-center justify-center text-white shadow-sm transition-colors opacity-0 group-hover:opacity-100"
+                                 >
+                                   <Trash2 className="h-3.5 w-3.5" />
+                                 </button>
+                               )}
+                             </div>
+                             <p className="text-[9px] text-center text-muted-foreground mt-1 truncate w-full">
+                               {new Date(img.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})} {new Date(img.timestamp).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'})}
+                             </p>
+                           </div>
+                         ))}
+                       </div>
+                     ) : (
+                       <div className="flex flex-col items-center justify-center py-6 bg-secondary/30 rounded-lg border border-dashed border-border">
+                         <Camera className="h-6 w-6 text-muted-foreground/30 mb-1" />
+                         <span className="text-[10px] text-muted-foreground/60">Chưa có ảnh</span>
+                       </div>
+                     )}
+                   </div>
+                 )
+               })}
             </div>
 
-            {/* Gallery */}
-            {selectedTask.installationImages && selectedTask.installationImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-2.5 pt-2">
-                {selectedTask.installationImages.map((url, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border group bg-secondary">
-                    <img 
-                      src={url} 
-                      alt={`Nghiệm thu ${idx + 1}`} 
-                      className="w-full h-full object-cover"
-                    />
-                    {selectedTask.status !== 'done' && (
-                      <button 
-                        onClick={() => handleImageDelete(selectedTask, url)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/80 hover:bg-red-600 flex items-center justify-center text-white shadow-sm transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Support legacy images */}
+            {(selectedTask.installationImages?.length || 0) > 0 && (
+               <div className="mt-4 border border-border rounded-xl p-3 bg-white space-y-3 shadow-sm">
+                 <h4 className="font-bold text-sm text-foreground">Ảnh cũ ({selectedTask.installationImages!.length})</h4>
+                 <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                   {selectedTask.installationImages!.map((url, idx) => (
+                     <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-border group bg-secondary">
+                       <img 
+                         src={url} 
+                         alt={`Nghiệm thu cũ ${idx + 1}`} 
+                         className="w-full h-full object-cover"
+                       />
+                       {selectedTask.status !== 'done' && (
+                         <button 
+                           onClick={() => handleImageDelete(selectedTask, url)}
+                           className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/80 hover:bg-red-600 flex items-center justify-center text-white shadow-sm transition-colors opacity-0 group-hover:opacity-100"
+                         >
+                           <Trash2 className="h-3.5 w-3.5" />
+                         </button>
+                       )}
+                     </div>
+                   ))}
+                 </div>
+               </div>
             )}
           </CardContent>
         </Card>
