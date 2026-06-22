@@ -243,6 +243,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
   );
   const [selectedMonth, setSelectedMonth] = React.useState<string>(() => getCurrentVNMonth()); // YYYY-MM
+  const [selectedSaleId, setSelectedSaleId] = React.useState<string>('all');
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -936,6 +937,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     return customers.filter(c => 
       (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
       (selectedStage === 'all' || c.stage === selectedStage) &&
+      (selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId) &&
       (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
       (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.phone.includes(searchTerm) ||
@@ -946,7 +948,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [customers, selectedWorkshop, selectedStage, selectedMonth, searchTerm, matchesTime]);
+  }, [customers, selectedWorkshop, selectedStage, selectedSaleId, selectedMonth, searchTerm, matchesTime]);
 
   const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
@@ -1092,6 +1094,20 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
             <SelectContent>
               {WORKSHOPS.map(w => (
                 <SelectItem key={w.id} value={w.id} className="text-xs">{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select 
+            value={selectedSaleId} 
+            onValueChange={setSelectedSaleId}
+          >
+            <SelectTrigger className="h-8 md:h-11 flex-1 md:flex-none md:w-[140px] rounded-xl border border-border bg-card text-card-foreground text-[10px] md:text-xs shadow-sm">
+              <SelectValue placeholder="Sale phụ trách" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-bold text-primary">Tất cả Sale</SelectItem>
+              {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
