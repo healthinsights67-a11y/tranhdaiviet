@@ -155,6 +155,13 @@ export const TaskSchema = z.object({
     })).optional(),
   }).optional().nullable(),
   installationImages: z.array(z.string()).optional(),
+  installationProgressImages: z.array(z.object({
+    id: z.string(),
+    url: z.string(),
+    stage: z.enum(['Phá dỡ', 'Lên khung', 'Vào cánh', 'Nghiệm thu', 'Khác']),
+    timestamp: z.string(),
+    uploaderName: z.string().optional()
+  })).optional(),
   installationIssues: z.string().optional(),
   checkinLocation: z.object({
     lat: z.number(),
