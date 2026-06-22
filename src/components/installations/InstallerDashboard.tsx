@@ -315,7 +315,7 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
   // Detail view for a task
   if (selectedTask) {
     return (
-      <div className="space-y-6 max-w-lg mx-auto pb-12 animate-in slide-in-from-right duration-200">
+      <div className="space-y-6 max-w-3xl mx-auto pb-12 animate-in slide-in-from-right duration-200">
         
         {/* Back Button */}
         <Button 
@@ -610,7 +610,7 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
 
   // List view
   return (
-    <div className="max-w-lg mx-auto space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
       
       {/* Title */}
       <div>
@@ -637,7 +637,7 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeTasks.map((task) => (
               <Card 
                 key={task.id} 
@@ -700,7 +700,7 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
         {completedTasks.length === 0 ? (
           <p className="text-xs text-muted-foreground/60 italic pl-1">Chưa có công trình nào báo cáo hoàn thành.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {completedTasks.slice(0, 5).map((task) => (
               <Card 
                 key={task.id} 
