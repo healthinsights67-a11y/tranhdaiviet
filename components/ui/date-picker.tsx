@@ -33,25 +33,21 @@ export function DatePicker({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          className={cn(
-            "w-full justify-start text-left font-normal bg-white",
-            !date && "text-muted-foreground",
-            className
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "dd/MM/yyyy", { locale: vi }) : <span>Chọn ngày...</span>}
-        </Button>
+      <PopoverTrigger
+        className={cn(
+          "inline-flex items-center w-full justify-start text-left font-normal bg-white border border-input h-10 px-4 py-2 rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground",
+          !date && "text-muted-foreground",
+          className
+        )}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+        {date ? format(date, "dd/MM/yyyy", { locale: vi }) : <span>Chọn ngày...</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={date}
           onSelect={handleSelect}
-          initialFocus
           locale={vi}
         />
       </PopoverContent>

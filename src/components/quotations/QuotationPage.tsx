@@ -71,8 +71,6 @@ import { QuotationPreview } from './QuotationPreview';
 import { ProductLibrary } from './ProductLibrary';
 import { QuotationTemplateConfig } from './QuotationTemplateConfig';
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, query, where, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { useAuthStore } from '@/src/store/useAuthStore';
-import { useNotificationStore } from '@/src/store/useNotificationStore';
 import { sendSystemNotification } from '@/src/services/botNotificationService';
 import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';

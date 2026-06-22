@@ -481,8 +481,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       const existingCustomer = customers.find(c => c.id === customerId);
       if (!existingCustomer || existingCustomer.stage === 'completed') return;
       
-      const updateData: any = { stage: 'completed' };
       const nowStr = new Date().toISOString();
+      const todayYMD = nowStr.slice(0, 10);
+      const nextYearDate = new Date();
+      nextYearDate.setFullYear(nextYearDate.getFullYear() + 1);
+      const nextYearYMD = nextYearDate.toISOString().slice(0, 10);
+
+      const updateData: any = { 
+        stage: 'completed',
+        warrantyStartDate: existingCustomer.warrantyStartDate || todayYMD,
+        warrantyEndDate: existingCustomer.warrantyEndDate || nextYearYMD
+      };
       
       if (existingCustomer.stage !== 'contracted') {
         updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
@@ -597,6 +606,18 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           
           selectedCustomer.consultedAt = updateData.consultedAt;
           selectedCustomer.createdAt = updateData.createdAt;
+        }
+
+        if (selectedCustomer.stage === 'completed' && existingStage !== 'completed') {
+          const todayYMD = new Date().toISOString().slice(0, 10);
+          const nextYearDate = new Date();
+          nextYearDate.setFullYear(nextYearDate.getFullYear() + 1);
+          const nextYearYMD = nextYearDate.toISOString().slice(0, 10);
+
+          updateData.warrantyStartDate = selectedCustomer.warrantyStartDate || existingCustomer?.warrantyStartDate || todayYMD;
+          updateData.warrantyEndDate = selectedCustomer.warrantyEndDate || existingCustomer?.warrantyEndDate || nextYearYMD;
+          selectedCustomer.warrantyStartDate = updateData.warrantyStartDate;
+          selectedCustomer.warrantyEndDate = updateData.warrantyEndDate;
         }
 
         // Ensure location object is either fully valid coordinates or null (no undefined/NaN sub-properties)

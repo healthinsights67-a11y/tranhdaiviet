@@ -85,7 +85,16 @@ export const CustomerSchema = z.object({
   location: z.object({
     lat: z.number(),
     lng: z.number()
-  }).optional().nullable()
+  }).optional().nullable(),
+  warrantyStartDate: z.string().optional(),
+  warrantyEndDate: z.string().optional(),
+  careLogs: z.array(z.object({
+    id: z.string(),
+    date: z.string(),
+    note: z.string(),
+    createdBy: z.string(),
+    createdByName: z.string().optional(),
+  })).optional(),
 });
 
 export const TaskSchema = z.object({
@@ -145,6 +154,13 @@ export const TaskSchema = z.object({
       notes: z.string().optional(),
     })).optional(),
   }).optional().nullable(),
+  installationImages: z.array(z.string()).optional(),
+  installationIssues: z.string().optional(),
+  checkinLocation: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }).optional().nullable(),
+  checkinTime: z.string().optional(),
 });
 
 export const MediaFolderSchema = z.object({

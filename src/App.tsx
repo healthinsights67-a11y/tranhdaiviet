@@ -26,6 +26,8 @@ const TrashPage = React.lazy(() => import('./components/trash/TrashPage'));
 const EcoplastLearningPage = React.lazy(() => import('./components/learning/EcoplastLearningPage'));
 const MaterialConfigPage = React.lazy(() => import('./components/materials/MaterialConfigPage').then(module => ({ default: module.MaterialConfigPage })));
 const SalesRoutePage = React.lazy(() => import('./components/members/SalesRoutePage').then(module => ({ default: module.SalesRoutePage })));
+const CustomerCarePage = React.lazy(() => import('./components/customers/CustomerCarePage').then(module => ({ default: module.CustomerCarePage })));
+const InstallerDashboard = React.lazy(() => import('./components/installations/InstallerDashboard').then(module => ({ default: module.InstallerDashboard })));
 import { WorkflowGuideWidget } from './components/dashboard/WorkflowGuideWidget';
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
@@ -557,6 +559,7 @@ function AppContent() {
     menuQuotations: true, menuSale: true, menuDesign: true,
     menuMarketing: true, menuReports: true, menuMedia: true,
     menuMembers: true, menuCustomers: true, menuAi: true,
+    menuInstallations: true,
   };
   const perms = isManager || !currentMember
     ? DEFAULT_PERMS
@@ -758,9 +761,13 @@ function AppContent() {
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <MeasurementPage schedules={filteredSchedulesData} members={activeMembers} customers={filteredCustomers} user={user} currentUser={currentMember} />;
       case 'installations':
-        return redirect(perms.menuProduction)
+        return redirect(perms.menuInstallations)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
+          : <InstallerDashboard tasks={filteredTasks} currentUser={currentMember} />;
+      case 'customer-care':
+        return redirect(perms.menuCustomers)
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
+          : <CustomerCarePage customers={filteredCustomers} members={activeMembers} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />

@@ -70,6 +70,15 @@ export interface Customer {
   consultedAt?: string;
   location?: { lat: number; lng: number };
   notesList?: CustomerNote[];
+  warrantyStartDate?: string;
+  warrantyEndDate?: string;
+  careLogs?: {
+    id: string;
+    date: string;
+    note: string;
+    createdBy: string;
+    createdByName?: string;
+  }[];
 }
 
 export interface Task {
@@ -120,6 +129,10 @@ export interface Task {
       notes?: string;
     }[];
   };
+  installationImages?: string[];
+  installationIssues?: string;
+  checkinLocation?: { lat: number; lng: number };
+  checkinTime?: string;
 }
 
 export const WORKSHOPS = [

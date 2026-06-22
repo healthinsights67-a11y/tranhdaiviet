@@ -27,7 +27,9 @@ import {
   BookOpen,
   Calculator,
   HelpCircle,
-  MapPin
+  MapPin,
+  HeartHandshake,
+  Wrench
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -65,6 +67,7 @@ const navGroups = [
       { id: 'sales-routes', label: 'Lịch trình Sale', icon: MapPin, permission: 'menuMembers' },
       { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
       { id: 'quotations', label: 'Báo Giá', icon: FileText, permission: 'menuQuotations' },
+      { id: 'customer-care', label: 'Bảo hành & CSKH', icon: HeartHandshake, permission: 'menuCustomers' },
     ]
   },
   {
@@ -72,6 +75,7 @@ const navGroups = [
     items: [
       { id: 'measurements', label: 'Lịch Đo Đạc', icon: CalendarDays, permission: 'menuMeasurement' },
       { id: 'production', label: 'Lịch Sản Xuất', icon: CalendarDays, permission: 'menuProduction' },
+      { id: 'installations', label: 'Báo cáo Thi công', icon: Wrench, permission: 'menuInstallations' },
     ]
   },
   {
