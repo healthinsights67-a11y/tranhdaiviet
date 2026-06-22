@@ -185,6 +185,111 @@ async function startServer() {
     }
   }
 
+  // Schedule daily overview report at 18:00
+  async function scheduleDailyReport() {
+    try {
+      const cron = require('node-cron');
+      
+      // Run every day at 18:00 (Vietnam time)
+      cron.schedule('0 18 * * *', async () => {
+        console.log('Running scheduled daily report at 18:00...');
+        try {
+          const { collection, getDocs, query, where } = require('firebase/firestore');
+          const clientDb = await getAuthenticatedClientDb();
+          
+          const now = new Date();
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+          const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+          const startOfDayStr = startOfDay.toISOString();
+          const endOfDayStr = endOfDay.toISOString();
+          
+          // 1. Khách hàng mới
+          const custQuery = query(
+            collection(clientDb, 'customers'),
+            where('createdAt', '>=', startOfDayStr),
+            where('createdAt', '<=', endOfDayStr)
+          );
+          const custSnap = await getDocs(custQuery);
+          const newCustomers = custSnap.size;
+          
+          // 2. Nhiệm vụ
+          const tasksQuery = query(collection(clientDb, 'tasks'));
+          const tasksSnap = await getDocs(tasksQuery);
+          
+          let completedTasksCount = 0;
+          let newTasksCount = 0;
+          let completedInstalls = 0;
+          let newDesigns = 0;
+          let completedDesigns = 0;
+          
+          tasksSnap.forEach((doc: any) => {
+            const task = doc.data();
+            
+            if (task.completedAt && task.completedAt >= startOfDayStr && task.completedAt <= endOfDayStr) {
+              completedTasksCount++;
+              if (task.type === 'production') completedInstalls++;
+              if (task.type === 'design') completedDesigns++;
+            }
+            
+            if (task.createdAt && task.createdAt >= startOfDayStr && task.createdAt <= endOfDayStr) {
+              newTasksCount++;
+              if (task.type === 'design') newDesigns++;
+            }
+          });
+
+          // 3. Báo giá
+          const quoteQuery = query(collection(clientDb, 'quotations'));
+          const quoteSnap = await getDocs(quoteQuery);
+          let acceptedQuotes = 0;
+          let newQuotes = 0;
+          let acceptedRevenue = 0;
+          
+          quoteSnap.forEach((doc: any) => {
+             const q = doc.data();
+             if (q.createdAt && q.createdAt >= startOfDayStr && q.createdAt <= endOfDayStr) {
+               newQuotes++;
+             }
+             if (q.status === 'accepted' || q.status === 'deposit') {
+               // Fallback: if we don't have acceptedAt, we use updatedAt
+               if (q.updatedAt && q.updatedAt >= startOfDayStr && q.updatedAt <= endOfDayStr) {
+                  acceptedQuotes++;
+                  acceptedRevenue += q.totalAmount || 0;
+               }
+             }
+          });
+
+          const dateStr = now.toLocaleDateString('vi-VN');
+          
+          let reportText = `📊 BÁO CÁO TỔNG QUAN NGÀY ${dateStr}\n`;
+          reportText += `\n👤 Khách hàng mới: ${newCustomers}`;
+          reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
+          if (acceptedQuotes > 0) {
+            reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
+          }
+          reportText += `\n----------------------`;
+          reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
+          reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
+          reportText += `\n✅ Tổng tác vụ đã xong: ${completedTasksCount}`;
+          reportText += `\n\nChúc mọi người buổi tối vui vẻ!`;
+          
+          await sendSystemNotificationFromServer(reportText);
+        } catch (err) {
+          console.error('Error generating daily report:', err);
+        }
+      }, {
+        scheduled: true,
+        timezone: "Asia/Ho_Chi_Minh"
+      });
+      
+      console.log("Daily report scheduler initialized (18:00 Asia/Ho_Chi_Minh).");
+    } catch (err) {
+      console.error("Could not initialize node-cron:", err);
+    }
+  }
+
+  // Khởi tạo các lịch trình cron
+  scheduleDailyReport();
+
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {
     const body = req.body;
