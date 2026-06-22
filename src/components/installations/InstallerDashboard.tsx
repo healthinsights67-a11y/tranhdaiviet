@@ -45,14 +45,18 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
 
-  // Filter tasks assigned to this installer
+  // Show all installation tasks for all customers
   const installerTasks = useMemo(() => {
-    if (!currentUser) return [];
-    return tasks.filter(t => 
-      t.assigneeId === currentUser.id && 
-      t.status !== 'archived'
-    );
-  }, [tasks, currentUser]);
+    return tasks.filter(t => {
+      if (t.status === 'archived') return false;
+      
+      const isWaitingInstall = t.status === 'waiting_install';
+      const hasCheckedIn = !!t.checkinTime;
+      const hasWaitingInstallAt = !!t.waiting_install_at;
+      
+      return isWaitingInstall || hasCheckedIn || hasWaitingInstallAt;
+    });
+  }, [tasks]);
 
   // Separate tasks into active and completed
   const { activeTasks, completedTasks } = useMemo(() => {
@@ -543,10 +547,10 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
       <div>
         <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-1.5">
           <ListTodo className="h-7 w-7 text-primary" />
-          Báo cáo thi công của tôi
+          Báo cáo thi công
         </h1>
         <p className="text-muted-foreground text-xs mt-1">
-          Dành cho thợ thi công lắp đặt tại công trình. Chọn công trình để báo cáo tiến độ.
+          Danh sách toàn bộ công trình cần thi công lắp đặt. Chọn công trình để báo cáo tiến độ.
         </p>
       </div>
 
