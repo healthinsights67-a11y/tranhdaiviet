@@ -529,9 +529,11 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                       </div>
                       {lastLog ? (
                         <div className="bg-secondary/40 rounded-lg p-2.5 space-y-1 text-xs">
-                          <div className="flex justify-between text-[10px] text-muted-foreground">
-                            <span className="font-semibold flex items-center gap-1">
-                              <User className="h-3 w-3" /> {lastLog.createdByName || 'Nhân viên'}
+                          <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-1">
+                            <span className="font-semibold flex items-center gap-1 text-foreground">
+                              <span className="text-primary">Lần {customer.careLogs!.length}</span>
+                              <span className="text-muted-foreground/40 mx-0.5">•</span>
+                              <User className="h-3 w-3 text-muted-foreground" /> {lastLog.createdByName || 'Nhân viên'}
                             </span>
                             <span>{lastLog.date}</span>
                           </div>
