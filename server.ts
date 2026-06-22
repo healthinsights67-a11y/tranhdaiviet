@@ -8,6 +8,43 @@ import { SalesRouteSchema } from './src/schemas';
 
 let isFirebaseInitialized = false;
 
+let clientDbInstance: any = null;
+let clientAuthInstance: any = null;
+
+async function getAuthenticatedClientDb() {
+  if (clientDbInstance) return clientDbInstance;
+
+  initializeFirebaseAdmin();
+  
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (!fs.existsSync(configPath)) {
+    throw new Error('firebase-applet-config.json not found');
+  }
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const dbId = config.firestoreDatabaseId;
+
+  const customToken = await admin.auth().createCustomToken('server-system-bot');
+
+  const { initializeApp, getApp, getApps } = require('firebase/app');
+  const { getAuth, signInWithCustomToken } = require('firebase/auth');
+  const { getFirestore: getClientFirestore } = require('firebase/firestore');
+
+  let firebaseApp;
+  if (getApps().length === 0) {
+    firebaseApp = initializeApp(config);
+  } else {
+    firebaseApp = getApp();
+  }
+
+  const auth = getAuth(firebaseApp);
+  await signInWithCustomToken(auth, customToken);
+  
+  clientAuthInstance = auth;
+  clientDbInstance = getClientFirestore(firebaseApp, dbId);
+  return clientDbInstance;
+}
+
+
 function initializeFirebaseAdmin() {
   if (isFirebaseInitialized || admin.apps.length > 0) {
     isFirebaseInitialized = true;
@@ -116,6 +153,37 @@ async function startServer() {
   app.get(["/api/webhook-logs", "/api/webhook_logs"], (req, res) => {
     res.json(recentWebhooks);
   });
+
+  // Helper to send bot notification from Express server using authenticated Client SDK
+  async function sendSystemNotificationFromServer(message: string) {
+    try {
+      const { doc, getDoc } = require('firebase/firestore');
+      const clientDb = await getAuthenticatedClientDb();
+      const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
+      if (!docSnap.exists()) return;
+      const config = docSnap.data();
+      if (!config) return;
+
+      // Send to Zalo if enabled
+      if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
+        const chatIds = config.zalo.chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
+        for (const id of chatIds) {
+          try {
+            await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: id, text: message })
+            });
+            console.log(`Server sent Zalo notification to ${id} successfully`);
+          } catch (err: any) {
+            console.error(`Failed to send Zalo notification to ${id}:`, err.message);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error sending bot notification from server:", err);
+    }
+  }
 
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {
@@ -241,6 +309,27 @@ async function startServer() {
               await addDoc(collection(db, 'sales_routes'), validatedData);
               console.log(`Saved location for Zalo User ${senderId} using Firebase Client SDK fallback`);
             }
+
+            // Trigger check-in notification from server using authenticated Client SDK
+            let memberName = 'Nhân viên Zalo';
+            try {
+              const { collection, query, where, getDocs } = require('firebase/firestore');
+              const clientDb = await getAuthenticatedClientDb();
+              const q = query(collection(clientDb, 'members'), where('zaloUserId', '==', senderId));
+              const memberSnap = await getDocs(q);
+              if (memberSnap && !memberSnap.empty) {
+                memberName = memberSnap.docs[0].data().name || memberName;
+              }
+            } catch (e) {
+              console.error("Error fetching member name in Zalo webhook:", e);
+            }
+
+            const messageText = 
+              `📍 Check-in Lịch trình Sale (qua Zalo)!\n` +
+              `👤 Nhân viên: ${memberName}\n` +
+              `🏠 Tọa độ: ${lat}, ${lng}\n` +
+              `📝 Ghi chú: Check-in qua Zalo`;
+            sendSystemNotificationFromServer(messageText).catch(e => console.error("Notification server error:", e));
           } catch (dbErr) {
             console.error("Failed to validate or save location to Firestore:", dbErr);
           }

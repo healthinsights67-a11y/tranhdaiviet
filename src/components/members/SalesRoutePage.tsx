@@ -10,6 +10,7 @@ import { fetchMembers, fetchCustomers } from '@/src/services/dataService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { sendSystemNotification } from '@/src/services/botNotificationService';
 
 // Haversine formula to calculate distance between two coordinates in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -209,6 +210,16 @@ export function SalesRoutePage() {
 
       await addDoc(collection(db, 'sales_routes'), routeData);
       toast.success("Đã ghi nhận vị trí check-in thành công!");
+
+      // Trigger bot notification
+      const messageText = 
+        `📍 Check-in Lịch trình Sale!\n` +
+        `👤 Nhân viên: ${routeData.memberName}\n` +
+        `🏠 Địa điểm: ${routeData.address || 'Không rõ địa chỉ'}\n` +
+        `👥 Khách hàng: ${routeData.customerName || 'Không chọn'}\n` +
+        `📝 Ghi chú: ${routeData.note}`;
+      
+      sendSystemNotification(messageText).catch(e => console.error("Notification error:", e));
 
       // Reset states
       setNoteInput('');

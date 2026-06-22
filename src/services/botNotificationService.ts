@@ -127,21 +127,27 @@ export async function sendSystemNotification(message: string): Promise<void> {
     // Send to Telegram if enabled
     if (config.telegram?.isActive && config.telegram.botToken && config.telegram.chatId) {
       console.log('Sending to Telegram...');
-      promises.push(
-        sendTelegramTestMessage(config.telegram.botToken, config.telegram.chatId, message)
-          .then(() => console.log('Telegram message sent successfully!'))
-          .catch(err => console.error('Failed to send Telegram notification:', err))
-      );
+      const chatIds = config.telegram.chatId.split(',').map(id => id.trim()).filter(id => !!id);
+      chatIds.forEach(id => {
+        promises.push(
+          sendTelegramTestMessage(config.telegram.botToken, id, message)
+            .then(() => console.log(`Telegram message sent successfully to ${id}!`))
+            .catch(err => console.error(`Failed to send Telegram notification to ${id}:`, err))
+        );
+      });
     }
 
     // Send to Zalo if enabled
     if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
       console.log('Sending to Zalo...');
-      promises.push(
-        sendZaloTestMessage(config.zalo.botToken, config.zalo.chatId, message)
-          .then(() => console.log('Zalo message sent successfully!'))
-          .catch(err => console.error('Failed to send Zalo notification:', err))
-      );
+      const chatIds = config.zalo.chatId.split(',').map(id => id.trim()).filter(id => !!id);
+      chatIds.forEach(id => {
+        promises.push(
+          sendZaloTestMessage(config.zalo.botToken, id, message)
+            .then(() => console.log(`Zalo message sent successfully to ${id}!`))
+            .catch(err => console.error(`Failed to send Zalo notification to ${id}:`, err))
+        );
+      });
     }
 
     await Promise.allSettled(promises);
