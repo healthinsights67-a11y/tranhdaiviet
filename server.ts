@@ -283,12 +283,8 @@ async function startServer() {
           let reportText = `📊 BÁO CÁO TỔNG QUAN NGÀY ${dateStr}\n`;
           reportText += `\n👤 Khách hàng mới: ${newCustomers}`;
           reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
-          if (acceptedQuotes > 0) {
-            reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
-          }
-          if (actualRevenue > 0) {
-            reportText += `\n💵 Doanh thu thực tế: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
-          }
+          reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
+          reportText += `\n💵 Doanh thu thực tế: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
           reportText += `\n----------------------`;
           reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
           reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
