@@ -81,6 +81,7 @@ export function SalesRoutePage() {
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [noteInput, setNoteInput] = React.useState('');
   const [customerInput, setCustomerInput] = React.useState('');
+  const [phoneInput, setPhoneInput] = React.useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = React.useState(false);
   const [tempCoords, setTempCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -189,10 +190,28 @@ export function SalesRoutePage() {
 
       // Determine final customer name string
       let finalCustomerName = '';
+      let finalCustomerId = '';
       if (selectedCustomer) {
         finalCustomerName = selectedCustomer.name;
+        finalCustomerId = selectedCustomer.id;
       } else if (customerInput.trim() && customerInput !== 'none') {
         finalCustomerName = customerInput.trim();
+        // Create new customer
+        const newId = Math.random().toString(36).substr(2, 9);
+        const newCode = `KH${new Date().getFullYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        await addDoc(collection(db, 'customers'), {
+          id: newId,
+          code: newCode,
+          name: finalCustomerName,
+          phone: phoneInput.trim() || 'Chưa có SĐT',
+          address: address || '',
+          stage: 'consulting',
+          notes: noteInput.trim() || 'Khách hàng tự động tạo từ Check-in',
+          assignedSaleId: currentMember ? currentMember.id : '',
+          createdAt: now,
+          orderValue: 0
+        });
+        finalCustomerId = newId;
       }
 
       const routeData = {
@@ -204,7 +223,7 @@ export function SalesRoutePage() {
         timestamp: now,
         note: noteInput.trim() || 'Check-in trực tiếp trên Web',
         address: address || '',
-        customerId: selectedCustomer ? selectedCustomer.id : '',
+        customerId: finalCustomerId,
         customerName: finalCustomerName
       };
 
@@ -224,6 +243,7 @@ export function SalesRoutePage() {
       // Reset states
       setNoteInput('');
       setCustomerInput('');
+      setPhoneInput('');
       setTempCoords(null);
       setIsNoteModalOpen(false);
 
@@ -291,6 +311,12 @@ export function SalesRoutePage() {
     const name = routesByMember[memberId][0]?.memberName || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const selectedCustomerMatch = customers.find(c => 
+    c.id === customerInput || 
+    customerInput === `${c.name} - ${c.phone}` ||
+    customerInput === c.name
+  );
 
   return (
     <div className="space-y-4 md:space-y-6 p-4 md:p-6 h-full flex flex-col min-h-0">
@@ -495,6 +521,17 @@ export function SalesRoutePage() {
                   </div>
                 )}
               </div>
+              {!selectedCustomerMatch && customerInput.trim() !== '' && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-200">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Số điện thoại KH (để lưu mới)</label>
+                  <Input
+                    placeholder="Nhập SĐT..."
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    className="h-10 text-xs rounded-xl"
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mục đích / Ghi chú</label>
                 <Input
@@ -515,6 +552,7 @@ export function SalesRoutePage() {
                   setIsNoteModalOpen(false);
                   setNoteInput('');
                   setCustomerInput('');
+                  setPhoneInput('');
                   setTempCoords(null);
                 }}
                 className="h-9 text-xs rounded-xl font-medium cursor-pointer"
