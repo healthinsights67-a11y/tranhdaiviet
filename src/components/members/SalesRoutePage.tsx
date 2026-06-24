@@ -443,10 +443,15 @@ export function SalesRoutePage() {
                               </div>
                             )}
                             {route.customerName && (
-                              <div className="text-xs text-primary font-bold mb-1.5 flex items-center gap-1.5">
+                              <div className="text-xs text-primary font-bold mb-1.5 flex flex-wrap items-center gap-1.5">
                                 <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md inline-block border border-primary/20">
                                   Khách hàng: {route.customerName}
                                 </span>
+                                {route.customerPhone && (
+                                  <span className="px-2 py-0.5 bg-green-500/10 text-green-700 rounded-md inline-block border border-green-500/20">
+                                    SĐT: {route.customerPhone}
+                                  </span>
+                                )}
                               </div>
                             )}
                             <div className="text-[10px] text-slate-400 font-medium">

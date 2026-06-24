@@ -44,6 +44,7 @@ export interface SalesRoute {
   address?: string;
   customerId?: string;
   customerName?: string;
+  customerPhone?: string;
 }
 
 export interface CustomerNote {
