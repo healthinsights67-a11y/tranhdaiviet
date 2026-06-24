@@ -288,8 +288,8 @@ export function SalesRoutePage() {
   const routesByMember = React.useMemo(() => {
     const grouped: Record<string, SalesRoute[]> = {};
     routes.forEach(route => {
-      // Find the real member based on zaloUserId
-      const realMember = members.find(m => m.zaloUserId === route.zaloUserId);
+      // Find the real member based on zaloUserId, only if it exists
+      const realMember = route.zaloUserId ? members.find(m => m.zaloUserId === route.zaloUserId) : undefined;
       const targetMemberId = realMember ? realMember.id : route.memberId;
       const targetMemberName = realMember ? realMember.name : route.memberName;
       
