@@ -257,11 +257,9 @@ async function startServer() {
                   acceptedRevenue += q.totalAmount || 0;
                }
              }
-             // Tiền cọc thu được trong ngày
-             if (q.updatedAt && q.updatedAt >= startOfDayStr && q.updatedAt <= endOfDayStr) {
-               if (q.status === 'deposit' && q.depositAmount) {
-                 actualRevenue += q.depositAmount;
-               }
+             // Tổng tiền cọc thu được
+             if (q.status === 'deposit' && q.depositAmount) {
+               actualRevenue += q.depositAmount;
              }
           });
 
@@ -272,10 +270,10 @@ async function startServer() {
           const custAllSnap = await getDocs(custUpdatedQuery);
           custAllSnap.forEach((doc: any) => {
             const c = doc.data();
-            // Nếu khách hàng được đánh dấu hoàn thành trong ngày hôm nay
-            if (c.stage === 'completed' && c.updatedAt && c.updatedAt >= startOfDayStr && c.updatedAt <= endOfDayStr) {
-              actualRevenue += (c.orderValue || 0);
-            }
+             // Tiền thu từ công trình hoàn thành
+             if (c.stage === 'completed') {
+               actualRevenue += (c.orderValue || 0);
+             }
           });
 
           const dateStr = now.toLocaleDateString('vi-VN');
