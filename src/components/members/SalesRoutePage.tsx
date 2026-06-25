@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { sendSystemNotification } from '@/src/services/botNotificationService';
+import { useOfflineSync } from '@/src/hooks/useOfflineSync';
 
 // Haversine formula to calculate distance between two coordinates in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -88,6 +89,7 @@ export function SalesRoutePage() {
 
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { isOnline, pendingCount, addOfflineCheckin } = useOfflineSync();
 
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
@@ -191,27 +193,37 @@ export function SalesRoutePage() {
       // Determine final customer name string
       let finalCustomerName = '';
       let finalCustomerId = '';
+      let finalCustomerPhone = '';
+      
+      let isNewCustomer = false;
+      let customerPayload: any = null;
+
       if (selectedCustomer) {
         finalCustomerName = selectedCustomer.name;
         finalCustomerId = selectedCustomer.id;
+        finalCustomerPhone = selectedCustomer.phone || '';
       } else if (customerInput.trim() && customerInput !== 'none') {
         finalCustomerName = customerInput.trim();
-        // Create new customer
+        finalCustomerPhone = phoneInput.trim() || 'Chưa có SĐT';
+        // Create new customer payload
         const newId = Math.random().toString(36).substr(2, 9);
         const newCode = `KH${new Date().getFullYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-        await addDoc(collection(db, 'customers'), {
+        
+        customerPayload = {
           id: newId,
           code: newCode,
           name: finalCustomerName,
-          phone: phoneInput.trim() || 'Chưa có SĐT',
+          phone: finalCustomerPhone,
           address: address || '',
           stage: 'consulting',
           notes: noteInput.trim() || 'Khách hàng tự động tạo từ Check-in',
           assignedSaleId: currentMember ? currentMember.id : '',
           createdAt: now,
           orderValue: 0
-        });
+        };
+        
         finalCustomerId = newId;
+        isNewCustomer = true;
       }
 
       const routeData = {
@@ -224,21 +236,32 @@ export function SalesRoutePage() {
         note: noteInput.trim() || 'Check-in trực tiếp trên Web',
         address: address || '',
         customerId: finalCustomerId,
-        customerName: finalCustomerName
+        customerName: finalCustomerName,
+        customerPhone: finalCustomerPhone
       };
 
-      await addDoc(collection(db, 'sales_routes'), routeData);
-      toast.success("Đã ghi nhận vị trí check-in thành công!");
-
-      // Trigger bot notification
       const messageText = 
         `📍 Check-in Lịch trình Sale!\n` +
         `👤 Nhân viên: ${routeData.memberName}\n` +
         `🏠 Địa điểm: ${routeData.address || 'Không rõ địa chỉ'}\n` +
-        `👥 Khách hàng: ${routeData.customerName || 'Không chọn'}\n` +
+        `👥 Khách hàng: ${routeData.customerName || 'Không chọn'}` + (routeData.customerPhone ? ` - SĐT: ${routeData.customerPhone}\n` : `\n`) +
         `📝 Ghi chú: ${routeData.note}`;
-      
-      sendSystemNotification(messageText).catch(e => console.error("Notification error:", e));
+
+      if (isOnline) {
+        if (isNewCustomer && customerPayload) {
+          await addDoc(collection(db, 'customers'), customerPayload);
+        }
+        await addDoc(collection(db, 'sales_routes'), routeData);
+        sendSystemNotification(messageText).catch(e => console.error("Notification error:", e));
+        toast.success("Đã ghi nhận vị trí check-in thành công!");
+      } else {
+        addOfflineCheckin({
+          isNewCustomer,
+          newCustomerPayload: customerPayload,
+          routePayload: routeData,
+          messageText
+        });
+      }
 
       // Reset states
       setNoteInput('');
@@ -326,6 +349,11 @@ export function SalesRoutePage() {
           <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Theo dõi lịch trình và quãng đường di chuyển của nhân viên Sale qua Zalo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {!isOnline && (
+            <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1.5 rounded border border-amber-200">
+              Offline Mode ({pendingCount} pending)
+            </span>
+          )}
           <Button 
             onClick={handleCheckIn} 
             disabled={isCheckingIn}

@@ -1,5 +1,6 @@
 import { db, doc, getDoc } from '../lib/firebase';
 import { toast } from 'sonner';
+import { compressImage } from '../utils/imageCompression';
 
 export const uploadToImgBB = async (file: File, customName?: string): Promise<string | null> => {
   try {
@@ -22,8 +23,11 @@ export const uploadToImgBB = async (file: File, customName?: string): Promise<st
       return null;
     }
 
+    // Compress the image before uploading
+    const compressedFile = await compressImage(file);
+
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', compressedFile);
     
     // Use a clean filename
     const baseName = customName || file.name.split('.')[0];
