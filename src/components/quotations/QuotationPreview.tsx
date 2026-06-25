@@ -882,12 +882,30 @@ export function QuotationPreview({
                   )}
                   <tr className="bg-gray-100 border-t-2 border-black">
                     <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
-                       TỔNG GIÁ TRỊ THANH TOÁN {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
+                       TỔNG GIÁ TRỊ BÁO GIÁ {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
                     </td>
                     <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
                       {quotation.totalAmount.toLocaleString()}
                     </td>
                   </tr>
+                  {(quotation.depositAmount ?? 0) > 0 && (
+                    <>
+                      <tr className="bg-gray-50 border-t border-black">
+                        <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
+                        <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
+                          -{(quotation.depositAmount || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+                        <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
+                           SỐ TIỀN CÒN LẠI CẦN THANH TOÁN
+                        </td>
+                        <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
+                          {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
+                        </td>
+                      </tr>
+                    </>
+                  )}
                 </tfoot>
               </table>
 

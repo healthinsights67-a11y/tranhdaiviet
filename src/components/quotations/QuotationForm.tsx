@@ -158,6 +158,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     hasVat: initialData?.hasVat || false,
     vatRate: initialData?.vatRate || 8,
     vatAmount: initialData?.vatAmount || 0,
+    depositAmount: initialData?.depositAmount || 0,
   });
 
   const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = React.useState(!initialData);
@@ -1070,6 +1071,25 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                   </div>
 
                   <div className="flex justify-between items-center text-xs gap-4">
+                    <span className="text-muted-foreground font-medium shrink-0">Đã đặt cọc:</span>
+                    <div className="flex items-center gap-2 flex-1 justify-end max-w-[120px]">
+                      <Input 
+                        type="text" 
+                        className="h-8 text-right font-mono font-bold text-emerald-600 bg-emerald-50 text-xs"
+                        value={formatMoneyInput(formData.depositAmount)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          const depositAmount = val === '' ? 0 : parseInt(val);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            depositAmount 
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs gap-4">
                     <span className="text-muted-foreground font-medium shrink-0">Thuế VAT (8%):</span>
                     <div className="flex items-center gap-2 flex-1 justify-end">
                       <Checkbox 
@@ -1109,6 +1129,16 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           </p>
                         </div>
                       </div>
+                      {(formData.depositAmount ?? 0) > 0 && (
+                        <div className="flex justify-between items-end pt-2 mt-2 border-t border-emerald-100">
+                          <span className="text-sm font-black text-emerald-700 uppercase tracking-tight">Còn lại</span>
+                          <div className="text-right">
+                            <p className="text-xl font-black text-emerald-600 font-mono tracking-tighter tabular-nums drop-shadow-sm">
+                              {((formData.totalAmount || 0) - (formData.depositAmount || 0)).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
