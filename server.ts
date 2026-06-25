@@ -202,6 +202,11 @@ async function startServer() {
           const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
           const startOfDayStr = startOfDay.toISOString();
           const endOfDayStr = endOfDay.toISOString();
+
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+          const startOfMonthStr = startOfMonth.toISOString();
+          const endOfMonthStr = endOfMonth.toISOString();
           
           // 1. Khách hàng mới
           const custQuery = query(
@@ -257,8 +262,8 @@ async function startServer() {
                   acceptedRevenue += q.totalAmount || 0;
                }
              }
-             // Tổng tiền cọc thu được
-             if (q.status === 'deposit' && q.depositAmount) {
+             // Tổng tiền cọc thu được (trong tháng)
+             if (q.status === 'deposit' && q.depositAmount && q.updatedAt && q.updatedAt >= startOfMonthStr && q.updatedAt <= endOfMonthStr) {
                actualRevenue += q.depositAmount;
              }
           });
@@ -270,8 +275,8 @@ async function startServer() {
           const custAllSnap = await getDocs(custUpdatedQuery);
           custAllSnap.forEach((doc: any) => {
             const c = doc.data();
-             // Tiền thu từ công trình hoàn thành
-             if (c.stage === 'completed') {
+             // Tiền thu từ công trình hoàn thành (trong tháng)
+             if (c.stage === 'completed' && c.updatedAt && c.updatedAt >= startOfMonthStr && c.updatedAt <= endOfMonthStr) {
                actualRevenue += (c.orderValue || 0);
              }
           });
@@ -282,7 +287,7 @@ async function startServer() {
           reportText += `\n👤 Khách hàng mới: ${newCustomers}`;
           reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
           reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
-          reportText += `\n💵 Doanh thu thực tế: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
+          reportText += `\n💵 Doanh thu thực tế (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
           reportText += `\n----------------------`;
           reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
           reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
