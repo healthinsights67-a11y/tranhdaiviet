@@ -232,6 +232,9 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
     try {
       if (user) {
+        if (data.depositAmount && data.depositAmount > 0 && data.status !== 'deposit' && data.status !== 'accepted') {
+          data.status = 'deposit';
+        }
         const isEditingExisting = selectedQuotation && quotations.some(q => q.id === selectedQuotation.id);
         if (isEditingExisting && isFormOpen) {
           // Update existing
@@ -248,9 +251,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
 
           // Automatically update customer order value
           if (data.customerId) {
-            await updateDoc(doc(db, 'customers', data.customerId), {
+            const customerUpdate: any = {
               orderValue: data.totalAmount
-            });
+            };
+            if (data.status === 'deposit' || data.status === 'accepted' || (data.depositAmount && data.depositAmount > 0)) {
+              customerUpdate.stage = 'contracted';
+            }
+            await updateDoc(doc(db, 'customers', data.customerId), customerUpdate);
           }
 
           toast.success("Đã cập nhật báo giá");
@@ -271,9 +278,13 @@ export function QuotationPage({ quotations, user, customers, members, products =
 
           // Automatically update customer order value
           if (data.customerId) {
-            await updateDoc(doc(db, 'customers', data.customerId), {
+            const customerUpdate: any = {
               orderValue: data.totalAmount
-            });
+            };
+            if (data.status === 'deposit' || data.status === 'accepted' || (data.depositAmount && data.depositAmount > 0)) {
+              customerUpdate.stage = 'contracted';
+            }
+            await updateDoc(doc(db, 'customers', data.customerId), customerUpdate);
           }
 
           // Notify managers about the new quotation
@@ -882,7 +893,7 @@ export function QuotationPage({ quotations, user, customers, members, products =
                                <p className="font-black text-base md:text-lg tabular-nums text-slate-800">
                                  {(activeQuotation.totalAmount / 1000000).toFixed(1)}M
                                </p>
-                               {activeQuotation.status === 'deposit' && activeQuotation.depositAmount && (
+                               {activeQuotation.depositAmount !== undefined && activeQuotation.depositAmount > 0 && (
                                  <p className="text-[9px] text-purple-600 font-bold mt-0.5">
                                    Cọc: {(activeQuotation.depositAmount / 1000000).toFixed(1)}M
                                  </p>
