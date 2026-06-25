@@ -12,6 +12,20 @@ import { toast } from 'sonner';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { sendSystemNotification } from '@/src/services/botNotificationService';
 import { useOfflineSync } from '@/src/hooks/useOfflineSync';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet marker icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Haversine formula to calculate distance between two coordinates in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -86,6 +100,7 @@ export function SalesRoutePage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = React.useState(false);
   const [tempCoords, setTempCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list');
 
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -382,6 +397,20 @@ export function SalesRoutePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <div className="flex border border-border rounded-lg overflow-hidden shrink-0 mt-1 md:mt-0">
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 text-xs font-semibold ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-slate-50'}`}
+            >
+              Danh sách
+            </button>
+            <button 
+              onClick={() => setViewMode('map')}
+              className={`px-3 py-1.5 text-xs font-semibold ${viewMode === 'map' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-slate-50'}`}
+            >
+              Bản đồ
+            </button>
+          </div>
         </div>
       </div>
 
@@ -394,6 +423,58 @@ export function SalesRoutePage() {
           <div className="flex flex-col items-center justify-center h-32 border border-dashed rounded-xl bg-slate-50">
             <MapPin className="h-8 w-8 text-slate-300 mb-2" />
             <p className="text-sm text-muted-foreground font-medium">Không có dữ liệu lịch trình trong ngày này</p>
+          </div>
+        ) : viewMode === 'map' ? (
+          <div className="h-[600px] w-full rounded-xl overflow-hidden border shadow-sm relative z-0">
+            <MapContainer 
+              center={
+                filteredMembers.length > 0 && routesByMember[filteredMembers[0]].length > 0 
+                  ? [routesByMember[filteredMembers[0]][0].latitude, routesByMember[filteredMembers[0]][0].longitude] 
+                  : [21.028511, 105.804817]
+              } 
+              zoom={12} 
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {filteredMembers.map((memberId, memberIndex) => {
+                const memberRoutes = routesByMember[memberId];
+                if (memberRoutes.length === 0) return null;
+                
+                // Color palette for different members
+                const colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+                const color = colors[memberIndex % colors.length];
+
+                return (
+                  <React.Fragment key={memberId}>
+                    {memberRoutes.map((route, idx) => (
+                      <Marker key={route.id || idx} position={[route.latitude, route.longitude]}>
+                        <Popup>
+                          <div className="text-sm">
+                            <p className="font-bold">{route.memberName}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(route.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
+                            {route.customerName && <p className="text-primary font-semibold mt-1">{route.customerName}</p>}
+                            {route.customerPhone && <p className="text-xs">{route.customerPhone}</p>}
+                            <p className="text-xs mt-1">{route.address}</p>
+                            <p className="text-xs italic mt-1">{route.note}</p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                    {memberRoutes.length > 1 && (
+                      <Polyline 
+                        positions={memberRoutes.map(r => [r.latitude, r.longitude])} 
+                        color={color}
+                        weight={3}
+                        opacity={0.7}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </MapContainer>
           </div>
         ) : (
           filteredMembers.map(memberId => {

@@ -80,6 +80,7 @@ export interface Customer {
     createdBy: string;
     createdByName?: string;
   }[];
+  nextContactDate?: string;
 }
 
 export interface InstallationProgressImage {

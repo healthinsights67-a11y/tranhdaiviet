@@ -274,6 +274,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
     furnitureCategory: '',
     workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
     location: undefined as { lat: number, lng: number } | undefined,
+    nextContactDate: '',
   });
 
   // Update default assignedSaleId when currentUser changes
@@ -455,6 +456,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         furnitureCategory: '',
         workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
         location: undefined,
+        nextContactDate: '',
       });
       toast.success("Khách hàng đã được thêm thành công");
 
@@ -1291,6 +1293,16 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       </div>
                     )}
                     <div className="grid gap-2">
+                      <Label htmlFor="nextContactDate">Nhắc nhở gọi lại</Label>
+                      <Input
+                        id="nextContactDate"
+                        type="date"
+                        value={newCustomer.nextContactDate}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, nextContactDate: e.target.value })}
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="oneDriveLink">Liên kết OneDrive / Folder ảnh</Label>
                       <Input
                         id="oneDriveLink"
@@ -1849,6 +1861,16 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         />
                       </div>
                     )}
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-nextContactDate">Nhắc nhở gọi lại</Label>
+                      <Input
+                        id="edit-nextContactDate"
+                        type="date"
+                        value={selectedCustomer.nextContactDate || ''}
+                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, nextContactDate: e.target.value })}
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="edit-oneDriveLink">Liên kết OneDrive / Folder ảnh</Label>
                       <Input

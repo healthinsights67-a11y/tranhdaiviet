@@ -309,8 +309,106 @@ async function startServer() {
     }
   }
 
+  // Schedule Follow-up Reminders at 08:30
+  async function scheduleZaloReminders() {
+    try {
+      const cron = require('node-cron');
+      
+      cron.schedule('30 8 * * *', async () => {
+        console.log('Running scheduled Zalo reminders at 08:30...');
+        try {
+          const { collection, getDocs } = require('firebase/firestore');
+          const clientDb = await getAuthenticatedClientDb();
+          
+          const now = new Date();
+          const todayStr = now.toISOString().split('T')[0];
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(now.getDate() - 3);
+
+          // Get Members for Zalo mappings
+          const membersSnap = await getDocs(collection(clientDb, 'members'));
+          const membersMap: Record<string, any> = {};
+          membersSnap.forEach((doc: any) => {
+            membersMap[doc.id] = doc.data();
+          });
+
+          // Get Customers
+          const custSnap = await getDocs(collection(clientDb, 'customers'));
+          
+          let remindersSent = 0;
+
+          // Helper to send DM
+          const sendZaloDM = async (zaloUserId: string, message: string) => {
+            try {
+              const { doc, getDoc } = require('firebase/firestore');
+              const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
+              if (!docSnap.exists()) return;
+              const config = docSnap.data();
+              if (config?.zalo?.isActive && config.zalo.botToken) {
+                await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chat_id: zaloUserId, text: message })
+                });
+              }
+            } catch (err) {
+              console.error("Error sending Zalo DM:", err);
+            }
+          };
+
+          const customersData = custSnap.docs.map((d: any) => d.data());
+          
+          for (const c of customersData) {
+            const saleMember = membersMap[c.assignedSaleId];
+            if (!saleMember || !saleMember.zaloUserId) continue; // Skip if no sale or no zalo ID
+
+            let shouldRemind = false;
+            let reminderType = '';
+
+            // Condition 1: nextContactDate
+            if (c.nextContactDate && c.nextContactDate <= todayStr) {
+              shouldRemind = true;
+              reminderType = 'lịch hẹn gọi lại hôm nay (hoặc đã quá hạn)';
+            } else if (c.stage === 'consulting') {
+              // Condition 2: > 3 days no care log
+              let lastCareDateStr = c.createdAt; // default to created at
+              if (c.careLogs && c.careLogs.length > 0) {
+                // assume sorted or just find max
+                const dates = c.careLogs.map((l: any) => l.date);
+                lastCareDateStr = dates.reduce((a: string, b: string) => a > b ? a : b);
+              }
+
+              const lastCareDate = new Date(lastCareDateStr);
+              if (lastCareDate < threeDaysAgo) {
+                shouldRemind = true;
+                reminderType = 'chưa được chăm sóc / cập nhật hơn 3 ngày qua';
+              }
+            }
+
+            if (shouldRemind) {
+              const msg = `🔔 NHẮC NHỞ CSKH\nKhách hàng: ${c.name}\nSĐT: ${c.phone}\nLý do: Khách hàng có ${reminderType}.\nSale phụ trách hãy liên hệ và cập nhật tình trạng nhé!`;
+              await sendZaloDM(saleMember.zaloUserId, msg);
+              remindersSent++;
+            }
+          }
+          
+          console.log(`Zalo reminders sent: ${remindersSent}`);
+        } catch (err) {
+          console.error('Error generating Zalo reminders:', err);
+        }
+      }, {
+        scheduled: true,
+        timezone: "Asia/Ho_Chi_Minh"
+      });
+      console.log("Zalo Reminders scheduler initialized (08:30 Asia/Ho_Chi_Minh).");
+    } catch (err) {
+      console.error("Could not initialize node-cron for reminders:", err);
+    }
+  }
+
   // Khởi tạo các lịch trình cron
   scheduleDailyReport();
+  scheduleZaloReminders();
 
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {

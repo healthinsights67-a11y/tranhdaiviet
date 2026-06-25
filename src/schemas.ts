@@ -95,6 +95,7 @@ export const CustomerSchema = z.object({
     createdBy: z.string(),
     createdByName: z.string().optional(),
   })).optional(),
+  nextContactDate: z.string().optional(),
 });
 
 export const TaskSchema = z.object({
