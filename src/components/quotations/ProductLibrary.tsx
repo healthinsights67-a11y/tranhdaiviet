@@ -100,6 +100,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
   const [formUnit, setFormUnit] = React.useState('');
   const [formDescription, setFormDescription] = React.useState('');
   const [formCategory, setFormCategory] = React.useState('');
+  const [customCategory, setCustomCategory] = React.useState('');
 
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -156,7 +157,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       unit: formUnit,
       description: formDescription,
       imageUrl: previewUrl || '',
-      category: formCategory,
+      category: formCategory === 'custom' ? customCategory.trim() : formCategory,
       userId: user?.uid || 'anonymous'
     };
 
@@ -176,6 +177,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
     setFormUnit(product.unit || '');
     setFormDescription(product.description || '');
     setFormCategory(product.category || 'Phòng khách');
+    setCustomCategory('');
   };
 
   const handleAddNew = () => {
@@ -516,8 +518,21 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                       {availableCategories.map(cat => (
                         <SelectItem key={cat} value={cat} className="rounded-lg font-medium">{cat}</SelectItem>
                       ))}
+                      <SelectItem value="custom" className="rounded-lg font-medium text-primary border-t border-slate-100 mt-1 pt-2">+ Thêm danh mục mới...</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {formCategory === 'custom' && (
+                    <div className="pt-2">
+                      <Input 
+                        placeholder="Nhập tên danh mục mới..."
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                        className="h-14 rounded-2xl bg-primary/5 border-primary/20 focus:bg-card focus:border-primary/50 transition-all font-bold text-sm px-5 text-primary" 
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
