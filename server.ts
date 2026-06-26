@@ -250,8 +250,10 @@ async function startServer() {
           let acceptedRevenue = 0; // expected revenue
           let actualRevenue = 0; // actual money collected
           
+          const allQuotes: any[] = [];
           quoteSnap.forEach((doc: any) => {
              const q = doc.data();
+             allQuotes.push(q);
              if (q.createdAt && q.createdAt >= startOfDayStr && q.createdAt <= endOfDayStr) {
                newQuotes++;
              }
@@ -262,22 +264,24 @@ async function startServer() {
                   acceptedRevenue += q.totalAmount || 0;
                }
              }
-             // Tổng tiền cọc thu được (trong tháng)
-             if (q.status === 'deposit' && q.depositAmount && q.updatedAt && q.updatedAt >= startOfMonthStr && q.updatedAt <= endOfMonthStr) {
-               actualRevenue += q.depositAmount;
-             }
           });
 
-          // Tiền thu từ công trình hoàn thành trong ngày
+          // Doanh thu thực tế trong tháng (đồng bộ logic với web dashboard)
           const custUpdatedQuery = query(
             collection(clientDb, 'customers')
           );
           const custAllSnap = await getDocs(custUpdatedQuery);
           custAllSnap.forEach((doc: any) => {
             const c = doc.data();
-             // Tiền thu từ công trình hoàn thành (trong tháng)
-             if (c.stage === 'completed' && c.updatedAt && c.updatedAt >= startOfMonthStr && c.updatedAt <= endOfMonthStr) {
-               actualRevenue += (c.orderValue || 0);
+             // Đồng bộ logic: nhóm theo createdAt của tháng hiện tại
+             if (c.createdAt && c.createdAt >= startOfMonthStr && c.createdAt <= endOfMonthStr) {
+               if (c.stage === 'completed') {
+                 actualRevenue += (c.orderValue || 0);
+               } else if (['contracted', 'production', 'installation'].includes(c.stage)) {
+                 const q = allQuotes.find((quot: any) => quot.customerId === c.id || (quot.customerName === c.name && quot.phone === c.phone));
+                 const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+                 actualRevenue += deposit;
+               }
              }
           });
 
