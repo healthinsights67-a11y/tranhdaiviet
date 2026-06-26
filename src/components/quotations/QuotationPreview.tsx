@@ -630,57 +630,127 @@ export function QuotationPreview({
 
   const handleExportExcel = () => {
     try {
-      const workbook = XLSX.utils.book_new();
+      const aoa: any[][] = [];
 
-      const summaryData = [
-        { 'Mục': 'Khách hàng', 'Giá trị': quotation.customerName },
-        { 'Mục': 'Điện thoại', 'Giá trị': quotation.phone },
-        { 'Mục': 'Địa chỉ', 'Giá trị': quotation.address },
-        { 'Mục': 'Công trình', 'Giá trị': quotation.constructionType || 'Nhà ở dân dụng' },
-        { 'Mục': 'Ngày báo giá', 'Giá trị': format(new Date(quotation.date), 'dd/MM/yyyy') },
-        { 'Mục': 'Thời gian', 'Giá trị': quotation.estimatedTime + ' ngày làm việc' },
-        { 'Mục': '', 'Giá trị': '' },
-        { 'Mục': 'Cộng tiền hàng', 'Giá trị': quotation.subTotal },
-        { 'Mục': 'Giảm giá & Chiết khấu', 'Giá trị': quotation.discount },
-        { 'Mục': 'Thuế VAT (8%)', 'Giá trị': quotation.hasVat ? (quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)) : 0 },
-        { 'Mục': 'TỔNG GIÁ TRỊ', 'Giá trị': quotation.totalAmount },
-        { 'Mục': 'Đã đặt cọc', 'Giá trị': quotation.depositAmount || 0 },
-        { 'Mục': 'CÒN LẠI CẦN THANH TOÁN', 'Giá trị': (quotation.totalAmount || 0) - (quotation.depositAmount || 0) },
+      // Row 0-2: Header
+      aoa.push(['CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', '', '', '', '', '', '']);
+      aoa.push(['BÁO GIÁ THI CÔNG', '', '', '', '', '', '']);
+      aoa.push([`Số báo giá: ${quotation.quotationNumber}`, '', '', '', '', '', '']);
+      aoa.push([]); // Row 3
+
+      // Row 4-6: Customer Info
+      aoa.push(['Khách hàng:', quotation.customerName, '', 'Điện thoại:', quotation.phone, '', '']);
+      aoa.push(['Công trình:', quotation.constructionType || 'Nhà ở dân dụng', '', 'Địa chỉ:', quotation.address, '', '']);
+      aoa.push(['Thời gian:', quotation.estimatedTime + ' ngày làm việc', '', 'Ngày báo giá:', format(new Date(quotation.date), 'dd/MM/yyyy'), '', '']);
+      aoa.push([]); // Row 7
+
+      const merges: XLSX.Range[] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // CÔNG TY
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // BÁO GIÁ
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }, // Số báo giá
+        
+        { s: { r: 4, c: 1 }, e: { r: 4, c: 2 } }, // Khách hàng
+        { s: { r: 4, c: 4 }, e: { r: 4, c: 6 } }, // Điện thoại
+        { s: { r: 5, c: 1 }, e: { r: 5, c: 2 } }, // Công trình
+        { s: { r: 5, c: 4 }, e: { r: 5, c: 6 } }, // Địa chỉ
+        { s: { r: 6, c: 1 }, e: { r: 6, c: 2 } }, // Thời gian
+        { s: { r: 6, c: 4 }, e: { r: 6, c: 6 } }, // Ngày báo giá
       ];
 
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, wsSummary, 'Tổng quan');
-
+      // Custom Items Table
       if (customItems.length > 0) {
-        const customItemsData = customItems.map((item, idx) => ({
-          'STT': idx + 1,
-          'Tên hạng mục': item.name,
-          'Danh mục': item.category,
-          'Mô tả': item.description,
-          'ĐVT': item.unit,
-          'Số lượng': item.quantity,
-          'Đơn giá': item.unitPrice,
-          'Thành tiền': item.total,
-        }));
-        const wsCustom = XLSX.utils.json_to_sheet(customItemsData);
-        XLSX.utils.book_append_sheet(workbook, wsCustom, 'Hạng mục thi công');
+        const startRow = aoa.length;
+        aoa.push(['CHI TIẾT HẠNG MỤC THI CÔNG', '', '', '', '', '', '']);
+        merges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: 6 } });
+        
+        aoa.push(['STT', 'Tên hạng mục', 'QC kỹ thuật / Diễn giải', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']);
+        
+        Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
+          const groupRow = aoa.length;
+          aoa.push([String.fromCharCode(65 + groupIdx), cat, '', '', '', '', '']);
+          merges.push({ s: { r: groupRow, c: 1 }, e: { r: groupRow, c: 6 } });
+          
+          customItems.filter(item => item.category === cat).forEach((item, idx) => {
+            aoa.push([
+              idx + 1,
+              item.name,
+              item.description,
+              item.unit,
+              item.quantity,
+              item.unitPrice,
+              item.total
+            ]);
+          });
+        });
+        
+        if (readyMadeItems.length === 0) {
+          aoa.push(['', '', '', '', '', 'Cộng tiền hàng', quotation.subTotal]);
+          aoa.push(['', '', '', '', '', 'Giảm giá & Chiết khấu', -quotation.discount]);
+          if (quotation.hasVat) {
+             aoa.push(['', '', '', '', '', 'Thuế VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)]);
+          }
+          aoa.push(['', '', '', '', '', 'TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount]);
+          if ((quotation.depositAmount || 0) > 0) {
+             aoa.push(['', '', '', '', '', 'Đã đặt cọc', -quotation.depositAmount!]);
+             aoa.push(['', '', '', '', '', 'CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!]);
+          }
+        }
       }
 
+      // Ready Made Items Table
       if (readyMadeItems.length > 0) {
-        const readyMadeItemsData = readyMadeItems.map((item, idx) => ({
-          'STT': customItems.length > 0 ? new Set(customItems.map(i => i.category)).size + idx + 1 : idx + 1,
-          'Tên hạng mục': item.name,
-          'Danh mục': item.category,
-          'Mô tả': item.description,
-          'ĐVT': item.unit,
-          'Số lượng': item.quantity,
-          'Đơn giá': item.unitPrice,
-          'Thành tiền': item.total,
-        }));
-        const wsReadyMade = XLSX.utils.json_to_sheet(readyMadeItemsData);
-        XLSX.utils.book_append_sheet(workbook, wsReadyMade, 'Sản phẩm đóng sẵn');
+        if (customItems.length > 0) aoa.push([]); // spacing
+        const startRow = aoa.length;
+        aoa.push(['CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)', '', '', '', '', '', '', '']);
+        merges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: 7 } });
+
+        aoa.push(['STT', 'Tên hạng mục', 'Hình ảnh (URL)', 'QC kỹ thuật / Diễn giải', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']);
+        
+        Array.from(new Set(readyMadeItems.map(item => item.category))).forEach((cat, groupIdx) => {
+          const groupRow = aoa.length;
+          const groupLabel = String.fromCharCode(customItems.length > 0 ? 65 + new Set(customItems.map(i => i.category)).size + groupIdx : 65 + groupIdx);
+          aoa.push([groupLabel, cat, '', '', '', '', '', '']);
+          merges.push({ s: { r: groupRow, c: 1 }, e: { r: groupRow, c: 7 } });
+          
+          readyMadeItems.filter(item => item.category === cat).forEach((item, idx) => {
+            aoa.push([
+              idx + 1,
+              item.name,
+              item.imageUrl || 'Không có ảnh',
+              item.description,
+              item.unit,
+              item.quantity,
+              item.unitPrice,
+              item.total
+            ]);
+          });
+        });
+
+        // Totals
+        aoa.push(['', '', '', '', '', '', 'Cộng tiền hàng', quotation.subTotal]);
+        aoa.push(['', '', '', '', '', '', 'Giảm giá & Chiết khấu', -quotation.discount]);
+        if (quotation.hasVat) {
+           aoa.push(['', '', '', '', '', '', 'Thuế VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)]);
+        }
+        aoa.push(['', '', '', '', '', '', 'TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount]);
+        if ((quotation.depositAmount || 0) > 0) {
+           aoa.push(['', '', '', '', '', '', 'Đã đặt cọc', -quotation.depositAmount!]);
+           aoa.push(['', '', '', '', '', '', 'CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!]);
+        }
       }
 
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = merges;
+      
+      // Column widths
+      if (readyMadeItems.length > 0) {
+         ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, { wch: 15 }];
+      } else {
+         ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, { wch: 15 }];
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, ws, 'Báo Giá');
       XLSX.writeFile(workbook, `Bao_Gia_${quotation.quotationNumber || Date.now()}.xlsx`);
       toast.success("Đã tải xuống file Excel!");
     } catch (error) {
