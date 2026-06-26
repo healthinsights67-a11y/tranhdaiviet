@@ -29,7 +29,8 @@ import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
 import { toCanvas, toJpeg } from 'html-to-image';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
 import { cn } from '@/src/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -628,134 +629,215 @@ export function QuotationPreview({
     }, 150);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      const aoa: any[][] = [];
+      setIsExporting(true);
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Báo Giá', {
+         pageSetup: { paperSize: 9, orientation: 'portrait' }
+      });
 
-      // Row 0-2: Header
-      aoa.push(['CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', '', '', '', '', '', '']);
-      aoa.push(['BÁO GIÁ THI CÔNG', '', '', '', '', '', '']);
-      aoa.push([`Số báo giá: ${quotation.quotationNumber}`, '', '', '', '', '', '']);
-      aoa.push([]); // Row 3
+      const maxCol = readyMadeItems.length > 0 ? 8 : 7;
 
-      // Row 4-6: Customer Info
-      aoa.push(['Khách hàng:', quotation.customerName, '', 'Điện thoại:', quotation.phone, '', '']);
-      aoa.push(['Công trình:', quotation.constructionType || 'Nhà ở dân dụng', '', 'Địa chỉ:', quotation.address, '', '']);
-      aoa.push(['Thời gian:', quotation.estimatedTime + ' ngày làm việc', '', 'Ngày báo giá:', format(new Date(quotation.date), 'dd/MM/yyyy'), '', '']);
-      aoa.push([]); // Row 7
-
-      const merges: XLSX.Range[] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // CÔNG TY
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // BÁO GIÁ
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }, // Số báo giá
-        
-        { s: { r: 4, c: 1 }, e: { r: 4, c: 2 } }, // Khách hàng
-        { s: { r: 4, c: 4 }, e: { r: 4, c: 6 } }, // Điện thoại
-        { s: { r: 5, c: 1 }, e: { r: 5, c: 2 } }, // Công trình
-        { s: { r: 5, c: 4 }, e: { r: 5, c: 6 } }, // Địa chỉ
-        { s: { r: 6, c: 1 }, e: { r: 6, c: 2 } }, // Thời gian
-        { s: { r: 6, c: 4 }, e: { r: 6, c: 6 } }, // Ngày báo giá
-      ];
-
-      // Custom Items Table
-      if (customItems.length > 0) {
-        const startRow = aoa.length;
-        aoa.push(['CHI TIẾT HẠNG MỤC THI CÔNG', '', '', '', '', '', '']);
-        merges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: 6 } });
-        
-        aoa.push(['STT', 'Tên hạng mục', 'QC kỹ thuật / Diễn giải', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']);
-        
-        Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
-          const groupRow = aoa.length;
-          aoa.push([String.fromCharCode(65 + groupIdx), cat, '', '', '', '', '']);
-          merges.push({ s: { r: groupRow, c: 1 }, e: { r: groupRow, c: 6 } });
-          
-          customItems.filter(item => item.category === cat).forEach((item, idx) => {
-            aoa.push([
-              idx + 1,
-              item.name,
-              item.description,
-              item.unit,
-              item.quantity,
-              item.unitPrice,
-              item.total
-            ]);
-          });
-        });
-        
-        if (readyMadeItems.length === 0) {
-          aoa.push(['', '', '', '', '', 'Cộng tiền hàng', quotation.subTotal]);
-          aoa.push(['', '', '', '', '', 'Giảm giá & Chiết khấu', -quotation.discount]);
-          if (quotation.hasVat) {
-             aoa.push(['', '', '', '', '', 'Thuế VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)]);
-          }
-          aoa.push(['', '', '', '', '', 'TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount]);
-          if ((quotation.depositAmount || 0) > 0) {
-             aoa.push(['', '', '', '', '', 'Đã đặt cọc', -quotation.depositAmount!]);
-             aoa.push(['', '', '', '', '', 'CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!]);
-          }
-        }
-      }
-
-      // Ready Made Items Table
       if (readyMadeItems.length > 0) {
-        if (customItems.length > 0) aoa.push([]); // spacing
-        const startRow = aoa.length;
-        aoa.push(['CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)', '', '', '', '', '', '', '']);
-        merges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: 7 } });
-
-        aoa.push(['STT', 'Tên hạng mục', 'Hình ảnh (URL)', 'QC kỹ thuật / Diễn giải', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']);
-        
-        Array.from(new Set(readyMadeItems.map(item => item.category))).forEach((cat, groupIdx) => {
-          const groupRow = aoa.length;
-          const groupLabel = String.fromCharCode(customItems.length > 0 ? 65 + new Set(customItems.map(i => i.category)).size + groupIdx : 65 + groupIdx);
-          aoa.push([groupLabel, cat, '', '', '', '', '', '']);
-          merges.push({ s: { r: groupRow, c: 1 }, e: { r: groupRow, c: 7 } });
-          
-          readyMadeItems.filter(item => item.category === cat).forEach((item, idx) => {
-            aoa.push([
-              idx + 1,
-              item.name,
-              item.imageUrl || 'Không có ảnh',
-              item.description,
-              item.unit,
-              item.quantity,
-              item.unitPrice,
-              item.total
-            ]);
-          });
-        });
-
-        // Totals
-        aoa.push(['', '', '', '', '', '', 'Cộng tiền hàng', quotation.subTotal]);
-        aoa.push(['', '', '', '', '', '', 'Giảm giá & Chiết khấu', -quotation.discount]);
-        if (quotation.hasVat) {
-           aoa.push(['', '', '', '', '', '', 'Thuế VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)]);
-        }
-        aoa.push(['', '', '', '', '', '', 'TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount]);
-        if ((quotation.depositAmount || 0) > 0) {
-           aoa.push(['', '', '', '', '', '', 'Đã đặt cọc', -quotation.depositAmount!]);
-           aoa.push(['', '', '', '', '', '', 'CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!]);
-        }
-      }
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!merges'] = merges;
-      
-      // Column widths
-      if (readyMadeItems.length > 0) {
-         ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, { wch: 15 }];
+         sheet.columns = [
+            { width: 8 },  // STT
+            { width: 30 }, // Tên
+            { width: 20 }, // Ảnh
+            { width: 45 }, // QC
+            { width: 10 }, // ĐVT
+            { width: 10 }, // SL
+            { width: 18 }, // Đơn giá
+            { width: 20 }, // Thành tiền
+         ];
       } else {
-         ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 40 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, { wch: 15 }];
+         sheet.columns = [
+            { width: 8 },  // STT
+            { width: 30 }, // Tên
+            { width: 45 }, // QC
+            { width: 10 }, // ĐVT
+            { width: 10 }, // SL
+            { width: 18 }, // Đơn giá
+            { width: 20 }, // Thành tiền
+         ];
       }
 
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, ws, 'Báo Giá');
-      XLSX.writeFile(workbook, `Bao_Gia_${quotation.quotationNumber || Date.now()}.xlsx`);
-      toast.success("Đã tải xuống file Excel!");
+      const addHeader = (text: string, bold: boolean, size: number) => {
+         const row = sheet.addRow([text]);
+         sheet.mergeCells(row.number, 1, row.number, maxCol);
+         row.getCell(1).font = { name: 'Times New Roman', bold, size };
+         row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+         row.height = size * 1.5;
+         return row;
+      };
+
+      addHeader('CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 16);
+      addHeader('BÁO GIÁ THI CÔNG', true, 18);
+      
+      const noRow = sheet.addRow([`HỒ SƠ SỐ: ${quotation.quotationNumber}`]);
+      sheet.mergeCells(noRow.number, 1, noRow.number, maxCol);
+      noRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
+      noRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      
+      const dearRow = sheet.addRow([`Kính gửi: CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN xin cảm ơn ${quotation.customerName} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi báo giá thi công thực tế như sau:`]);
+      sheet.mergeCells(dearRow.number, 1, dearRow.number, maxCol);
+      dearRow.getCell(1).font = { name: 'Times New Roman', italic: true, size: 11 };
+      dearRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      sheet.addRow([]);
+
+      const addCustomerRow = (label1: string, val1: string, label2: string, val2: string) => {
+         const row = sheet.addRow([label1, val1, '', '', label2, val2, '']);
+         sheet.mergeCells(row.number, 2, row.number, 4);
+         sheet.mergeCells(row.number, 6, row.number, maxCol);
+         
+         for (let i = 1; i <= maxCol; i++) {
+             row.getCell(i).border = {
+                top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}
+             };
+             row.getCell(i).font = { name: 'Times New Roman', size: 12 };
+             row.getCell(i).alignment = { vertical: 'middle', wrapText: true };
+         }
+         row.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
+         row.getCell(5).font = { name: 'Times New Roman', bold: true, size: 12 };
+         row.height = 25;
+      };
+
+      addCustomerRow('KHÁCH HÀNG', quotation.customerName, 'ĐIỆN THOẠI', quotation.phone);
+      addCustomerRow('CÔNG TRÌNH', quotation.constructionType || 'Nhà ở dân dụng', 'ĐỊA CHỈ', quotation.address);
+      addCustomerRow('THỜI GIAN', quotation.estimatedTime + ' ngày làm việc', 'NGÀY BÁO GIÁ', format(new Date(quotation.date), 'dd/MM/yyyy'));
+
+      sheet.addRow([]);
+
+      const applyBorderAndFont = (row: ExcelJS.Row, isBold = false) => {
+         for(let i=1; i<=maxCol; i++) {
+             row.getCell(i).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+             row.getCell(i).font = { name: 'Times New Roman', bold: isBold, size: 12 };
+             row.getCell(i).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+         }
+      }
+
+      if (customItems.length > 0) {
+         const titleRow = sheet.addRow(['CHI TIẾT HẠNG MỤC THI CÔNG']);
+         sheet.mergeCells(titleRow.number, 1, titleRow.number, maxCol);
+         applyBorderAndFont(titleRow, true);
+         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+         titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+
+         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
+         if (maxCol === 8) {
+            sheet.mergeCells(headerRow.number, 3, headerRow.number, 4);
+         }
+         applyBorderAndFont(headerRow, true);
+
+         Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
+            const groupRow = sheet.addRow([String.fromCharCode(65 + groupIdx), cat]);
+            sheet.mergeCells(groupRow.number, 2, groupRow.number, maxCol);
+            applyBorderAndFont(groupRow, true);
+            groupRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
+
+            customItems.filter(item => item.category === cat).forEach((item, idx) => {
+               const dataRow = sheet.addRow([
+                  idx + 1,
+                  item.name,
+                  item.description,
+                  maxCol === 8 ? '' : item.unit,
+                  maxCol === 8 ? item.unit : item.quantity,
+                  maxCol === 8 ? item.quantity : item.unitPrice,
+                  maxCol === 8 ? item.unitPrice : item.total,
+                  maxCol === 8 ? item.total : ''
+               ]);
+               
+               if (maxCol === 8) {
+                   sheet.mergeCells(dataRow.number, 3, dataRow.number, 4);
+                   dataRow.getCell(3).value = item.description;
+                   dataRow.getCell(5).value = item.unit;
+                   dataRow.getCell(6).value = item.quantity;
+                   dataRow.getCell(7).value = item.unitPrice;
+                   dataRow.getCell(8).value = item.total;
+               }
+
+               applyBorderAndFont(dataRow, false);
+               dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(maxCol - 1).numFmt = '#,##0';
+               dataRow.getCell(maxCol).numFmt = '#,##0';
+            });
+         });
+      }
+
+      if (readyMadeItems.length > 0) {
+         if (customItems.length > 0) sheet.addRow([]);
+
+         const titleRow = sheet.addRow(['CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)']);
+         sheet.mergeCells(titleRow.number, 1, titleRow.number, maxCol);
+         applyBorderAndFont(titleRow, true);
+         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+         titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+
+         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'HÌNH ẢNH', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
+         applyBorderAndFont(headerRow, true);
+
+         Array.from(new Set(readyMadeItems.map(item => item.category))).forEach((cat, groupIdx) => {
+            const groupRow = sheet.addRow([String.fromCharCode(65 + (customItems.length > 0 ? new Set(customItems.map(i => i.category)).size : 0) + groupIdx), cat]);
+            sheet.mergeCells(groupRow.number, 2, groupRow.number, maxCol);
+            applyBorderAndFont(groupRow, true);
+            groupRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
+
+            readyMadeItems.filter(item => item.category === cat).forEach((item, idx) => {
+               const dataRow = sheet.addRow([
+                  idx + 1,
+                  item.name,
+                  item.imageUrl ? '(Có ảnh)' : '', 
+                  item.description,
+                  item.unit,
+                  item.quantity,
+                  item.unitPrice,
+                  item.total
+               ]);
+               
+               applyBorderAndFont(dataRow, false);
+               dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(7).numFmt = '#,##0';
+               dataRow.getCell(8).numFmt = '#,##0';
+            });
+         });
+      }
+
+      const addTotalRow = (label: string, val: number, isBold: boolean) => {
+         const row = sheet.addRow([]);
+         sheet.mergeCells(row.number, 1, row.number, maxCol - 1);
+         row.getCell(1).value = label;
+         row.getCell(maxCol).value = val;
+
+         applyBorderAndFont(row, isBold);
+         row.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+         row.getCell(maxCol).numFmt = '#,##0';
+      };
+
+      addTotalRow('CỘNG TIỀN HÀNG', quotation.subTotal, false);
+      addTotalRow('GIẢM GIÁ & CHIẾT KHẤU', -quotation.discount, false);
+      if (quotation.hasVat) {
+          addTotalRow('THUẾ VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08), false);
+      }
+      addTotalRow('TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount, true);
+      
+      if ((quotation.depositAmount || 0) > 0) {
+          addTotalRow('ĐÃ ĐẶT CỌC', -quotation.depositAmount!, false);
+          addTotalRow('CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!, true);
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Bao_Gia_${quotation.quotationNumber || Date.now()}.xlsx`);
+      
+      toast.success("Đã tải xuống file Excel chuẩn form!");
     } catch (error) {
       console.error("Lỗi khi xuất Excel:", error);
       toast.error("Gặp lỗi khi tải file Excel");
+    } finally {
+      setIsExporting(false);
     }
   };
 
