@@ -828,6 +828,67 @@ export function QuotationPreview({
           addTotalRow('CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!, true);
       }
 
+      sheet.addRow([]);
+
+      const policyRow = sheet.addRow(['CHÍNH SÁCH VÀ GHI CHÚ', '', '', '', 'THANH TOÁN CHUYỂN KHOẢN']);
+      sheet.mergeCells(policyRow.number, 1, policyRow.number, 4);
+      sheet.mergeCells(policyRow.number, 5, policyRow.number, maxCol);
+      policyRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 11 };
+      policyRow.getCell(5).font = { name: 'Times New Roman', bold: true, size: 11 };
+      
+      const policyTextRow = sheet.addRow([
+         template.terms || 'Chưa có điều khoản', '', '', '',
+         `Ngân hàng: ${template.bankName || quotation.paymentInfo.bankName}\nSố tài khoản: ${template.bankAccount || quotation.paymentInfo.accountNumber}\nChủ tài khoản: ${template.bankAccountName || quotation.paymentInfo.accountHolder}\nNội dung ghi: "${quotation.paymentInfo.content}"`
+      ]);
+      sheet.mergeCells(policyTextRow.number, 1, policyTextRow.number, 4);
+      sheet.mergeCells(policyTextRow.number, 5, policyTextRow.number, maxCol);
+      
+      policyTextRow.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+      policyTextRow.getCell(1).font = { name: 'Times New Roman', size: 11 };
+      policyTextRow.getCell(5).alignment = { wrapText: true, vertical: 'top' };
+      policyTextRow.getCell(5).font = { name: 'Times New Roman', size: 11 };
+      policyTextRow.height = 80;
+
+      sheet.addRow([]);
+      
+      const sloganRow = sheet.addRow([`"${template.companyName.toUpperCase()}\nKiến tạo không gian, nâng tầm cuộc sống"`]);
+      sheet.mergeCells(sloganRow.number, 1, sloganRow.number, maxCol);
+      sloganRow.getCell(1).alignment = { horizontal: 'center', wrapText: true };
+      sloganRow.getCell(1).font = { name: 'Times New Roman', italic: true, size: 14, color: { argb: 'FF888888' } };
+      sloganRow.height = 40;
+
+      sheet.addRow([]);
+
+      const signTitleRow = sheet.addRow(['KHÁCH HÀNG XÁC NHẬN', '', '', '', 'ĐẠI DIỆN CÔNG TY']);
+      sheet.mergeCells(signTitleRow.number, 1, signTitleRow.number, 3);
+      sheet.mergeCells(signTitleRow.number, 4, signTitleRow.number, maxCol);
+      signTitleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FF888888' } };
+      signTitleRow.getCell(1).alignment = { horizontal: 'center' };
+      signTitleRow.getCell(4).font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FF888888' } };
+      signTitleRow.getCell(4).alignment = { horizontal: 'center' };
+      
+      const signSubtitleRow = sheet.addRow(['KÝ VÀ GHI HỌ TÊN', '', '', '', 'NGƯỜI LẬP BIỂU']);
+      sheet.mergeCells(signSubtitleRow.number, 1, signSubtitleRow.number, 3);
+      sheet.mergeCells(signSubtitleRow.number, 4, signSubtitleRow.number, maxCol);
+      signSubtitleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
+      signSubtitleRow.getCell(1).alignment = { horizontal: 'center' };
+      signSubtitleRow.getCell(4).font = { name: 'Times New Roman', bold: true, size: 12 };
+      signSubtitleRow.getCell(4).alignment = { horizontal: 'center' };
+
+      sheet.addRow([]);
+      sheet.addRow([]);
+      sheet.addRow([]);
+
+      const dateStr = `Ngày ...... / ...... / 202...`;
+      const authorStr = member?.name || (quotation.createdBy === user?.uid ? user?.displayName : 'BAN QUẢN TRỊ');
+      const signNameRow = sheet.addRow([dateStr, '', '', '', authorStr]);
+      sheet.mergeCells(signNameRow.number, 1, signNameRow.number, 3);
+      sheet.mergeCells(signNameRow.number, 4, signNameRow.number, maxCol);
+      signNameRow.getCell(1).font = { name: 'Times New Roman', italic: true, size: 11, color: { argb: 'FF888888' } };
+      signNameRow.getCell(1).alignment = { horizontal: 'center' };
+      signNameRow.getCell(4).font = { name: 'Times New Roman', bold: true, size: 12 };
+      signNameRow.getCell(4).alignment = { horizontal: 'center' };
+
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `Bao_Gia_${quotation.quotationNumber || Date.now()}.xlsx`);
