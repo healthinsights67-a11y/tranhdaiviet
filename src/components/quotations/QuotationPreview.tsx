@@ -832,6 +832,9 @@ export function QuotationPreview({
                   <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
                     <th className="border-r border-black p-1 w-[35px]">STT</th>
                     <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
+                    {quotation.type === 'ready-made' && (
+                      <th className="border-r border-black p-1 w-[80px]">Hình ảnh</th>
+                    )}
                     <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
                     <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
                     <th className="border-r border-black p-1 w-[40px]">SL</th>
@@ -844,7 +847,7 @@ export function QuotationPreview({
                     <React.Fragment key={cat}>
                       <tr className="bg-gray-200 font-bold border-b border-black">
                         <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
-                        <td colSpan={6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                        <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
                           {cat}
                         </td>
                       </tr>
@@ -852,6 +855,15 @@ export function QuotationPreview({
                         <tr key={item.id} className="border-b border-black last:border-b-0">
                           <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
                           <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
+                          {quotation.type === 'ready-made' && (
+                            <td className="border-r border-black p-1 text-center">
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">Không có ảnh</div>
+                              )}
+                            </td>
+                          )}
                           <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                             <div className="whitespace-pre-wrap">{item.description}</div>
                           </td>
@@ -866,27 +878,27 @@ export function QuotationPreview({
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 border-t-2 border-black">
-                    <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Cộng tiền hàng</td>
+                    <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Cộng tiền hàng</td>
                     <td className="p-2 text-right font-mono font-bold">
                       {quotation.subTotal.toLocaleString()}
                     </td>
                   </tr>
                   <tr className="bg-gray-50 border-t border-black">
-                    <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Giảm giá & Chiết khấu</td>
+                    <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Giảm giá & Chiết khấu</td>
                     <td className="p-2 text-right font-mono font-bold text-red-600">
                       -{quotation.discount.toLocaleString()}
                     </td>
                   </tr>
                   {quotation.hasVat && (
                     <tr className="bg-gray-50 border-t border-black">
-                      <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
+                      <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
                       <td className="p-2 text-right font-mono font-bold">
                         {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
                       </td>
                     </tr>
                   )}
                   <tr className="bg-gray-100 border-t-2 border-black">
-                    <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
+                    <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
                        TỔNG GIÁ TRỊ BÁO GIÁ {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
                     </td>
                     <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
@@ -896,13 +908,13 @@ export function QuotationPreview({
                   {(quotation.depositAmount ?? 0) > 0 && (
                     <>
                       <tr className="bg-gray-50 border-t border-black">
-                        <td colSpan={6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
+                        <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
                         <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
                           -{(quotation.depositAmount || 0).toLocaleString()}
                         </td>
                       </tr>
                       <tr className="bg-emerald-50 border-t-2 border-emerald-200">
-                        <td colSpan={6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
+                        <td colSpan={quotation.type === 'ready-made' ? 7 : 6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
                            SỐ TIỀN CÒN LẠI CẦN THANH TOÁN
                         </td>
                         <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
