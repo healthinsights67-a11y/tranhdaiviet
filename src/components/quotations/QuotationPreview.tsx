@@ -46,6 +46,57 @@ interface QuotationPreviewProps {
   onDeleteQuotation?: (id: string) => Promise<void>;
 }
 
+const TotalsFooter = ({ quotation, colSpan }: { quotation: Quotation, colSpan: number }) => (
+  <tfoot>
+    <tr className="bg-gray-50 border-t-2 border-black">
+      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Cộng tiền hàng</td>
+      <td className="p-2 text-right font-mono font-bold">
+        {quotation.subTotal.toLocaleString()}
+      </td>
+    </tr>
+    <tr className="bg-gray-50 border-t border-black">
+      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Giảm giá & Chiết khấu</td>
+      <td className="p-2 text-right font-mono font-bold text-red-600">
+        -{quotation.discount.toLocaleString()}
+      </td>
+    </tr>
+    {quotation.hasVat && (
+      <tr className="bg-gray-50 border-t border-black">
+        <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
+        <td className="p-2 text-right font-mono font-bold">
+          {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
+        </td>
+      </tr>
+    )}
+    <tr className="bg-gray-100 border-t-2 border-black">
+      <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
+         TỔNG GIÁ TRỊ BÁO GIÁ {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
+      </td>
+      <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
+        {quotation.totalAmount.toLocaleString()}
+      </td>
+    </tr>
+    {(quotation.depositAmount ?? 0) > 0 && (
+      <>
+        <tr className="bg-gray-50 border-t border-black">
+          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
+          <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
+            -{(quotation.depositAmount || 0).toLocaleString()}
+          </td>
+        </tr>
+        <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+          <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
+             SỐ TIỀN CÒN LẠI CẦN THANH TOÁN
+          </td>
+          <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
+            {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
+          </td>
+        </tr>
+      </>
+    )}
+  </tfoot>
+);
+
 export function QuotationPreview({ 
   isOpen, 
   onClose, 
@@ -72,9 +123,14 @@ export function QuotationPreview({
   const [zoom, setZoom] = React.useState<number>(1);
   const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
   
-  const hasImageColumn = React.useMemo(() => {
-    if (!quotation) return false;
-    return quotation.type === 'ready-made';
+  const customItems = React.useMemo(() => {
+    if (!quotation) return [];
+    return quotation.items.filter(item => !item.category?.toLowerCase()?.includes('đóng sẵn'));
+  }, [quotation]);
+
+  const readyMadeItems = React.useMemo(() => {
+    if (!quotation) return [];
+    return quotation.items.filter(item => item.category?.toLowerCase()?.includes('đóng sẵn'));
   }, [quotation]);
   
   // Pinch to zoom state
@@ -829,107 +885,111 @@ export function QuotationPreview({
                 </tbody>
               </table>
 
-              <div className="bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black">
-                 {quotation.type === 'ready-made' ? 'CHI TIẾT DANH SÁCH SẢN PHẨM' : 'CHI TIẾT HẠNG MỤC THI CÔNG'}
-              </div>
-              <table className="w-full border-2 border-black text-[11px] table-fixed">
-                <thead>
-                  <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
-                    <th className="border-r border-black p-1 w-[35px]">STT</th>
-                    <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
-                    {hasImageColumn && (
-                      <th className="border-r border-black p-1 w-[80px]">Hình ảnh</th>
-                    )}
-                    <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
-                    <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
-                    <th className="border-r border-black p-1 w-[40px]">SL</th>
-                    <th className="border-r border-black p-1 w-[90px]">Đơn giá</th>
-                    <th className="border-black p-1 w-[100px]">Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from(new Set(quotation.items.map(item => item.category))).map((cat, groupIdx) => (
-                    <React.Fragment key={cat}>
-                      <tr className="bg-gray-200 font-bold border-b border-black">
-                        <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
-                        <td colSpan={hasImageColumn ? 7 : 6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
-                          {cat}
-                        </td>
+              {/* Custom Items Table */}
+              {customItems.length > 0 && (
+                <>
+                  <div className="bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black">
+                     CHI TIẾT HẠNG MỤC THI CÔNG
+                  </div>
+                  <table className="w-full border-2 border-black text-[11px] table-fixed mb-4">
+                    <thead>
+                      <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
+                        <th className="border-r border-black p-1 w-[35px]">STT</th>
+                        <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
+                        <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
+                        <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
+                        <th className="border-r border-black p-1 w-[40px]">SL</th>
+                        <th className="border-r border-black p-1 w-[90px]">Đơn giá</th>
+                        <th className="border-black p-1 w-[100px]">Thành tiền</th>
                       </tr>
-                      {quotation.items.filter(item => item.category === cat).map((item, idx) => (
-                        <tr key={item.id} className="border-b border-black last:border-b-0">
-                          <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
-                          <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
-                          {hasImageColumn && (
-                            <td className="border-r border-black p-1 text-center">
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">Không có ảnh</div>
-                              )}
+                    </thead>
+                    <tbody>
+                      {Array.from(new Set(customItems.map(item => item.category))).map((cat, groupIdx) => (
+                        <React.Fragment key={cat}>
+                          <tr className="bg-gray-200 font-bold border-b border-black">
+                            <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
+                            <td colSpan={6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                              {cat}
                             </td>
-                          )}
-                          <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
-                            <div className="whitespace-pre-wrap">{item.description}</div>
-                          </td>
-                          <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{item.unit}</td>
-                          <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
-                          <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
-                          <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
-                        </tr>
+                          </tr>
+                          {customItems.filter(item => item.category === cat).map((item, idx) => (
+                            <tr key={item.id} className="border-b border-black last:border-b-0">
+                              <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
+                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
+                              <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
+                                <div className="whitespace-pre-wrap">{item.description}</div>
+                              </td>
+                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{item.unit}</td>
+                              <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
                       ))}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 border-t-2 border-black">
-                    <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Cộng tiền hàng</td>
-                    <td className="p-2 text-right font-mono font-bold">
-                      {quotation.subTotal.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr className="bg-gray-50 border-t border-black">
-                    <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Giảm giá & Chiết khấu</td>
-                    <td className="p-2 text-right font-mono font-bold text-red-600">
-                      -{quotation.discount.toLocaleString()}
-                    </td>
-                  </tr>
-                  {quotation.hasVat && (
-                    <tr className="bg-gray-50 border-t border-black">
-                      <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
-                      <td className="p-2 text-right font-mono font-bold">
-                        {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
-                      </td>
-                    </tr>
-                  )}
-                  <tr className="bg-gray-100 border-t-2 border-black">
-                    <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
-                       TỔNG GIÁ TRỊ BÁO GIÁ {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
-                    </td>
-                    <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
-                      {quotation.totalAmount.toLocaleString()}
-                    </td>
-                  </tr>
-                  {(quotation.depositAmount ?? 0) > 0 && (
-                    <>
-                      <tr className="bg-gray-50 border-t border-black">
-                        <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
-                        <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
-                          -{(quotation.depositAmount || 0).toLocaleString()}
-                        </td>
+                    </tbody>
+                    {readyMadeItems.length === 0 && (
+                      <TotalsFooter quotation={quotation} colSpan={6} />
+                    )}
+                  </table>
+                </>
+              )}
+
+              {/* Ready Made Items Table */}
+              {readyMadeItems.length > 0 && (
+                <>
+                  <div className={`bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black ${customItems.length > 0 ? 'mt-4' : ''}`}>
+                     CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)
+                  </div>
+                  <table className="w-full border-2 border-black text-[11px] table-fixed">
+                    <thead>
+                      <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
+                        <th className="border-r border-black p-1 w-[35px]">STT</th>
+                        <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
+                        <th className="border-r border-black p-1 w-[80px]">Hình ảnh</th>
+                        <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
+                        <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
+                        <th className="border-r border-black p-1 w-[40px]">SL</th>
+                        <th className="border-r border-black p-1 w-[90px]">Đơn giá</th>
+                        <th className="border-black p-1 w-[100px]">Thành tiền</th>
                       </tr>
-                      <tr className="bg-emerald-50 border-t-2 border-emerald-200">
-                        <td colSpan={hasImageColumn ? 7 : 6} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
-                           SỐ TIỀN CÒN LẠI CẦN THANH TOÁN
-                        </td>
-                        <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
-                          {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                </tfoot>
-              </table>
+                    </thead>
+                    <tbody>
+                      {Array.from(new Set(readyMadeItems.map(item => item.category))).map((cat, groupIdx) => (
+                        <React.Fragment key={cat}>
+                          <tr className="bg-gray-200 font-bold border-b border-black">
+                            <td className="border-r border-black p-1 text-center">{String.fromCharCode(customItems.length > 0 ? 65 + new Set(customItems.map(i => i.category)).size + groupIdx : 65 + groupIdx)}</td>
+                            <td colSpan={7} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                              {cat}
+                            </td>
+                          </tr>
+                          {readyMadeItems.filter(item => item.category === cat).map((item, idx) => (
+                            <tr key={item.id} className="border-b border-black last:border-b-0">
+                              <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
+                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
+                              <td className="border-r border-black p-1 text-center">
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">Không có ảnh</div>
+                                )}
+                              </td>
+                              <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
+                                <div className="whitespace-pre-wrap">{item.description}</div>
+                              </td>
+                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{item.unit}</td>
+                              <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                    <TotalsFooter quotation={quotation} colSpan={7} />
+                  </table>
+                </>
+              )}
 
               {/* Policy & Payment Section */}
               <div className="mt-4 grid grid-cols-2 gap-4 items-start">
