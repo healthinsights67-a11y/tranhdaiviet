@@ -159,6 +159,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     vatRate: initialData?.vatRate || 8,
     vatAmount: initialData?.vatAmount || 0,
     depositAmount: initialData?.depositAmount || 0,
+    type: initialData?.type || 'custom',
   });
 
   const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = React.useState(!initialData);
@@ -557,6 +558,30 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
               
               {isCustomerInfoExpanded ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3 rounded-lg border border-border bg-slate-50/50">
+                  <div className="space-y-2 lg:col-span-3 mb-2 pb-3 border-b border-border/50">
+                    <Label className="text-xs font-bold text-slate-700">Loại Báo Giá</Label>
+                    <div className="flex items-center gap-6">
+                      <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input 
+                          type="radio" 
+                          className="accent-primary w-4 h-4"
+                          checked={formData.type !== 'ready-made'} 
+                          onChange={() => setFormData({ ...formData, type: 'custom' })} 
+                        />
+                        Báo giá thi công (Mặc định)
+                      </label>
+                      <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <input 
+                          type="radio" 
+                          className="accent-primary w-4 h-4"
+                          checked={formData.type === 'ready-made'} 
+                          onChange={() => setFormData({ ...formData, type: 'ready-made' })} 
+                        />
+                        Báo giá hàng đóng sẵn
+                      </label>
+                    </div>
+                  </div>
+                  
                   <div className="space-y-1">
                     <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                       Khách hàng <span className="text-destructive">*</span>

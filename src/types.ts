@@ -226,6 +226,7 @@ export interface Quotation {
   hasVat?: boolean;
   vatRate?: number;
   vatAmount?: number;
+  type?: 'custom' | 'ready-made';
 }
 
 export interface ProductLibraryItem {

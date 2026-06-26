@@ -778,7 +778,7 @@ export function QuotationPreview({
                     <td className="p-2 text-center border-t-2 border-r-2 border-black">
                        <div className="flex flex-col items-center">
                           <div className="text-2xl font-bold tracking-[0.2em] text-black uppercase">
-                             BÁO GIÁ THI CÔNG
+                             {quotation.type === 'ready-made' ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG'}
                           </div>
                           <div className="mt-1 flex items-center gap-3">
                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">HỒ SƠ SỐ:</span>
@@ -791,7 +791,7 @@ export function QuotationPreview({
               </table>
 
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
-                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi báo giá thi công thực tế như sau:
+                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi {quotation.type === 'ready-made' ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:
               </div>
 
               {/* Customer Information Grid Style */}
@@ -810,17 +810,22 @@ export function QuotationPreview({
                     <td className="p-1.5 font-bold">{quotation.address}</td>
                   </tr>
                   <tr className="bg-gray-100">
-                    <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">Thời gian</td>
-                    <td className="p-1.5 border-r border-black font-bold">{quotation.estimatedTime} ngày làm việc</td>
+                    {quotation.type === 'ready-made' ? (
+                      <td colSpan={2} className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider text-center text-blue-700">Đơn hàng đóng sẵn</td>
+                    ) : (
+                      <>
+                        <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">Thời gian</td>
+                        <td className="p-1.5 border-r border-black font-bold">{quotation.estimatedTime} ngày làm việc</td>
+                      </>
+                    )}
                     <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">Ngày báo giá</td>
                     <td className="p-1.5 font-bold">{format(new Date(quotation.date), 'dd/MM/yyyy')}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Main Table Title */}
               <div className="bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black">
-                 CHI TIẾT HẠNG MỤC THI CÔNG
+                 {quotation.type === 'ready-made' ? 'CHI TIẾT DANH SÁCH SẢN PHẨM' : 'CHI TIẾT HẠNG MỤC THI CÔNG'}
               </div>
               <table className="w-full border-2 border-black text-[11px] table-fixed">
                 <thead>
