@@ -11,7 +11,8 @@ import {
   Loader2,
   Pencil,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
 import { toCanvas, toJpeg } from 'html-to-image';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { QuotationTemplate, defaultTemplate } from './QuotationTemplateConfig';
 import { cn } from '@/src/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -626,6 +628,67 @@ export function QuotationPreview({
     }, 150);
   };
 
+  const handleExportExcel = () => {
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      const summaryData = [
+        { 'Mục': 'Khách hàng', 'Giá trị': quotation.customerName },
+        { 'Mục': 'Điện thoại', 'Giá trị': quotation.phone },
+        { 'Mục': 'Địa chỉ', 'Giá trị': quotation.address },
+        { 'Mục': 'Công trình', 'Giá trị': quotation.constructionType || 'Nhà ở dân dụng' },
+        { 'Mục': 'Ngày báo giá', 'Giá trị': format(new Date(quotation.date), 'dd/MM/yyyy') },
+        { 'Mục': 'Thời gian', 'Giá trị': quotation.estimatedTime + ' ngày làm việc' },
+        { 'Mục': '', 'Giá trị': '' },
+        { 'Mục': 'Cộng tiền hàng', 'Giá trị': quotation.subTotal },
+        { 'Mục': 'Giảm giá & Chiết khấu', 'Giá trị': quotation.discount },
+        { 'Mục': 'Thuế VAT (8%)', 'Giá trị': quotation.hasVat ? (quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)) : 0 },
+        { 'Mục': 'TỔNG GIÁ TRỊ', 'Giá trị': quotation.totalAmount },
+        { 'Mục': 'Đã đặt cọc', 'Giá trị': quotation.depositAmount || 0 },
+        { 'Mục': 'CÒN LẠI CẦN THANH TOÁN', 'Giá trị': (quotation.totalAmount || 0) - (quotation.depositAmount || 0) },
+      ];
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, wsSummary, 'Tổng quan');
+
+      if (customItems.length > 0) {
+        const customItemsData = customItems.map((item, idx) => ({
+          'STT': idx + 1,
+          'Tên hạng mục': item.name,
+          'Danh mục': item.category,
+          'Mô tả': item.description,
+          'ĐVT': item.unit,
+          'Số lượng': item.quantity,
+          'Đơn giá': item.unitPrice,
+          'Thành tiền': item.total,
+        }));
+        const wsCustom = XLSX.utils.json_to_sheet(customItemsData);
+        XLSX.utils.book_append_sheet(workbook, wsCustom, 'Hạng mục thi công');
+      }
+
+      if (readyMadeItems.length > 0) {
+        const readyMadeItemsData = readyMadeItems.map((item, idx) => ({
+          'STT': customItems.length > 0 ? new Set(customItems.map(i => i.category)).size + idx + 1 : idx + 1,
+          'Tên hạng mục': item.name,
+          'Danh mục': item.category,
+          'Mô tả': item.description,
+          'ĐVT': item.unit,
+          'Số lượng': item.quantity,
+          'Đơn giá': item.unitPrice,
+          'Thành tiền': item.total,
+        }));
+        const wsReadyMade = XLSX.utils.json_to_sheet(readyMadeItemsData);
+        XLSX.utils.book_append_sheet(workbook, wsReadyMade, 'Sản phẩm đóng sẵn');
+      }
+
+      XLSX.writeFile(workbook, `Bao_Gia_${quotation.quotationNumber || Date.now()}.xlsx`);
+      toast.success("Đã tải xuống file Excel!");
+    } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+      toast.error("Gặp lỗi khi tải file Excel");
+    }
+  };
+
   const handleAccept = () => {
     if (onUpdateStatus) {
       onUpdateStatus('accepted');
@@ -751,7 +814,19 @@ export function QuotationPreview({
               <span className="sm:hidden">In</span>
             </Button>
             <Button 
+               variant="outline" 
+               size="sm" 
+               onClick={handleExportExcel}
+               disabled={isExporting || imagesLoading}
+               className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold shadow-sm border-2 text-[10px] md:text-sm text-green-700 border-green-200 hover:bg-green-50"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Tải Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
+            <Button 
                variant="default" 
+
                size="sm" 
                onClick={handleDownloadPDF}
                disabled={isExporting || imagesLoading}
