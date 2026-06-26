@@ -74,7 +74,7 @@ export function QuotationPreview({
   
   const hasImageColumn = React.useMemo(() => {
     if (!quotation) return false;
-    return quotation.type === 'ready-made' || quotation.items?.some(item => item.category?.toLowerCase()?.includes('đóng sẵn') || !!item.imageUrl);
+    return quotation.type === 'ready-made';
   }, [quotation]);
   
   // Pinch to zoom state
