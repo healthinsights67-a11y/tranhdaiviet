@@ -7,7 +7,7 @@
 // 4. Chạy lệnh: node get_dropbox_token.js
 
 const APP_KEY = 'z5n3x1bz6cj85wb'; // Thay bằng App Key của bạn
-const APP_SECRET = 'SM5i9zTlN0kAAAAAAAAAAY39Whv5O4wJ9kHElbunshkB7YsWjNpoW-KqdJDGu8fg'; // Thay bằng App Secret của bạn
+const APP_SECRET = 'B5or0RTCy88AAAAAAAAAAYtJLbmMkS2OZW5pb_RxBITptOMWxxCcEBM3buPsjKem'; // Thay bằng App Secret của bạn
 const AUTH_CODE = 'vT_x5TuN0V0AAAAAAABE2tpB-2P6Ntu0limn7OyrAOs'; // Thay bằng mã code hiển thị trên trình duyệt sau khi phân quyền
 
 if (APP_KEY === 'YOUR_APP_KEY' || APP_SECRET === 'YOUR_APP_SECRET' || AUTH_CODE === 'YOUR_AUTH_CODE') {

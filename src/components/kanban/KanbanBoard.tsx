@@ -970,7 +970,7 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
                             <li key={idx} className="flex items-center justify-between bg-card p-1.5 rounded-lg border border-border/50 group shadow-sm">
                               <div 
                                 className="flex items-center gap-2 flex-1 min-w-0 pr-2 cursor-pointer group/item"
-                                onClick={() => isImg && handleOpenPreview(link)}
+                                onClick={() => isImg ? handleOpenPreview(link) : window.open(link, '_blank')}
                               >
                                 {isImg ? (
                                   <div className="h-9 w-9 rounded-md border overflow-hidden shrink-0 bg-secondary/20 group-hover/item:ring-2 ring-primary/30 transition-all">

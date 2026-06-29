@@ -854,7 +854,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
                       <li key={i} className="flex items-center justify-between bg-card p-2 rounded-xl border border-border shadow-sm group">
                         <div 
                           className="flex items-center gap-3 flex-1 min-w-0 pr-2 cursor-pointer group/item"
-                          onClick={() => isImg && handleOpenPreview(f)}
+                          onClick={() => isImg ? handleOpenPreview(f) : window.open(f, '_blank')}
                         >
                           {isImg ? (
                             <div className="h-10 w-10 rounded-lg border overflow-hidden shrink-0 bg-gray-100 group-hover/item:ring-2 ring-primary/30 transition-all">
