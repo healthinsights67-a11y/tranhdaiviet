@@ -72,6 +72,27 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
 
   const handleRestore = async (item: TrashItem) => {
     try {
+      console.log("RESTORING ITEM:", JSON.stringify(item, null, 2));
+
+      // Đảm bảo dữ liệu hợp lệ với Firestore rules khi khôi phục
+      if (item.collection === 'customers' && item.data) {
+        if (!item.data.phone || String(item.data.phone).length < 9) {
+          item.data.phone = '000000000'; // Sửa số điện thoại tạm nếu bị thiếu hoặc không hợp lệ
+        }
+        if (!item.data.assignedSaleId) {
+          item.data.assignedSaleId = currentUser?.id || 'system';
+        }
+        if (!item.data.createdAt) {
+          item.data.createdAt = new Date().toISOString();
+        }
+        if (!item.data.name) {
+          item.data.name = item.title || 'Khách hàng';
+        }
+        if (!item.data.stage) {
+          item.data.stage = 'consulting';
+        }
+      }
+
       await restoreFromTrash(item);
       toast.success(`Đã khôi phục thành công: ${item.title}`);
       queryClient.invalidateQueries({ queryKey: ['trash'] });
