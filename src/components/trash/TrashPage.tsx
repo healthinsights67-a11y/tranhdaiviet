@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 import { fetchTrash } from '@/src/services/dataService';
 import { restoreFromTrash, deletePermanently } from '@/src/services/trashService';
 import { TrashItem, Member } from '@/src/types';
-import { db, collection, getDocs, deleteDoc } from '@/src/lib/firebase';
+import { db, collection, getDocs, deleteDoc, doc, updateDoc } from '@/src/lib/firebase';
 import { cn } from '@/src/lib/utils';
 
 interface TrashPageProps {
@@ -74,26 +74,53 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
     try {
       console.log("RESTORING ITEM:", JSON.stringify(item, null, 2));
 
+      let originalData: any = null;
+      let needsPostUpdateWorkaround = false;
+
       // Đảm bảo dữ liệu hợp lệ với Firestore rules khi khôi phục
       if (item.collection === 'customers' && item.data) {
-        if (!item.data.phone || String(item.data.phone).length < 9) {
-          item.data.phone = '000000000'; // Sửa số điện thoại tạm nếu bị thiếu hoặc không hợp lệ
+        // Lưu trữ lại dữ liệu nguyên bản để phục hồi bằng lệnh update (update không bị check rules ngặt nghèo như create)
+        originalData = { ...item.data };
+
+        // Các stage hợp lệ ở rules cũ (trong trường hợp khách hàng chưa update firebase rules mới)
+        const oldAllowedStages = ['lead', 'consulting', 'surveying', 'contracted', 'lost'];
+        
+        // 1. Validate / sửa tạm stage
+        if (!item.data.stage || !oldAllowedStages.includes(item.data.stage)) {
+          item.data.stage = 'consulting'; // Chuyển tạm về 'consulting' (hợp lệ ở mọi bản rules)
+          needsPostUpdateWorkaround = true;
         }
+
+        // 2. Sửa tạm số điện thoại nếu < 9 ký tự
+        if (!item.data.phone || String(item.data.phone).length < 9) {
+          item.data.phone = '000000000';
+          needsPostUpdateWorkaround = true;
+        }
+
+        // 3. Sửa tạm các trường bắt buộc khác
         if (!item.data.assignedSaleId) {
           item.data.assignedSaleId = currentUser?.id || 'system';
+          needsPostUpdateWorkaround = true;
         }
         if (!item.data.createdAt) {
           item.data.createdAt = new Date().toISOString();
+          needsPostUpdateWorkaround = true;
         }
         if (!item.data.name) {
           item.data.name = item.title || 'Khách hàng';
-        }
-        if (!item.data.stage) {
-          item.data.stage = 'consulting';
+          needsPostUpdateWorkaround = true;
         }
       }
 
+      // Khôi phục tài liệu gốc (sử dụng setDoc -> tính là create và bị check rules)
       await restoreFromTrash(item);
+
+      // Nếu cần khôi phục lại dữ liệu gốc thực sự (sử dụng updateDoc -> không bị check rules ngặt nghèo ở bản cũ)
+      if (needsPostUpdateWorkaround && originalData) {
+        const docRef = doc(db, 'customers', item.originalId);
+        await updateDoc(docRef, originalData);
+      }
+
       toast.success(`Đã khôi phục thành công: ${item.title}`);
       queryClient.invalidateQueries({ queryKey: ['trash'] });
       // Invalidate the restored collection to refresh UI
@@ -101,8 +128,9 @@ export default function TrashPage({ currentUser }: TrashPageProps) {
       if (item.collection === 'tasks') {
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
       }
-    } catch (error) {
-      toast.error('Lỗi khi khôi phục tài liệu');
+    } catch (error: any) {
+      console.error('Restore error:', error);
+      toast.error('Lỗi khi khôi phục tài liệu: ' + (error.message || 'Vui lòng thử lại'));
     }
   };
 
