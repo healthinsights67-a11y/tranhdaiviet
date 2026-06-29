@@ -938,16 +938,23 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
   }, [selectedMonth]);
 
   const filteredCustomers = React.useMemo(() => {
-    return customers.filter(c => 
-      (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
-      (selectedStage === 'all' || c.stage === selectedStage) &&
-      (selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId) &&
-      (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
-      (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm) ||
-      (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
-    ).sort((a, b) => {
+    return customers.filter(c => {
+      const matchWorkshop = selectedWorkshop === 'all' || c.workshop === selectedWorkshop;
+      const matchStage = selectedStage === 'all' || c.stage === selectedStage;
+      const matchSale = selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId;
+      
+      const search = searchTerm.trim().toLowerCase();
+      const matchSearch = search === '' || 
+        c.name.toLowerCase().includes(search) ||
+        c.phone.includes(search) ||
+        (c.code && c.code.toLowerCase().includes(search)) ||
+        (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(search));
+
+      // Bỏ qua lọc theo tháng nếu người dùng đang gõ tìm kiếm (tìm trên toàn hệ thống)
+      const matchTime = search !== '' || !selectedMonth || !c.createdAt || matchesTime(c.createdAt);
+
+      return matchWorkshop && matchStage && matchSale && matchTime && matchSearch;
+    }).sort((a, b) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;

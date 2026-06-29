@@ -105,11 +105,14 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [depositDialog, setDepositDialog] = React.useState<{isOpen: boolean, quotationId: string, amount: string}>({isOpen: false, quotationId: '', amount: ''});
 
   const filteredQuotations = quotations.filter(q => {
-    const matchesSearch = q.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         q.quotationNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = searchTerm.trim().toLowerCase();
+    const matchesSearch = search === '' || 
+                         q.customerName.toLowerCase().includes(search) ||
+                         q.quotationNumber.toLowerCase().includes(search);
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
     
     const matchesTime = (() => {
+      if (search !== '') return true; // Bỏ qua lọc tháng nếu đang tìm kiếm
       if (!selectedMonth || selectedMonth === 'all') return true;
       if (!q.createdAt) return false;
       const date = new Date(q.createdAt);
