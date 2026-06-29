@@ -767,7 +767,7 @@ function AppContent() {
       case 'installations':
         return redirect(perms.menuInstallations)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <InstallerDashboard tasks={tasks} currentUser={currentMember} />;
+          : <InstallerDashboard tasks={tasks} customers={filteredCustomers} currentUser={currentMember} />;
       case 'customer-care':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />

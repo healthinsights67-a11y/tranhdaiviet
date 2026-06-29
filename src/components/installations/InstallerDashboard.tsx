@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { Task, Member } from '@/src/types';
+import { Task, Member, Customer } from '@/src/types';
 import { db, doc, updateDoc } from '@/src/lib/firebase';
 import { TaskSchema } from '@/src/schemas';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,10 +34,11 @@ import { cn } from '@/src/lib/utils';
 
 interface InstallerDashboardProps {
   tasks: Task[];
+  customers?: Customer[];
   currentUser: Member | null;
 }
 
-export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardProps) {
+export function InstallerDashboard({ tasks, customers = [], currentUser }: InstallerDashboardProps) {
   const queryClient = useQueryClient();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [issueText, setIssueText] = useState('');
@@ -45,18 +46,26 @@ export function InstallerDashboard({ tasks, currentUser }: InstallerDashboardPro
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
 
-  // Show all installation tasks for all customers
+  // Hiển thị toàn bộ công trình sản xuất và thi công lắp ráp cho thợ
   const installerTasks = useMemo(() => {
     return tasks.filter(t => {
       if (t.status === 'archived') return false;
       
+      // Không hiển thị các task sale, design, marketing cho thợ thi công
+      if (t.type && ['design', 'sale', 'marketing'].includes(t.type)) return false;
+
+      const isProduction = t.type === 'production';
       const isWaitingInstall = t.status === 'waiting_install';
       const hasCheckedIn = !!t.checkinTime;
       const hasWaitingInstallAt = !!t.waiting_install_at;
+
+      // Kiểm tra trạng thái của khách hàng liên quan
+      const customer = customers.find(c => c.id === t.customerId);
+      const isCustomerActive = customer && (customer.stage === 'production' || customer.stage === 'installation');
       
-      return isWaitingInstall || hasCheckedIn || hasWaitingInstallAt;
+      return isProduction || isWaitingInstall || hasCheckedIn || hasWaitingInstallAt || isCustomerActive;
     });
-  }, [tasks]);
+  }, [tasks, customers]);
 
   // Separate tasks into active and completed
   const { activeTasks, completedTasks } = useMemo(() => {
