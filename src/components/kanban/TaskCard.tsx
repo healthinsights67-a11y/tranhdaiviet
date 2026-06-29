@@ -18,6 +18,7 @@ import { ProductionChecklistForm } from './ProductionChecklistForm';
 import { db, auth, doc, deleteDoc, updateDoc, handleFirestoreError, OperationType, storage, ref, uploadBytes, getDownloadURL, addDoc, collection } from '@/src/lib/firebase';
 import { moveToTrash } from '@/src/services/trashService';
 import { uploadToImgBB } from '@/src/services/uploadService';
+import { uploadToDropbox } from '@/src/services/dropboxService';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
@@ -180,15 +181,11 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
             successCount++;
           }
         } else {
-          // Chuẩn hóa tên file tránh ký tự tiếng Việt và ký tự đặc biệt gây lỗi CORS/Storage
-          const cleanName = file.name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9.-]/g, '_');
-          const storageRef = ref(storage, `tasks/${Date.now()}_${cleanName}`);
-          const uploadTask = await uploadBytes(storageRef, file);
-          downloadURL = await getDownloadURL(uploadTask.ref);
-          if (downloadURL) successCount++;
+          const url = await uploadToDropbox(file, fileName);
+          if (url) {
+            downloadURL = url;
+            successCount++;
+          }
         }
         
         if (downloadURL) {

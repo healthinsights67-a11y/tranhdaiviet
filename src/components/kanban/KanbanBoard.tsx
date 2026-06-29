@@ -50,6 +50,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, doc, handleFirestoreError, OperationType, query, where, getDocs, storage, ref, uploadBytes, getDownloadURL, setDoc, serverTimestamp, auth } from '@/src/lib/firebase';
 import { uploadToImgBB } from '@/src/services/uploadService';
+import { uploadToDropbox } from '@/src/services/dropboxService';
 import { ImagePreviewDialog } from '@/src/components/ui/ImagePreviewDialog';
 import { writeBatch } from 'firebase/firestore';
 import { notifyManagers } from '@/src/services/notificationService';
@@ -245,15 +246,11 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
             successCount++;
           }
         } else {
-          // Chuẩn hóa tên file tránh ký tự tiếng Việt và ký tự đặc biệt gây lỗi CORS/Storage
-          const cleanName = file.name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9.-]/g, '_');
-          const storageRef = ref(storage, `tasks/${Date.now()}_${cleanName}`);
-          const uploadTask = await uploadBytes(storageRef, file);
-          downloadURL = await getDownloadURL(uploadTask.ref);
-          if (downloadURL) successCount++;
+          const url = await uploadToDropbox(file, fileName);
+          if (url) {
+            downloadURL = url;
+            successCount++;
+          }
         }
         
         if (downloadURL) {
