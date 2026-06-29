@@ -114,12 +114,7 @@ export const uploadToDropbox = async (file: File, customName?: string): Promise<
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        path: actualPath,
-        settings: {
-          requested_visibility: 'public',
-          audience: 'public',
-          access: 'viewer'
-        }
+        path: actualPath
       })
     });
 
