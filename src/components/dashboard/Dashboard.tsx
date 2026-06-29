@@ -174,6 +174,33 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   const todayTasks = filteredTasks.filter(t => t.dueDate && isToday(t.dueDate) && t.status !== 'done');
   const overdueTasks = filteredTasks.filter(t => t.dueDate && new Date(t.dueDate).getTime() < todayDate.getTime() && t.status !== 'done');
   
+  // Tìm các khách hàng chưa được lên lịch đo đạc (phục vụ cảnh báo bỏ sót)
+  const unscheduledMeasurements = React.useMemo(() => {
+    const isManager = ['quản lý', 'giám đốc', 'chủ sở hữu'].some(role => 
+      currentUser?.role?.toLowerCase()?.includes(role)
+    ) || !!currentUser?.permissions?.menuMeasurement;
+
+    return activeCustomers.filter(c => {
+      // Chỉ kiểm tra khách hàng ở trạng thái 'consulting' (Đang tư vấn) hoặc 'contracted' (Chốt cọc)
+      const matchesStage = c.stage === 'consulting' || c.stage === 'contracted';
+      if (!matchesStage) return false;
+
+      // Phân quyền: Sale chỉ xem của mình, Quản lý xem toàn bộ
+      const isOwner = isManager || c.assignedSaleId === currentUser?.id;
+      if (!isOwner) return false;
+
+      // Kiểm tra xem đã có lịch đo đạc nào chưa (bỏ qua lịch đã bị hủy)
+      const hasSchedule = (schedules || []).some(s => {
+        if (s.status === 'cancelled') return false;
+        if (s.customerId === c.id) return true;
+        if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
+        return false;
+      });
+
+      return !hasSchedule;
+    });
+  }, [activeCustomers, schedules, currentUser]);
+
   const hasTodayItems = todaySchedules.length > 0 || todayInstallations.length > 0 || todayTasks.length > 0;
 
   React.useEffect(() => {
@@ -230,6 +257,20 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
         generated = true;
       }
       
+      if (unscheduledMeasurements.length > 0) {
+        toast.warning(`Bạn đang có ${unscheduledMeasurements.length} khách hàng chưa được lên lịch đo đạc!`, { duration: 8000 });
+        await addDoc(collection(db, 'notifications'), {
+          title: 'Bỏ sót lịch đo đạc',
+          message: `Cảnh báo: Bạn đang có ${unscheduledMeasurements.length} khách hàng trong giai đoạn Tư vấn/Chốt cọc chưa được xếp lịch đo đạc. Vui lòng kiểm tra ngay.`,
+          type: 'smart_alert',
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          isGlobal: false,
+          userId: currentUser.id
+        });
+        generated = true;
+      }
+      
       if (generated) {
         localStorage.setItem(storageKey, todayStr);
       }
@@ -237,7 +278,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
     };
 
     generateSmartAlerts();
-  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length, currentUser?.id]);
+  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length, unscheduledMeasurements.length, currentUser?.id]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-16 px-0.5">
@@ -358,6 +399,44 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
               </motion.div>
             ))}
           </div>
+
+          {unscheduledMeasurements.length > 0 && (
+            <Card className="border border-destructive/30 bg-destructive/5 text-destructive-foreground shadow-sm">
+              <CardHeader className="p-4 pb-2 flex flex-row items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5 animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-sm font-bold tracking-tight">Cảnh báo bỏ sót lịch đo đạc</CardTitle>
+                  <CardDescription className="text-[10px] text-destructive/80 mt-0.5">
+                    {currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('giám đốc') || currentUser?.role?.toLowerCase()?.includes('chủ sở hữu')
+                      ? `Phát hiện ${unscheduledMeasurements.length} khách hàng của Sales đang ở trạng thái tư vấn/chốt cọc nhưng chưa được xếp lịch đo đạc.`
+                      : `Bạn đang có ${unscheduledMeasurements.length} khách hàng chưa được lên lịch đo đạc. Hãy liên hệ khách hàng để xếp lịch ngay.`}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-1">
+                <div className="grid gap-2 md:grid-cols-2 max-h-[220px] overflow-y-auto pr-1">
+                  {unscheduledMeasurements.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between p-2.5 bg-card border border-destructive/10 rounded-lg group shadow-sm">
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-bold text-foreground truncate">{c.code} - {c.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          SĐT: {c.phone} | Trạng thái: {c.stage === 'consulting' ? 'Đang tư vấn' : 'Chốt cọc'}
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        className="h-7 text-[10px] px-3 font-semibold rounded-md shadow-sm shrink-0"
+                        onClick={() => setActiveTab && setActiveTab('measurements')}
+                      >
+                        Xếp lịch đo
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {hasTodayItems && (
             <div className="mb-4">
