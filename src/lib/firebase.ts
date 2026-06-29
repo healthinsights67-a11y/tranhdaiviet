@@ -10,7 +10,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
-storage.maxUploadRetryTime = 60000; // Prevent infinite hang, fail fast after 60 seconds of retries
+storage.maxUploadRetryTime = 10000; // Fail fast after 10 seconds of retries if Storage is not enabled or connection is lost
 let messagingInstance = null;
 if (typeof window !== 'undefined') {
   try {

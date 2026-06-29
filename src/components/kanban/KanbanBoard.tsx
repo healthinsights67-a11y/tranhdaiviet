@@ -210,9 +210,9 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
       if (isUploadingRef.current) {
         setIsUploading(false);
         isUploadingRef.current = false;
-        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng.", { id: toastId });
+        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng hoặc kiểm tra xem Firebase Storage đã được kích hoạt chưa.", { id: toastId });
       }
-    }, 60000); 
+    }, 15000); 
 
     try {
       let customName = undefined;
@@ -245,7 +245,12 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
             successCount++;
           }
         } else {
-          const storageRef = ref(storage, `tasks/${Date.now()}_${file.name}`);
+          // Chuẩn hóa tên file tránh ký tự tiếng Việt và ký tự đặc biệt gây lỗi CORS/Storage
+          const cleanName = file.name
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9.-]/g, '_');
+          const storageRef = ref(storage, `tasks/${Date.now()}_${cleanName}`);
           const uploadTask = await uploadBytes(storageRef, file);
           downloadURL = await getDownloadURL(uploadTask.ref);
           if (downloadURL) successCount++;
@@ -273,7 +278,16 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
       clearTimeout(timeoutId);
       if (!isUploadingRef.current) return;
       console.error("Upload error:", error);
-      toast.error(error.message || "Không thể tải lên file.", { id: toastId });
+      
+      let errMsg = "Không thể tải lên file.";
+      if (error.code === 'storage/unauthorized') {
+        errMsg = "Lỗi bảo mật: Tài khoản của bạn không có quyền ghi vào Firebase Storage. Vui lòng kiểm tra lại Rules của Storage.";
+      } else if (error.code === 'storage/retry-limit-exceeded' || error.message?.includes('retry') || error.message?.includes('FirebaseStorage')) {
+        errMsg = "Không thể kết nối đến Firebase Storage. Vui lòng kiểm tra xem bạn đã kích hoạt dịch vụ Storage trên Firebase Console chưa.";
+      } else if (error.message) {
+        errMsg = `Lỗi tải file: ${error.message}`;
+      }
+      toast.error(errMsg, { id: toastId });
     } finally {
       setIsUploading(false);
       isUploadingRef.current = false;
