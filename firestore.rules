@@ -67,7 +67,7 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'phone', 'stage', 'assignedSaleId', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.phone is string && data.phone.size() >= 9 &&
-             data.stage in ['lead', 'consulting', 'surveying', 'contracted', 'lost'] &&
+             data.stage in ['lead', 'consulting', 'surveying', 'contracted', 'production', 'installation', 'completed', 'lost'] &&
              data.assignedSaleId is string;
     }
 
