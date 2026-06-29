@@ -413,6 +413,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           createdAt: nowStr,
           scheduledDate: nowStr.split('T')[0],
           dueDate: nowStr.split('T')[0],
+          workshop: customerData.workshop || (currentUser?.workshop && currentUser.workshop !== 'all' ? currentUser.workshop : 'all'),
         };
         await addDoc(collection(db, 'tasks'), newSaleTask);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -437,6 +438,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           createdAt: nowStr,
           scheduledDate: nowStr.split('T')[0],
           dueDate: nowStr.split('T')[0],
+          workshop: customerData.workshop || (currentUser?.workshop && currentUser.workshop !== 'all' ? currentUser.workshop : 'all'),
         };
         setTasks((prev) => [newSaleTask, ...prev]);
       }

@@ -432,6 +432,7 @@ export function SaleWeeklyPlanner({
       files2D3D: [],
       checklists: [],
       materialList: [],
+      workshop: currentUser?.workshop && currentUser.workshop !== 'all' ? currentUser.workshop : 'all',
     };
 
     try {
