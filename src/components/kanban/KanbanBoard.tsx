@@ -224,9 +224,13 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
          const t = tasks.find(x => x.id === pendingTransition.taskId);
          const c = customers?.find(x => x.id === t?.customerId);
          if (t && c) {
-           const code = c.code || c.id.slice(0,6);
-           const cleanTitle = t.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '');
-           customName = `${code}_${c.name}_${cleanTitle}`;
+           const codePart = c.code ? c.code.split('_')[0] : c.id.slice(0,6);
+           const cleanTitle = t.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '').trim();
+           if (cleanTitle.toLowerCase() === c.name.toLowerCase()) {
+             customName = `${codePart}_${c.name}`;
+           } else {
+             customName = `${codePart}_${c.name}_${cleanTitle}`;
+           }
          }
       }
 

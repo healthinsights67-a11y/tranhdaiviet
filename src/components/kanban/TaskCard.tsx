@@ -160,9 +160,13 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
       let customName = undefined;
       const c = customers.find(x => x.id === task.customerId);
       if (c) {
-        const code = c.code || c.id.slice(0,6);
-        const cleanTitle = task.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '');
-        customName = `${code}_${c.name}_${cleanTitle}`;
+        const codePart = c.code ? c.code.split('_')[0] : c.id.slice(0,6);
+        const cleanTitle = task.title.replace(/^(Sale|Thiết kế|Sản xuất):\s*/i, '').trim();
+        if (cleanTitle.toLowerCase() === c.name.toLowerCase()) {
+          customName = `${codePart}_${c.name}`;
+        } else {
+          customName = `${codePart}_${c.name}_${cleanTitle}`;
+        }
       }
 
       // Tải lên song song tất cả các file để tối ưu tốc độ
