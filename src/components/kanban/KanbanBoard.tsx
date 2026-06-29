@@ -207,13 +207,15 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
     isUploadingRef.current = true;
     const toastId = toast.loading(`Đang tải lên ${files.length} file...`);
     
+    // Tăng timeout động theo số lượng file để tránh bị ngắt giữa chừng
+    const timeoutDuration = Math.max(30000, files.length * 15000); 
     const timeoutId = setTimeout(() => {
       if (isUploadingRef.current) {
         setIsUploading(false);
         isUploadingRef.current = false;
-        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng hoặc kiểm tra xem Firebase Storage đã được kích hoạt chưa.", { id: toastId });
+        toast.error("Tải lên quá lâu. Vui lòng kiểm tra kết nối mạng hoặc cấu hình lưu trữ.", { id: toastId });
       }
-    }, 15000); 
+    }, timeoutDuration); 
 
     try {
       let customName = undefined;
@@ -228,35 +230,27 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
          }
       }
 
-      const newUrls: string[] = [];
-      let successCount = 0;
-
-      for (let i = 0; i < files.length; i++) {
-        if (!isUploadingRef.current) break;
-        const file = files[i];
+      // Tải lên song song tất cả các file để tối ưu tốc độ
+      const uploadPromises = files.map(async (file, i) => {
+        if (!isUploadingRef.current) return null;
         const isImage = file.type.startsWith('image/');
-        let downloadURL = "";
-        
         const fileName = files.length > 1 && customName ? `${customName}_${i+1}` : customName;
-
-        if (isImage) {
-          const url = await uploadToImgBB(file, fileName);
-          if (url) {
-            downloadURL = url;
-            successCount++;
-          }
-        } else {
-          const url = await uploadToDropbox(file, fileName);
-          if (url) {
-            downloadURL = url;
-            successCount++;
-          }
-        }
         
-        if (downloadURL) {
-          newUrls.push(downloadURL);
+        try {
+          if (isImage) {
+            return await uploadToImgBB(file, fileName);
+          } else {
+            return await uploadToDropbox(file, fileName);
+          }
+        } catch (err) {
+          console.error("Single file upload error:", err);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const newUrls = results.filter((url): url is string => !!url);
+      const successCount = newUrls.length;
       
       if (!isUploadingRef.current) return;
 
