@@ -636,6 +636,10 @@ function AppContent() {
         if (taskWorkshopName !== userWorkshopName) return false;
       }
       if (!isManager && !isWorkshopRestricted) {
+        const role = currentMember?.role?.toLowerCase() || '';
+        if (t.type === 'design' && (role.includes('thiết kế') || role.includes('design'))) {
+          return true;
+        }
         return t.assigneeId === currentMember?.id;
       }
       return true;
