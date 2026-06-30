@@ -542,10 +542,58 @@ function AppContent() {
   const handleLogout = signOut;
 
   // Find current member profile based on logged in user's email
-  const currentMember = user ? (
+  const dbMember = user ? (
     members.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()) || 
     MOCK_MEMBERS.find(m => m.email?.trim().toLowerCase() === user.email?.trim().toLowerCase())
   ) : null;
+
+  const currentMember = React.useMemo<Member | null>(() => {
+    if (dbMember) return dbMember;
+    if (user) {
+      return {
+        id: user.uid,
+        name: userProfile?.displayName || userProfile?.name || 'Admin',
+        email: user.email || '',
+        role: userProfile?.role || (isAdmin ? 'admin' : 'user'),
+        avatar: userProfile?.avatar || '',
+        workshop: userProfile?.workshop || 'all',
+        permissions: isAdmin ? {
+          viewPrice: true,
+          viewRevenue: true,
+          menuProduction: true,
+          menuMeasurement: true,
+          menuOrders: true,
+          menuQuotations: true,
+          menuSale: true,
+          menuDesign: true,
+          menuMarketing: true,
+          menuReports: true,
+          menuMedia: true,
+          menuMembers: true,
+          menuCustomers: true,
+          menuAi: true,
+          menuInstallations: true,
+        } : {
+          viewPrice: false,
+          viewRevenue: false,
+          menuProduction: false,
+          menuMeasurement: false,
+          menuOrders: false,
+          menuQuotations: false,
+          menuSale: false,
+          menuDesign: false,
+          menuMarketing: false,
+          menuReports: false,
+          menuMedia: false,
+          menuMembers: false,
+          menuCustomers: false,
+          menuAi: false,
+          menuInstallations: false,
+        },
+      };
+    }
+    return null;
+  }, [dbMember, user, userProfile, isAdmin]);
 
   const isManager = isAdmin || !!(currentMember?.role?.toLowerCase()?.includes('quản lý'));
 
