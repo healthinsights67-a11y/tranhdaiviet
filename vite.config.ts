@@ -16,9 +16,9 @@ export default defineConfig(({mode}) => {
           importScripts: ['/firebase-messaging-sw.js']
         },
         manifest: {
-          name: 'I NỘI THẤT',
-          short_name: 'I NỘI THẤT',
-          description: 'Hệ thống quản lý I NỘI THẤT',
+          name: 'Tủ 3 Miền',
+          short_name: 'Tủ 3 Miền',
+          description: 'Hệ thống quản lý Tủ 3 Miền',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',

@@ -522,7 +522,7 @@ export function QuotationPreview({
             await navigator.share({
               files: [file],
               title: `Báo giá ${getFileName()}`,
-              text: `Gửi anh/chị báo giá chi tiết từ I NỘI THẤT cho công trình ${quotation.constructionType || ''}.`,
+              text: `Gửi anh/chị báo giá chi tiết từ Tủ 3 Miền cho công trình ${quotation.constructionType || ''}.`,
             });
             toast.success("Chia sẻ báo giá thành công!");
           } catch (err: any) {
@@ -1077,7 +1077,7 @@ export function QuotationPreview({
                   {logoDataUrl || template.logoUrl ? (
                     <img src={logoDataUrl || template.logoUrl} className="w-[70%] max-w-[500px] object-contain grayscale" alt="Watermark" />
                   ) : (
-                    <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">{template.companyName}</div>
+                    <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">TỦ 3 MIỀN</div>
                   )}
               </div>
 
@@ -1093,9 +1093,9 @@ export function QuotationPreview({
                           ) : (
                             <>
                               <div className="flex items-baseline leading-none">
-                                 <span className="text-3xl font-black tracking-tighter" style={{ color: '#BE1E2D', fontFamily: 'Inter, sans-serif' }}>I</span>
-                                 <span className="text-4xl font-black mx-1" style={{ color: '#FBB03B', fontFamily: 'Inter, sans-serif' }}>NỘI</span>
-                                 <span className="text-3xl font-black tracking-tighter" style={{ color: '#BE1E2D', fontFamily: 'Inter, sans-serif' }}>THẤT</span>
+                                 <span className="text-3xl font-black tracking-tighter" style={{ color: '#BE1E2D', fontFamily: 'Inter, sans-serif' }}>TỦ</span>
+                                 <span className="text-4xl font-black mx-1" style={{ color: '#FBB03B', fontFamily: 'Inter, sans-serif' }}>3</span>
+                                 <span className="text-3xl font-black tracking-tighter" style={{ color: '#BE1E2D', fontFamily: 'Inter, sans-serif' }}>MIỀN</span>
                               </div>
                               <div className="text-[8px] font-black uppercase tracking-[0.2em] mt-1 text-black whitespace-nowrap">
                                  Kiến tạo không gian Việt

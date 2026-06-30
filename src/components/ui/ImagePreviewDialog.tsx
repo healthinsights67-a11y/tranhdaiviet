@@ -81,14 +81,14 @@ export function ImagePreviewDialog({
         await navigator.share({
           files: [file],
           title: 'Chia sẻ hình ảnh mẫu',
-          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ Tủ 3 Miền',
         });
         toast.success('Đã mở màn hình chia sẻ hình ảnh!');
       } else if (navigator.share) {
         // Fallback to sharing URL if browser supports sharing but not file objects
         await navigator.share({
           title: 'Chia sẻ hình ảnh mẫu',
-          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ Tủ 3 Miền',
           url: imageUrl,
         });
       } else {

@@ -139,7 +139,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
         <body>
           <div class="header">
             <div class="logo">
-               <h2 style="color: #e11d48; margin: 0; font-size: 18px;">I<span style="color: #f59e0b;"> NỘI </span>THẤT</h2>
+               <h2 style="color: #e11d48; margin: 0; font-size: 18px; font-weight: bold; letter-spacing: -0.5px;">TỦ <span style="color: #f59e0b;">3</span> MIỀN</h2>
                <p style="font-size: 11px; margin: 0; font-style: italic;">Kiến tạo không gian</p>
             </div>
             <div class="title">
