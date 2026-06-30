@@ -56,14 +56,14 @@ const DEFAULT_MATERIALS: MaterialItem[] = [
   { id: 30, name: 'Nhựa', unit: 'Tấm', quantity: '' },
   { id: 31, name: 'Nhựa', unit: 'Tấm', quantity: '' },
   { id: 32, name: 'Nhựa', unit: 'Tấm', quantity: '' },
-  { id: 33, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 34, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 35, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 36, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 37, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 38, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 39, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
-  { id: 40, name: 'Nẹp', options: ['Bịp đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 33, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 34, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 35, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 36, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 37, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 38, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 39, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
+  { id: 40, name: 'Nẹp', options: ['Bịt đầu', 'Cạnh', 'Vát'], unit: 'cái', quantity: '' },
 ];
 
 interface MaterialRequisitionFormProps {
@@ -175,6 +175,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                             ${opt} <div class="checkbox ${item.selectedOption === opt ? 'checked' : ''}"></div>
                           </span>
                         `).join(' ') : ''}
+                        ${item.type ? `<span style="font-weight: bold; margin-left: 4px;">${item.type}</span>` : ''}
                       </td>
                       <td align="center">${item.unit}</td>
                       <td align="center">${item.quantity || ''}</td>
@@ -205,6 +206,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                             ${opt} <div class="checkbox ${item.selectedOption === opt ? 'checked' : ''}"></div>
                           </span>
                         `).join(' ') : ''}
+                        ${item.type ? `<span style="font-weight: bold; margin-left: 4px;">${item.type}</span>` : ''}
                       </td>
                       <td align="center">${item.unit}</td>
                       <td align="center">${item.quantity || ''}</td>
@@ -336,15 +338,13 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                       ))}
                   </div>
                 )}
-                {!item.options && (
-                  <Input 
-                    list="material-list"
-                    className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                    placeholder="Loại/Khổ... (Nhập mã vật tư)"
-                    value={item.type || ''}
-                    onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
-                  />
-                )}
+                <Input 
+                  list="material-list"
+                  className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
+                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : "Loại/Khổ... (Nhập mã vật tư)"}
+                  value={item.type || ''}
+                  onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
+                />
               </div>
             ))}
           </div>
@@ -379,15 +379,13 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                       ))}
                   </div>
                 )}
-                {!item.options && (
-                  <Input 
-                    list="material-list"
-                    className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                    placeholder="Loại/Khổ... (Nhập mã vật tư)"
-                    value={item.type || ''}
-                    onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
-                  />
-                )}
+                <Input 
+                  list="material-list"
+                  className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
+                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : "Loại/Khổ... (Nhập mã vật tư)"}
+                  value={item.type || ''}
+                  onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
+                />
               </div>
             ))}
           </div>
