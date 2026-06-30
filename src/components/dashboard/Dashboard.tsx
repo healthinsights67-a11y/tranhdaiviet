@@ -59,7 +59,8 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
   const [hasShownAlerts, setHasShownAlerts] = React.useState(false);
 
-  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
+  const isManager = isAdmin || !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
   const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 
@@ -176,7 +177,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   
   // Tìm các khách hàng chưa được lên lịch đo đạc (phục vụ cảnh báo bỏ sót)
   const unscheduledMeasurements = React.useMemo(() => {
-    const isManager = ['quản lý', 'giám đốc', 'chủ sở hữu'].some(role => 
+    const isManager = ['quản lý', 'giám đốc', 'chủ sở hữu', 'admin'].some(role => 
       currentUser?.role?.toLowerCase()?.includes(role)
     ) || !!currentUser?.permissions?.menuMeasurement;
 
@@ -407,7 +408,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-sm font-bold tracking-tight">Cảnh báo bỏ sót lịch đo đạc</CardTitle>
                   <CardDescription className="text-[10px] text-destructive/80 mt-0.5">
-                    {currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('giám đốc') || currentUser?.role?.toLowerCase()?.includes('chủ sở hữu')
+                    {currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('giám đốc') || currentUser?.role?.toLowerCase()?.includes('chủ sở hữu') || currentUser?.role?.toLowerCase() === 'admin'
                       ? `Phát hiện ${unscheduledMeasurements.length} khách hàng của Sales đang ở trạng thái tư vấn/chốt cọc nhưng chưa được xếp lịch đo đạc.`
                       : `Bạn đang có ${unscheduledMeasurements.length} khách hàng chưa được lên lịch đo đạc. Hãy liên hệ khách hàng để xếp lịch ngay.`}
                   </CardDescription>
