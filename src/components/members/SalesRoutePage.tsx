@@ -220,25 +220,32 @@ export function SalesRoutePage() {
       } else if (customerInput.trim() && customerInput !== 'none') {
         finalCustomerName = customerInput.trim();
         finalCustomerPhone = phoneInput.trim() || 'Chưa có SĐT';
-        // Create new customer payload
-        const newId = Math.random().toString(36).substr(2, 9);
-        const newCode = `KH${new Date().getFullYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
         
-        customerPayload = {
-          id: newId,
-          code: newCode,
-          name: finalCustomerName,
-          phone: finalCustomerPhone,
-          address: address || '',
-          stage: 'consulting',
-          notes: noteInput.trim() || 'Khách hàng tự động tạo từ Check-in',
-          assignedSaleId: currentMember ? currentMember.id : '',
-          createdAt: now,
-          orderValue: 0
-        };
-        
-        finalCustomerId = newId;
-        isNewCustomer = true;
+        // Only save new customer if they have a phone number (SĐT)
+        const hasPhone = !!phoneInput.trim();
+        if (hasPhone) {
+          const newId = Math.random().toString(36).substr(2, 9);
+          const newCode = `KH${new Date().getFullYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          
+          customerPayload = {
+            id: newId,
+            code: newCode,
+            name: finalCustomerName,
+            phone: finalCustomerPhone,
+            address: address || '',
+            stage: 'consulting',
+            notes: noteInput.trim() || 'Khách hàng tự động tạo từ Check-in',
+            assignedSaleId: currentMember ? currentMember.id : '',
+            createdAt: now,
+            orderValue: 0
+          };
+          
+          finalCustomerId = newId;
+          isNewCustomer = true;
+        } else {
+          finalCustomerId = '';
+          isNewCustomer = false;
+        }
       }
 
       const routeData = {
