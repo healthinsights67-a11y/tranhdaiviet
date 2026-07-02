@@ -307,7 +307,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   const unscheduledInstallCustomersList = React.useMemo(() => {
     return customers.filter(c => 
-      (['contracted', 'production'].includes(c.stage)) && 
+      (['contracted', 'production', 'installation'].includes(c.stage)) && 
       !filteredInstallationSchedules.some((s: any) => {
         if (s.status === 'cancelled') return false;
         if (s.customerId === c.id) return true;
