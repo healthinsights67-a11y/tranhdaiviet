@@ -335,3 +335,17 @@ export interface SystemSettings {
   };
   updatedAt?: string;
 }
+
+export interface AccessoryConfig {
+  id: string;
+  name: string;
+  code: string;
+  option?: string;
+  unit: string;
+  preTaxPrice?: number;
+  listedPrice?: number;
+  finalPrice?: number;
+  discountPercent?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}

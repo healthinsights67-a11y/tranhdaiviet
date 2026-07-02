@@ -329,3 +329,17 @@ export const MaterialConfigSchema = z.object({
   updatedAt: z.string().optional(),
 });
 
+export const AccessoryConfigSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Tên phụ kiện không được để trống"),
+  code: z.string().min(1, "Mã hàng hoá không được để trống"),
+  option: z.string().optional(),
+  unit: z.string().min(1, "Đơn vị tính không được để trống"),
+  preTaxPrice: z.number().optional(),
+  listedPrice: z.number().optional(),
+  finalPrice: z.number().optional(),
+  discountPercent: z.number().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+

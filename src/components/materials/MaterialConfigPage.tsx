@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { MaterialConfig, Task, Quotation } from '@/src/types';
-import { MaterialConfigSchema } from '@/src/schemas';
+import { MaterialConfig, Task, Quotation, AccessoryConfig } from '@/src/types';
+import { MaterialConfigSchema, AccessoryConfigSchema } from '@/src/schemas';
 import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,24 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [tempDiscounts, setTempDiscounts] = useState<Record<string, string>>({});
   const [quickApplyCategory, setQuickApplyCategory] = useState('');
   const [quickApplyPercent, setQuickApplyPercent] = useState('');
+
+  // Accessory config states
+  const [accessories, setAccessories] = useState<AccessoryConfig[]>([]);
+  const [accessorySearchTerm, setAccessorySearchTerm] = useState('');
+  const [isAccessoryDialogOpen, setIsAccessoryDialogOpen] = useState(false);
+  const [editingAccessory, setEditingAccessory] = useState<AccessoryConfig | null>(null);
+  const [accessoryFormData, setAccessoryFormData] = useState({
+    name: '',
+    code: '',
+    option: '',
+    unit: 'Cái',
+    preTaxPrice: 0,
+    listedPrice: 0,
+    discountPercent: 0
+  });
+  const [tempAccessoryDiscounts, setTempAccessoryDiscounts] = useState<Record<string, string>>({});
+  const [quickApplyAccName, setQuickApplyAccName] = useState('');
+  const [quickApplyAccPercent, setQuickApplyAccPercent] = useState('');
 
   const parsePrice = (val: string | number | undefined | null): number => {
     if (val === undefined || val === null) return 0;
@@ -391,6 +409,140 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'accessoryConfigs'), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as AccessoryConfig);
+      data.sort((a, b) => a.name.localeCompare(b.name) || a.code.localeCompare(b.code));
+      setAccessories(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'Tải danh sách phụ kiện');
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenAccessoryDialog = (item?: AccessoryConfig) => {
+    if (item) {
+      setEditingAccessory(item);
+      setAccessoryFormData({
+        name: item.name,
+        code: item.code,
+        option: item.option || '',
+        unit: item.unit,
+        preTaxPrice: item.preTaxPrice || 0,
+        listedPrice: item.listedPrice || 0,
+        discountPercent: item.discountPercent || 0
+      });
+    } else {
+      setEditingAccessory(null);
+      setAccessoryFormData({
+        name: '',
+        code: '',
+        option: '',
+        unit: 'Cái',
+        preTaxPrice: 0,
+        listedPrice: 0,
+        discountPercent: 0
+      });
+    }
+    setIsAccessoryDialogOpen(true);
+  };
+
+  const handleSaveAccessory = async () => {
+    try {
+      const parsedData = AccessoryConfigSchema.parse({
+        id: editingAccessory ? editingAccessory.id : doc(collection(db, 'accessoryConfigs')).id,
+        name: accessoryFormData.name.trim(),
+        code: accessoryFormData.code.trim(),
+        option: accessoryFormData.option.trim(),
+        unit: accessoryFormData.unit.trim(),
+        preTaxPrice: Number(accessoryFormData.preTaxPrice) || 0,
+        listedPrice: Number(accessoryFormData.listedPrice) || 0,
+        discountPercent: Number(accessoryFormData.discountPercent) || 0,
+        finalPrice: Math.round((Number(accessoryFormData.preTaxPrice) || 0) * (1 - (Number(accessoryFormData.discountPercent) || 0) / 100))
+      });
+
+      const docId = parsedData.id;
+      await setDoc(doc(db, 'accessoryConfigs', docId), {
+        ...parsedData,
+        createdAt: editingAccessory ? (editingAccessory.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      toast.success(editingAccessory ? 'Cập nhật phụ kiện thành công' : 'Thêm phụ kiện mới thành công');
+      setIsAccessoryDialogOpen(false);
+    } catch (error: any) {
+      toast.error('Lỗi khi lưu phụ kiện: ' + (error?.message || error));
+    }
+  };
+
+  const handleDeleteAccessory = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'accessoryConfigs', id));
+      toast.success('Đã xóa phụ kiện thành công');
+    } catch (error: any) {
+      toast.error('Lỗi khi xóa phụ kiện: ' + (error?.message || error));
+    }
+  };
+
+  const handleSaveInlineAccessoryDiscount = async (item: AccessoryConfig, valueStr: string) => {
+    const value = Number(valueStr);
+    if (isNaN(value) || value < 0 || value > 100) {
+      toast.error('Chiết khấu phải là số từ 0 đến 100');
+      return;
+    }
+    const finalPrice = Math.round((item.preTaxPrice || 0) * (1 - value / 100));
+    try {
+      await updateDoc(doc(db, 'accessoryConfigs', item.id), {
+        discountPercent: value,
+        finalPrice: finalPrice,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success(`Đã cập nhật chiết khấu phụ kiện mã ${item.code} thành ${value}%`);
+      setTempAccessoryDiscounts(prev => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    } catch (error: any) {
+      toast.error('Không thể cập nhật chiết khấu phụ kiện: ' + (error?.message || ''));
+    }
+  };
+
+  const handleApplyAccessoryGroupDiscount = async () => {
+    if (!quickApplyAccName) {
+      toast.error('Vui lòng chọn tên phụ kiện');
+      return;
+    }
+    const percent = Number(quickApplyAccPercent);
+    if (isNaN(percent) || percent < 0 || percent > 100 || quickApplyAccPercent.trim() === '') {
+      toast.error('Vui lòng nhập chiết khấu hợp lệ (từ 0 đến 100)');
+      return;
+    }
+
+    const itemsToUpdate = accessories.filter(acc => acc.name === quickApplyAccName);
+    if (itemsToUpdate.length === 0) {
+      toast.error('Không tìm thấy sản phẩm phụ kiện nào');
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+      itemsToUpdate.forEach(item => {
+        const finalPrice = Math.round((item.preTaxPrice || 0) * (1 - percent / 100));
+        batch.update(doc(db, 'accessoryConfigs', item.id), {
+          discountPercent: percent,
+          finalPrice: finalPrice,
+          updatedAt: new Date().toISOString()
+        });
+      });
+      await batch.commit();
+      toast.success(`Đã cập nhật chiết khấu ${percent}% cho toàn bộ ${itemsToUpdate.length} phụ kiện "${quickApplyAccName}"`);
+      setQuickApplyAccPercent('');
+    } catch (error: any) {
+      toast.error('Lỗi khi cập nhật chiết khấu hàng loạt phụ kiện: ' + (error?.message || ''));
+    }
+  };
+
   const handleOpenDialog = (item?: MaterialConfig) => {
     if (item) {
       setEditingItem(item);
@@ -483,7 +635,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       <Tabs defaultValue="profit" className="flex-1 flex flex-col min-h-0">
         <TabsList className="w-full md:w-auto self-start bg-secondary/50 p-1 rounded-xl">
           <TabsTrigger value="profit" className="rounded-lg">Phân tích Lãi Thực</TabsTrigger>
-          <TabsTrigger value="config" className="rounded-lg">Cấu hình Giá</TabsTrigger>
+          <TabsTrigger value="config" className="rounded-lg">Giá Vật Tư Nhựa</TabsTrigger>
+          <TabsTrigger value="accessory" className="rounded-lg">Giá Phụ Kiện</TabsTrigger>
         </TabsList>
         
         <TabsContent value="config" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
@@ -666,6 +819,181 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           </div>
         </TabsContent>
 
+        <TabsContent value="accessory" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
+          <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
+            <div className="relative flex-1 min-w-[250px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Tìm kiếm phụ kiện theo mã hoặc tên..." 
+                className="pl-9"
+                value={accessorySearchTerm}
+                onChange={(e) => setAccessorySearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="text-sm font-medium text-muted-foreground hidden sm:block">
+                Tổng số: <span className="text-foreground">{
+                  accessories.filter(a => 
+                    a.name.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                    a.code.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                    (a.option || '').toLowerCase().includes(accessorySearchTerm.toLowerCase())
+                  ).length
+                }</span> phụ kiện
+              </div>
+              <Button onClick={() => handleOpenAccessoryDialog()} className="gap-2">
+                <Plus className="h-4 w-4" /> Thêm phụ kiện
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Apply Accessory Discount Panel */}
+          <div className="flex items-center justify-between gap-4 bg-amber-50/20 border border-amber-200/50 p-4 rounded-xl shadow-sm flex-wrap">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-semibold text-amber-800">Áp dụng nhanh chiết khấu cho nhóm phụ kiện:</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-w-xs flex-1"
+                value={quickApplyAccName}
+                onChange={(e) => setQuickApplyAccName(e.target.value)}
+              >
+                <option value="">-- Chọn tên phụ kiện --</option>
+                {Array.from(new Set(accessories.map(a => a.name))).map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1.5 w-24">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="20"
+                  className="h-9 text-center font-bold text-amber-700 bg-amber-50/30 border-amber-200"
+                  value={quickApplyAccPercent}
+                  onChange={(e) => setQuickApplyAccPercent(e.target.value)}
+                />
+                <span className="text-sm font-bold text-amber-800">%</span>
+              </div>
+              <Button 
+                onClick={handleApplyAccessoryGroupDiscount} 
+                className="h-9 bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                disabled={!quickApplyAccName || !quickApplyAccPercent}
+              >
+                <Check className="h-4 w-4" /> Áp dụng
+              </Button>
+            </div>
+          </div>
+
+          <div className="border rounded-xl bg-card flex-1 overflow-hidden flex flex-col shadow-sm">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold w-12 text-center">STT</th>
+                    <th className="px-4 py-4 font-semibold border-l">Tên phụ kiện</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l w-28">Mã phụ kiện</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l">Phân loại</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l w-20">ĐVT</th>
+                    <th className="px-4 py-4 font-semibold text-right border-l w-32">Đơn giá trước thuế</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l w-24 text-amber-700">CK (%)</th>
+                    <th className="px-4 py-4 font-semibold text-right border-l w-32 text-amber-800 bg-amber-50/10">Giá sau CK</th>
+                    <th className="px-4 py-4 font-semibold text-right border-l w-32 text-green-600 dark:text-green-450">Niêm yết</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l w-24">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {accessories.filter(a => 
+                    a.name.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                    a.code.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                    (a.option || '').toLowerCase().includes(accessorySearchTerm.toLowerCase())
+                  ).length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground text-xs">
+                        Không tìm thấy phụ kiện nào
+                      </td>
+                    </tr>
+                  ) : (
+                    accessories.filter(a => 
+                      a.name.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                      a.code.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
+                      (a.option || '').toLowerCase().includes(accessorySearchTerm.toLowerCase())
+                    ).map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-center font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-foreground/80 border-l">{item.name}</td>
+                        <td className="px-4 py-3 text-center border-l font-mono text-xs">{item.code}</td>
+                        <td className="px-4 py-3 text-center border-l">{item.option || '-'}</td>
+                        <td className="px-4 py-3 text-center border-l font-medium">{item.unit}</td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-700 border-l">{(item.preTaxPrice || 0).toLocaleString('vi-VN')}</td>
+                        
+                        <td className="px-4 py-2 text-center border-l w-24">
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="w-14 h-7 text-center rounded border border-amber-200/50 bg-amber-50/10 text-xs font-bold text-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              value={tempAccessoryDiscounts[item.id] !== undefined ? tempAccessoryDiscounts[item.id] : (item.discountPercent || '')}
+                              onChange={(e) => {
+                                setTempAccessoryDiscounts(prev => ({ ...prev, [item.id]: e.target.value }));
+                              }}
+                              onBlur={(e) => handleSaveInlineAccessoryDiscount(item, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveInlineAccessoryDiscount(item, (e.target as HTMLInputElement).value);
+                                }
+                              }}
+                              placeholder="0"
+                            />
+                            <span className="text-xs font-semibold text-amber-600">%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right font-bold text-amber-700 border-l bg-amber-50/30">
+                          {(() => {
+                            const activeDiscountStr = tempAccessoryDiscounts[item.id] !== undefined ? tempAccessoryDiscounts[item.id] : String(item.discountPercent || 0);
+                            const activeDiscount = Number(activeDiscountStr);
+                            const discount = isNaN(activeDiscount) ? 0 : activeDiscount;
+                            const finalPrice = Math.round((item.preTaxPrice || 0) * (1 - discount / 100));
+                            return finalPrice.toLocaleString('vi-VN');
+                          })()}
+                        </td>
+
+                        <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400 border-l">{(item.listedPrice || 0).toLocaleString('vi-VN')}</td>
+                        
+                        <td className="px-4 py-2 text-center border-l">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => handleOpenAccessoryDialog(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 text-red-500">
+                                <Trash2 className="h-4 w-4" />
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Xác nhận xóa phụ kiện</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Bạn có chắc chắn muốn xóa phụ kiện <strong>{item.name} ({item.option || ''})</strong> có mã <strong>{item.code}</strong> khỏi hệ thống? Thao tác này không thể hoàn tác.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-500 hover:bg-red-600 text-white" onClick={() => handleDeleteAccessory(item.id)}>Xóa phụ kiện</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="profit" className="flex-1 mt-4 data-[state=active]:block">
           <ProfitAnalysis tasks={tasks} quotations={quotations} />
         </TabsContent>
@@ -826,6 +1154,110 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Hủy</Button>
             <Button onClick={handleSave}>Lưu thông tin</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accessory Add/Edit Dialog */}
+      <Dialog open={isAccessoryDialogOpen} onOpenChange={setIsAccessoryDialogOpen}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingAccessory ? 'Sửa thông tin phụ kiện' : 'Thêm phụ kiện mới'}</DialogTitle>
+            <DialogDescription>
+              Nhập đầy đủ thông tin phụ kiện. Giá bán thực tế (sau chiết khấu) sẽ tự động tính toán.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Tên phụ kiện</Label>
+              <Input
+                className="col-span-3 font-semibold"
+                value={accessoryFormData.name}
+                onChange={(e) => setAccessoryFormData({ ...accessoryFormData, name: e.target.value })}
+                placeholder="Ví dụ: Bản lề, Tay nắm, Pittông..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Mã hàng hoá</Label>
+              <Input
+                className="col-span-3 font-mono font-bold"
+                value={accessoryFormData.code}
+                onChange={(e) => setAccessoryFormData({ ...accessoryFormData, code: e.target.value })}
+                placeholder="Ví dụ: BL-01, TN-03..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Phân loại/Quy cách</Label>
+              <Input
+                className="col-span-3"
+                value={accessoryFormData.option}
+                onChange={(e) => setAccessoryFormData({ ...accessoryFormData, option: e.target.value })}
+                placeholder="Ví dụ: Thẳng, Cong vừa, 14mm..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Đơn vị tính</Label>
+              <Input
+                className="col-span-3"
+                value={accessoryFormData.unit}
+                onChange={(e) => setAccessoryFormData({ ...accessoryFormData, unit: e.target.value })}
+                placeholder="Ví dụ: Cái, Bộ, Cuộn..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Giá trước thuế</Label>
+              <div className="col-span-3 relative">
+                <Input
+                  type="text"
+                  className="font-mono text-right pr-9 font-bold"
+                  value={accessoryFormData.preTaxPrice ? accessoryFormData.preTaxPrice.toLocaleString('vi-VN') : ''}
+                  onChange={(e) => setAccessoryFormData({ ...accessoryFormData, preTaxPrice: parsePrice(e.target.value) })}
+                  placeholder="0"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">đ</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Đơn giá niêm yết</Label>
+              <div className="col-span-3 relative">
+                <Input
+                  type="text"
+                  className="font-mono text-right pr-9 font-bold text-green-600"
+                  value={accessoryFormData.listedPrice ? accessoryFormData.listedPrice.toLocaleString('vi-VN') : ''}
+                  onChange={(e) => setAccessoryFormData({ ...accessoryFormData, listedPrice: parsePrice(e.target.value) })}
+                  placeholder="0"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-green-600 font-semibold">đ</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Chiết khấu (%)</Label>
+              <div className="col-span-3 relative">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  className="font-mono text-right pr-9 font-semibold text-amber-600"
+                  value={accessoryFormData.discountPercent || ''}
+                  onChange={(e) => setAccessoryFormData({ ...accessoryFormData, discountPercent: Number(e.target.value) })}
+                  placeholder="0"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-amber-600 font-bold">%</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-amber-800 font-bold">Giá sau chiết khấu</Label>
+              <Input
+                type="text"
+                disabled
+                className="col-span-3 bg-amber-50/50 font-bold text-amber-800 border-amber-200 text-right pr-4"
+                value={Math.round((accessoryFormData.preTaxPrice || 0) * (1 - (accessoryFormData.discountPercent || 0) / 100)).toLocaleString('vi-VN')}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAccessoryDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleSaveAccessory}>Lưu phụ kiện</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
