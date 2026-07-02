@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/src/lib/utils';
-import { Customer, Member, MaterialConfig } from '@/src/types';
+import { Customer, Member, MaterialConfig, AccessoryConfig } from '@/src/types';
 import { toast } from 'sonner';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
@@ -87,13 +87,17 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
   const [address, setAddress] = React.useState(data?.address || customerInfo?.address || '');
   const [items, setItems] = React.useState<MaterialItem[]>(data?.items || DEFAULT_MATERIALS);
   const [materialConfigs, setMaterialConfigs] = React.useState<MaterialConfig[]>([]);
+  const [accessoryConfigs, setAccessoryConfigs] = React.useState<AccessoryConfig[]>([]);
   const printRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materialConfigs'), (snap) => {
       setMaterialConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MaterialConfig));
     });
-    return () => unsub();
+    const unsubAcc = onSnapshot(collection(db, 'accessoryConfigs'), (snap) => {
+      setAccessoryConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AccessoryConfig));
+    });
+    return () => { unsub(); unsubAcc(); };
   }, []);
 
   const handleUpdateItem = (id: number, field: keyof MaterialItem, value: any) => {
@@ -252,7 +256,7 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
           </div>
         </div>
 
-        <datalist id="material-list">
+        <datalist id="material-list-nhua">
           {materialConfigs.map(m => {
             const categoryClean = (m.category || '')
               .replace('HẠNG MỤC BÁO GIÁ NHỰA ', '')
@@ -260,6 +264,15 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
               .trim();
             const sizeStr = [m.width || '', m.thickness || '', m.length || ''].filter(Boolean).join('x');
             const displayName = m.name || `${categoryClean} ${sizeStr}`.trim() || 'Vật tư';
+            return (
+              <option key={m.id} value={`${m.code} - ${displayName}`} />
+            );
+          })}
+        </datalist>
+
+        <datalist id="material-list-phukien">
+          {accessoryConfigs.map(m => {
+            const displayName = m.name || 'Phụ kiện';
             return (
               <option key={m.id} value={`${m.code} - ${displayName}`} />
             );
@@ -347,9 +360,9 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                   </div>
                 )}
                 <Input 
-                  list="material-list"
+                  list={item.name.toLowerCase() === 'nhựa' ? 'material-list-nhua' : 'material-list-phukien'}
                   className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : "Loại/Khổ... (Nhập mã vật tư)"}
+                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : (item.name.toLowerCase() === 'nhựa' ? "Loại/Khổ... (Nhập mã vật tư)" : "Loại... (Nhập mã phụ kiện)")}
                   value={item.type || ''}
                   onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
                 />
@@ -388,9 +401,9 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
                   </div>
                 )}
                 <Input 
-                  list="material-list"
+                  list={item.name.toLowerCase() === 'nhựa' ? 'material-list-nhua' : 'material-list-phukien'}
                   className="h-6 text-[10px] bg-secondary/5 hover:bg-secondary/10 focus:bg-background border-0 rounded-md px-2 mt-0.5 transition-colors"
-                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : "Loại/Khổ... (Nhập mã vật tư)"}
+                  placeholder={item.options ? "Loại/Khổ/Màu/Kích thước khác..." : (item.name.toLowerCase() === 'nhựa' ? "Loại/Khổ... (Nhập mã vật tư)" : "Loại... (Nhập mã phụ kiện)")}
                   value={item.type || ''}
                   onChange={(e) => handleUpdateItem(item.id, 'type', e.target.value)}
                 />
