@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { Task, Quotation, MaterialConfig } from '@/src/types';
+import { Task, Quotation, MaterialConfig, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BadgeDollarSign, TrendingUp, TrendingDown, Package, CheckCircle2 } from 'lucide-react';
+import { BadgeDollarSign, TrendingUp, TrendingDown, Package, CheckCircle2, Calendar } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
-import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { TaskCard } from '../kanban/TaskCard';
 
 interface ProfitAnalysisProps {
@@ -11,8 +11,16 @@ interface ProfitAnalysisProps {
   quotations: Quotation[];
 }
 
+const getStartOfWeek = (d: Date) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.setDate(diff));
+};
+
 export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotations }) => {
   const [materialConfigs, setMaterialConfigs] = React.useState<MaterialConfig[]>([]);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
 
   React.useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materialConfigs'), (snap) => {
@@ -21,9 +29,20 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
     return () => unsub();
   }, []);
 
+  React.useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'customers'), (snap) => {
+      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Customer));
+    });
+    return () => unsub();
+  }, []);
+
   const completedTasks = useMemo(() => {
     return tasks.filter(t => t.status === 'done');
   }, [tasks]);
+
+  const [timeFilter, setTimeFilter] = React.useState<string>('all');
+  const [selectedMonth, setSelectedMonth] = React.useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = React.useState<number>(new Date().getFullYear());
 
   const profitData = useMemo(() => {
     // 1. Filter completed tasks to only keep design tasks
@@ -45,15 +64,31 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
     }> = {};
 
     designTasks.forEach(task => {
-      // Find corresponding quotation. Prefer accepted quotations.
-      const possibleQuotations = quotations.filter(q => 
-        (q.customerName && task.customerName && q.customerName === task.customerName) ||
-        (q.customerName && task.title.toLowerCase().includes(q.customerName.toLowerCase())) ||
-        ((q as any).customerId && task.customerId && (q as any).customerId === task.customerId)
+      // Find corresponding customer
+      const cust = customers.find(c => 
+        (task.customerId && c.id === task.customerId) || 
+        (task.phone && c.phone?.trim()?.replace(/\D/g, '') === task.phone?.trim()?.replace(/\D/g, ''))
       );
       
-      const quotation = possibleQuotations.find(q => q.status === 'accepted') || possibleQuotations[0];
-      const resolvedCustomerName = (task.customerName || quotation?.customerName || 'N/A').trim();
+      const hasPostDepositStage = cust && ['contracted', 'production', 'installation', 'completed'].includes(cust.stage);
+      
+      const matchingQuotations = quotations.filter(q => {
+        if (task.customerId && q.customerId === task.customerId) return true;
+        if (task.phone && q.phone?.trim()?.replace(/\D/g, '') === task.phone?.trim()?.replace(/\D/g, '')) return true;
+        if (cust && q.customerId === cust.id) return true;
+        if (cust && q.phone?.trim()?.replace(/\D/g, '') === cust.phone?.trim()?.replace(/\D/g, '')) return true;
+        return false;
+      });
+
+      const hasValidQuotation = matchingQuotations.some(q => q.status === 'deposit' || q.status === 'accepted');
+
+      // Only show if customer has deposited (chốt cọc) or accepted (chốt báo giá)
+      if (!hasPostDepositStage && !hasValidQuotation) {
+        return;
+      }
+
+      const quotation = matchingQuotations.find(q => q.status === 'accepted' || q.status === 'deposit') || matchingQuotations[0];
+      const resolvedCustomerName = (task.customerName || quotation?.customerName || cust?.name || 'N/A').trim();
       
       if (!resolvedCustomerName || resolvedCustomerName === 'N/A') return;
 
@@ -107,15 +142,17 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
           quotationValue,
           materialCost: taskMaterialCost,
           profit: 0,
-          date: task.createdAt,
+          date: task.completedAt || task.createdAt,
           task: task,
         };
       } else {
         // Accumulate material cost
         grouped[resolvedCustomerName].materialCost += taskMaterialCost;
         // Keep the latest task for this customer
-        if (new Date(task.createdAt).getTime() > new Date(grouped[resolvedCustomerName].date).getTime()) {
-          grouped[resolvedCustomerName].date = task.createdAt;
+        const currentTaskDate = task.completedAt || task.createdAt;
+        const groupedTaskDate = grouped[resolvedCustomerName].task.completedAt || grouped[resolvedCustomerName].date;
+        if (new Date(currentTaskDate).getTime() > new Date(groupedTaskDate).getTime()) {
+          grouped[resolvedCustomerName].date = currentTaskDate;
           grouped[resolvedCustomerName].taskId = task.id;
           grouped[resolvedCustomerName].taskTitle = task.title;
           grouped[resolvedCustomerName].task = task;
@@ -126,12 +163,59 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
     return Object.values(grouped).map(item => {
       item.profit = item.quotationValue - item.materialCost;
       return item;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [completedTasks, materialConfigs, quotations]);
+    });
+  }, [completedTasks, materialConfigs, quotations, customers]);
 
-  const totalRevenue = profitData.reduce((acc, curr) => acc + curr.quotationValue, 0);
-  const totalCost = profitData.reduce((acc, curr) => acc + curr.materialCost, 0);
-  const totalProfit = profitData.reduce((acc, curr) => acc + curr.profit, 0);
+  const filteredProfitData = useMemo(() => {
+    const now = new Date();
+    
+    const clearTime = (d: Date) => {
+      const nd = new Date(d);
+      nd.setHours(0, 0, 0, 0);
+      return nd;
+    };
+
+    return profitData.filter(item => {
+      if (!item.date) return false;
+      const itemDate = new Date(item.date);
+      
+      if (timeFilter === 'all') return true;
+      
+      if (timeFilter === 'this-week') {
+        const startOfWeek = clearTime(getStartOfWeek(now));
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        return itemDate >= startOfWeek && itemDate < endOfWeek;
+      }
+      
+      if (timeFilter === 'last-week') {
+        const startOfThisWeek = clearTime(getStartOfWeek(now));
+        const startOfLastWeek = new Date(startOfThisWeek);
+        startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+        return itemDate >= startOfLastWeek && itemDate < startOfThisWeek;
+      }
+      
+      if (timeFilter === 'this-month') {
+        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+      }
+      
+      if (timeFilter === 'last-month') {
+        const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+        const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+        return itemDate.getMonth() === lastMonth && itemDate.getFullYear() === lastMonthYear;
+      }
+      
+      if (timeFilter === 'specific-month') {
+        return itemDate.getMonth() === (selectedMonth - 1) && itemDate.getFullYear() === selectedYear;
+      }
+      
+      return true;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [profitData, timeFilter, selectedMonth, selectedYear]);
+
+  const totalRevenue = filteredProfitData.reduce((acc, curr) => acc + curr.quotationValue, 0);
+  const totalCost = filteredProfitData.reduce((acc, curr) => acc + curr.materialCost, 0);
+  const totalProfit = filteredProfitData.reduce((acc, curr) => acc + curr.profit, 0);
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
   return (
@@ -141,7 +225,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
           <CardContent className="p-6 flex flex-col items-center justify-center text-center">
             <CheckCircle2 className="h-8 w-8 text-blue-500 mb-2" />
             <p className="text-sm text-blue-600/80 font-medium">Khách hàng thiết kế</p>
-            <h3 className="text-3xl font-bold text-blue-700">{profitData.length}</h3>
+            <h3 className="text-3xl font-bold text-blue-700">{filteredProfitData.length}</h3>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50/50 border-emerald-100">
@@ -167,6 +251,53 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
         </Card>
       </div>
 
+      {/* Time Period Filter Bar */}
+      <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground/80">Bộ lọc thời gian:</span>
+        </div>
+        
+        <div className="flex items-center gap-3 flex-wrap">
+          <select
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-[160px]"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+          >
+            <option value="all">Tất cả thời gian</option>
+            <option value="this-week">Tuần này</option>
+            <option value="last-week">Tuần trước</option>
+            <option value="this-month">Tháng này</option>
+            <option value="last-month">Tháng trước</option>
+            <option value="specific-month">Chọn tháng cụ thể</option>
+          </select>
+
+          {timeFilter === 'specific-month' && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-28"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>Tháng {m}</option>
+                ))}
+              </select>
+              
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-24"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                  <option key={y} value={y}>Năm {y}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -181,14 +312,14 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
               </tr>
             </thead>
             <tbody className="divide-y">
-              {profitData.length === 0 ? (
+              {filteredProfitData.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                    Chưa có đơn hàng nào hoàn thành
+                    Chưa có đơn hàng nào hoàn thành trong khoảng thời gian này
                   </td>
                 </tr>
               ) : (
-                profitData.map((data) => (
+                filteredProfitData.map((data) => (
                   <tr key={data.taskId} className="hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-3 font-medium text-primary">
                       <TaskCard task={data.task} renderAsTextOnly={true} />
