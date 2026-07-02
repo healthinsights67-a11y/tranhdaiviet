@@ -324,6 +324,7 @@ export const MaterialConfigSchema = z.object({
   listedMeterPrice: z.number().optional(),
   listedBoxPrice: z.number().optional(),
   finalPrice: z.number().optional(),
+  discountPercent: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

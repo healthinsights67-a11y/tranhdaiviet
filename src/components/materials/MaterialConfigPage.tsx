@@ -49,6 +49,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     preTaxBoxPrice: '',
     listedMeterPrice: '',
     listedBoxPrice: '',
+    discountPercent: '',
   });
 
   const parsePrice = (val: string | number | undefined | null): number => {
@@ -152,6 +153,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         preTaxBoxPrice,
         listedMeterPrice,
         listedBoxPrice,
+        discountPercent: Number(bulkDefaults.discountPercent) || 0,
       });
     });
 
@@ -198,6 +200,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         preTaxBoxPrice: Number(bulkDefaults.preTaxBoxPrice) || 0,
         listedMeterPrice: Number(bulkDefaults.listedMeterPrice) || 0,
         listedBoxPrice: Number(bulkDefaults.listedBoxPrice) || 0,
+        discountPercent: Number(bulkDefaults.discountPercent) || 0,
       }
     ]);
   };
@@ -215,6 +218,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       if (!updated.preTaxBoxPrice && bulkDefaults.preTaxBoxPrice) updated.preTaxBoxPrice = Number(bulkDefaults.preTaxBoxPrice);
       if (!updated.listedMeterPrice && bulkDefaults.listedMeterPrice) updated.listedMeterPrice = Number(bulkDefaults.listedMeterPrice);
       if (!updated.listedBoxPrice && bulkDefaults.listedBoxPrice) updated.listedBoxPrice = Number(bulkDefaults.listedBoxPrice);
+      if ((updated.discountPercent === undefined || updated.discountPercent === 0) && bulkDefaults.discountPercent) updated.discountPercent = Number(bulkDefaults.discountPercent);
       return updated;
     }));
     toast.success('Đã áp dụng thông số mặc định cho các ô trống');
@@ -240,7 +244,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         continue;
       }
 
-      const finalPrice = item.preTaxBoxPrice || 0;
+      const discount = Number(item.discountPercent) || 0;
+      const finalPrice = Math.round((Number(item.preTaxBoxPrice) || 0) * (1 - discount / 100));
       
       try {
         const docRef = doc(collection(db, 'materialConfigs'));
@@ -257,6 +262,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           preTaxBoxPrice: Number(item.preTaxBoxPrice) || 0,
           listedMeterPrice: Number(item.listedMeterPrice) || 0,
           listedBoxPrice: Number(item.listedBoxPrice) || 0,
+          discountPercent: discount,
           finalPrice: finalPrice,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -306,7 +312,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     preTaxBoxPrice: 0,
     listedMeterPrice: 0,
     listedBoxPrice: 0,
-    category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST'
+    category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+    discountPercent: 0
   });
 
   useEffect(() => {
@@ -335,14 +342,16 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         preTaxBoxPrice: item.preTaxBoxPrice || 0,
         listedMeterPrice: item.listedMeterPrice || 0,
         listedBoxPrice: item.listedBoxPrice || 0,
-        category: item.category || 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST'
+        category: item.category || 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+        discountPercent: item.discountPercent || 0
       });
     } else {
       setEditingItem(null);
       setFormData({ 
         code: '', width: '', thickness: '', length: '', itemsPerBox: '', unit: 'Hộp', 
         preTaxMeterPrice: 0, preTaxBoxPrice: 0, listedMeterPrice: 0, listedBoxPrice: 0, 
-        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST' 
+        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+        discountPercent: 0
       });
     }
     setIsDialogOpen(true);
@@ -353,7 +362,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       toast.error('Vui lòng nhập đủ mã hàng và đơn vị tính');
       return;
     }
-    const finalPrice = formData.preTaxBoxPrice || 0;
+    const discount = formData.discountPercent || 0;
+    const finalPrice = Math.round((formData.preTaxBoxPrice || 0) * (1 - discount / 100));
 
     try {
       if (editingItem) {
@@ -448,6 +458,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                     <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>SỐ TẤM / 1 HỘP</th>
                     <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>ĐVT</th>
                     <th className="px-4 py-4 font-semibold text-center border-l" colSpan={2}>Đơn giá trước thuế</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l" rowSpan={2}>CK (%)</th>
+                    <th className="px-4 py-4 font-semibold text-center border-l font-bold text-amber-700" rowSpan={2}>Giá sau CK</th>
                     <th className="px-4 py-4 font-semibold text-center border-l" colSpan={2}>Đơn giá niêm yết</th>
                     <th className="px-4 py-4 font-semibold text-right border-l" rowSpan={2}>Thao tác</th>
                   </tr>
@@ -464,7 +476,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                 <tbody className="divide-y">
                   {filteredMaterials.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="px-6 py-12 text-center text-muted-foreground">
+                      <td colSpan={14} className="px-6 py-12 text-center text-muted-foreground">
                         Không tìm thấy vật tư nào
                       </td>
                     </tr>
@@ -486,6 +498,9 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                         <td className="px-4 py-3 text-right font-medium border-l">{(item.preTaxMeterPrice || 0).toLocaleString('vi-VN')}</td>
                         <td className="px-4 py-3 text-right font-bold text-slate-700 border-l">{(item.preTaxBoxPrice || 0).toLocaleString('vi-VN')}</td>
                         
+                        <td className="px-4 py-3 text-center font-medium border-l text-amber-600 font-semibold">{item.discountPercent ? `${item.discountPercent}%` : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-amber-700 border-l bg-amber-50/30">{(item.finalPrice || item.preTaxBoxPrice || 0).toLocaleString('vi-VN')}</td>
+
                         <td className="px-4 py-3 text-right font-medium text-muted-foreground border-l">{(item.listedMeterPrice || 0).toLocaleString('vi-VN')}</td>
                         <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400 border-l">{(item.listedBoxPrice || 0).toLocaleString('vi-VN')}</td>
                         
@@ -639,7 +654,6 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                 }}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Đơn giá niêm yết (Giá hộp)</Label>
               <Input
@@ -649,6 +663,31 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   const rawValue = e.target.value.replace(/\D/g, '');
                   setFormData({ ...formData, listedBoxPrice: Number(rawValue) });
                 }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Chiết khấu (%)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.discountPercent || ''}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setFormData({ ...formData, discountPercent: isNaN(val) ? 0 : val });
+                }}
+                placeholder="VD: 10"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold text-amber-700">Giá sau chiết khấu (Tự động tính)</Label>
+              <Input
+                type="text"
+                disabled
+                className="bg-amber-50/50 font-bold text-amber-800 border-amber-200"
+                value={Math.round((formData.preTaxBoxPrice || 0) * (1 - (formData.discountPercent || 0) / 100)).toLocaleString('vi-VN')}
               />
             </div>
 
@@ -763,6 +802,18 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                     onChange={(e) => setBulkDefaults({...bulkDefaults, itemsPerBox: e.target.value})}
                   />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase text-amber-700 font-bold">Chiết khấu (%)</label>
+                  <Input 
+                    placeholder="10%..." 
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="h-8 text-xs font-semibold text-amber-700 bg-amber-50/20 border-amber-200"
+                    value={bulkDefaults.discountPercent}
+                    onChange={(e) => setBulkDefaults({...bulkDefaults, discountPercent: e.target.value})}
+                  />
+                </div>
               </div>
             </div>
 
@@ -797,6 +848,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                           <th className="px-2 py-2 font-semibold border-r w-20 text-center">ĐVT</th>
                           <th className="px-2 py-2 font-semibold border-r w-28 text-right">Trước thuế (m)</th>
                           <th className="px-2 py-2 font-semibold border-r w-28 text-right">Trước thuế (Hộp)</th>
+                          <th className="px-2 py-2 font-semibold border-r w-16 text-center text-amber-700">CK (%)</th>
+                          <th className="px-2 py-2 font-semibold border-r w-28 text-right text-amber-800">Giá sau CK</th>
                           <th className="px-2 py-2 font-semibold border-r w-28 text-right">Niêm yết (m)</th>
                           <th className="px-2 py-2 font-semibold border-r w-28 text-right">Niêm yết (Hộp)</th>
                           <th className="px-2 py-2 font-semibold text-center w-12">Xóa</th>
@@ -884,6 +937,23 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                                 onChange={(e) => handleUpdateCellPrice(idx, 'preTaxBoxPrice', e.target.value)}
                                 placeholder="0"
                               />
+                            </td>
+                            <td className="p-1 border-r text-center w-16">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                className="w-full bg-transparent px-1 border-none focus:outline-none focus:ring-1 focus:ring-primary rounded text-center font-semibold text-amber-600"
+                                value={item.discountPercent !== undefined ? item.discountPercent : ''}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  handleUpdateCell(idx, 'discountPercent', isNaN(val) ? 0 : val);
+                                }}
+                                placeholder="0"
+                              />
+                            </td>
+                            <td className="p-1 border-r text-right w-28 bg-amber-50/10 font-mono font-bold text-amber-700">
+                              {Math.round((item.preTaxBoxPrice || 0) * (1 - (item.discountPercent || 0) / 100)).toLocaleString('vi-VN')}
                             </td>
                             <td className="p-1 border-r text-right">
                               <input
