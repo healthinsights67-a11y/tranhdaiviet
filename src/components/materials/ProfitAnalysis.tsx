@@ -26,7 +26,25 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
   }, [tasks]);
 
   const profitData = useMemo(() => {
-    return completedTasks.map(task => {
+    // 1. Filter completed tasks to only keep design tasks
+    const designTasks = completedTasks.filter(task => 
+      task.type === 'design' || 
+      task.title.toLowerCase().includes('thiết kế')
+    );
+
+    // 2. Group by customer name to ensure unique customers
+    const grouped: Record<string, {
+      taskId: string;
+      taskTitle: string;
+      customerName: string;
+      quotationValue: number;
+      materialCost: number;
+      profit: number;
+      date: string;
+      task: Task;
+    }> = {};
+
+    designTasks.forEach(task => {
       // Find corresponding quotation. Prefer accepted quotations.
       const possibleQuotations = quotations.filter(q => 
         (q.customerName && task.customerName && q.customerName === task.customerName) ||
@@ -35,11 +53,12 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       );
       
       const quotation = possibleQuotations.find(q => q.status === 'accepted') || possibleQuotations[0];
-      const resolvedCustomerName = task.customerName || quotation?.customerName;
-      const quotationValue = quotation?.totalAmount || 0;
+      const resolvedCustomerName = (task.customerName || quotation?.customerName || 'N/A').trim();
+      
+      if (!resolvedCustomerName || resolvedCustomerName === 'N/A') return;
 
       // Calculate material cost
-      let materialCost = 0;
+      let taskMaterialCost = 0;
       const requisitionItems = task.materialRequisition?.items || [];
       
       requisitionItems.forEach(item => {
@@ -74,22 +93,39 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
             }
           }
           
-          materialCost += Math.round(qty * itemPrice);
+          taskMaterialCost += Math.round(qty * itemPrice);
         }
       });
 
-      const profit = quotationValue - materialCost;
+      const quotationValue = quotation?.totalAmount || 0;
 
-      return {
-        taskId: task.id,
-        taskTitle: task.title,
-        customerName: resolvedCustomerName,
-        quotationValue,
-        materialCost,
-        profit,
-        date: task.createdAt,
-        task: task,
-      };
+      if (!grouped[resolvedCustomerName]) {
+        grouped[resolvedCustomerName] = {
+          taskId: task.id,
+          taskTitle: task.title,
+          customerName: resolvedCustomerName,
+          quotationValue,
+          materialCost: taskMaterialCost,
+          profit: 0,
+          date: task.createdAt,
+          task: task,
+        };
+      } else {
+        // Accumulate material cost
+        grouped[resolvedCustomerName].materialCost += taskMaterialCost;
+        // Keep the latest task for this customer
+        if (new Date(task.createdAt).getTime() > new Date(grouped[resolvedCustomerName].date).getTime()) {
+          grouped[resolvedCustomerName].date = task.createdAt;
+          grouped[resolvedCustomerName].taskId = task.id;
+          grouped[resolvedCustomerName].taskTitle = task.title;
+          grouped[resolvedCustomerName].task = task;
+        }
+      }
+    });
+
+    return Object.values(grouped).map(item => {
+      item.profit = item.quotationValue - item.materialCost;
+      return item;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [completedTasks, materialConfigs, quotations]);
 
@@ -104,8 +140,8 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
         <Card className="bg-blue-50/50 border-blue-100">
           <CardContent className="p-6 flex flex-col items-center justify-center text-center">
             <CheckCircle2 className="h-8 w-8 text-blue-500 mb-2" />
-            <p className="text-sm text-blue-600/80 font-medium">Đơn đã hoàn thành</p>
-            <h3 className="text-3xl font-bold text-blue-700">{completedTasks.length}</h3>
+            <p className="text-sm text-blue-600/80 font-medium">Khách hàng thiết kế</p>
+            <h3 className="text-3xl font-bold text-blue-700">{profitData.length}</h3>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50/50 border-emerald-100">
