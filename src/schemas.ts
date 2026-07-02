@@ -309,3 +309,22 @@ export const BotNotificationConfigSchema = z.object({
   updatedAt: timestampSchema,
   updatedBy: z.string().optional(),
 });
+
+export const MaterialConfigSchema = z.object({
+  id: z.string(),
+  category: z.string().optional(),
+  code: z.string().min(1, "Mã hàng hoá không được để trống"),
+  width: z.string().optional(),
+  thickness: z.string().optional(),
+  length: z.string().optional(),
+  itemsPerBox: z.string().optional(),
+  unit: z.string().min(1, "Đơn vị tính không được để trống"),
+  preTaxMeterPrice: z.number().optional(),
+  preTaxBoxPrice: z.number().optional(),
+  listedMeterPrice: z.number().optional(),
+  listedBoxPrice: z.number().optional(),
+  finalPrice: z.number().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
