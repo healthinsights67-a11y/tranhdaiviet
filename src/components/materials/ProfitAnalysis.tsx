@@ -36,19 +36,17 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
     return () => unsub();
   }, []);
 
-  const completedTasks = useMemo(() => {
-    return tasks.filter(t => t.status === 'done');
-  }, [tasks]);
-
   const [timeFilter, setTimeFilter] = React.useState<string>('all');
   const [selectedMonth, setSelectedMonth] = React.useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = React.useState<number>(new Date().getFullYear());
 
   const profitData = useMemo(() => {
-    // 1. Filter completed tasks to only keep design tasks
-    const designTasks = completedTasks.filter(task => 
-      task.type === 'design' || 
-      task.title.toLowerCase().includes('thiết kế')
+    // 1. Filter tasks to only keep design tasks (regardless of status, as long as it's not archived)
+    const designTasks = tasks.filter(task => 
+      task.status !== 'archived' && (
+        task.type === 'design' || 
+        task.title.toLowerCase().includes('thiết kế')
+      )
     );
 
     // 2. Group by customer name to ensure unique customers
@@ -164,7 +162,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       item.profit = item.quotationValue - item.materialCost;
       return item;
     });
-  }, [completedTasks, materialConfigs, quotations, customers]);
+  }, [tasks, materialConfigs, quotations, customers]);
 
   const filteredProfitData = useMemo(() => {
     const now = new Date();
