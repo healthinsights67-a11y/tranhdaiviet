@@ -253,9 +253,17 @@ export function MaterialRequisitionForm({ projectTitle, data, onSave, customerIn
         </div>
 
         <datalist id="material-list">
-          {materialConfigs.map(m => (
-            <option key={m.id} value={`${m.code} - ${m.name}`} />
-          ))}
+          {materialConfigs.map(m => {
+            const categoryClean = (m.category || '')
+              .replace('HẠNG MỤC BÁO GIÁ NHỰA ', '')
+              .replace('HẠNG MỤC BÁO GIÁ ', '')
+              .trim();
+            const sizeStr = [m.width || '', m.thickness || '', m.length || ''].filter(Boolean).join('x');
+            const displayName = m.name || `${categoryClean} ${sizeStr}`.trim() || 'Vật tư';
+            return (
+              <option key={m.id} value={`${m.code} - ${displayName}`} />
+            );
+          })}
         </datalist>
 
         <div className="grid grid-cols-1 gap-2">

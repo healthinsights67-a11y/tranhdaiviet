@@ -45,15 +45,19 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       requisitionItems.forEach(item => {
         // try to match item.type or item.name with materialConfigs
         const searchStr = (item.type || '').toLowerCase();
-        let matchedConfig = materialConfigs.find(m => 
-          searchStr.includes(m.code.toLowerCase()) || 
-          searchStr === m.name.toLowerCase() ||
-          searchStr.includes(m.name.toLowerCase())
-        );
+        let matchedConfig = materialConfigs.find(m => {
+          const codeMatch = searchStr.includes(m.code.toLowerCase());
+          const nameLower = (m.name || '').toLowerCase();
+          const nameMatch = nameLower ? (searchStr === nameLower || searchStr.includes(nameLower)) : false;
+          return codeMatch || nameMatch;
+        });
 
         if (!matchedConfig) {
           // try matching by name
-          matchedConfig = materialConfigs.find(m => item.name.toLowerCase().includes(m.name.toLowerCase()));
+          matchedConfig = materialConfigs.find(m => {
+            const nameLower = (m.name || '').toLowerCase();
+            return nameLower ? item.name.toLowerCase().includes(nameLower) : false;
+          });
         }
 
         if (matchedConfig) {
