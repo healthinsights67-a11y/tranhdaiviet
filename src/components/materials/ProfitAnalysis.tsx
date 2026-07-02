@@ -86,6 +86,9 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
       customerTasks.forEach(task => {
         const requisitionItems = task.materialRequisition?.items || [];
         requisitionItems.forEach((item, idx) => {
+          const qty = parseFloat(item.quantity) || 0;
+          if (qty <= 0) return;
+
           const searchStr = (item.type || '').toLowerCase();
           const itemNameLower = (item.name || '').toLowerCase();
           const optionLower = (item.selectedOption || '').toLowerCase();
@@ -140,7 +143,6 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
           }
 
           if (matchedConfig) {
-            const qty = parseFloat(item.quantity) || 0;
             let itemPrice = matchedConfig.finalPrice || matchedConfig.unitPrice || 0;
             
             const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
