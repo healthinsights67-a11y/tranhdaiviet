@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Task, Quotation, MaterialConfig, Customer } from '@/src/types';
+import { Task, Quotation, MaterialConfig, AccessoryConfig, Customer } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BadgeDollarSign, TrendingUp, TrendingDown, Package, CheckCircle2, Calendar } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
@@ -27,13 +27,17 @@ const formatDate = (dateVal: any) => {
 
 export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quotations = [] }) => {
   const [materialConfigs, setMaterialConfigs] = React.useState<MaterialConfig[]>([]);
+  const [accessoryConfigs, setAccessoryConfigs] = React.useState<AccessoryConfig[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
 
   React.useEffect(() => {
     const unsub = onSnapshot(collection(db, 'materialConfigs'), (snap) => {
       setMaterialConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MaterialConfig));
     });
-    return () => unsub();
+    const unsubAcc = onSnapshot(collection(db, 'accessoryConfigs'), (snap) => {
+      setAccessoryConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AccessoryConfig));
+    });
+    return () => { unsub(); unsubAcc(); };
   }, []);
 
   React.useEffect(() => {
@@ -80,23 +84,61 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
         const requisitionItems = task.materialRequisition?.items || [];
         requisitionItems.forEach(item => {
           const searchStr = (item.type || '').toLowerCase();
-          let matchedConfig = materialConfigs.find(m => {
-            const codeMatch = searchStr.includes(m.code.toLowerCase());
-            const nameLower = (m.name || '').toLowerCase();
-            const nameMatch = nameLower ? (searchStr === nameLower || searchStr.includes(nameLower)) : false;
-            return codeMatch || nameMatch;
-          });
+          const itemNameLower = (item.name || '').toLowerCase();
+          const optionLower = (item.selectedOption || '').toLowerCase();
+          const combinedName = `${itemNameLower} ${optionLower}`.trim();
 
+          let matchedConfig: any = null;
+
+          // 1. Try exact match by code or name from item.type (searchStr)
+          if (searchStr) {
+            matchedConfig = materialConfigs.find(m => {
+              const codeLower = (m.code || '').toLowerCase();
+              return (codeLower && searchStr.includes(codeLower)) || ((m.name || '').toLowerCase() === searchStr);
+            });
+            if (!matchedConfig) {
+              matchedConfig = accessoryConfigs.find(a => {
+                const codeLower = (a.code || '').toLowerCase();
+                return (codeLower && searchStr.includes(codeLower)) || ((a.name || '').toLowerCase() === searchStr);
+              });
+            }
+          }
+
+          // 2. Try matching accessories by item.name and selectedOption
+          if (!matchedConfig) {
+             matchedConfig = accessoryConfigs.find(a => {
+               const aName = (a.name || '').toLowerCase();
+               if (!aName) return false;
+               
+               // Exact match with combined name (e.g. "bản lề thẳng")
+               if (aName === combinedName) return true;
+               
+               // Or name matches item.name AND option matches item.selectedOption
+               if (aName === itemNameLower && (!a.option || (a.option || '').toLowerCase() === optionLower)) return true;
+               
+               return false;
+             });
+          }
+
+          // 3. Try partial match by item.name in materialConfigs
           if (!matchedConfig) {
             matchedConfig = materialConfigs.find(m => {
               const nameLower = (m.name || '').toLowerCase();
-              return nameLower ? item.name.toLowerCase().includes(nameLower) : false;
+              return nameLower ? itemNameLower.includes(nameLower) || nameLower.includes(itemNameLower) : false;
+            });
+          }
+          
+          // 4. Try partial match by item.name in accessoryConfigs
+          if (!matchedConfig) {
+            matchedConfig = accessoryConfigs.find(a => {
+              const aName = (a.name || '').toLowerCase();
+              return aName ? itemNameLower.includes(aName) || aName.includes(itemNameLower) : false;
             });
           }
 
           if (matchedConfig) {
             const qty = parseFloat(item.quantity) || 0;
-            let itemPrice = matchedConfig.finalPrice || 0;
+            let itemPrice = matchedConfig.finalPrice || matchedConfig.unitPrice || 0;
             
             const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
             const reqUnit = (item.unit || '').trim().toLowerCase();
@@ -141,7 +183,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
       item.profit = item.quotationValue - item.materialCost;
       return item;
     });
-  }, [quotations, tasks, materialConfigs, customers]);
+  }, [quotations, tasks, materialConfigs, accessoryConfigs, customers]);
 
   const filteredProfitData = useMemo(() => {
     const now = new Date();
