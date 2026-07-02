@@ -61,8 +61,20 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
         }
 
         if (matchedConfig) {
-           const qty = parseFloat(item.quantity) || 0;
-           materialCost += qty * matchedConfig.finalPrice;
+          const qty = parseFloat(item.quantity) || 0;
+          let itemPrice = matchedConfig.finalPrice || 0;
+          
+          const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
+          const reqUnit = (item.unit || '').trim().toLowerCase();
+          
+          if (configUnit === 'hộp' && reqUnit !== 'hộp') {
+            const itemsPerBox = parseFloat(String(matchedConfig.itemsPerBox)) || 1;
+            if (itemsPerBox > 0) {
+              itemPrice = itemPrice / itemsPerBox;
+            }
+          }
+          
+          materialCost += Math.round(qty * itemPrice);
         }
       });
 
