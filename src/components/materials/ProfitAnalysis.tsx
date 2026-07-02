@@ -5,6 +5,7 @@ import { BadgeDollarSign, TrendingUp, TrendingDown, Package, CheckCircle2, Calen
 import { db } from '@/src/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { TaskCard } from '../kanban/TaskCard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface ProfitAnalysisProps {
   tasks?: Task[];
@@ -66,6 +67,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
       profit: number;
       date: string;
       projectName: string;
+      materialDetails: any[];
     }> = {};
 
     contractedQuotes.forEach(q => {
@@ -80,9 +82,10 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
       );
 
       let customerMaterialCost = 0;
+      let details: any[] = [];
       customerTasks.forEach(task => {
         const requisitionItems = task.materialRequisition?.items || [];
-        requisitionItems.forEach(item => {
+        requisitionItems.forEach((item, idx) => {
           const searchStr = (item.type || '').toLowerCase();
           const itemNameLower = (item.name || '').toLowerCase();
           const optionLower = (item.selectedOption || '').toLowerCase();
@@ -150,7 +153,16 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
               }
             }
             
-            customerMaterialCost += Math.round(qty * itemPrice);
+            const cost = Math.round(qty * itemPrice);
+            customerMaterialCost += cost;
+            details.push({
+               id: `${task.id}-${idx}`,
+               name: matchedConfig.name || item.name,
+               quantity: qty,
+               unit: item.unit || matchedConfig.unit || '',
+               price: itemPrice,
+               total: cost,
+            });
           }
         });
       });
@@ -163,6 +175,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
           customerName: resolvedCustomerName,
           quotationValue: q.totalAmount || 0,
           materialCost: customerMaterialCost,
+          materialDetails: details,
           profit: 0,
           date: q.date || q.createdAt,
           projectName: projectName,
@@ -236,6 +249,8 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
   const totalCost = filteredProfitData.reduce((acc, curr) => acc + curr.materialCost, 0);
   const totalProfit = filteredProfitData.reduce((acc, curr) => acc + curr.profit, 0);
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  
+  const [selectedOrderDetails, setSelectedOrderDetails] = React.useState<any>(null);
 
   return (
     <div className="space-y-6">
@@ -327,6 +342,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
                 <th className="px-6 py-4 font-semibold text-right">Ngày hoàn thành</th>
                 <th className="px-6 py-4 font-semibold text-right">Giá trị Hợp đồng</th>
                 <th className="px-6 py-4 font-semibold text-right">Chi phí Vật tư</th>
+                <th className="px-6 py-4 font-semibold text-right">Biên Lợi nhuận</th>
                 <th className="px-6 py-4 font-semibold text-right">Lãi thực</th>
               </tr>
             </thead>
@@ -339,7 +355,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
                 </tr>
               ) : (
                 filteredProfitData.map((data) => (
-                  <tr key={data.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={data.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrderDetails(data)}>
                     <td className="px-6 py-3 font-semibold text-foreground/80">
                       {data.projectName}
                     </td>
@@ -353,6 +369,9 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
                     <td className="px-6 py-3 text-right font-medium text-amber-600">
                       {data.materialCost > 0 ? data.materialCost.toLocaleString('vi-VN') : '0'}
                     </td>
+                    <td className="px-6 py-3 text-right font-semibold text-blue-600">
+                      {data.quotationValue > 0 ? ((data.profit / data.quotationValue) * 100).toFixed(1) : 0}%
+                    </td>
                     <td className="px-6 py-3 text-right font-bold text-purple-600">
                       {data.profit.toLocaleString('vi-VN')}
                     </td>
@@ -363,6 +382,50 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
           </table>
         </div>
       </div>
+
+      <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Chi tiết Vật tư & Phụ kiện - {selectedOrderDetails?.customerName}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto pr-2 mt-4 space-y-4">
+             <table className="w-full text-sm text-left">
+               <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                 <tr>
+                   <th className="px-4 py-2">STT</th>
+                   <th className="px-4 py-2">Tên vật tư/phụ kiện</th>
+                   <th className="px-4 py-2 text-right">Số lượng</th>
+                   <th className="px-4 py-2 text-right">Đơn giá</th>
+                   <th className="px-4 py-2 text-right">Thành tiền</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y">
+                 {selectedOrderDetails?.materialDetails?.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Không có dữ liệu vật tư cho đơn hàng này</td>
+                    </tr>
+                 ) : (
+                    selectedOrderDetails?.materialDetails?.map((item: any, idx: number) => (
+                      <tr key={item.id} className="hover:bg-muted/30">
+                        <td className="px-4 py-2">{idx + 1}</td>
+                        <td className="px-4 py-2 font-medium">{item.name}</td>
+                        <td className="px-4 py-2 text-right">{item.quantity} {item.unit}</td>
+                        <td className="px-4 py-2 text-right">{item.price.toLocaleString('vi-VN')}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-amber-600">{item.total.toLocaleString('vi-VN')}</td>
+                      </tr>
+                    ))
+                 )}
+               </tbody>
+               <tfoot className="bg-muted/20 font-bold">
+                 <tr>
+                   <td colSpan={4} className="px-4 py-3 text-right">Tổng chi phí vật tư:</td>
+                   <td className="px-4 py-3 text-right text-amber-700">{selectedOrderDetails?.materialCost?.toLocaleString('vi-VN')}</td>
+                 </tr>
+               </tfoot>
+             </table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
