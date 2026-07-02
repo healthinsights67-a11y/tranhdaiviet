@@ -7,8 +7,8 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { TaskCard } from '../kanban/TaskCard';
 
 interface ProfitAnalysisProps {
-  tasks: Task[];
-  quotations: Quotation[];
+  tasks?: Task[];
+  quotations?: Quotation[];
 }
 
 const getStartOfWeek = (d: Date) => {
@@ -18,7 +18,14 @@ const getStartOfWeek = (d: Date) => {
   return new Date(date.setDate(diff));
 };
 
-export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotations }) => {
+const formatDate = (dateVal: any) => {
+  if (!dateVal) return 'N/A';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return 'N/A';
+  return d.toLocaleDateString('vi-VN');
+};
+
+export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quotations = [] }) => {
   const [materialConfigs, setMaterialConfigs] = React.useState<MaterialConfig[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
 
@@ -62,10 +69,10 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       if (!resolvedCustomerName || resolvedCustomerName === 'N/A') return;
 
       // Find all tasks related to this customer (to calculate material cost)
-      const customerTasks = tasks.filter(t => 
+      const customerTasks = (tasks || []).filter(t => 
         (t.customerId && q.customerId && t.customerId === q.customerId) ||
-        (t.phone && q.phone && t.phone.trim().replace(/\D/g, '') === q.phone.trim().replace(/\D/g, '')) ||
-        (t.customerName && q.customerName && t.customerName.trim().toLowerCase() === q.customerName.trim().toLowerCase())
+        (t.phone && q.phone && String(t.phone).trim().replace(/\D/g, '') === String(q.phone).trim().replace(/\D/g, '')) ||
+        (t.customerName && q.customerName && String(t.customerName).trim().toLowerCase() === String(q.customerName).trim().toLowerCase())
       );
 
       let customerMaterialCost = 0;
@@ -296,7 +303,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
                     </td>
                     <td className="px-6 py-3">{data.customerName || 'N/A'}</td>
                     <td className="px-6 py-3 text-right text-muted-foreground">
-                      {new Date(data.date).toLocaleDateString('vi-VN')}
+                      {formatDate(data.date)}
                     </td>
                     <td className="px-6 py-3 text-right font-medium text-emerald-600">
                       {data.quotationValue > 0 ? data.quotationValue.toLocaleString('vi-VN') : '0'}
