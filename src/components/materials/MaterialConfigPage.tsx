@@ -52,11 +52,74 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     discountPercent: '',
   });
 
+  const [tempDiscounts, setTempDiscounts] = useState<Record<string, string>>({});
+  const [quickApplyCategory, setQuickApplyCategory] = useState('');
+  const [quickApplyPercent, setQuickApplyPercent] = useState('');
+
   const parsePrice = (val: string | number | undefined | null): number => {
     if (val === undefined || val === null) return 0;
     if (typeof val === 'number') return val;
     const cleaned = val.replace(/[^0-9]/g, '');
     return cleaned ? parseInt(cleaned, 10) : 0;
+  };
+
+  const handleSaveInlineDiscount = async (item: MaterialConfig, valueStr: string) => {
+    const value = Number(valueStr);
+    if (isNaN(value) || value < 0 || value > 100) {
+      toast.error('Chiết khấu phải là số từ 0 đến 100');
+      return;
+    }
+    const finalPrice = Math.round((item.preTaxBoxPrice || 0) * (1 - value / 100));
+    try {
+      await updateDoc(doc(db, 'materialConfigs', item.id), {
+        discountPercent: value,
+        finalPrice: finalPrice,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success(`Đã cập nhật chiết khấu mã ${item.code} thành ${value}%`);
+      setTempDiscounts(prev => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    } catch (error: any) {
+      toast.error('Không thể cập nhật chiết khấu: ' + (error?.message || ''));
+    }
+  };
+
+  const handleApplyCategoryDiscount = async () => {
+    if (!quickApplyCategory) {
+      toast.error('Vui lòng chọn hạng mục sản phẩm');
+      return;
+    }
+    const percent = Number(quickApplyPercent);
+    if (isNaN(percent) || percent < 0 || percent > 100 || quickApplyPercent.trim() === '') {
+      toast.error('Vui lòng nhập chiết khấu hợp lệ (từ 0 đến 100)');
+      return;
+    }
+
+    const itemsToUpdate = materials.filter(m => m.category === quickApplyCategory);
+    if (itemsToUpdate.length === 0) {
+      toast.error('Không tìm thấy sản phẩm nào trong hạng mục này');
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+      itemsToUpdate.forEach(item => {
+        const finalPrice = Math.round((item.preTaxBoxPrice || 0) * (1 - percent / 100));
+        batch.update(doc(db, 'materialConfigs', item.id), {
+          discountPercent: percent,
+          finalPrice: finalPrice,
+          updatedAt: new Date().toISOString()
+        });
+      });
+      await batch.commit();
+      toast.success(`Đã cập nhật chiết khấu ${percent}% cho toàn bộ ${itemsToUpdate.length} sản phẩm thuộc ${quickApplyCategory}`);
+      setQuickApplyPercent('');
+    } catch (error: any) {
+      toast.error('Lỗi khi cập nhật chiết khấu hàng loạt: ' + (error?.message || ''));
+    }
   };
 
   const handleParseText = () => {
@@ -447,6 +510,45 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             </div>
           </div>
 
+          {/* Quick Apply Category Discount Panel */}
+          <div className="flex items-center justify-between gap-4 bg-amber-50/20 border border-amber-200/50 p-4 rounded-xl shadow-sm flex-wrap">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-semibold text-amber-800">Áp dụng nhanh chiết khấu cho nhóm:</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-w-xs flex-1"
+                value={quickApplyCategory}
+                onChange={(e) => setQuickApplyCategory(e.target.value)}
+              >
+                <option value="">-- Chọn hạng mục sản phẩm --</option>
+                {Array.from(new Set(materials.map(m => m.category || 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST'))).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1.5 w-24">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="26"
+                  className="h-9 text-center font-bold text-amber-700 bg-amber-50/30 border-amber-200"
+                  value={quickApplyPercent}
+                  onChange={(e) => setQuickApplyPercent(e.target.value)}
+                />
+                <span className="text-sm font-bold text-amber-800">%</span>
+              </div>
+              <Button 
+                onClick={handleApplyCategoryDiscount} 
+                className="h-9 bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                disabled={!quickApplyCategory || !quickApplyPercent}
+              >
+                <Check className="h-4 w-4" /> Áp dụng
+              </Button>
+            </div>
+          </div>
+
           <div className="border rounded-xl bg-card flex-1 overflow-hidden flex flex-col shadow-sm">
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-sm text-left">
@@ -498,8 +600,37 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                         <td className="px-4 py-3 text-right font-medium border-l">{(item.preTaxMeterPrice || 0).toLocaleString('vi-VN')}</td>
                         <td className="px-4 py-3 text-right font-bold text-slate-700 border-l">{(item.preTaxBoxPrice || 0).toLocaleString('vi-VN')}</td>
                         
-                        <td className="px-4 py-3 text-center font-medium border-l text-amber-600 font-semibold">{item.discountPercent ? `${item.discountPercent}%` : '-'}</td>
-                        <td className="px-4 py-3 text-right font-bold text-amber-700 border-l bg-amber-50/30">{(item.finalPrice || item.preTaxBoxPrice || 0).toLocaleString('vi-VN')}</td>
+                        <td className="px-4 py-2 text-center border-l w-24">
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="w-14 h-7 text-center rounded border border-amber-200/50 bg-amber-50/10 text-xs font-bold text-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              value={tempDiscounts[item.id] !== undefined ? tempDiscounts[item.id] : (item.discountPercent || '')}
+                              onChange={(e) => {
+                                setTempDiscounts(prev => ({ ...prev, [item.id]: e.target.value }));
+                              }}
+                              onBlur={(e) => handleSaveInlineDiscount(item, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveInlineDiscount(item, (e.target as HTMLInputElement).value);
+                                }
+                              }}
+                              placeholder="0"
+                            />
+                            <span className="text-xs font-semibold text-amber-600">%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right font-bold text-amber-700 border-l bg-amber-50/30">
+                          {(() => {
+                            const activeDiscountStr = tempDiscounts[item.id] !== undefined ? tempDiscounts[item.id] : String(item.discountPercent || 0);
+                            const activeDiscount = Number(activeDiscountStr);
+                            const discount = isNaN(activeDiscount) ? 0 : activeDiscount;
+                            const finalPrice = Math.round((item.preTaxBoxPrice || 0) * (1 - discount / 100));
+                            return finalPrice.toLocaleString('vi-VN');
+                          })()}
+                        </td>
 
                         <td className="px-4 py-3 text-right font-medium text-muted-foreground border-l">{(item.listedMeterPrice || 0).toLocaleString('vi-VN')}</td>
                         <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400 border-l">{(item.listedBoxPrice || 0).toLocaleString('vi-VN')}</td>
