@@ -41,119 +41,91 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
   const [selectedYear, setSelectedYear] = React.useState<number>(new Date().getFullYear());
 
   const profitData = useMemo(() => {
-    // 1. Filter tasks to only keep design tasks (regardless of status, as long as it's not archived)
-    const designTasks = tasks.filter(task => 
-      task.status !== 'archived' && (
-        task.type === 'design' || 
-        task.title.toLowerCase().includes('thiết kế')
-      )
+    // 1. Get all quotations that are accepted or deposited
+    const contractedQuotes = quotations.filter(q => 
+      q.status === 'accepted' || q.status === 'deposit'
     );
 
     // 2. Group by customer name to ensure unique customers
     const grouped: Record<string, {
-      taskId: string;
-      taskTitle: string;
+      id: string;
       customerName: string;
       quotationValue: number;
       materialCost: number;
       profit: number;
       date: string;
-      task: Task;
+      projectName: string;
     }> = {};
 
-    designTasks.forEach(task => {
-      // Find corresponding customer
-      const cust = customers.find(c => 
-        (task.customerId && c.id === task.customerId) || 
-        (task.phone && c.phone?.trim()?.replace(/\D/g, '') === task.phone?.trim()?.replace(/\D/g, ''))
-      );
-      
-      const hasPostDepositStage = cust && ['contracted', 'production', 'installation', 'completed'].includes(cust.stage);
-      
-      const matchingQuotations = quotations.filter(q => {
-        if (task.customerId && q.customerId === task.customerId) return true;
-        if (task.phone && q.phone?.trim()?.replace(/\D/g, '') === task.phone?.trim()?.replace(/\D/g, '')) return true;
-        if (cust && q.customerId === cust.id) return true;
-        if (cust && q.phone?.trim()?.replace(/\D/g, '') === cust.phone?.trim()?.replace(/\D/g, '')) return true;
-        return false;
-      });
-
-      const hasValidQuotation = matchingQuotations.some(q => q.status === 'deposit' || q.status === 'accepted');
-
-      // Only show if customer has deposited (chốt cọc) or accepted (chốt báo giá)
-      if (!hasPostDepositStage && !hasValidQuotation) {
-        return;
-      }
-
-      const quotation = matchingQuotations.find(q => q.status === 'accepted' || q.status === 'deposit') || matchingQuotations[0];
-      const resolvedCustomerName = (task.customerName || quotation?.customerName || cust?.name || 'N/A').trim();
-      
+    contractedQuotes.forEach(q => {
+      const resolvedCustomerName = (q.customerName || 'N/A').trim();
       if (!resolvedCustomerName || resolvedCustomerName === 'N/A') return;
 
-      // Calculate material cost
-      let taskMaterialCost = 0;
-      const requisitionItems = task.materialRequisition?.items || [];
-      
-      requisitionItems.forEach(item => {
-        // try to match item.type or item.name with materialConfigs
-        const searchStr = (item.type || '').toLowerCase();
-        let matchedConfig = materialConfigs.find(m => {
-          const codeMatch = searchStr.includes(m.code.toLowerCase());
-          const nameLower = (m.name || '').toLowerCase();
-          const nameMatch = nameLower ? (searchStr === nameLower || searchStr.includes(nameLower)) : false;
-          return codeMatch || nameMatch;
-        });
+      // Find all tasks related to this customer (to calculate material cost)
+      const customerTasks = tasks.filter(t => 
+        (t.customerId && q.customerId && t.customerId === q.customerId) ||
+        (t.phone && q.phone && t.phone.trim().replace(/\D/g, '') === q.phone.trim().replace(/\D/g, '')) ||
+        (t.customerName && q.customerName && t.customerName.trim().toLowerCase() === q.customerName.trim().toLowerCase())
+      );
 
-        if (!matchedConfig) {
-          // try matching by name
-          matchedConfig = materialConfigs.find(m => {
+      let customerMaterialCost = 0;
+      customerTasks.forEach(task => {
+        const requisitionItems = task.materialRequisition?.items || [];
+        requisitionItems.forEach(item => {
+          const searchStr = (item.type || '').toLowerCase();
+          let matchedConfig = materialConfigs.find(m => {
+            const codeMatch = searchStr.includes(m.code.toLowerCase());
             const nameLower = (m.name || '').toLowerCase();
-            return nameLower ? item.name.toLowerCase().includes(nameLower) : false;
+            const nameMatch = nameLower ? (searchStr === nameLower || searchStr.includes(nameLower)) : false;
+            return codeMatch || nameMatch;
           });
-        }
 
-        if (matchedConfig) {
-          const qty = parseFloat(item.quantity) || 0;
-          let itemPrice = matchedConfig.finalPrice || 0;
-          
-          const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
-          const reqUnit = (item.unit || '').trim().toLowerCase();
-          
-          if (configUnit === 'hộp' && reqUnit !== 'hộp') {
-            const itemsPerBox = parseFloat(String(matchedConfig.itemsPerBox)) || 1;
-            if (itemsPerBox > 0) {
-              itemPrice = itemPrice / itemsPerBox;
-            }
+          if (!matchedConfig) {
+            matchedConfig = materialConfigs.find(m => {
+              const nameLower = (m.name || '').toLowerCase();
+              return nameLower ? item.name.toLowerCase().includes(nameLower) : false;
+            });
           }
-          
-          taskMaterialCost += Math.round(qty * itemPrice);
-        }
+
+          if (matchedConfig) {
+            const qty = parseFloat(item.quantity) || 0;
+            let itemPrice = matchedConfig.finalPrice || 0;
+            
+            const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
+            const reqUnit = (item.unit || '').trim().toLowerCase();
+            
+            if (configUnit === 'hộp' && reqUnit !== 'hộp') {
+              const itemsPerBox = parseFloat(String(matchedConfig.itemsPerBox)) || 1;
+              if (itemsPerBox > 0) {
+                itemPrice = itemPrice / itemsPerBox;
+              }
+            }
+            
+            customerMaterialCost += Math.round(qty * itemPrice);
+          }
+        });
       });
 
-      const quotationValue = quotation?.totalAmount || 0;
+      const projectName = q.constructionType ? `Đơn hàng: ${q.constructionType}` : `Báo giá: ${q.quotationNumber}`;
 
       if (!grouped[resolvedCustomerName]) {
         grouped[resolvedCustomerName] = {
-          taskId: task.id,
-          taskTitle: task.title,
+          id: q.id,
           customerName: resolvedCustomerName,
-          quotationValue,
-          materialCost: taskMaterialCost,
+          quotationValue: q.totalAmount || 0,
+          materialCost: customerMaterialCost,
           profit: 0,
-          date: task.completedAt || task.createdAt,
-          task: task,
+          date: q.date || q.createdAt,
+          projectName: projectName,
         };
       } else {
-        // Accumulate material cost
-        grouped[resolvedCustomerName].materialCost += taskMaterialCost;
-        // Keep the latest task for this customer
-        const currentTaskDate = task.completedAt || task.createdAt;
-        const groupedTaskDate = grouped[resolvedCustomerName].task.completedAt || grouped[resolvedCustomerName].date;
-        if (new Date(currentTaskDate).getTime() > new Date(groupedTaskDate).getTime()) {
-          grouped[resolvedCustomerName].date = currentTaskDate;
-          grouped[resolvedCustomerName].taskId = task.id;
-          grouped[resolvedCustomerName].taskTitle = task.title;
-          grouped[resolvedCustomerName].task = task;
+        // Accumulate quotation value if multiple contracted quotes exist
+        grouped[resolvedCustomerName].quotationValue += q.totalAmount || 0;
+        // Keep the latest date
+        const currentQuoteDate = q.date || q.createdAt;
+        if (new Date(currentQuoteDate).getTime() > new Date(grouped[resolvedCustomerName].date).getTime()) {
+          grouped[resolvedCustomerName].date = currentQuoteDate;
+          grouped[resolvedCustomerName].projectName = projectName;
         }
       }
     });
@@ -162,7 +134,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
       item.profit = item.quotationValue - item.materialCost;
       return item;
     });
-  }, [tasks, materialConfigs, quotations, customers]);
+  }, [quotations, tasks, materialConfigs, customers]);
 
   const filteredProfitData = useMemo(() => {
     const now = new Date();
@@ -222,7 +194,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
         <Card className="bg-blue-50/50 border-blue-100">
           <CardContent className="p-6 flex flex-col items-center justify-center text-center">
             <CheckCircle2 className="h-8 w-8 text-blue-500 mb-2" />
-            <p className="text-sm text-blue-600/80 font-medium">Khách hàng thiết kế</p>
+            <p className="text-sm text-blue-600/80 font-medium">Khách hàng chốt cọc</p>
             <h3 className="text-3xl font-bold text-blue-700">{filteredProfitData.length}</h3>
           </CardContent>
         </Card>
@@ -318,9 +290,9 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks, quotation
                 </tr>
               ) : (
                 filteredProfitData.map((data) => (
-                  <tr key={data.taskId} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3 font-medium text-primary">
-                      <TaskCard task={data.task} renderAsTextOnly={true} />
+                  <tr key={data.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-3 font-semibold text-foreground/80">
+                      {data.projectName}
                     </td>
                     <td className="px-6 py-3">{data.customerName || 'N/A'}</td>
                     <td className="px-6 py-3 text-right text-muted-foreground">
