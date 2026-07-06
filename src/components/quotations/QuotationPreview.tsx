@@ -250,20 +250,26 @@ export function QuotationPreview({
       };
 
       try {
-        const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
-        const dataUrl = await toBase64(url + cacheBuster);
+        // Try the local server proxy first since it is 100% reliable and resolves CORS on the server-side
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+        const dataUrl = await toBase64(proxyUrl);
         setter(dataUrl);
       } catch (e) {
-        console.warn('Direct fetch failed. Trying allorigins proxy...', e);
+        console.warn('Local proxy fetch failed. Trying direct fetch with cache-buster...', e);
         try {
-          // Add cache-buster to allorigins too — Safari caches proxy responses without CORS headers
-          // which causes subsequent exports to fail with a tainted canvas error
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
-          const dataUrl = await toBase64(proxyUrl);
+          const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
+          const dataUrl = await toBase64(url + cacheBuster);
           setter(dataUrl);
         } catch (e2) {
-          console.error('All proxies failed', e2);
-          setter(url);
+          console.warn('Direct fetch failed. Trying allorigins proxy...', e2);
+          try {
+            const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
+            const dataUrl = await toBase64(allOriginsUrl);
+            setter(dataUrl);
+          } catch (e3) {
+            console.error('All image loading strategies failed', e3);
+            setter(url);
+          }
         }
       }
     };
