@@ -618,6 +618,19 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     </div>
                   </div>
                   
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-700">Mã báo giá (Hồ sơ)</Label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        className="pl-9 h-9 w-full bg-white font-mono"
+                        placeholder="Vd: BG-KH060"
+                        value={formData.quotationNumber} 
+                        onChange={(e) => setFormData({ ...formData, quotationNumber: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  
                   <div className="space-y-1 lg:col-span-1 md:col-span-2">
                     <Label className="text-xs font-bold text-slate-700">Địa chỉ thi công</Label>
                     <div className="relative">

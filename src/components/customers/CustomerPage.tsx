@@ -1742,6 +1742,16 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                   <div className="space-y-4">
                     <div className="grid gap-2">
+                      <Label htmlFor="edit-code">Mã khách hàng</Label>
+                      <Input
+                        id="edit-code"
+                        value={selectedCustomer.code || ''}
+                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, code: e.target.value })}
+                        className="h-11 rounded-xl font-mono"
+                        placeholder="Vd: KH060"
+                      />
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="edit-name">Tên khách hàng</Label>
                       <Input
                         id="edit-name"
