@@ -96,7 +96,7 @@ export function NotificationSettings() {
       
       {/* Telegram Bot Settings */}
       <Card className="border-blue-100 shadow-sm overflow-hidden">
-        <CardHeader className="bg-blue-50/50 border-b border-blue-50 pb-4">
+        <CardHeader className="bg-blue-50/50 border-b border-blue-50 p-4 pb-3 md:p-6 md:pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
               <MessageSquare className="h-5 w-5" />
@@ -107,7 +107,7 @@ export function NotificationSettings() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="telegram-token" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bot Token</Label>
@@ -130,12 +130,12 @@ export function NotificationSettings() {
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => handleSave('telegram')} disabled={isSaving}>
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => handleSave('telegram')} disabled={isSaving} className="w-full sm:w-auto justify-center">
               <Save className="h-4 w-4 mr-2" />
-              Lưu Cấu Hình
+              Lưu Cấu Hinh
             </Button>
-            <Button onClick={handleTestTelegram} disabled={isTestingTelegram} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={handleTestTelegram} disabled={isTestingTelegram} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto justify-center">
               {isTestingTelegram ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               Gửi Tin Nhắn Test
             </Button>
@@ -145,7 +145,7 @@ export function NotificationSettings() {
 
       {/* Zalo Bot Settings */}
       <Card className="border-blue-100 shadow-sm overflow-hidden">
-        <CardHeader className="bg-blue-50/50 border-b border-blue-50 pb-4">
+        <CardHeader className="bg-blue-50/50 border-b border-blue-50 p-4 pb-3 md:p-6 md:pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
               <MessageSquare className="h-5 w-5" />
@@ -156,7 +156,7 @@ export function NotificationSettings() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="zalo-token" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Zalo Bot Token (Access Token)</Label>
@@ -188,12 +188,12 @@ export function NotificationSettings() {
              </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => handleSave('zalo')} disabled={isSaving}>
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => handleSave('zalo')} disabled={isSaving} className="w-full sm:w-auto justify-center">
               <Save className="h-4 w-4 mr-2" />
               Lưu Cấu Hình
             </Button>
-            <Button onClick={handleTestZalo} disabled={isTestingZalo} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={handleTestZalo} disabled={isTestingZalo} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto justify-center">
               {isTestingZalo ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
               Gửi Tin Nhắn Test
             </Button>

@@ -152,7 +152,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
           <div className="flex-1 min-h-0 flex flex-col overflow-y-auto md:overflow-hidden">
             <div className="flex flex-col md:grid md:grid-cols-10 md:flex-1 md:min-h-0 md:overflow-hidden">
               {/* Cột trái: Nội dung cấu hình (70%) */}
-              <div className="md:col-span-7 md:overflow-y-auto md:min-h-0 md:h-full p-4 md:p-8 border-b md:border-b-0 md:border-r bg-card text-card-foreground">
+              <div className="md:col-span-7 md:overflow-y-auto md:min-h-0 md:h-full p-3 md:p-8 border-b md:border-b-0 md:border-r bg-card text-card-foreground">
                 <TabsContent value="general" className="mt-0 space-y-8 animate-in fade-in-50 duration-300">
                   <div className="space-y-1 mb-2">
                     <h3 className="text-lg font-bold text-foreground">Thông tin định danh</h3>
