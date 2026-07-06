@@ -374,6 +374,27 @@ export function QuotationPreview({
     triggerPrint();
   };
 
+  const decodeAllImages = async (element: HTMLElement) => {
+    const imgElements = element.querySelectorAll('img');
+    const decodePromises = Array.from(imgElements).map(async (img) => {
+      if (!img.src) return;
+      try {
+        if (!img.complete) {
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        }
+        if (typeof img.decode === 'function') {
+          await img.decode();
+        }
+      } catch (err) {
+        console.warn("Failed to decode image:", img.src, err);
+      }
+    });
+    await Promise.all(decodePromises);
+  };
+
   const handleDownloadPDF = async () => {
     const element = printRef.current;
     if (!element) return;
@@ -392,6 +413,9 @@ export function QuotationPreview({
 
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Wait for all images in the document to load and decode completely before drawing to canvas
+      await decodeAllImages(element);
 
       // 3. Render canvas with high resolution, capturing full height
       const canvas = await toCanvas(element, {
@@ -484,6 +508,9 @@ export function QuotationPreview({
           }
         }
       });
+
+      // Wait for all images (especially the newly injected base64 ones) to load and decode completely
+      await decodeAllImages(element);
 
       // 4. Render image directly to Data URL
       const dataUrl = await toJpeg(element, {
