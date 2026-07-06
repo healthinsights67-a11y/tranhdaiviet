@@ -165,13 +165,13 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-[999] md:hidden"
+            className="fixed inset-0 bg-black/40 z-[55] md:hidden"
           />
         )}
       </AnimatePresence>
 
       <div className={cn(
-        "h-screen border-r border-border bg-card transition-all duration-300 ease-in-out flex flex-col fixed md:relative z-[1000]",
+        "h-screen border-r border-border bg-card transition-all duration-300 ease-in-out flex flex-col fixed md:relative z-[60]",
         isCollapsed ? "w-[80px]" : "w-[280px]",
         !isOpen && "translate-x-[-100%] md:translate-x-0",
         isOpen && "translate-x-0"

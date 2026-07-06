@@ -105,7 +105,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger render={trigger as React.ReactElement} />}
       <DialogContent className="sm:max-w-[1000px] w-[95vw] max-h-[90vh] gap-0 p-0 overflow-hidden outline-none border border-gray-200 shadow-2xl flex flex-col">
-        <DialogHeader className="p-8 pb-6 bg-gray-50 border-b shrink-0">
+        <DialogHeader className="p-4 md:p-8 pb-6 bg-gray-50 border-b shrink-0">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl shadow-sm">
               <Settings className="h-6 w-6 text-primary" />
@@ -120,8 +120,8 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-8 bg-background border-b shrink-0 overflow-x-auto">
-            <TabsList className="bg-transparent h-auto p-0 gap-8 min-w-max">
+          <div className="px-4 md:px-8 bg-background border-b shrink-0 overflow-x-auto scrollbar-none">
+            <TabsList className="bg-transparent h-auto p-0 gap-4 md:gap-8 flex min-w-max">
               <TabsTrigger 
                 value="general" 
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 py-4 text-sm font-bold transition-all flex items-center gap-2"
@@ -149,10 +149,10 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             </TabsList>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-10 flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto md:overflow-hidden">
+            <div className="flex flex-col md:grid md:grid-cols-10 md:flex-1 md:min-h-0 md:overflow-hidden">
               {/* Cột trái: Nội dung cấu hình (70%) */}
-              <div className="md:col-span-7 overflow-y-auto min-h-0 h-full p-8 border-r bg-card text-card-foreground">
+              <div className="md:col-span-7 md:overflow-y-auto md:min-h-0 md:h-full p-4 md:p-8 border-b md:border-b-0 md:border-r bg-card text-card-foreground">
                 <TabsContent value="general" className="mt-0 space-y-8 animate-in fade-in-50 duration-300">
                   <div className="space-y-1 mb-2">
                     <h3 className="text-lg font-bold text-foreground">Thông tin định danh</h3>
@@ -286,7 +286,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                   </div>
 
                   <div className="divide-y border border-gray-200 rounded-2xl overflow-hidden bg-card text-card-foreground shadow-sm">
-                    <div className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 hover:bg-gray-50 transition-colors gap-4">
                       <div className="space-y-1">
                         <p className="text-sm font-bold text-foreground">Sao lưu dữ liệu tự động</p>
                         <p className="text-[12px] text-muted-foreground font-medium leading-relaxed max-w-[400px]">
@@ -296,19 +296,19 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                       <Button 
                         variant={configs.enableAutoBackup ? "default" : "outline"}
                         size="sm"
-                        className={`h-9 px-6 rounded-xl text-xs font-black transition-all ${configs.enableAutoBackup ? 'bg-primary shadow-sm' : ''}`}
+                        className={`h-9 px-6 rounded-xl text-xs font-black transition-all w-full sm:w-auto ${configs.enableAutoBackup ? 'bg-primary shadow-sm' : ''}`}
                         onClick={() => setConfigs(prev => ({ ...prev, enableAutoBackup: !prev.enableAutoBackup }))}
                       >
                         {configs.enableAutoBackup ? "ĐÃ KÍCH HOẠT" : "ĐANG TẮT"}
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 hover:bg-gray-50 transition-colors gap-4">
                       <div className="space-y-1">
                         <p className="text-sm font-bold text-gray-400">Xác thực 2 yếu tố (2FA)</p>
                         <p className="text-[12px] text-gray-400 font-medium">Thêm lớp bảo mật thông qua mã xác nhận ứng dụng.</p>
                       </div>
-                      <Button variant="outline" size="sm" disabled className="h-9 px-6 rounded-xl text-xs font-bold border-dashed">Sắp ra mắt</Button>
+                      <Button variant="outline" size="sm" disabled className="h-9 px-6 rounded-xl text-xs font-bold border-dashed w-full sm:w-auto">Sắp ra mắt</Button>
                     </div>
                   </div>
                 </TabsContent>
@@ -319,7 +319,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
               </div>
 
               {/* Cột phải: Actions & Danger Zone (30%) */}
-              <div className="md:col-span-3 bg-gray-50 p-8 space-y-8 overflow-y-auto">
+              <div className="md:col-span-3 bg-gray-50 p-4 md:p-8 space-y-8 md:overflow-y-auto md:h-full">
                 <div className="space-y-4">
                   <h4 className="text-[11px] font-black uppercase text-muted-foreground tracking-widest border-b pb-2">Hướng dẫn & Trợ giúp</h4>
                   <div className="space-y-3">
@@ -376,28 +376,28 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
           </div>
         </Tabs>
 
-        <DialogFooter className="p-8 pt-4 bg-card text-card-foreground border-t shrink-0 flex-row items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
+        <DialogFooter className="p-4 md:p-8 pt-4 pb-4 md:pb-6 bg-card text-card-foreground border-t shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1 w-full sm:w-auto text-center sm:text-left">
             <p className="text-[10px] text-muted-foreground font-bold tracking-tight">
-              TRẠNG THÁI: <span className="text-primary">ĐANG ĐỒNG BỘ TRỰC TIẾP</span>
+              TRẠNG THÁI: <span className="text-primary whitespace-nowrap">ĐANG ĐỒNG BỘ TRỰC TIẾP</span>
             </p>
             <p className="text-[9px] text-muted-foreground/60 font-medium italic">
               Lần cuối cập nhật: {new Date().toLocaleDateString('vi-VN')} {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full sm:w-auto justify-end">
             <Button 
               variant="outline" 
               onClick={() => onOpenChange?.(false)} 
               disabled={isLoading}
-              className="h-11 px-8 text-xs font-bold rounded-2xl border-2 hover:bg-gray-100 transition-all"
+              className="flex-1 sm:flex-none h-11 px-6 md:px-8 text-xs font-bold rounded-2xl border-2 hover:bg-gray-100 transition-all"
             >
               Hủy bỏ
             </Button>
             <Button 
               onClick={handleSaveConfig} 
               disabled={isLoading}
-              className="h-11 px-10 text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="flex-[1.5] sm:flex-none h-11 px-8 md:px-10 text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
