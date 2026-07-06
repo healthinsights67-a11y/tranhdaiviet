@@ -115,7 +115,22 @@ export function QuotationPreview({
 }: QuotationPreviewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [template, setTemplate] = React.useState<QuotationTemplate>(defaultTemplate);
+  const [template, setTemplate] = React.useState<QuotationTemplate>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('quotation_template_config');
+      if (saved && saved.trim() !== 'undefined' && saved.trim() !== 'null') {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            return { ...defaultTemplate, ...parsed } as QuotationTemplate;
+          }
+        } catch (e) {
+          console.error('Failed to parse saved config in preview state init', e);
+        }
+      }
+    }
+    return defaultTemplate;
+  });
   const [customerCode, setCustomerCode] = React.useState<string>('KH000');
   const [quotationIndex, setQuotationIndex] = React.useState<number>(1);
   const [logoDataUrl, setLogoDataUrl] = React.useState<string>('');
@@ -177,7 +192,7 @@ export function QuotationPreview({
     }
   }, [isOpen]);
 
-  const { data: dbConfig } = useQuery<QuotationTemplate>({
+  const { data: dbConfig, isLoading: isConfigLoading } = useQuery<QuotationTemplate>({
     queryKey: ['quotation_template_config'],
     queryFn: async () => {
       const { db, doc, getDoc } = await import('@/src/lib/firebase');
@@ -208,6 +223,8 @@ export function QuotationPreview({
       setTemplate(dbConfig);
     }
   }, [dbConfig, isOpen]);
+
+  const isPreloading = isConfigLoading || imagesLoading;
 
   React.useEffect(() => {
     const fetchAsDataUrl = async (url: string, setter: (val: string) => void) => {
@@ -1009,10 +1026,10 @@ export function QuotationPreview({
                variant="outline" 
                size="sm" 
                onClick={handleShare}
-               disabled={isExporting || imagesLoading}
+               disabled={isExporting || isPreloading}
                className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 border-emerald-100 hover:bg-emerald-50 text-emerald-600 text-[10px] md:text-sm"
             >
-              {isExporting || imagesLoading ? (
+              {isExporting || isPreloading ? (
                 <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
               ) : (
                 <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1021,7 +1038,7 @@ export function QuotationPreview({
               <span className="sm:hidden">Gửi</span>
             </Button>
 
-            <Button variant="outline" size="sm" onClick={handlePrint} disabled={imagesLoading} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-[10px] md:text-sm">
+            <Button variant="outline" size="sm" onClick={handlePrint} disabled={isPreloading} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-[10px] md:text-sm">
               <Printer className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">In báo giá</span>
               <span className="sm:hidden">In</span>
@@ -1030,7 +1047,7 @@ export function QuotationPreview({
                variant="outline" 
                size="sm" 
                onClick={handleExportExcel}
-               disabled={isExporting || imagesLoading}
+               disabled={isExporting || isPreloading}
                className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold shadow-sm border-2 text-[10px] md:text-sm text-green-700 border-green-200 hover:bg-green-50"
             >
               <FileSpreadsheet className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1042,15 +1059,15 @@ export function QuotationPreview({
 
                size="sm" 
                onClick={handleDownloadPDF}
-               disabled={isExporting || imagesLoading}
+               disabled={isExporting || isPreloading}
                className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold shadow-sm text-[10px] md:text-sm"
             >
-              {isExporting || imagesLoading ? (
+              {isExporting || isPreloading ? (
                 <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
               ) : (
                 <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
               )}
-              {isExporting ? 'Đang tạo...' : (imagesLoading ? 'Đang tải...' : 'Tải PDF')}
+              {isExporting ? 'Đang tạo...' : (isPreloading ? 'Đang tải...' : 'Tải PDF')}
             </Button>
           </div>
         </DialogHeader>
