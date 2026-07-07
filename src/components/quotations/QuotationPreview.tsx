@@ -427,7 +427,7 @@ export function QuotationPreview({
 
       // 3. Render canvas with high resolution, capturing full height
       const canvas = await toCanvas(element, {
-        pixelRatio: 1.5, // Reduced to prevent iOS Safari memory crashes on long invoices
+        pixelRatio: 2.5, // Increased to 2.5 for crisp and high-quality PDF/images
         backgroundColor: '#ffffff',
       });
 
@@ -522,7 +522,7 @@ export function QuotationPreview({
 
       // 4. Render image directly to Data URL
       const dataUrl = await toJpeg(element, {
-        pixelRatio: 1.5,
+        pixelRatio: 2.5, // Increased to 2.5 for crisp and high-quality images
         backgroundColor: '#ffffff',
         quality: 1.0,
         skipFonts: false,
@@ -666,7 +666,7 @@ export function QuotationPreview({
 
       try {
         const dataUrl = await toJpeg(element, { 
-          pixelRatio: 1.5, 
+          pixelRatio: 2.5, // Increased to 2.5 for crisp and high-quality images
           backgroundColor: '#ffffff',
           quality: 1.0,
           skipFonts: false,
