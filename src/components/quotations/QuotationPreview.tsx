@@ -1440,10 +1440,7 @@ export function QuotationPreview({
                  </div>
               </div>
 
-              {/* System Footer */}
-              <div className="mt-8 pt-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[7.5px] text-gray-300 font-mono tracking-[0.5em] uppercase italic">Hệ thống quản lý {template.companyName.toUpperCase()} — Mã hồ sơ: {quotation.id.slice(0, 10).toUpperCase()}</p>
-              </div>
+
               </div>
             </div>
           </div>
