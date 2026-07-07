@@ -226,6 +226,14 @@ export function QuotationPreview({
 
   const isPreloading = isConfigLoading || imagesLoading;
 
+  const hasBankInfo = React.useMemo(() => {
+    return !!(
+      template.bankAccount?.trim() ||
+      template.bankName?.trim() ||
+      template.bankAccountName?.trim()
+    );
+  }, [template]);
+
   React.useEffect(() => {
     const fetchAsDataUrl = async (url: string, setter: (val: string) => void) => {
       if (!url) {
@@ -880,23 +888,39 @@ export function QuotationPreview({
 
       sheet.addRow([]);
 
-      const policyRow = sheet.addRow(['CHÍNH SÁCH VÀ GHI CHÚ', '', '', '', 'THANH TOÁN CHUYỂN KHOẢN']);
-      sheet.mergeCells(policyRow.number, 1, policyRow.number, 4);
-      sheet.mergeCells(policyRow.number, 5, policyRow.number, maxCol);
+      const policyRow = sheet.addRow(
+        hasBankInfo 
+          ? ['CHÍNH SÁCH VÀ GHI CHÚ', '', '', '', 'THANH TOÁN CHUYỂN KHOẢN']
+          : ['CHÍNH SÁCH VÀ GHI CHÚ']
+      );
+      if (hasBankInfo) {
+        sheet.mergeCells(policyRow.number, 1, policyRow.number, 4);
+        sheet.mergeCells(policyRow.number, 5, policyRow.number, maxCol);
+        policyRow.getCell(5).font = { name: 'Times New Roman', bold: true, size: 11 };
+      } else {
+        sheet.mergeCells(policyRow.number, 1, policyRow.number, maxCol);
+      }
       policyRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 11 };
-      policyRow.getCell(5).font = { name: 'Times New Roman', bold: true, size: 11 };
       
-      const policyTextRow = sheet.addRow([
-         template.terms || 'Chưa có điều khoản', '', '', '',
-         `Ngân hàng: ${template.bankName || quotation.paymentInfo.bankName}\nSố tài khoản: ${template.bankAccount || quotation.paymentInfo.accountNumber}\nChủ tài khoản: ${template.bankAccountName || quotation.paymentInfo.accountHolder}\nNội dung ghi: "${quotation.paymentInfo.content}"`
-      ]);
-      sheet.mergeCells(policyTextRow.number, 1, policyTextRow.number, 4);
-      sheet.mergeCells(policyTextRow.number, 5, policyTextRow.number, maxCol);
+      const policyTextRow = sheet.addRow(
+        hasBankInfo
+          ? [
+             template.terms || 'Chưa có điều khoản', '', '', '',
+             `Ngân hàng: ${template.bankName || quotation.paymentInfo.bankName}\nSố tài khoản: ${template.bankAccount || quotation.paymentInfo.accountNumber}\nChủ tài khoản: ${template.bankAccountName || quotation.paymentInfo.accountHolder}\nNội dung ghi: "${quotation.paymentInfo.content}"`
+            ]
+          : [template.terms || 'Chưa có điều khoản']
+      );
+      if (hasBankInfo) {
+        sheet.mergeCells(policyTextRow.number, 1, policyTextRow.number, 4);
+        sheet.mergeCells(policyTextRow.number, 5, policyTextRow.number, maxCol);
+        policyTextRow.getCell(5).alignment = { wrapText: true, vertical: 'top' };
+        policyTextRow.getCell(5).font = { name: 'Times New Roman', size: 11 };
+      } else {
+        sheet.mergeCells(policyTextRow.number, 1, policyTextRow.number, maxCol);
+      }
       
       policyTextRow.getCell(1).alignment = { wrapText: true, vertical: 'top' };
       policyTextRow.getCell(1).font = { name: 'Times New Roman', size: 11 };
-      policyTextRow.getCell(5).alignment = { wrapText: true, vertical: 'top' };
-      policyTextRow.getCell(5).font = { name: 'Times New Roman', size: 11 };
       policyTextRow.height = 80;
 
       sheet.addRow([]);
@@ -1331,7 +1355,7 @@ export function QuotationPreview({
 
               {/* Policy & Payment Section */}
               <div className="mt-4 grid grid-cols-2 gap-4 items-start">
-                 <div className="space-y-2">
+                 <div className={cn("space-y-2", !hasBankInfo && "col-span-2")}>
                     <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
                        CHÍNH SÁCH VÀ GHI CHÚ
                     </div>
@@ -1339,31 +1363,33 @@ export function QuotationPreview({
                        {template.terms || 'Chưa có điều khoản'}
                     </div>
                  </div>
-                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
-                       THANH TOÁN CHUYỂN KHOẢN
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 space-y-1 text-[10px] relative">
-                       <div className="flex justify-between items-center relative z-10 w-2/3">
-                          <span className="text-gray-500 font-bold uppercase text-[8px]">Ngân hàng</span>
-                          <span className="font-bold text-black text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
-                       </div>
-                       <div className="flex justify-between items-center relative z-10 w-2/3">
-                          <span className="text-gray-500 font-bold uppercase text-[8px]">Số tài khoản</span>
-                          <span className="font-mono font-bold text-sm tracking-tighter text-primary text-right">{template.bankAccount || quotation.paymentInfo.accountNumber}</span>
-                       </div>
-                       <div className="flex justify-between items-center relative z-10 w-2/3">
-                          <span className="text-gray-500 font-bold uppercase text-[8px]">Chủ tài khoản</span>
-                          <span className="font-bold text-black uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
-                       </div>
-                       {template.qrCodeUrl && (
-                         <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
-                            <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                 {hasBankInfo && (
+                   <div className="space-y-2">
+                      <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
+                         THANH TOÁN CHUYỂN KHOẢN
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 space-y-1 text-[10px] relative">
+                         <div className="flex justify-between items-center relative z-10 w-2/3">
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">Ngân hàng</span>
+                            <span className="font-bold text-black text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
                          </div>
-                       )}
-                    </div>
-                    <p className="text-[9px] italic text-gray-500 font-medium leading-tight">Nội dung ghi: <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span></p>
-                 </div>
+                         <div className="flex justify-between items-center relative z-10 w-2/3">
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">Số tài khoản</span>
+                            <span className="font-mono font-bold text-sm tracking-tighter text-primary text-right">{template.bankAccount || quotation.paymentInfo.accountNumber}</span>
+                         </div>
+                         <div className="flex justify-between items-center relative z-10 w-2/3">
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">Chủ tài khoản</span>
+                            <span className="font-bold text-black uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
+                         </div>
+                         {template.qrCodeUrl && (
+                           <div className="absolute right-2 top-2 bottom-2 w-16 bg-white border border-gray-200 p-0.5 z-20 flex items-center justify-center">
+                              <img src={qrCodeDataUrl || template.qrCodeUrl} alt="QR Code" className="max-h-full max-w-full object-contain" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                           </div>
+                         )}
+                      </div>
+                      <p className="text-[9px] italic text-gray-500 font-medium leading-tight">Nội dung ghi: <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span></p>
+                   </div>
+                 )}
               </div>
 
               <div className="mt-6 text-center opacity-70">
