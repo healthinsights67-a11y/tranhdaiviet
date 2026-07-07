@@ -729,15 +729,17 @@ export function QuotationPreview({
          return row;
       };
 
-      addHeader('CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 16);
-      addHeader('BÁO GIÁ THI CÔNG', true, 18);
+      const isReadyMade = quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0);
+
+      addHeader(template.companyName || 'CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 16);
+      addHeader(isReadyMade ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG', true, 18);
       
       const noRow = sheet.addRow([`HỒ SƠ SỐ: ${quotation.quotationNumber}`]);
       sheet.mergeCells(noRow.number, 1, noRow.number, maxCol);
       noRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
       noRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       
-      const dearRow = sheet.addRow([`Kính gửi: CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN xin cảm ơn ${quotation.customerName} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi báo giá thi công thực tế như sau:`]);
+      const dearRow = sheet.addRow([`Kính gửi: ${template.companyName || 'CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN'} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${isReadyMade ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`]);
       sheet.mergeCells(dearRow.number, 1, dearRow.number, maxCol);
       dearRow.getCell(1).font = { name: 'Times New Roman', italic: true, size: 11 };
       dearRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -763,7 +765,11 @@ export function QuotationPreview({
 
       addCustomerRow('KHÁCH HÀNG', quotation.customerName, 'ĐIỆN THOẠI', quotation.phone);
       addCustomerRow('CÔNG TRÌNH', quotation.constructionType || 'Nhà ở dân dụng', 'ĐỊA CHỈ', quotation.address);
-      addCustomerRow('THỜI GIAN', quotation.estimatedTime + ' ngày làm việc', 'NGÀY BÁO GIÁ', format(new Date(quotation.date), 'dd/MM/yyyy'));
+      if (isReadyMade) {
+         addCustomerRow('ĐƠN HÀNG', 'Đơn hàng đóng sẵn', 'NGÀY BÁO GIÁ', format(new Date(quotation.date), 'dd/MM/yyyy'));
+      } else {
+         addCustomerRow('THỜI GIAN', quotation.estimatedTime + ' ngày làm việc', 'NGÀY BÁO GIÁ', format(new Date(quotation.date), 'dd/MM/yyyy'));
+      }
 
       sheet.addRow([]);
 
@@ -1201,7 +1207,7 @@ export function QuotationPreview({
                     <td className="p-2 text-center border-t-2 border-r-2 border-black">
                        <div className="flex flex-col items-center">
                           <div className="text-2xl font-bold tracking-[0.2em] text-black uppercase">
-                             {quotation.type === 'ready-made' ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG'}
+                             {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG'}
                           </div>
                           <div className="mt-1 flex items-center gap-3">
                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">HỒ SƠ SỐ:</span>
@@ -1214,7 +1220,7 @@ export function QuotationPreview({
               </table>
 
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
-                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi {quotation.type === 'ready-made' ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:
+                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:
               </div>
 
               {/* Customer Information Grid Style */}
@@ -1233,7 +1239,7 @@ export function QuotationPreview({
                     <td className="p-1.5 font-bold">{quotation.address}</td>
                   </tr>
                   <tr className="bg-gray-100">
-                    {quotation.type === 'ready-made' ? (
+                    {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? (
                       <td colSpan={2} className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider text-center text-blue-700">Đơn hàng đóng sẵn</td>
                     ) : (
                       <>
