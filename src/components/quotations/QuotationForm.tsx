@@ -487,7 +487,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.customerName) {
+    if (formData.type !== 'ready-made' && !formData.customerName) {
       toast.error("Vui lòng chọn khách hàng");
       return;
     }
@@ -495,7 +495,13 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       toast.error("Vui lòng kiểm tra lại thông tin các hạng mục");
       return;
     }
-    onSubmit(formData);
+    
+    const finalData = {
+      ...formData,
+      customerName: formData.customerName || (formData.type === 'ready-made' ? 'Khách lẻ' : ''),
+    };
+    
+    onSubmit(finalData);
   };
 
   const handleExport = () => {
@@ -584,25 +590,50 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                   
                   <div className="space-y-1">
                     <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                      Khách hàng <span className="text-destructive">*</span>
+                      Khách hàng {formData.type !== 'ready-made' && <span className="text-destructive">*</span>}
                     </Label>
-                    <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
-                      <SelectTrigger className="h-9 w-full bg-white">
-                        <SelectValue placeholder="Chọn khách hàng mục tiêu">
-                          {formData.customerName || undefined}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium text-xs">{c.name}</span>
-                              <span className="text-[10px] text-muted-foreground">{c.phone}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1 items-center">
+                      <div className="flex-1">
+                        <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
+                          <SelectTrigger className="h-9 w-full bg-white">
+                            <SelectValue placeholder="Chọn khách hàng mục tiêu">
+                              {formData.customerName || undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <div className="flex flex-col items-start">
+                                  <span className="font-medium text-xs">{c.name}</span>
+                                  <span className="text-[10px] text-muted-foreground">{c.phone}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {formData.customerId && (
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="icon" 
+                          className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive" 
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              customerId: '',
+                              customerName: '',
+                              phone: '',
+                              address: '',
+                              quotationNumber: `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
+                            });
+                          }}
+                          title="Bỏ chọn khách hàng"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="space-y-1">
