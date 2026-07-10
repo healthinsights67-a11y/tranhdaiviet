@@ -149,6 +149,51 @@ const getAccessoryMaterialCode = (name: string, category?: string): string => {
   return 'PKK'; // Phụ kiện khác
 };
 
+const getMaterialDescriptionNote = (code: string): string => {
+  switch (code.toUpperCase()) {
+    case 'ECO':
+      return '- Chất liệu khung cánh Ecoplast';
+    case 'LUX':
+      return '- Chất liệu khung cánh Ecoplast Luxury';
+    case 'ECO+':
+      return '- Chất liệu khung cánh Ecoplus';
+    case 'ECOPVC+':
+      return '- Chất liệu khung cánh Ecoplus Film PVC';
+    case 'PENCO':
+      return '- Chất liệu khung cánh nhựa Penco';
+    case 'CASAWOOD':
+      return '- Chất liệu khung cánh nhựa đặc Casawood';
+    case 'THANTRE':
+      return '- Chất liệu khung cánh than tre';
+    default:
+      return '';
+  }
+};
+
+const updateDescriptionWithMaterial = (description: string, materialCode: string): string => {
+  const note = getMaterialDescriptionNote(materialCode);
+  const lines = description ? description.split('\n') : [];
+  
+  const materialLineIndex = lines.findIndex(line => 
+    line.toLowerCase().includes('chất liệu') || 
+    line.toLowerCase().includes('chat lieu')
+  );
+
+  if (materialLineIndex !== -1) {
+    if (note) {
+      lines[materialLineIndex] = note;
+    } else {
+      lines.splice(materialLineIndex, 1);
+    }
+  } else {
+    if (note) {
+      lines.unshift(note);
+    }
+  }
+
+  return lines.join('\n').trim();
+};
+
 const getMaterialColor = (code?: string) => {
   if (!code) return '#1e40af'; // Mặc định Ecoplast
   return MATERIAL_COLORS[code.toUpperCase()] || '#64748b';
@@ -350,7 +395,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         id: Math.random().toString(36).substr(2, 9),
         category: product.category || 'Khác',
         name: product.productName,
-        description: product.description || '',
+        description: updateDescriptionWithMaterial(product.description || '', isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'ECO'),
         unit: product.unit || 'md',
         quantity: 1,
         basePrice,
@@ -431,6 +476,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
           if (updates.materialCode === '') {
             updated.materialName = '';
             updated.unitPrice = updated.basePrice || updated.unitPrice;
+            updated.description = updateDescriptionWithMaterial(updated.description || '', '');
           } else {
             const multiplier = multipliers.find(m => m.code === updates.materialCode);
             if (multiplier) {
@@ -439,6 +485,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                 updated.basePrice = multiplier.globalBasePrice;
               }
               updated.unitPrice = Math.round((updated.basePrice || updated.unitPrice || 0) * (multiplier.percentage / 100));
+              updated.description = updateDescriptionWithMaterial(updated.description || '', updates.materialCode);
             }
           }
         }
@@ -463,9 +510,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
               updated.unitPrice = standard.unitPrice;
             }
             
-            if (!updated.description) {
-               updated.description = standard.description;
-            }
+            updated.description = standard.description || updated.description || '';
+            updated.description = updateDescriptionWithMaterial(updated.description, accCode);
           } else {
             // Tự động nhận diện nếu là phụ kiện để gán mã phụ kiện tương ứng
             if (isAccessoryItem(updates.name, updated.category)) {
@@ -476,6 +522,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
               if (multiplier && updated.basePrice) {
                 updated.unitPrice = Math.round(updated.basePrice * (multiplier.percentage / 100));
               }
+              updated.description = updateDescriptionWithMaterial(updated.description || '', accCode);
             } else {
               // Nếu không phải phụ kiện mà trước đó đang là phụ kiện (PKB, PKK, PKTA), chuyển về ECO
               if (item.materialCode && ACCESSORY_MATERIAL_CODES.has(item.materialCode)) {
@@ -485,6 +532,10 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                 if (multiplier && updated.basePrice) {
                   updated.unitPrice = Math.round(updated.basePrice * (multiplier.percentage / 100));
                 }
+                updated.description = updateDescriptionWithMaterial(updated.description || '', 'ECO');
+              } else {
+                // Nếu không phải phụ kiện và trước đó cũng không phải phụ kiện, đảm bảo mô tả khớp với vật liệu hiện tại
+                updated.description = updateDescriptionWithMaterial(updated.description || '', updated.materialCode || 'ECO');
               }
             }
           }
@@ -934,12 +985,13 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       const basePrice = standard.unitPrice;
                                       const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
                                       const accCode = isAccessory ? getAccessoryMaterialCode(standard.productName, standard.category) : 'ECO';
+                                      const desc = updateDescriptionWithMaterial(standard.description || '', accCode);
                                       updateItem(item.id, { 
                                         name: standard.productName,
                                         unit: standard.unit,
                                         basePrice,
                                         unitPrice,
-                                        description: standard.description,
+                                        description: desc,
                                         category: standard.category,
                                         materialCode: accCode,
                                         materialName: accCode
