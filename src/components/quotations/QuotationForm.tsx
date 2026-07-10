@@ -87,8 +87,66 @@ const isAccessoryItem = (name: string, category?: string): boolean => {
     lower.includes('khóa') ||
     lower.includes('khóa tủ') ||
     lower.includes('giảm chấn') ||
-    lower.includes('mặt sàn')
+    lower.includes('mặt sàn') ||
+    lower.includes('giá bát') ||
+    lower.includes('kệ bát') ||
+    lower.includes('xoong nồi') ||
+    lower.includes('giá xoong') ||
+    lower.includes('dao thớt') ||
+    lower.includes('giá dao') ||
+    lower.includes('gia vị') ||
+    lower.includes('kệ gia vị') ||
+    lower.includes('thùng gạo') ||
+    lower.includes('thùng rác') ||
+    lower.includes('kệ góc') ||
+    lower.includes('mâm xoay') ||
+    lower.includes('góc liên hoàn') ||
+    lower.includes('tủ kho') ||
+    lower.includes('giá kho') ||
+    lower.includes('móc áo') ||
+    lower.includes('móc treo') ||
+    lower.includes('suốt treo') ||
+    lower.includes('giá gương') ||
+    lower.includes('gương âm') ||
+    lower.includes('piston') ||
+    lower.includes('tay nâng') ||
+    lower.includes('đèn led') ||
+    lower.includes('khay chia')
   );
+};
+
+const getAccessoryMaterialCode = (name: string, category?: string): string => {
+  const lower = (name + ' ' + (category || '')).toLowerCase();
+  if (
+    lower.includes('bếp') || 
+    lower.includes('bát') || 
+    lower.includes('xoong') || 
+    lower.includes('nồi') || 
+    lower.includes('dao') || 
+    lower.includes('thớt') || 
+    lower.includes('gia vị') || 
+    lower.includes('gạo') || 
+    lower.includes('rác') ||
+    lower.includes('kho') ||
+    lower.includes('góc') ||
+    lower.includes('mâm xoay')
+  ) {
+    return 'PKB'; // Phụ kiện bếp
+  }
+  if (
+    lower.includes('áo') || 
+    lower.includes('quần') || 
+    lower.includes('mắc') || 
+    lower.includes('treo') || 
+    lower.includes('gương') ||
+    lower.includes('caravat')
+  ) {
+    return 'PKTA'; // Phụ kiện tủ áo
+  }
+  if (lower.includes('sàn')) {
+    return 'MSNT'; // Mặt sàn nhựa thường
+  }
+  return 'PKK'; // Phụ kiện khác
 };
 
 const getMaterialColor = (code?: string) => {
@@ -299,9 +357,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         unitPrice,
         total: unitPrice,
         imageUrl: product.imageUrl || '',
-        // Mặc định ECO (105%) cho hạng mục nội thất, bỏ trống cho phụ kiện
-        materialCode: isAccessory ? '' : 'ECO',
-        materialName: isAccessory ? '' : 'ECO'
+        // Mặc định ECO (105%) cho hạng mục nội thất, gán mã phụ kiện tương ứng cho phụ kiện
+        materialCode: isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'ECO',
+        materialName: isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'ECO'
       };
     });
 
@@ -392,12 +450,42 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
           );
           if (standard) {
             updated.basePrice = standard.unitPrice;
-            updated.unitPrice = standard.unitPrice;
             updated.unit = standard.unit;
-            updated.materialCode = '';
-            updated.materialName = '';
+            const isAcc = isAccessoryItem(standard.productName, standard.category);
+            const accCode = isAcc ? getAccessoryMaterialCode(standard.productName, standard.category) : 'ECO';
+            updated.materialCode = accCode;
+            updated.materialName = accCode;
+            
+            const multiplier = multipliers.find(m => m.code === accCode);
+            if (multiplier) {
+              updated.unitPrice = Math.round(standard.unitPrice * (multiplier.percentage / 100));
+            } else {
+              updated.unitPrice = standard.unitPrice;
+            }
+            
             if (!updated.description) {
                updated.description = standard.description;
+            }
+          } else {
+            // Tự động nhận diện nếu là phụ kiện để gán mã phụ kiện tương ứng
+            if (isAccessoryItem(updates.name, updated.category)) {
+              const accCode = getAccessoryMaterialCode(updates.name, updated.category);
+              updated.materialCode = accCode;
+              updated.materialName = accCode;
+              const multiplier = multipliers.find(m => m.code === accCode);
+              if (multiplier && updated.basePrice) {
+                updated.unitPrice = Math.round(updated.basePrice * (multiplier.percentage / 100));
+              }
+            } else {
+              // Nếu không phải phụ kiện mà trước đó đang là phụ kiện (PKB, PKK, PKTA), chuyển về ECO
+              if (item.materialCode && ACCESSORY_MATERIAL_CODES.has(item.materialCode)) {
+                updated.materialCode = 'ECO';
+                updated.materialName = 'ECO';
+                const multiplier = multipliers.find(m => m.code === 'ECO');
+                if (multiplier && updated.basePrice) {
+                  updated.unitPrice = Math.round(updated.basePrice * (multiplier.percentage / 100));
+                }
+              }
             }
           }
         }
@@ -845,6 +933,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       const ecoRatio = ecoMultiplier ? ecoMultiplier.percentage / 100 : 1;
                                       const basePrice = standard.unitPrice;
                                       const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
+                                      const accCode = isAccessory ? getAccessoryMaterialCode(standard.productName, standard.category) : 'ECO';
                                       updateItem(item.id, { 
                                         name: standard.productName,
                                         unit: standard.unit,
@@ -852,8 +941,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                         unitPrice,
                                         description: standard.description,
                                         category: standard.category,
-                                        materialCode: isAccessory ? '' : 'ECO',
-                                        materialName: isAccessory ? '' : 'ECO'
+                                        materialCode: accCode,
+                                        materialName: accCode
                                       });
                                     }
                                   }}
@@ -897,7 +986,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       <SelectItem key={m.id} value={m.code}>
                                         <div className="flex items-center gap-1.5">
                                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getMaterialColor(m.code) }} />
-                                          <span className="truncate">{m.code} ({m.percentage}%)</span>
+                                          <span className="truncate">{ACCESSORY_MATERIAL_CODES.has(m.code) ? m.material : m.code} ({m.percentage}%)</span>
                                         </div>
                                       </SelectItem>
                                     ))}
