@@ -291,7 +291,11 @@ export function QuotationPreview({
       if (template.logoUrl) promises.push(fetchAsDataUrl(template.logoUrl, setLogoDataUrl));
       if (template.qrCodeUrl) promises.push(fetchAsDataUrl(template.qrCodeUrl, setQrCodeDataUrl));
       if (template.companyWebsite) {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(template.companyWebsite)}&margin=0`;
+        let websiteUrl = template.companyWebsite.trim();
+        if (!/^https?:\/\//i.test(websiteUrl)) {
+          websiteUrl = `https://${websiteUrl}`;
+        }
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(websiteUrl)}&margin=0`;
         promises.push(fetchAsDataUrl(qrUrl, setWebsiteQrCodeDataUrl));
       }
       await Promise.allSettled(promises);
@@ -1398,32 +1402,38 @@ export function QuotationPreview({
                  )}
               </div>
 
-              <div className="mt-6 text-center opacity-70">
-                 <div className="font-serif italic text-lg px-20 text-gray-400 leading-tight">
-                   <p>"{template.companyName.toUpperCase()}</p>
-                   <p>Kiến tạo không gian, nâng tầm cuộc sống"</p>
+              <div className="mt-3 text-center opacity-70">
+                 <div className="font-serif italic text-xs px-10 text-gray-400 leading-normal">
+                   <p>"{template.companyName.toUpperCase()} — Kiến tạo không gian, nâng tầm cuộc sống"</p>
                  </div>
               </div>
 
               {/* Signature Section */}
-              <div className="mt-4 flex justify-between px-10">
+              <div className="mt-3 flex justify-between px-10">
                  <div className="text-center space-y-1 w-1/3">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Khách hàng xác nhận</p>
                     <p className="text-sm font-bold text-black">KÝ VÀ GHI HỌ TÊN</p>
-                    <div className="h-16" />
-                    <p className="text-[9px] font-medium text-gray-500 italic pb-2 border-b border-gray-100 items-center justify-center flex gap-1">
+                    <div className="h-10" />
+                    <p className="text-[9px] font-medium text-gray-500 italic pt-1 px-4 border-t border-gray-200 items-center justify-center flex gap-1">
                       <Download className="h-3 w-3" /> Ngày ...... / ...... / 202...
                     </p>
                  </div>
                  
                  {template.companyWebsite ? (
                    <div className="w-1/3 flex flex-col items-center justify-center pt-2">
-                     {websiteQrCodeDataUrl ? (
-                       <img src={websiteQrCodeDataUrl} alt="Website QR Code" className="w-16 h-16 object-contain mix-blend-multiply opacity-80" />
-                     ) : (
-                       <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400">QR CODE</div>
-                     )}
-                     <span className="text-[6px] uppercase tracking-widest text-gray-400 mt-1 font-bold">Truy cập Website</span>
+                     <a 
+                       href={template.companyWebsite.trim().startsWith('http') ? template.companyWebsite.trim() : `https://${template.companyWebsite.trim()}`} 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       className="cursor-pointer hover:scale-105 transition-transform duration-200"
+                     >
+                       {websiteQrCodeDataUrl ? (
+                         <img src={websiteQrCodeDataUrl} alt="Website QR Code" className="w-16 h-16 object-contain mix-blend-multiply opacity-80" />
+                       ) : (
+                         <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400">QR CODE</div>
+                       )}
+                     </a>
+                     <span className="text-[8px] uppercase tracking-widest text-gray-400 mt-1 font-bold">Truy cập Website</span>
                    </div>
                  ) : (
                    <div className="w-1/3" />
@@ -1432,7 +1442,7 @@ export function QuotationPreview({
                  <div className="text-center space-y-1 w-1/3">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Đại diện Công ty</p>
                     <p className="text-sm font-bold text-black uppercase">NGƯỜI LẬP BIỂU</p>
-                    <div className="h-16 flex items-center justify-center relative">
+                    <div className="h-10 flex items-center justify-center relative">
                     </div>
                     <p className="font-bold text-gray-950 text-sm border-t border-gray-200 pt-1 px-4">
                        {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : 'BAN QUẢN TRỊ')}
