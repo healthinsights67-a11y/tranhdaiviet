@@ -234,54 +234,57 @@ export function QuotationPreview({
     );
   }, [template]);
 
-  React.useEffect(() => {
-    const fetchAsDataUrl = async (url: string, setter: (val: string) => void) => {
-      if (!url) {
-        setter('');
-        return;
-      }
-      if (url.startsWith('data:')) {
-        setter(url);
-        return;
-      }
-      
-      const toBase64 = async (fetchUrl: string) => {
-        const response = await fetch(fetchUrl, { mode: 'cors', cache: 'no-cache' });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const blob = await response.blob();
-        if (blob.type.includes('text/html')) throw new Error('Received HTML instead of image');
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      };
-
-      try {
-        // Try the local server proxy first since it is 100% reliable and resolves CORS on the server-side
-        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-        const dataUrl = await toBase64(proxyUrl);
-        setter(dataUrl);
-      } catch (e) {
-        console.warn('Local proxy fetch failed. Trying direct fetch with cache-buster...', e);
-        try {
-          const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
-          const dataUrl = await toBase64(url + cacheBuster);
-          setter(dataUrl);
-        } catch (e2) {
-          console.warn('Direct fetch failed. Trying allorigins proxy...', e2);
-          try {
-            const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
-            const dataUrl = await toBase64(allOriginsUrl);
-            setter(dataUrl);
-          } catch (e3) {
-            console.error('All image loading strategies failed', e3);
-            setter(url);
-          }
-        }
-      }
+  const fetchAsDataUrl = async (url: string, setter?: (val: string) => void): Promise<string> => {
+    if (!url) {
+      if (setter) setter('');
+      return '';
+    }
+    if (url.startsWith('data:')) {
+      if (setter) setter(url);
+      return url;
+    }
+    
+    const toBase64 = async (fetchUrl: string) => {
+      const response = await fetch(fetchUrl, { mode: 'cors', cache: 'no-cache' });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const blob = await response.blob();
+      if (blob.type.includes('text/html')) throw new Error('Received HTML instead of image');
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
     };
 
+    try {
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+      const dataUrl = await toBase64(proxyUrl);
+      if (setter) setter(dataUrl);
+      return dataUrl;
+    } catch (e) {
+      console.warn('Local proxy fetch failed. Trying direct fetch with cache-buster...', e);
+      try {
+        const cacheBuster = url.includes('?') ? `&cb=${Date.now()}` : `?cb=${Date.now()}`;
+        const dataUrl = await toBase64(url + cacheBuster);
+        if (setter) setter(dataUrl);
+        return dataUrl;
+      } catch (e2) {
+        console.warn('Direct fetch failed. Trying allorigins proxy...', e2);
+        try {
+          const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&cb=${Date.now()}`;
+          const dataUrl = await toBase64(allOriginsUrl);
+          if (setter) setter(dataUrl);
+          return dataUrl;
+        } catch (e3) {
+          console.error('All image loading strategies failed', e3);
+          if (setter) setter(url);
+          return url;
+        }
+      }
+    }
+  };
+
+  React.useEffect(() => {
     // Guard: only load images when dialog is open
     if (!isOpen) return;
 
@@ -407,6 +410,50 @@ export function QuotationPreview({
     await Promise.all(decodePromises);
   };
 
+  const ensureAndSwapImages = async (element: HTMLElement) => {
+    let finalLogoUrl = logoDataUrl;
+    let finalQrCodeUrl = qrCodeDataUrl;
+    let finalWebsiteQrCodeUrl = websiteQrCodeDataUrl;
+
+    const loadPromises = [];
+
+    if (!finalLogoUrl && template.logoUrl) {
+      loadPromises.push(fetchAsDataUrl(template.logoUrl).then(url => { finalLogoUrl = url; }));
+    }
+    if (!finalQrCodeUrl && template.qrCodeUrl) {
+      loadPromises.push(fetchAsDataUrl(template.qrCodeUrl).then(url => { finalQrCodeUrl = url; }));
+    }
+    if (!finalWebsiteQrCodeUrl && template.companyWebsite) {
+      let websiteUrl = template.companyWebsite.trim();
+      if (!/^https?:\/\//i.test(websiteUrl)) {
+        websiteUrl = `https://${websiteUrl}`;
+      }
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(websiteUrl)}&margin=0`;
+      loadPromises.push(fetchAsDataUrl(qrUrl).then(url => { finalWebsiteQrCodeUrl = url; }));
+    }
+
+    if (loadPromises.length > 0) {
+      await Promise.allSettled(loadPromises);
+    }
+
+    const imgElements = element.querySelectorAll('img');
+    const imgOriginalSrcs: string[] = [];
+    imgElements.forEach((img) => {
+      imgOriginalSrcs.push(img.src);
+      if (img.src && !img.src.startsWith('data:')) {
+        if (finalLogoUrl && (img.src.includes(template.logoUrl || '__NO_MATCH__') || img.getAttribute('alt') === 'Logo' || img.getAttribute('alt') === 'Watermark')) {
+          img.src = finalLogoUrl;
+        } else if (finalQrCodeUrl && img.getAttribute('alt') === 'QR Code') {
+          img.src = finalQrCodeUrl;
+        } else if (finalWebsiteQrCodeUrl && img.getAttribute('alt') === 'Website QR Code') {
+          img.src = finalWebsiteQrCodeUrl;
+        }
+      }
+    });
+
+    return { imgElements, imgOriginalSrcs };
+  };
+
   const handleDownloadPDF = async () => {
     const element = printRef.current;
     if (!element) return;
@@ -426,7 +473,8 @@ export function QuotationPreview({
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Wait for all images in the document to load and decode completely before drawing to canvas
+      // Wait for all images to decode and swap them with base64 data URLs
+      const { imgElements, imgOriginalSrcs } = await ensureAndSwapImages(element);
       await decodeAllImages(element);
 
       // 3. Render canvas with high resolution, capturing full height
@@ -434,6 +482,9 @@ export function QuotationPreview({
         pixelRatio: 2.5, // Increased to 2.5 for crisp and high-quality PDF/images
         backgroundColor: '#ffffff',
       });
+
+      // Restore img srcs
+      imgElements.forEach((img, i) => { img.src = imgOriginalSrcs[i]; });
 
       // 4. Restore original styles immediately
       element.className = originalClassName;
@@ -503,25 +554,8 @@ export function QuotationPreview({
       // Allow Safari DOM to recalculate layout before cloning
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 3. Inject preloaded base64 data URLs directly into img elements
-      // This prevents html-to-image from re-fetching images from external URLs
-      // which iOS Safari CORS blocks, causing logos to disappear in exported images
-      const imgElements = element.querySelectorAll('img');
-      const imgOriginalSrcs: string[] = [];
-      imgElements.forEach((img) => {
-        imgOriginalSrcs.push(img.src);
-        if (img.src && !img.src.startsWith('data:')) {
-          if (logoDataUrl && (img.src.includes(template.logoUrl || '__NO_MATCH__') || img.getAttribute('alt') === 'Logo' || img.getAttribute('alt') === 'Watermark')) {
-            img.src = logoDataUrl;
-          } else if (qrCodeDataUrl && img.getAttribute('alt') === 'QR Code') {
-            img.src = qrCodeDataUrl;
-          } else if (websiteQrCodeDataUrl && img.getAttribute('alt') === 'Website QR Code') {
-            img.src = websiteQrCodeDataUrl;
-          }
-        }
-      });
-
-      // Wait for all images (especially the newly injected base64 ones) to load and decode completely
+      // Wait for all images to decode and swap them with base64 data URLs
+      const { imgElements, imgOriginalSrcs } = await ensureAndSwapImages(element);
       await decodeAllImages(element);
 
       // 4. Render image directly to Data URL
@@ -652,21 +686,9 @@ export function QuotationPreview({
 
     // Allow Safari DOM to recalculate
     setTimeout(async () => {
-      // Inject preloaded base64 data URLs to prevent iOS CORS re-fetch
-      const imgElements = element.querySelectorAll('img');
-      const imgOriginalSrcs: string[] = [];
-      imgElements.forEach((img) => {
-        imgOriginalSrcs.push(img.src);
-        if (img.src && !img.src.startsWith('data:')) {
-          if (logoDataUrl && (img.getAttribute('alt') === 'Logo' || img.getAttribute('alt') === 'Watermark')) {
-            img.src = logoDataUrl;
-          } else if (qrCodeDataUrl && img.getAttribute('alt') === 'QR Code') {
-            img.src = qrCodeDataUrl;
-          } else if (websiteQrCodeDataUrl && img.getAttribute('alt') === 'Website QR Code') {
-            img.src = websiteQrCodeDataUrl;
-          }
-        }
-      });
+      // Wait for all images to decode and swap them with base64 data URLs
+      const { imgElements, imgOriginalSrcs } = await ensureAndSwapImages(element);
+      await decodeAllImages(element);
 
       try {
         const dataUrl = await toJpeg(element, { 
