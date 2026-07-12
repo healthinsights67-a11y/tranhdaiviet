@@ -1696,45 +1696,68 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5 border-t border-dashed border-border/60">
-                    <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5 opacity-50" /> {customer.phone}</span>
-                    <div className="flex flex-col items-end justify-center">
-                      {(() => {
-                        const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
-                        const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
-                        
-                        const totalOrdersSum = validQuotations.length > 0 
-                          ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
-                          : (customer.orderValue || 0);
+                  <div className="pt-2 border-t border-dashed border-border/60 space-y-2">
+                    {/* Dòng 1: Số điện thoại */}
+                    <div className="flex items-center text-[9px] md:text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3 mr-1.5 opacity-60 text-primary" />
+                      <span className="font-semibold">{customer.phone}</span>
+                    </div>
 
-                        const totalDepositSum = validQuotations.length > 0
-                          ? validQuotations.reduce((sum, q) => sum + (q.depositAmount || 0), 0)
-                          : 0;
+                    {/* Dòng 2: Chi tiết đơn hàng */}
+                    {(() => {
+                      const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+                      const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
+                      
+                      const totalOrdersSum = validQuotations.length > 0 
+                        ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+                        : (customer.orderValue || 0);
 
-                        const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
-                        if (!showPrice) return null;
+                      const totalDepositSum = validQuotations.length > 0
+                        ? validQuotations.reduce((sum, q) => sum + (q.depositAmount || 0), 0)
+                        : 0;
 
-                        if (sortedPurchases.length > 1) {
-                          return (
-                            <div className="flex flex-col items-end text-[7px] md:text-[10px] space-y-0.5 max-w-[150px] sm:max-w-none">
+                      const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
+                      if (!showPrice) return null;
+
+                      if (sortedPurchases.length > 1) {
+                        return (
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100/80 space-y-1.5 text-[8px] md:text-[10px]">
+                            <div className="font-extrabold text-slate-500 uppercase tracking-wider text-[7px] md:text-[8px] pb-1 border-b border-slate-200/50 flex justify-between">
+                              <span>Chi tiết đơn hàng</span>
+                              <span>{sortedPurchases.length} đơn</span>
+                            </div>
+                            <div className="space-y-1 max-h-[85px] overflow-y-auto custom-scrollbar">
                               {sortedPurchases.map((q, idx) => {
                                 const qDeposit = q.depositAmount || 0;
                                 return (
-                                  <span key={q.id} className="text-muted-foreground font-semibold text-right leading-tight whitespace-nowrap">
-                                    Đơn {idx + 1}: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(q.totalAmount || 0)}
-                                    {qDeposit > 0 && ` (Cọc: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(qDeposit)})`}
-                                  </span>
+                                  <div key={q.id} className="flex justify-between items-center text-slate-600">
+                                    <span className="font-medium text-slate-500">Đơn {idx + 1}:</span>
+                                    <span className="font-semibold text-slate-900">
+                                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(q.totalAmount || 0)}
+                                      {qDeposit > 0 && (
+                                        <span className="text-[7px] md:text-[9px] text-purple-600 font-bold ml-1">
+                                          (Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(qDeposit)})
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
                                 );
                               })}
-                              <span className="font-extrabold text-primary/95 border-t border-dashed border-border/80 pt-0.5 mt-0.5 text-right whitespace-nowrap">
-                                Tổng: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
+                            </div>
+                            <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-slate-200 mt-1 font-bold text-primary">
+                              <span>Tổng cộng:</span>
+                              <span className="font-black">
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
                               </span>
                             </div>
-                          );
-                        }
+                          </div>
+                        );
+                      }
 
-                        return (
-                          <>
+                      return (
+                        <div className="flex justify-between items-center text-[10px] md:text-xs">
+                          <span className="text-muted-foreground font-semibold">Giá trị:</span>
+                          <div className="flex flex-col items-end">
                             {totalOrdersSum > 0 && (
                               <span className="font-black text-primary/80">
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
@@ -1745,10 +1768,10 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                                 Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
                               </span>
                             )}
-                          </>
-                        );
-                      })()}
-                    </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </CardHeader>
                 <CardContent className="p-2.5 md:p-5 pt-0 md:pt-0 flex-1 flex flex-col justify-between gap-3">
