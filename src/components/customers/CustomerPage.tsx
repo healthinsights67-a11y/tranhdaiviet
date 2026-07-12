@@ -1695,14 +1695,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-dashed border-border/60 space-y-2">
-                    {/* Dòng 1: Số điện thoại */}
-                    <div className="flex items-center text-[9px] md:text-xs text-muted-foreground">
-                      <Phone className="h-3 w-3 mr-1.5 opacity-60 text-primary" />
-                      <span className="font-semibold">{customer.phone}</span>
-                    </div>
-
-                    {/* Dòng 2: Chi tiết đơn hàng */}
+                  <div className="flex items-start justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-1.5 border-t border-dashed border-border/60">
+                    <span className="flex items-center gap-1.5 mt-0.5"><Phone className="h-3 w-3 opacity-60 text-primary" /> {customer.phone}</span>
+                    
                     {(() => {
                       const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
                       const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
@@ -1720,21 +1715,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
                       if (sortedPurchases.length > 1) {
                         return (
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100/80 space-y-1.5 text-[8px] md:text-[10px]">
-                            <div className="font-extrabold text-slate-500 uppercase tracking-wider text-[7px] md:text-[8px] pb-1 border-b border-slate-200/50 flex justify-between">
+                          <div className="p-2 md:p-2.5 rounded-xl bg-slate-50 border border-slate-100/80 space-y-1 text-[7px] md:text-[9px] max-w-[160px] sm:max-w-none ml-2">
+                            <div className="font-extrabold text-slate-500 uppercase tracking-wider text-[6px] md:text-[8px] pb-0.5 border-b border-slate-200/50 flex justify-between gap-4">
                               <span>Chi tiết đơn hàng</span>
                               <span>{sortedPurchases.length} đơn</span>
                             </div>
-                            <div className="space-y-1 max-h-[85px] overflow-y-auto custom-scrollbar">
+                            <div className="space-y-0.5 max-h-[85px] overflow-y-auto custom-scrollbar">
                               {sortedPurchases.map((q, idx) => {
                                 const qDeposit = q.depositAmount || 0;
                                 return (
-                                  <div key={q.id} className="flex justify-between items-center text-slate-600">
+                                  <div key={q.id} className="flex justify-between items-center text-slate-600 gap-2">
                                     <span className="font-medium text-slate-500">Đơn {idx + 1}:</span>
-                                    <span className="font-semibold text-slate-900">
+                                    <span className="font-semibold text-slate-900 whitespace-nowrap">
                                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(q.totalAmount || 0)}
                                       {qDeposit > 0 && (
-                                        <span className="text-[7px] md:text-[9px] text-purple-600 font-bold ml-1">
+                                        <span className="text-[6px] md:text-[8px] text-purple-600 font-bold ml-0.5">
                                           (Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(qDeposit)})
                                         </span>
                                       )}
@@ -1743,7 +1738,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                                 );
                               })}
                             </div>
-                            <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-slate-200 mt-1 font-bold text-primary">
+                            <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200 mt-1 font-bold text-primary">
                               <span>Tổng cộng:</span>
                               <span className="font-black">
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
@@ -1754,20 +1749,17 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       }
 
                       return (
-                        <div className="flex justify-between items-center text-[10px] md:text-xs">
-                          <span className="text-muted-foreground font-semibold">Giá trị:</span>
-                          <div className="flex flex-col items-end">
-                            {totalOrdersSum > 0 && (
-                              <span className="font-black text-primary/80">
-                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
-                              </span>
-                            )}
-                            {totalDepositSum > 0 && (
-                              <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
-                                Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
-                              </span>
-                            )}
-                          </div>
+                        <div className="flex flex-col items-end justify-center">
+                          {totalOrdersSum > 0 && (
+                            <span className="font-black text-primary/80">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
+                            </span>
+                          )}
+                          {totalDepositSum > 0 && (
+                            <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
+                              Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
+                            </span>
+                          )}
                         </div>
                       );
                     })()}
