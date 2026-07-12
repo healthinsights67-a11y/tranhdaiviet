@@ -1590,6 +1590,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
           const stage = STAGE_CONFIG[customer.stage];
           const sale = members.find(m => m.id === customer.assignedSaleId);
           
+          const customerQuotations = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
+          let purchaseCount = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').length;
+          if (purchaseCount === 0 && ['contracted', 'production', 'installation', 'completed'].includes(customer.stage)) {
+            purchaseCount = 1;
+          }
+          
           return (
             <motion.div
               key={customer.id}
@@ -1666,6 +1672,12 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-blue-50 text-primary text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-blue-100">
                           <Layout className="h-2 w-2 md:h-2.5 md:w-2.5" />
                           <span>{customer.furnitureCategory}</span>
+                        </div>
+                      )}
+                      {purchaseCount > 0 && (
+                        <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-emerald-100">
+                          <Package className="h-2 w-2 md:h-2.5 md:w-2.5" />
+                          <span>Mua {purchaseCount} lần</span>
                         </div>
                       )}
                     </div>
@@ -1953,6 +1965,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                           return (
                             <span className="flex items-center gap-1.5 font-bold text-purple-200">
                               <CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Cọc: {formatCurrency(depositAmount)}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {(() => {
+                        const customerQuotations = quotations.filter(q => q.customerId === selectedCustomer.id || (q.customerName === selectedCustomer.name && q.phone === selectedCustomer.phone));
+                        let purchaseCount = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').length;
+                        if (purchaseCount === 0 && ['contracted', 'production', 'installation', 'completed'].includes(selectedCustomer.stage)) {
+                          purchaseCount = 1;
+                        }
+                        if (purchaseCount > 0) {
+                          return (
+                            <span className="flex items-center gap-1.5 font-bold text-emerald-200">
+                              <Package className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Mua {purchaseCount} lần
                             </span>
                           );
                         }
