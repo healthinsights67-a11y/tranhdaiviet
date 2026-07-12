@@ -1674,7 +1674,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   <div className="space-y-1">
                     <CardTitle className="text-[11px] md:text-lg font-bold tracking-tight leading-tight">
                       {customer.code && (
-                        <span className="block text-[7px] md:text-[10px] text-primary/80 mb-0 font-mono">{customer.code}</span>
+                        <span className="inline-block bg-blue-50 text-blue-600 border border-blue-100/80 px-1.5 py-0.5 rounded-md text-[9px] md:text-[11px] font-black font-mono tracking-wide uppercase mb-1">
+                          {customer.code}
+                        </span>
                       )}
                       <span className="block">{customer.name}</span>
                     </CardTitle>
@@ -1968,7 +1970,9 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       {STAGE_CONFIG[selectedCustomer.stage].label}
                     </Badge>
                     {selectedCustomer.code && (
-                      <p className="text-[9px] sm:text-[10px] text-white/60 mb-0.5 font-mono uppercase tracking-wider">{selectedCustomer.code}</p>
+                      <span className="inline-block bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black font-mono tracking-wider uppercase mb-1.5">
+                        {selectedCustomer.code}
+                      </span>
                     )}
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-1">{selectedCustomer.name}</h2>
                     <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-primary-foreground/80 text-[10px] sm:text-xs">
