@@ -1671,8 +1671,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     </DropdownMenu>
                   </div>
                   
-                  <div className="space-y-1">
-                    <CardTitle className="text-[11px] md:text-sm font-bold tracking-tight leading-tight text-slate-800 flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-[11px] md:text-sm font-bold tracking-tight leading-tight text-slate-800 flex flex-wrap items-center gap-1.5 flex-1">
                       <span className="font-bold text-slate-800">
                         {customer.code 
                           ? (customer.code.toLowerCase().includes(customer.name.toLowerCase()) 
@@ -1688,7 +1688,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                       )}
                     </CardTitle>
                     {purchaseCount > 0 && (
-                      <div className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-emerald-100/80">
+                      <div className="shrink-0 inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-emerald-100/80">
                         <Package className="h-2.5 w-2.5 mr-0.5" />
                         <span>Mua {purchaseCount} lần</span>
                       </div>
