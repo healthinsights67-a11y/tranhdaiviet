@@ -1701,6 +1701,8 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     <div className="flex flex-col items-end justify-center">
                       {(() => {
                         const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+                        const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
+                        
                         const totalOrdersSum = validQuotations.length > 0 
                           ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
                           : (customer.orderValue || 0);
@@ -1711,6 +1713,25 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
                         const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
                         if (!showPrice) return null;
+
+                        if (sortedPurchases.length > 1) {
+                          return (
+                            <div className="flex flex-col items-end text-[7px] md:text-[10px] space-y-0.5 max-w-[150px] sm:max-w-none">
+                              {sortedPurchases.map((q, idx) => {
+                                const qDeposit = q.depositAmount || 0;
+                                return (
+                                  <span key={q.id} className="text-muted-foreground font-semibold text-right leading-tight whitespace-nowrap">
+                                    Đơn {idx + 1}: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(q.totalAmount || 0)}
+                                    {qDeposit > 0 && ` (Cọc: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(qDeposit)})`}
+                                  </span>
+                                );
+                              })}
+                              <span className="font-extrabold text-primary/95 border-t border-dashed border-border/80 pt-0.5 mt-0.5 text-right whitespace-nowrap">
+                                Tổng: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
+                              </span>
+                            </div>
+                          );
+                        }
 
                         return (
                           <>
