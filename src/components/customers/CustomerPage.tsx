@@ -1615,7 +1615,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
               transition={{ delay: i * 0.03 }}
             >
               <Card className="group h-full flex flex-col justify-between transition-all duration-300 border border-border shadow-sm bg-card text-card-foreground hover:shadow-md">
-                <CardHeader className="p-2.5 md:p-5 pb-1.5 md:pb-3 space-y-1.5 md:space-y-3">
+                <CardHeader className="p-2.5 md:p-4 pb-1 md:pb-2 space-y-1 md:space-y-2">
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col gap-0.5 md:gap-1">
                       <Badge variant="outline" className={cn(
@@ -1774,13 +1774,13 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     })()}
                   </div>
                 </CardHeader>
-                <CardContent className="p-2.5 md:p-5 pt-0 md:pt-0 flex-1 flex flex-col justify-between gap-3">
-                  <div className="flex items-start gap-1.5 text-[8px] md:text-[11px] text-muted-foreground/70 leading-tight bg-muted border border-border p-1.5 md:p-3 rounded-lg md:rounded-xl">
+                <CardContent className="p-2.5 md:p-4 pt-0 md:pt-0 flex-1 flex flex-col justify-between gap-2.5">
+                  <div className="flex items-start gap-1.5 text-[8px] md:text-[11px] text-muted-foreground/70 leading-tight bg-muted border border-border p-1.5 md:p-2.5 rounded-lg md:rounded-xl">
                     <MapPin className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 shrink-0 mt-0" />
                     <span>{customer.address || '—'}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-1.5 border-t border-border mt-auto">
+                  <div className="flex items-center justify-between pt-1 border-t border-border mt-auto">
                     <div className="flex items-center gap-1.5">
                       <Avatar className="h-4 w-4 md:h-6 md:w-6 border border-border shadow-xs">
                         <AvatarImage src={sale?.avatar} />
