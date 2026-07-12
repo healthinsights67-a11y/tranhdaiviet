@@ -1673,7 +1673,13 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   
                   <div className="space-y-1">
                     <CardTitle className="text-[11px] md:text-sm font-bold tracking-tight leading-tight text-slate-800 flex flex-wrap items-center gap-1.5">
-                      <span className="font-bold text-slate-800">{customer.code || customer.name}</span>
+                      <span className="font-bold text-slate-800">
+                        {customer.code 
+                          ? (customer.code.toLowerCase().includes(customer.name.toLowerCase()) 
+                              ? customer.code 
+                              : `${customer.code}_${customer.name}`)
+                          : customer.name}
+                      </span>
                       {customer.furnitureCategory && (
                         <>
                           <span className="text-slate-300 font-normal">|</span>
