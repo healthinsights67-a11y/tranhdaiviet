@@ -1672,28 +1672,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   </div>
                   
                   <div className="space-y-1">
-                    <CardTitle className="text-[11px] md:text-lg font-bold tracking-tight leading-tight">
-                      {customer.code && (
-                        <span className="inline-block bg-blue-50 text-blue-600 border border-blue-100/80 px-1.5 py-0.5 rounded-md text-[9px] md:text-[11px] font-black font-mono tracking-wide uppercase mb-1">
-                          {customer.code.split('_')[0]}
-                        </span>
-                      )}
-                      <span className="block">{customer.name}</span>
-                    </CardTitle>
-                    <div className="flex flex-wrap items-center gap-0.5 md:gap-1 mt-0">
+                    <CardTitle className="text-[11px] md:text-sm font-bold tracking-tight leading-tight text-slate-800 flex flex-wrap items-center gap-1.5">
+                      <span className="font-bold text-slate-800">{customer.code || customer.name}</span>
                       {customer.furnitureCategory && (
-                        <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-blue-50 text-primary text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-blue-100">
-                          <Layout className="h-2 w-2 md:h-2.5 md:w-2.5" />
-                          <span>{customer.furnitureCategory}</span>
-                        </div>
+                        <>
+                          <span className="text-slate-300 font-normal">|</span>
+                          <span className="text-primary font-bold">{customer.furnitureCategory}</span>
+                        </>
                       )}
-                      {purchaseCount > 0 && (
-                        <div className="inline-flex items-center gap-0.5 px-1 py-0 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[10px] font-bold uppercase tracking-wider ring-1 ring-emerald-100">
-                          <Package className="h-2 w-2 md:h-2.5 md:w-2.5" />
-                          <span>Mua {purchaseCount} lần</span>
-                        </div>
-                      )}
-                    </div>
+                    </CardTitle>
+                    {purchaseCount > 0 && (
+                      <div className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-emerald-100/80">
+                        <Package className="h-2.5 w-2.5 mr-0.5" />
+                        <span>Mua {purchaseCount} lần</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-dashed border-border/60 space-y-2">
@@ -2015,7 +2008,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     </Badge>
                     {selectedCustomer.code && (
                       <span className="inline-block bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black font-mono tracking-wider uppercase mb-1.5">
-                        {selectedCustomer.code.split('_')[0]}
+                        {selectedCustomer.code}
                       </span>
                     )}
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-1">{selectedCustomer.name}</h2>
