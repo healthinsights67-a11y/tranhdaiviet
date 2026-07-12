@@ -966,20 +966,31 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
   const { actualRevenue, expectedRevenue, totalCustomers, wonCustomers, winRate } = React.useMemo(() => {
     const actual = filteredCustomers.reduce((sum, c) => {
+      const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+      const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
+
       if (c.stage === 'completed') {
-        return sum + (c.orderValue || 0);
+        const qSum = pQuotes.reduce((s, q) => s + (q.totalAmount || 0), 0);
+        return sum + (qSum > 0 ? qSum : (c.orderValue || 0));
       }
       if (['contracted', 'production', 'installation'].includes(c.stage)) {
-        const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-        const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-        return sum + deposit;
+        const depositSum = pQuotes.reduce((s, q) => s + (q.depositAmount || 0), 0);
+        if (depositSum === 0) {
+          const firstQ = cQuotes.find(q => q.status === 'deposit' || q.depositAmount);
+          const deposit = (firstQ?.status === 'deposit' || firstQ?.depositAmount) ? (firstQ.depositAmount || 0) : 0;
+          return sum + (deposit || 0);
+        }
+        return sum + depositSum;
       }
       return sum;
     }, 0);
 
     const expected = filteredCustomers.reduce((sum, c) => {
       if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
-        return sum + (c.orderValue || 0);
+        const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
+        const qSum = pQuotes.reduce((s, q) => s + (q.totalAmount || 0), 0);
+        return sum + (qSum > 0 ? qSum : (c.orderValue || 0));
       }
       return sum;
     }, 0);
@@ -1686,22 +1697,33 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                   <div className="flex items-center justify-between text-[8px] md:text-xs font-medium text-muted-foreground pt-0.5 border-t border-dashed border-border/60">
                     <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5 opacity-50" /> {customer.phone}</span>
                     <div className="flex flex-col items-end justify-center">
-                      {customer.orderValue !== undefined && customer.orderValue > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
-                        <span className="font-black text-primary/80">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(customer.orderValue)}
-                        </span>
-                      )}
                       {(() => {
-                        const customerQuotation = quotations.find(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
-                        const depositAmount = (customerQuotation?.status === 'deposit' || customerQuotation?.depositAmount) ? customerQuotation.depositAmount : undefined;
-                        if (depositAmount !== undefined && depositAmount > 0 && (!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false)) {
-                          return (
-                            <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
-                              Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(depositAmount)}
-                            </span>
-                          );
-                        }
-                        return null;
+                        const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+                        const totalOrdersSum = validQuotations.length > 0 
+                          ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+                          : (customer.orderValue || 0);
+
+                        const totalDepositSum = validQuotations.length > 0
+                          ? validQuotations.reduce((sum, q) => sum + (q.depositAmount || 0), 0)
+                          : 0;
+
+                        const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
+                        if (!showPrice) return null;
+
+                        return (
+                          <>
+                            {totalOrdersSum > 0 && (
+                              <span className="font-black text-primary/80">
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
+                              </span>
+                            )}
+                            {totalDepositSum > 0 && (
+                              <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
+                                Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
+                              </span>
+                            )}
+                          </>
+                        );
                       })()}
                     </div>
                   </div>
@@ -2041,6 +2063,68 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     </div>
                   </div>
                 </div>
+                
+                {/* Lịch sử mua hàng / Đơn hàng */}
+                {(() => {
+                  const customerQuotations = quotations.filter(q => q.customerId === selectedCustomer.id || (q.customerName === selectedCustomer.name && q.phone === selectedCustomer.phone));
+                  const validPurchases = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+                  
+                  const sortedPurchases = [...validPurchases].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
+                  
+                  const totalSum = sortedPurchases.reduce((sum, q) => sum + (q.totalAmount || 0), 0);
+                  const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
+                  
+                  if (!showPrice) return null;
+
+                  if (sortedPurchases.length === 0) {
+                    if (['contracted', 'production', 'installation', 'completed'].includes(selectedCustomer.stage)) {
+                      const orderVal = selectedCustomer.orderValue || 0;
+                      return (
+                        <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 space-y-2.5">
+                          <Label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 flex items-center gap-1">
+                            <Package className="h-3 w-3 text-primary" /> Lịch sử mua hàng
+                          </Label>
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100">
+                              <span className="font-semibold text-slate-600">Lần 1:</span>
+                              <span className="font-bold text-slate-900">{formatCurrency(orderVal)}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-1.5 font-extrabold text-xs text-primary border-t border-slate-200">
+                              <span>Tổng giá trị đơn hàng:</span>
+                              <span>{formatCurrency(orderVal)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 space-y-2.5">
+                      <Label className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 flex items-center gap-1">
+                        <Package className="h-3 w-3 text-primary" /> Lịch sử mua hàng ({sortedPurchases.length} đơn)
+                      </Label>
+                      <div className="space-y-1.5 text-xs">
+                        {sortedPurchases.map((q, idx) => (
+                          <div key={q.id} className="flex justify-between items-center py-1 border-b border-dashed border-slate-200/60 last:border-0">
+                            <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-slate-200 text-[10px] text-slate-700 flex items-center justify-center font-bold font-mono">
+                                {idx + 1}
+                              </span>
+                              <span>Đơn #{q.quotationNumber} ({formatVNTime(q.createdAt || q.date).split(' ')[0]}):</span>
+                            </span>
+                            <span className="font-bold text-slate-900">{formatCurrency(q.totalAmount || 0)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between items-center pt-2 font-black text-xs text-primary border-t border-slate-200/80">
+                          <span>TỔNG GIÁ TRỊ CÁC ĐƠN HÀNG:</span>
+                          <span>{formatCurrency(totalSum)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-1.5">
                   <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Nhật ký & Ghi chú</Label>
