@@ -1675,7 +1675,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     <CardTitle className="text-[11px] md:text-lg font-bold tracking-tight leading-tight">
                       {customer.code && (
                         <span className="inline-block bg-blue-50 text-blue-600 border border-blue-100/80 px-1.5 py-0.5 rounded-md text-[9px] md:text-[11px] font-black font-mono tracking-wide uppercase mb-1">
-                          {customer.code}
+                          {customer.code.split('_')[0]}
                         </span>
                       )}
                       <span className="block">{customer.name}</span>
@@ -2015,7 +2015,7 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     </Badge>
                     {selectedCustomer.code && (
                       <span className="inline-block bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black font-mono tracking-wider uppercase mb-1.5">
-                        {selectedCustomer.code}
+                        {selectedCustomer.code.split('_')[0]}
                       </span>
                     )}
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-1">{selectedCustomer.name}</h2>
