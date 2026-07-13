@@ -452,7 +452,32 @@ async function startServer() {
         senderId = message.from?.id || senderId;
         const text = message.text;
         console.log(`Received text message from ${senderId}: ${text}`);
-        // Handle your logic here (e.g., save to Firestore, auto-reply, etc.)
+        
+        // Auto-reply to get Zalo User ID
+        const trimmedText = text?.trim()?.toLowerCase();
+        if (trimmedText === '/id' || trimmedText === 'id' || trimmedText === '/myid' || trimmedText === 'mã id') {
+          try {
+            const clientDb = await getAuthenticatedClientDb();
+            const { doc, getDoc } = require('firebase/firestore');
+            const docSnap = await getDoc(doc(clientDb, 'settings', 'config'));
+            const configData = docSnap.data();
+            const botToken = configData?.zalo?.botToken;
+            
+            if (botToken && senderId) {
+              await fetch(`https://bot-api.zaloplatforms.com/bot${botToken.trim()}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  chat_id: senderId, 
+                  text: `Mã Zalo User ID của bạn là:\n\n${senderId}\n\nHãy sao chép mã này và điền vào thông tin thành viên của bạn trên phần mềm.` 
+                })
+              });
+              console.log(`Replied with ID to ${senderId} successfully`);
+            }
+          } catch (replyErr) {
+            console.error("Failed to auto-reply Zalo ID:", replyErr);
+          }
+        }
       } else if (event_name === 'message.image.received' && message) {
         senderId = message.from?.id || senderId;
         const photoUrl = message.photo;
