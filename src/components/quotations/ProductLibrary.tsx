@@ -15,7 +15,8 @@ import {
   Upload,
   X,
   LayoutGrid,
-  List
+  List,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,6 +48,7 @@ import {
 import { db, doc, getDoc } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { uploadToImgBB } from '@/src/services/uploadService';
+import * as XLSX from 'xlsx';
 
 interface ProductLibraryProps {
   products?: any[];
@@ -195,6 +197,40 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
     resetForm(newProduct);
   };
 
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = productList.map((p, idx) => ({
+        'STT': idx + 1,
+        'Tên sản phẩm': p.productName || '',
+        'Danh mục': p.category || '',
+        'Đơn vị tính': p.unit || '',
+        'Đơn giá gốc (VNĐ)': p.unitPrice || 0,
+        'Mô tả': p.description || '',
+        'Loại sản phẩm': p.isStandard ? 'Mặc định' : 'Tùy chỉnh'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kho Sản Phẩm');
+      
+      // Auto-fit columns
+      const maxLens = Object.keys(dataToExport[0] || {}).map(key => {
+        let maxLen = key.length;
+        dataToExport.forEach(row => {
+          const val = String((row as any)[key] || '');
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: maxLen + 5 };
+      });
+      worksheet['!cols'] = maxLens;
+
+      XLSX.writeFile(workbook, 'Kho_San_Pham.xlsx');
+      toast.success('Đã xuất file excel kho sản phẩm thành công!');
+    } catch (error) {
+      toast.error('Lỗi khi xuất excel sản phẩm');
+    }
+  };
+
   const openEdit = (product: any) => {
     setEditingProduct(product);
     setPreviewUrl(product.imageUrl || '');
@@ -214,6 +250,14 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button 
+            onClick={handleExportExcel}
+            variant="outline"
+            className="rounded-xl h-10 px-4 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Xuất Excel
+          </Button>
           <Button 
             onClick={handleAddNew}
             className="rounded-xl h-10 px-4 bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary/20 hover:shadow-xl hover:bg-primary/90 transition-all"
