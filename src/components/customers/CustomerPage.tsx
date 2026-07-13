@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as XLSX from 'xlsx';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
-import { sendSystemNotification } from '@/src/services/botNotificationService';
+import { sendSystemNotification, getBotNotificationConfig, sendZaloTestMessage } from '@/src/services/botNotificationService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -371,12 +371,21 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
       ? { lat: finalLocation.lat, lng: finalLocation.lng }
       : null;
 
+    // Automatically set up callback to next day if stage is 'consulting' (Đã tư vấn)
+    let finalNextContactDate = newCustomer.nextContactDate;
+    if (newCustomer.stage === 'consulting') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      finalNextContactDate = tomorrow.toISOString().split('T')[0];
+    }
+
     const customerData = {
       ...newCustomer,
       location: validLocation,
       code: customerCode,
       createdAt: nowStr,
       consultedAt: nowStr,
+      nextContactDate: finalNextContactDate,
     };
 
     // Clean undefined values for Firestore compatibility
@@ -388,6 +397,15 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
     try {
       let createdCustomerId = '';
+      
+      const taskScheduledDate = newCustomer.stage === 'consulting' ? finalNextContactDate : nowStr.split('T')[0];
+      const taskTitle = newCustomer.stage === 'consulting' 
+        ? `Gọi lại tư vấn: ${customerData.name}` 
+        : `Tiếp nhận Lead: ${customerData.name}`;
+      const taskDescription = newCustomer.stage === 'consulting' 
+        ? `Lịch hẹn gọi lại lúc 8h sáng ngày ${finalNextContactDate.split('-').reverse().join('/')}. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address || 'Chưa cập nhật'}. Ghi chú: ${customerData.notes || 'Không có'}`
+        : `Khách hàng mới. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address}.`;
+
       if (user) {
         const docRef = await addDoc(collection(db, 'customers'), customerData);
         createdCustomerId = docRef.id;
@@ -403,16 +421,16 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
-          title: `Tiếp nhận Lead: ${customerData.name}`,
-          description: `Khách hàng mới. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address}.`,
+          title: taskTitle,
+          description: taskDescription,
           status: 'todo' as const,
           type: 'sale' as const,
           priority: 'medium' as const,
           assigneeId: customerData.assignedSaleId || currentUser?.id || '',
           customerId: createdCustomerId,
           createdAt: nowStr,
-          scheduledDate: nowStr.split('T')[0],
-          dueDate: nowStr.split('T')[0],
+          scheduledDate: taskScheduledDate,
+          dueDate: taskScheduledDate,
           workshop: customerData.workshop || (currentUser?.workshop && currentUser.workshop !== 'all' ? currentUser.workshop : 'all'),
         };
         await addDoc(collection(db, 'tasks'), newSaleTask);
@@ -428,21 +446,37 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
         // Auto-sync local
         const newSaleTask: Task = {
           id: `t-sale-${Date.now()}`,
-          title: `Tiếp nhận Lead: ${customerData.name}`,
-          description: `Khách hàng mới. SĐT: ${customerData.phone}. Địa chỉ: ${customerData.address}.`,
+          title: taskTitle,
+          description: taskDescription,
           status: 'todo',
           type: 'sale',
           priority: 'medium',
           assigneeId: customerData.assignedSaleId || currentUser?.id || '',
           customerId: createdCustomerId,
           createdAt: nowStr,
-          scheduledDate: nowStr.split('T')[0],
-          dueDate: nowStr.split('T')[0],
+          scheduledDate: taskScheduledDate,
+          dueDate: taskScheduledDate,
           workshop: customerData.workshop || (currentUser?.workshop && currentUser.workshop !== 'all' ? currentUser.workshop : 'all'),
         };
         setTasks((prev) => [newSaleTask, ...prev]);
       }
       
+      // Notify the directly assigned sale member via Zalo
+      const saleMember = members.find(m => m.id === customerData.assignedSaleId);
+      if (saleMember && saleMember.zaloUserId) {
+        try {
+          const botConfig = await getBotNotificationConfig();
+          if (botConfig && botConfig.zalo?.isActive && botConfig.zalo.botToken) {
+            const formattedDate = finalNextContactDate.split('-').reverse().join('/');
+            const directMessage = `🔔 THÔNG BÁO GIAO VIỆC (SALE)\n\n👤 Khách hàng: ${customerData.name}\n📞 Số điện thoại: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📅 Lịch gọi lại: Ngày mai lúc 08:00 sáng (${formattedDate})\n📝 Ghi chú: ${customerData.notes || 'Không có'}\n\nBạn được phân công trực tiếp phụ trách chăm sóc khách hàng này. Hãy gọi lại tư vấn đúng hẹn nhé!`;
+            await sendZaloTestMessage(botConfig.zalo.botToken, saleMember.zaloUserId, directMessage);
+            console.log(`Direct Zalo message sent to Sale ${saleMember.name} successfully`);
+          }
+        } catch (zaloErr) {
+          console.error("Failed to send direct Zalo message to Sale:", zaloErr);
+        }
+      }
+
       setIsAddDialogOpen(false);
       const addedCustomer = { id: createdCustomerId, ...customerData };
       
