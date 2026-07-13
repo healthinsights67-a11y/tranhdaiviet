@@ -76,7 +76,7 @@ import { saveProductTemplate } from '@/src/services/productService';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 import { toast } from 'sonner';
-import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency } from '@/src/lib/utils';
+import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency, getCurrentVNDateString } from '@/src/lib/utils';
 
 interface QuotationPageProps {
   quotations: Quotation[];
@@ -84,12 +84,22 @@ interface QuotationPageProps {
   customers: Customer[];
   members: Member[];
   products?: any[];
+  initialQuotationCustomerId?: string | null;
+  onClearInitialQuotationCustomerId?: () => void;
 }
 
 type FilterStatus = Quotation['status'] | 'all';
 type ViewMode = 'list' | 'library';
 
-export function QuotationPage({ quotations, user, customers, members, products = [] }: QuotationPageProps) {
+export function QuotationPage({ 
+  quotations, 
+  user, 
+  customers, 
+  members, 
+  products = [], 
+  initialQuotationCustomerId, 
+  onClearInitialQuotationCustomerId 
+}: QuotationPageProps) {
   const queryClient = useQueryClient();
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -103,6 +113,57 @@ export function QuotationPage({ quotations, user, customers, members, products =
   const [pendingDesignTask, setPendingDesignTask] = React.useState<{ quotationId: string; customerId: string; customerName: string; } | null>(null);
   const [targetDesignerId, setTargetDesignerId] = React.useState<string>('');
   const [depositDialog, setDepositDialog] = React.useState<{isOpen: boolean, quotationId: string, amount: string}>({isOpen: false, quotationId: '', amount: ''});
+
+  React.useEffect(() => {
+    if (initialQuotationCustomerId) {
+      const customer = customers.find(c => c.id === initialQuotationCustomerId);
+      if (customer) {
+        let newQuotationNumber = `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        if (customer.code) {
+          const baseCode = customer.code.split('-')[0].trim();
+          let finalCode = baseCode;
+          if (baseCode.startsWith('K') && !baseCode.startsWith('KH')) {
+            finalCode = baseCode.replace(/^K/, 'KH');
+          } else if (!baseCode.startsWith('KH')) {
+            finalCode = `KH${baseCode}`;
+          }
+          newQuotationNumber = `BG-${finalCode}`;
+        }
+
+        const nowStr = new Date().toISOString();
+        const dummyQuotation: Quotation = {
+          id: Math.random().toString(36).substr(2, 9),
+          quotationNumber: newQuotationNumber,
+          customerName: customer.name || '',
+          phone: customer.phone || '',
+          address: customer.address || '',
+          customerId: customer.id,
+          workshop: customer.workshop || '',
+          createdAt: nowStr,
+          consultedAt: nowStr,
+          status: 'draft',
+          items: [],
+          subTotal: 0,
+          discount: 0,
+          totalAmount: 0,
+          constructionType: customer.workshop ? `Thi công ${customer.workshop}` : '',
+          estimatedTime: '5',
+          date: getCurrentVNDateString(),
+          paymentInfo: {
+            bankName: '',
+            accountNumber: '',
+            accountHolder: '',
+            content: ''
+          },
+          createdBy: user?.uid || '',
+          type: 'custom',
+        };
+        setSelectedQuotation(dummyQuotation);
+        setIsFormOpen(true);
+      }
+      onClearInitialQuotationCustomerId?.();
+    }
+  }, [initialQuotationCustomerId, customers, user, onClearInitialQuotationCustomerId]);
 
   const filteredQuotations = quotations.filter(q => {
     const search = searchTerm.trim().toLowerCase();

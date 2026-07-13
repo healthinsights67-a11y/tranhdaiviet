@@ -90,6 +90,7 @@ interface CustomerPageProps {
   schedules: MeasurementSchedule[];
   user?: any;
   currentUser: any;
+  onCreateQuotation?: (customerId: string) => void;
 }
 
 const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: any }> = {
@@ -112,7 +113,18 @@ const STAGE_MARKER_COLORS: Record<CustomerStage, string> = {
   lost: 'bg-rose-600',
 };
 
-export function CustomerPage({ customers, setCustomers, tasks, setTasks, members, quotations, schedules, user, currentUser }: CustomerPageProps) {
+export function CustomerPage({ 
+  customers, 
+  setCustomers, 
+  tasks, 
+  setTasks, 
+  members, 
+  quotations, 
+  schedules, 
+  user, 
+  currentUser,
+  onCreateQuotation
+}: CustomerPageProps) {
   const queryClient = useQueryClient();
 
   const { data: systemSettings } = useQuery({
@@ -1679,6 +1691,15 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                         </Button>
                       } />
                       <DropdownMenuContent align="end" className="rounded-xl">
+                        {onCreateQuotation && (
+                          <DropdownMenuItem 
+                            onClick={() => onCreateQuotation(customer.id)} 
+                            className="text-xs text-primary font-bold gap-1"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Tạo báo giá
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => openEditDialog(customer)} className="text-xs">Sửa</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openViewDialog(customer)} className="text-xs">Chi tiết</DropdownMenuItem>
                         {['contracted', 'production', 'completed'].includes(customer.stage) && (
@@ -1813,25 +1834,37 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
                     <span>{customer.address || '—'}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-1 border-t border-border mt-auto">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between pt-1 border-t border-border mt-auto gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <Avatar className="h-4 w-4 md:h-6 md:w-6 border border-border shadow-xs">
                         <AvatarImage src={sale?.avatar} />
                         <AvatarFallback className="text-[6px] md:text-[8px] bg-gray-50 text-primary">{sale?.name?.charAt(0) || '?'}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="text-[9px] md:text-[11px] font-bold opacity-80">{sale?.name?.split(' ').pop() || 'Chưa gán'}</span>
+                        <span className="text-[9px] md:text-[11px] font-bold opacity-80 leading-none">{sale?.name?.split(' ').pop() || 'Chưa gán'}</span>
                         <span className="text-[7px] md:text-[9px] opacity-50 font-medium">{getWorkshopName(customer.workshop)}</span>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 md:h-8 text-[8px] md:text-[11px] font-bold rounded-md md:rounded-lg px-2"
-                      onClick={() => openViewDialog(customer)}
-                    >
-                      Chi tiết
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {onCreateQuotation && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 md:h-8 text-[8px] md:text-[11px] font-bold rounded-md md:rounded-lg px-2 border-primary/20 text-primary hover:bg-primary/5 shrink-0"
+                          onClick={() => onCreateQuotation(customer.id)}
+                        >
+                          Tạo báo giá
+                        </Button>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 md:h-8 text-[8px] md:text-[11px] font-bold rounded-md md:rounded-lg px-2 shrink-0"
+                        onClick={() => openViewDialog(customer)}
+                      >
+                        Chi tiết
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -2286,6 +2319,18 @@ export function CustomerPage({ customers, setCustomers, tasks, setTasks, members
 
               <div className="p-4 border-t bg-slate-50/80 flex justify-end gap-3 shrink-0">
                 <Button variant="outline" className="rounded-xl px-6 h-10 text-xs font-semibold" onClick={() => setIsViewDialogOpen(false)}>Đóng</Button>
+                {onCreateQuotation && (
+                  <Button 
+                    variant="outline" 
+                    className="rounded-xl px-6 h-10 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5"
+                    onClick={() => {
+                      setIsViewDialogOpen(false);
+                      onCreateQuotation(selectedCustomer.id);
+                    }}
+                  >
+                    Tạo báo giá
+                  </Button>
+                )}
                 <Button className="rounded-xl px-6 h-10 text-xs font-bold" onClick={() => {
                   setIsViewDialogOpen(false);
                   openEditDialog(selectedCustomer);

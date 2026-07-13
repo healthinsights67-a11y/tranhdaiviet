@@ -382,6 +382,7 @@ function AppContent() {
   const { user, userProfile, loading, signOut, isLoginDialogOpen, setLoginDialogOpen, isApproved, isAdmin } = useAuth();
   
   const [activeTab, setActiveTab] = React.useState('dashboard');
+  const [initialQuotationCustomerId, setInitialQuotationCustomerId] = React.useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = React.useState(() => {
     // Check if user has previously saved a theme preference
     const savedTheme = localStorage.getItem('theme');
@@ -807,7 +808,15 @@ function AppContent() {
       case 'quotations':
         return redirect(perms.menuQuotations)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <QuotationPage quotations={filteredQuotations} user={user} customers={filteredCustomers} members={activeMembers} products={productLibraryData} />;
+          : <QuotationPage 
+              quotations={filteredQuotations} 
+              user={user} 
+              customers={filteredCustomers} 
+              members={activeMembers} 
+              products={productLibraryData} 
+              initialQuotationCustomerId={initialQuotationCustomerId}
+              onClearInitialQuotationCustomerId={() => setInitialQuotationCustomerId(null)}
+            />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
@@ -823,7 +832,21 @@ function AppContent() {
       case 'customers':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <CustomerPage customers={filteredCustomers} setCustomers={setCustomers} tasks={filteredTasks} setTasks={setTasks} members={activeMembers} quotations={filteredQuotations} schedules={filteredSchedulesData} user={user} currentUser={currentMember} />;
+          : <CustomerPage 
+              customers={filteredCustomers} 
+              setCustomers={setCustomers} 
+              tasks={filteredTasks} 
+              setTasks={setTasks} 
+              members={activeMembers} 
+              quotations={filteredQuotations} 
+              schedules={filteredSchedulesData} 
+              user={user} 
+              currentUser={currentMember} 
+              onCreateQuotation={(customerId) => {
+                setInitialQuotationCustomerId(customerId);
+                setActiveTab('quotations');
+              }}
+            />;
       case 'ai-render':
         return redirect(perms.menuAi)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
