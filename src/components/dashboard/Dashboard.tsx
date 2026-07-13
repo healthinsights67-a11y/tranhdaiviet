@@ -181,10 +181,18 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
       currentUser?.role?.toLowerCase()?.includes(role)
     ) || !!currentUser?.permissions?.menuMeasurement;
 
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
     return activeCustomers.filter(c => {
       // Chỉ kiểm tra khách hàng ở trạng thái 'consulting' (Đang tư vấn) hoặc 'contracted' (Chốt cọc)
       const matchesStage = c.stage === 'consulting' || c.stage === 'contracted';
       if (!matchesStage) return false;
+
+      // Chỉ hiển thị những khách hàng trong vòng 1 tuần từ khi tạo khách hàng
+      if (!c.createdAt) return false;
+      const isWithinOneWeek = new Date(c.createdAt).getTime() >= oneWeekAgo.getTime();
+      if (!isWithinOneWeek) return false;
 
       // Phân quyền: Sale chỉ xem của mình, Quản lý xem toàn bộ
       const isOwner = isManager || c.assignedSaleId === currentUser?.id;
