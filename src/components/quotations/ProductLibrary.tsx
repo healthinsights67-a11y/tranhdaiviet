@@ -48,7 +48,8 @@ import {
 import { db, doc, getDoc } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { uploadToImgBB } from '@/src/services/uploadService';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface ProductLibraryProps {
   products?: any[];
@@ -197,36 +198,159 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
     resetForm(newProduct);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      const dataToExport = productList.map((p, idx) => ({
-        'STT': idx + 1,
-        'Tên sản phẩm': p.productName || '',
-        'Danh mục': p.category || '',
-        'Đơn vị tính': p.unit || '',
-        'Đơn giá gốc (VNĐ)': p.unitPrice || 0,
-        'Mô tả': p.description || '',
-        'Loại sản phẩm': p.isStandard ? 'Mặc định' : 'Tùy chỉnh'
-      }));
-
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kho Sản Phẩm');
-      
-      // Auto-fit columns
-      const maxLens = Object.keys(dataToExport[0] || {}).map(key => {
-        let maxLen = key.length;
-        dataToExport.forEach(row => {
-          const val = String((row as any)[key] || '');
-          if (val.length > maxLen) maxLen = val.length;
-        });
-        return { wch: maxLen + 5 };
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Bảng Giá Sản Phẩm', {
+        pageSetup: { paperSize: 9, orientation: 'portrait' }
       });
-      worksheet['!cols'] = maxLens;
 
-      XLSX.writeFile(workbook, 'Kho_San_Pham.xlsx');
-      toast.success('Đã xuất file excel kho sản phẩm thành công!');
+      // Set columns
+      sheet.columns = [
+        { width: 8 },   // STT
+        { width: 22 },  // Danh mục
+        { width: 35 },  // Tên sản phẩm
+        { width: 12 },  // ĐVT
+        { width: 20 },  // Đơn giá gốc (VNĐ)
+        { width: 50 },  // Mô tả chi tiết
+      ];
+
+      // Helper function to add merged headers
+      const addTitleHeader = (text: string, bold: boolean, size: number, colorHex: string, italic = false) => {
+        const row = sheet.addRow([text]);
+        sheet.mergeCells(row.number, 1, row.number, 6);
+        const cell = row.getCell(1);
+        cell.font = { name: 'Times New Roman', bold, size, italic, color: { argb: colorHex } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        row.height = size * 1.8;
+        return row;
+      };
+
+      // Header Brand Info
+      addTitleHeader('CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 13, 'FF1E3A8A');
+      addTitleHeader('Địa chỉ: Số 12, Đường 3, KCN Bắc Thăng Long, Đông Anh, Hà Nội', false, 10, 'FF4B5563');
+      addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: i-noi-that.vercel.app', false, 10, 'FF4B5563');
+      
+      const spaceRow = sheet.addRow([]);
+      spaceRow.height = 10;
+
+      // Document Title
+      addTitleHeader('DANH MỤC BÁO GIÁ TOÀN BỘ SẢN PHẨM', true, 16, 'FF1E3A8A');
+      
+      const today = new Date();
+      const dateString = `Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}`;
+      addTitleHeader(dateString, false, 11, 'FF374151', true);
+
+      const spaceRow2 = sheet.addRow([]);
+      spaceRow2.height = 15;
+
+      // Table Header Row
+      const headerRow = sheet.addRow([
+        'STT', 
+        'DANH MỤC', 
+        'TÊN SẢN PHẨM', 
+        'ĐVT', 
+        'ĐƠN GIÁ GỐC (VNĐ)', 
+        'MÔ TẢ CHI TIẾT'
+      ]);
+      headerRow.height = 28;
+
+      // Style Table Headers
+      for (let i = 1; i <= 6; i++) {
+        const cell = headerRow.getCell(i);
+        cell.font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1E3A8A' } // Brand dark blue
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+          left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+          bottom: { style: 'medium', color: { argb: 'FF1E3A8A' } },
+          right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+        };
+      }
+
+      // Add Data Rows
+      productList.forEach((product, idx) => {
+        const dataRow = sheet.addRow([
+          idx + 1,
+          product.category || 'Khác',
+          product.productName || '',
+          product.unit || '—',
+          product.unitPrice || 0,
+          product.description || ''
+        ]);
+        dataRow.height = 24;
+
+        // Apply styles to data row cells
+        for (let i = 1; i <= 6; i++) {
+          const cell = dataRow.getCell(i);
+          cell.font = { name: 'Times New Roman', size: 11 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+
+          // Alternating backgrounds (zebra styling)
+          if (idx % 2 === 1) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF8FAFC' } // light slate grey
+            };
+          }
+
+          // Alignment logic
+          if (i === 1 || i === 4) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (i === 2) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (i === 3) {
+            cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+          } else if (i === 5) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0" ₫"'; // Format currency beautifully
+          } else if (i === 6) {
+            cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+          }
+        }
+      });
+
+      // Add Signature Block
+      sheet.addRow([]);
+      const signTitleRow = sheet.addRow(['', 'KHÁCH HÀNG XÁC NHẬN', '', '', 'ĐẠI DIỆN CÔNG TY', '']);
+      sheet.mergeCells(signTitleRow.number, 2, signTitleRow.number, 3);
+      sheet.mergeCells(signTitleRow.number, 5, signTitleRow.number, 6);
+      signTitleRow.height = 20;
+
+      signTitleRow.getCell(2).font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FF4B5563' } };
+      signTitleRow.getCell(2).alignment = { horizontal: 'center' };
+      signTitleRow.getCell(5).font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FF4B5563' } };
+      signTitleRow.getCell(5).alignment = { horizontal: 'center' };
+
+      const signSubtitleRow = sheet.addRow(['', '(Ký và ghi rõ họ tên)', '', '', '(Ký tên, đóng dấu)', '']);
+      sheet.mergeCells(signSubtitleRow.number, 2, signSubtitleRow.number, 3);
+      sheet.mergeCells(signSubtitleRow.number, 5, signSubtitleRow.number, 6);
+      signSubtitleRow.height = 18;
+
+      signSubtitleRow.getCell(2).font = { name: 'Times New Roman', italic: true, size: 9, color: { argb: 'FF9CA3AF' } };
+      signSubtitleRow.getCell(2).alignment = { horizontal: 'center' };
+      signSubtitleRow.getCell(5).font = { name: 'Times New Roman', italic: true, size: 9, color: { argb: 'FF9CA3AF' } };
+      signSubtitleRow.getCell(5).alignment = { horizontal: 'center' };
+
+      // Write to buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Bang_Bao_Gia_SanPham_${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}.xlsx`);
+      
+      toast.success('Đã xuất file excel báo giá kho sản phẩm thành công!');
     } catch (error) {
+      console.error('Lỗi xuất excel:', error);
       toast.error('Lỗi khi xuất excel sản phẩm');
     }
   };
