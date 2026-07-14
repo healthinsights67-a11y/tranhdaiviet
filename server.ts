@@ -247,8 +247,9 @@ async function startServer() {
           const quoteSnap = await getDocs(quoteQuery);
           let acceptedQuotes = 0;
           let newQuotes = 0;
-          let acceptedRevenue = 0; // expected revenue
-          let actualRevenue = 0; // actual money collected
+          let acceptedRevenue = 0; // expected revenue of quotes accepted today
+          let actualRevenue = 0; // actual money collected this month
+          let expectedRevenue = 0; // expected revenue this month
           
           const allQuotes: any[] = [];
           quoteSnap.forEach((doc: any) => {
@@ -266,7 +267,7 @@ async function startServer() {
              }
           });
 
-          // Doanh thu thực tế trong tháng (đồng bộ logic với web dashboard)
+          // Doanh thu thực tế và dự kiến trong tháng (đồng bộ logic với web dashboard)
           const custUpdatedQuery = query(
             collection(clientDb, 'customers')
           );
@@ -282,6 +283,10 @@ async function startServer() {
                  const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
                  actualRevenue += deposit;
                }
+
+               if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+                 expectedRevenue += (c.orderValue || 0);
+               }
              }
           });
 
@@ -292,6 +297,7 @@ async function startServer() {
           reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
           reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
           reportText += `\n💵 Doanh thu thực tế (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
+          reportText += `\n💳 Doanh thu dự kiến (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(expectedRevenue)}`;
           reportText += `\n----------------------`;
           reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
           reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
