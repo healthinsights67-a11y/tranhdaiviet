@@ -165,7 +165,7 @@ async function startServer() {
       if (!config) return;
 
       // Send to Zalo if enabled
-      if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
+      if (config.zalo?.isActive !== false && config.zalo.botToken && config.zalo.chatId) {
         const chatIds = config.zalo.chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
         for (const id of chatIds) {
           try {
@@ -354,7 +354,7 @@ async function startServer() {
               const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
               if (!docSnap.exists()) return;
               const config = docSnap.data();
-              if (config?.zalo?.isActive && config.zalo.botToken) {
+              if (config?.zalo?.isActive !== false && config.zalo.botToken) {
                 await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -465,7 +465,7 @@ async function startServer() {
           try {
             const clientDb = await getAuthenticatedClientDb();
             const { doc, getDoc } = require('firebase/firestore');
-            const docSnap = await getDoc(doc(clientDb, 'settings', 'config'));
+            const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
             const configData = docSnap.data();
             const botToken = configData?.zalo?.botToken;
             

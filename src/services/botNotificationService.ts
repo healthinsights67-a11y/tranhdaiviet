@@ -125,7 +125,7 @@ export async function sendSystemNotification(message: string): Promise<void> {
     const promises: Promise<any>[] = [];
 
     // Send to Telegram if enabled
-    if (config.telegram?.isActive && config.telegram.botToken && config.telegram.chatId) {
+    if (config.telegram?.isActive !== false && config.telegram.botToken && config.telegram.chatId) {
       console.log('Sending to Telegram...');
       const chatIds = config.telegram.chatId.split(',').map(id => id.trim()).filter(id => !!id);
       chatIds.forEach(id => {
@@ -138,7 +138,7 @@ export async function sendSystemNotification(message: string): Promise<void> {
     }
 
     // Send to Zalo if enabled
-    if (config.zalo?.isActive && config.zalo.botToken && config.zalo.chatId) {
+    if (config.zalo?.isActive !== false && config.zalo.botToken && config.zalo.chatId) {
       console.log('Sending to Zalo...');
       const chatIds = config.zalo.chatId.split(',').map(id => id.trim()).filter(id => !!id);
       chatIds.forEach(id => {

@@ -478,7 +478,7 @@ export function CustomerPage({
       if (saleMember && saleMember.zaloUserId) {
         try {
           const botConfig = await getBotNotificationConfig();
-          if (botConfig && botConfig.zalo?.isActive && botConfig.zalo.botToken) {
+          if (botConfig && botConfig.zalo?.isActive !== false && botConfig.zalo.botToken) {
             const formattedDate = finalNextContactDate.split('-').reverse().join('/');
             const directMessage = `🔔 THÔNG BÁO GIAO VIỆC (SALE)\n\n👤 Khách hàng: ${customerData.name}\n📞 Số điện thoại: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📅 Lịch gọi lại: Ngày mai lúc 08:00 sáng (${formattedDate})\n📝 Ghi chú: ${customerData.notes || 'Không có'}\n\nBạn được phân công trực tiếp phụ trách chăm sóc khách hàng này. Hãy gọi lại tư vấn đúng hẹn nhé!`;
             await sendZaloTestMessage(botConfig.zalo.botToken, saleMember.zaloUserId, directMessage);
@@ -687,6 +687,24 @@ export function CustomerPage({
         });
 
         await updateDoc(doc(db, 'customers', id), updateData);
+
+        // Notify the newly assigned sale member via Zalo if reassigned
+        const isSaleAssignedChanged = existingCustomer && existingCustomer.assignedSaleId !== selectedCustomer.assignedSaleId;
+        if (isSaleAssignedChanged && selectedCustomer.assignedSaleId) {
+          const saleMember = members.find(m => m.id === selectedCustomer.assignedSaleId);
+          if (saleMember && saleMember.zaloUserId) {
+            try {
+              const botConfig = await getBotNotificationConfig();
+              if (botConfig && botConfig.zalo?.botToken && botConfig.zalo?.isActive !== false) {
+                const directMessage = `🔔 THÔNG BÁO BÀN GIAO KHÁCH HÀNG (SALE)\n\n👤 Khách hàng: ${selectedCustomer.name}\n📞 Số điện thoại: ${selectedCustomer.phone}\n📍 Địa chỉ: ${selectedCustomer.address || 'Chưa cập nhật'}\n📝 Trạng thái: ${selectedCustomer.stage}\n📝 Ghi chú: ${selectedCustomer.notes || 'Không có'}\n\nBạn được phân công phụ trách chăm sóc khách hàng này. Hãy liên hệ và chăm sóc khách hàng nhé!`;
+                await sendZaloTestMessage(botConfig.zalo.botToken, saleMember.zaloUserId, directMessage);
+                console.log(`Direct Zalo message sent to Sale ${saleMember.name} successfully on update`);
+              }
+            } catch (zaloErr) {
+              console.error("Failed to send direct Zalo message to Sale on update:", zaloErr);
+            }
+          }
+        }
 
         // Send System Notification for Stage Change
         if (existingStage && existingStage !== selectedCustomer.stage) {

@@ -30,7 +30,7 @@ import { MeasurementScheduleSchema } from '@/src/schemas';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, getCurrentVNDate, getVNTimestamp } from '@/src/lib/utils';
 import { notifyManagers } from '@/src/services/notificationService';
-import { sendSystemNotification } from '@/src/services/botNotificationService';
+import { sendSystemNotification, getBotNotificationConfig, sendZaloTestMessage } from '@/src/services/botNotificationService';
 import { moveToTrash } from '@/src/services/trashService';
 
 interface MeasurementPageProps {
@@ -281,6 +281,21 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
 
       // Send to external bot platforms (Zalo/Telegram)
       sendSystemNotification(`📅 Lịch đo đạc mới!\n\n👤 Khách hàng: ${schedule.customerName}\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
+
+      // Notify the assigned member directly via Zalo
+      if (assignee && assignee.zaloUserId) {
+        try {
+          const botConfig = await getBotNotificationConfig();
+          if (botConfig && botConfig.zalo?.botToken && botConfig.zalo?.isActive !== false) {
+            const formattedTime = format(new Date(schedule.date), 'HH:mm dd/MM/yyyy');
+            const directMessage = `📅 THÔNG BÁO LỊCH ĐO ĐẠC (SALE/KỸ THUẬT)\n\n👤 Khách hàng: ${schedule.customerName}\n📞 Số điện thoại: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${formattedTime}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\nBạn được phân công thực hiện lịch đo đạc này. Hãy chuẩn bị dụng cụ và đo đạc đúng hẹn nhé!`;
+            await sendZaloTestMessage(botConfig.zalo.botToken, assignee.zaloUserId, directMessage);
+            console.log(`Direct Zalo message sent to Assignee ${assignee.name} successfully`);
+          }
+        } catch (zaloErr) {
+          console.error("Failed to send direct Zalo message to Assignee:", zaloErr);
+        }
+      }
 
       // Automatically update customer stage to 'surveying' if created as completed
       if (schedule.status === 'completed' && schedule.customerId) {
