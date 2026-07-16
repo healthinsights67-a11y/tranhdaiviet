@@ -416,9 +416,60 @@ async function startServer() {
     }
   }
 
+  // Listen to sales_routes additions and notify Zalo
+  async function listenToSalesRoutes() {
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      const { collection, query, where, onSnapshot } = require('firebase/firestore');
+      
+      const serverStartTime = new Date().toISOString();
+      console.log(`Starting Firestore listener for sales_routes created after ${serverStartTime}`);
+      
+      const q = query(
+        collection(clientDb, 'sales_routes'),
+        where('timestamp', '>=', serverStartTime)
+      );
+      
+      onSnapshot(q, (snapshot: any) => {
+        snapshot.docChanges().forEach(async (change: any) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            console.log("New sales route check-in detected on server:", data);
+            
+            const note = data.note || '';
+            // If check-in note is from Zalo webhook location, skip it to avoid duplicate notification
+            if (note === 'Check-in qua Zalo' || note.includes('Check-in qua Zalo')) {
+              console.log("Skipping Zalo webhook check-in to avoid duplicate notification");
+              return;
+            }
+            
+            const memberName = data.memberName || 'Nhân viên';
+            const address = data.address || 'Không rõ địa điểm';
+            const customerName = data.customerName || 'Không chọn';
+            const customerPhone = data.customerPhone || '';
+            
+            const messageText = 
+              `📍 Check-in Lịch trình Sale!\n` +
+              `👤 Nhân viên: ${memberName}\n` +
+              `🏠 Địa điểm: ${address}\n` +
+              `👥 Khách hàng: ${customerName}` + (customerPhone ? ` - SĐT: ${customerPhone}\n` : `\n`) +
+              `📝 Ghi chú: ${note || 'Check-in trực tiếp trên Web'}`;
+              
+            await sendSystemNotificationFromServer(messageText);
+          }
+        });
+      }, (error: any) => {
+        console.error("Error in sales_routes listener:", error);
+      });
+    } catch (err) {
+      console.error("Failed to start sales_routes listener:", err);
+    }
+  }
+
   // Khởi tạo các lịch trình cron
   scheduleDailyReport();
   scheduleZaloReminders();
+  listenToSalesRoutes();
 
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {

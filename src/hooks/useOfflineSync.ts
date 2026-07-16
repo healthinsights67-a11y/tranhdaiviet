@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { db, collection, addDoc } from '../lib/firebase';
-import { sendSystemNotification } from '../services/botNotificationService';
 import { toast } from 'sonner';
 
 const OFFLINE_QUEUE_KEY = 'sales_checkin_offline_queue';
@@ -54,11 +53,6 @@ export const useOfflineSync = () => {
           await addDoc(collection(db, 'customers'), item.newCustomerPayload);
         }
         await addDoc(collection(db, 'sales_routes'), item.routePayload);
-        
-        // Try to send notification
-        if (item.messageText) {
-          sendSystemNotification(item.messageText).catch(() => {});
-        }
         successCount++;
       } catch (error) {
         console.error('Failed to sync offline item', error);

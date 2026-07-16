@@ -8,9 +8,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { db, collection, query, where, getDocs, orderBy, addDoc } from '@/src/lib/firebase';
 import { fetchMembers, fetchCustomers } from '@/src/services/dataService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { sendSystemNotification } from '@/src/services/botNotificationService';
+import { toast } from 'sonner';
 import { useOfflineSync } from '@/src/hooks/useOfflineSync';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -274,7 +273,6 @@ export function SalesRoutePage() {
           await addDoc(collection(db, 'customers'), customerPayload);
         }
         await addDoc(collection(db, 'sales_routes'), routeData);
-        sendSystemNotification(messageText).catch(e => console.error("Notification error:", e));
         toast.success("Đã ghi nhận vị trí check-in thành công!");
       } else {
         addOfflineCheckin({
