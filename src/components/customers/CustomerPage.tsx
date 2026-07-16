@@ -337,6 +337,13 @@ export function CustomerPage({
         const stageName = stageNames[c.stage] || c.stage;
         const createdDate = c.createdAt ? new Date(c.createdAt).toLocaleDateString('vi-VN') : '—';
 
+        // Calculate actual order value matching card/KPI display (quotations if any, else orderValue)
+        const customerQuotations = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+        const finalOrderValue = validQuotations.length > 0
+          ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
+          : (c.orderValue || 0);
+
         const dataRow = sheet.addRow([
           idx + 1,
           c.code || `KH${String(idx + 1).padStart(3, '0')}`,
@@ -345,7 +352,7 @@ export function CustomerPage({
           c.address || '—',
           c.furnitureCategory || '—',
           stageName || '—',
-          c.orderValue || 0,
+          finalOrderValue,
           saleName,
           createdDate,
           c.notes || ''
@@ -398,7 +405,17 @@ export function CustomerPage({
       const totalValCell = totalRow.getCell(8);
       // sum order value formula starting from row 9
       const lastDataRowStr = totalRowNumber - 1;
-      totalValCell.value = { formula: `SUM(H9:H${lastDataRowStr})`, result: filteredCustomers.reduce((sum, c) => sum + (c.orderValue || 0), 0) };
+      totalValCell.value = {
+        formula: `SUM(H9:H${lastDataRowStr})`,
+        result: filteredCustomers.reduce((sum, c) => {
+          const customerQuotations = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+          const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
+          const finalVal = validQuotations.length > 0
+            ? validQuotations.reduce((s, q) => s + (q.totalAmount || 0), 0)
+            : (c.orderValue || 0);
+          return sum + finalVal;
+        }, 0)
+      };
       totalValCell.font = { name: 'Times New Roman', bold: true, size: 11 };
       totalValCell.alignment = { horizontal: 'right', vertical: 'middle' };
       totalValCell.numFmt = '#,##0" ₫"';
