@@ -86,7 +86,13 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   };
 
   const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt)) || (t.updatedAt && matchesTime(t.updatedAt)) || (t.completedAt && matchesTime(t.completedAt)) || !t.createdAt);
-  const filteredCustomers = activeCustomers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt);
+  const filteredCustomers = activeCustomers
+    .filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt)
+    .sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   const activeProjects = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
   const filteredQuotations = (quotations || []).filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)) || !q.createdAt);
 
