@@ -819,10 +819,15 @@ export function CustomerPage({
         'completed': 'Hoàn thành',
         'lost': 'Tạm dừng',
       };
-      const oldStageName = stageNames[existingCustomer.stage] || existingCustomer.stage;
-      const newStageName = 'Hoàn thành';
+      const codeText = existingCustomer.code ? `\n🔢 Mã đơn: ${existingCustomer.code}` : '';
+      const priceText = existingCustomer.orderValue ? `\n💰 Giá trị: ${formatCurrency(existingCustomer.orderValue)}` : '';
       
-      sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${existingCustomer.name}\n📞 SĐT: ${existingCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
+      sendSystemNotification(
+        `🔄 Cập nhật trạng thái đơn hàng!\n\n` +
+        `👤 Khách hàng: ${existingCustomer.name}${codeText}${priceText}\n` +
+        `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
+        `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+      );
       
       // Update tasks
       try {
@@ -964,6 +969,42 @@ export function CustomerPage({
           }
         }
 
+        // Check if details of an active order changed
+        const orderStages = ['contracted', 'production', 'installation', 'completed'];
+        const isOrderStage = orderStages.includes(selectedCustomer.stage);
+        if (isOrderStage && existingCustomer) {
+          const changedFields: string[] = [];
+          
+          if (existingCustomer.orderValue !== selectedCustomer.orderValue) {
+            const oldVal = formatCurrency(existingCustomer.orderValue || 0);
+            const newVal = formatCurrency(selectedCustomer.orderValue || 0);
+            changedFields.push(`💰 Giá trị: ${oldVal} ➡️ ${newVal}`);
+          }
+          if (existingCustomer.code !== selectedCustomer.code) {
+            changedFields.push(`🔢 Mã đơn: ${existingCustomer.code || 'Chưa có'} ➡️ ${selectedCustomer.code || 'Chưa có'}`);
+          }
+          if (existingCustomer.name !== selectedCustomer.name) {
+            changedFields.push(`👤 Khách hàng: ${existingCustomer.name} ➡️ ${selectedCustomer.name}`);
+          }
+          if (existingCustomer.address !== selectedCustomer.address) {
+            changedFields.push(`📍 Địa chỉ: ${existingCustomer.address || 'Chưa có'} ➡️ ${selectedCustomer.address || 'Chưa có'}`);
+          }
+          if (existingCustomer.furnitureCategory !== selectedCustomer.furnitureCategory) {
+            changedFields.push(`📦 Hạng mục: ${existingCustomer.furnitureCategory || 'Chưa có'} ➡️ ${selectedCustomer.furnitureCategory || 'Chưa có'}`);
+          }
+          
+          // Only send if fields actually changed and stage didn't change (to avoid duplicate notifications with stage change)
+          if (changedFields.length > 0 && existingStage === selectedCustomer.stage) {
+            const codeText = selectedCustomer.code ? ` [${selectedCustomer.code}]` : '';
+            sendSystemNotification(
+              `✏️ Cập nhật thông tin đơn hàng!\n\n` +
+              `👤 Đơn hàng: ${selectedCustomer.name}${codeText}\n` +
+              `🛠 Thay đổi:\n` + changedFields.map(f => `- ${f}`).join('\n') + `\n\n` +
+              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+            );
+          }
+        }
+
         // Send System Notification for Stage Change
         if (existingStage && existingStage !== selectedCustomer.stage) {
           const stageNames: Record<string, string> = {
@@ -978,7 +1019,19 @@ export function CustomerPage({
           const oldStageName = stageNames[existingStage] || existingStage;
           const newStageName = stageNames[selectedCustomer.stage] || selectedCustomer.stage;
           
-          sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
+          const isOrder = orderStages.includes(selectedCustomer.stage) || orderStages.includes(existingStage);
+          if (isOrder) {
+            const codeText = selectedCustomer.code ? `\n🔢 Mã đơn: ${selectedCustomer.code}` : '';
+            const priceText = selectedCustomer.orderValue ? `\n💰 Giá trị: ${formatCurrency(selectedCustomer.orderValue)}` : '';
+            sendSystemNotification(
+              `🔄 Cập nhật trạng thái đơn hàng!\n\n` +
+              `👤 Khách hàng: ${selectedCustomer.name}${codeText}${priceText}\n` +
+              `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
+              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+            );
+          } else {
+            sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
+          }
         }
 
         // Automated Workflow: Customer Stage -> Quotation Status Sync
