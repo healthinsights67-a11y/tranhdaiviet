@@ -1,5 +1,7 @@
 import * as React from 'react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
 import { sendSystemNotification, getBotNotificationConfig, sendZaloTestMessage } from '@/src/services/botNotificationService';
@@ -27,7 +29,7 @@ import {
   Calendar,
   Palette, 
   Factory, Package, 
-  UserCheck, Users, Target, Map, LayoutGrid, Upload
+  UserCheck, Users, Target, Map, LayoutGrid, Upload, Download
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
 import { LocationPickerDialog } from '../maps/LocationPickerDialog';
@@ -216,6 +218,245 @@ export function CustomerPage({
     } catch (error) {
       console.error("Lỗi khi đọc file Excel:", error);
       toast.error("Lỗi khi đọc file. Vui lòng kiểm tra lại định dạng.");
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      if (filteredCustomers.length === 0) {
+        toast.error("Không có dữ liệu khách hàng để xuất");
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Danh Sách Khách Hàng', {
+        pageSetup: { paperSize: 9, orientation: 'landscape' }
+      });
+
+      // Set columns
+      sheet.columns = [
+        { width: 8 },   // STT
+        { width: 15 },  // Mã KH
+        { width: 25 },  // Họ và Tên
+        { width: 15 },  // Số điện thoại
+        { width: 40 },  // Địa chỉ
+        { width: 25 },  // Hạng mục
+        { width: 18 },  // Trạng thái
+        { width: 20 },  // Trị giá đơn (VNĐ)
+        { width: 22 },  // Sale phụ trách
+        { width: 15 },  // Ngày tạo
+        { width: 45 },  // Ghi chú
+      ];
+
+      // Helper function to add merged headers
+      const addTitleHeader = (text: string, bold: boolean, size: number, colorHex: string, italic = false) => {
+        const row = sheet.addRow([text]);
+        sheet.mergeCells(row.number, 1, row.number, 11);
+        const cell = row.getCell(1);
+        cell.font = { name: 'Times New Roman', bold, size, italic, color: { argb: colorHex } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        row.height = size * 1.8;
+        return row;
+      };
+
+      // Header Brand Info
+      addTitleHeader('CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 13, 'FF1E3A8A');
+      addTitleHeader('Địa chỉ: Số 12, Đường 3, KCN Bắc Thăng Long, Đông Anh, Hà Nội', false, 10, 'FF4B5563');
+      addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: i-noi-that.vercel.app', false, 10, 'FF4B5563');
+      
+      const spaceRow = sheet.addRow([]);
+      spaceRow.height = 10;
+
+      // Document Title
+      let docTitle = 'DANH SÁCH TOÀN BỘ KHÁCH HÀNG';
+      if (selectedMonth === 'today') {
+        docTitle = 'DANH SÁCH KHÁCH HÀNG - HÔM NAY';
+      } else if (selectedMonth === 'week') {
+        docTitle = 'DANH SÁCH KHÁCH HÀNG - TUẦN NÀY';
+      } else if (selectedMonth) {
+        const [year, month] = selectedMonth.split('-');
+        docTitle = `DANH SÁCH KHÁCH HÀNG THÁNG ${month}/${year}`;
+      }
+      addTitleHeader(docTitle, true, 16, 'FF1E3A8A');
+      
+      const today = new Date();
+      const dateString = `Ngày xuất file: ${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+      addTitleHeader(dateString, false, 11, 'FF374151', true);
+
+      const spaceRow2 = sheet.addRow([]);
+      spaceRow2.height = 15;
+
+      // Table Header Row
+      const headerRow = sheet.addRow([
+        'STT', 
+        'MÃ KH', 
+        'HỌ VÀ TÊN', 
+        'SỐ ĐIỆN THOẠI', 
+        'ĐỊA CHỈ', 
+        'HẠNG MỤC',
+        'TRẠNG THÁI',
+        'GIÁ TRỊ ĐƠN (VNĐ)',
+        'SALE PHỤ TRÁCH',
+        'NGÀY TẠO',
+        'GHI CHÚ'
+      ]);
+      headerRow.height = 28;
+
+      // Style Table Headers
+      for (let i = 1; i <= 11; i++) {
+        const cell = headerRow.getCell(i);
+        cell.font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1E3A8A' } // Brand dark blue
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+          left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+          bottom: { style: 'medium', color: { argb: 'FF1E3A8A' } },
+          right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+        };
+      }
+
+      const stageNames: Record<string, string> = {
+        'consulting': 'Đã tư vấn',
+        'surveying': 'Đã đo đạc',
+        'contracted': 'Chốt cọc',
+        'production': 'Sản xuất',
+        'installation': 'Lắp đặt',
+        'completed': 'Hoàn thành',
+        'lost': 'Tạm dừng',
+        'lead': 'Tiềm năng',
+      };
+
+      // Add Data Rows
+      filteredCustomers.forEach((c, idx) => {
+        const saleName = members.find(m => m.id === c.assignedSaleId)?.name || 'Chưa gán';
+        const stageName = stageNames[c.stage] || c.stage;
+        const createdDate = c.createdAt ? new Date(c.createdAt).toLocaleDateString('vi-VN') : '—';
+
+        const dataRow = sheet.addRow([
+          idx + 1,
+          c.code || `KH${String(idx + 1).padStart(3, '0')}`,
+          c.name || '',
+          c.phone || '',
+          c.address || '—',
+          c.furnitureCategory || '—',
+          stageName || '—',
+          c.orderValue || 0,
+          saleName,
+          createdDate,
+          c.notes || ''
+        ]);
+        dataRow.height = 24;
+
+        // Apply styles to data row cells
+        for (let i = 1; i <= 11; i++) {
+          const cell = dataRow.getCell(i);
+          cell.font = { name: 'Times New Roman', size: 11 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+
+          // Alternating backgrounds (zebra styling)
+          if (idx % 2 === 1) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF8FAFC' }
+            };
+          }
+
+          // Alignment
+          if (i === 1 || i === 2 || i === 4 || i === 7 || i === 10) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (i === 8) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0" ₫"';
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+          }
+        }
+      });
+
+      // Total summary row
+      const totalRowNumber = sheet.lastRow!.number + 1;
+      const totalRow = sheet.addRow([]);
+      totalRow.height = 26;
+
+      sheet.mergeCells(totalRowNumber, 1, totalRowNumber, 7);
+      const labelCell = totalRow.getCell(1);
+      labelCell.value = 'TỔNG CỘNG';
+      labelCell.font = { name: 'Times New Roman', bold: true, size: 11 };
+      labelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+      const totalValCell = totalRow.getCell(8);
+      // sum order value formula starting from row 9
+      const lastDataRowStr = totalRowNumber - 1;
+      totalValCell.value = { formula: `SUM(H9:H${lastDataRowStr})`, result: filteredCustomers.reduce((sum, c) => sum + (c.orderValue || 0), 0) };
+      totalValCell.font = { name: 'Times New Roman', bold: true, size: 11 };
+      totalValCell.alignment = { horizontal: 'right', vertical: 'middle' };
+      totalValCell.numFmt = '#,##0" ₫"';
+
+      // border and fill for summary row
+      for (let i = 1; i <= 11; i++) {
+        const cell = totalRow.getCell(i);
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF1F5F9' }
+        };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF1E3A8A' } },
+          bottom: { style: 'double', color: { argb: 'FF1E3A8A' } },
+          left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+          right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+        };
+      }
+
+      // spacing
+      const signSpace = sheet.addRow([]);
+      signSpace.height = 20;
+
+      // Add signature row
+      const signRow = sheet.addRow([]);
+      signRow.height = 20;
+      sheet.mergeCells(signRow.number, 8, signRow.number, 11);
+      const signTitleCell = signRow.getCell(8);
+      signTitleCell.value = 'Người Lập Biểu';
+      signTitleCell.font = { name: 'Times New Roman', bold: true, size: 11 };
+      signTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      const signSubRow = sheet.addRow([]);
+      signSubRow.height = 15;
+      sheet.mergeCells(signSubRow.number, 8, signSubRow.number, 11);
+      const signSubCell = signSubRow.getCell(8);
+      signSubCell.value = '(Ký, ghi rõ họ tên)';
+      signSubCell.font = { name: 'Times New Roman', italic: true, size: 10, color: { argb: 'FF6B7280' } };
+      signSubCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // Write and save file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      let filename = 'Danh_Sach_Khach_Hang';
+      if (selectedMonth && selectedMonth !== 'today' && selectedMonth !== 'week') {
+        filename += `_Thang_${selectedMonth.replace('-', '_')}`;
+      } else if (selectedMonth) {
+        filename += `_${selectedMonth}`;
+      }
+      
+      saveAs(blob, `${filename}.xlsx`);
+      toast.success("Xuất file Excel khách hàng thành công!");
+
+    } catch (err: any) {
+      console.error("Export Excel error:", err);
+      toast.error("Lỗi khi xuất file Excel: " + (err.message || 'Thử lại sau'));
     }
   };
 
@@ -1222,6 +1463,15 @@ export function CustomerPage({
           >
             <Upload className="h-3.5 w-3.5" />
             <span className="hidden md:inline">Nhập Excel</span>
+          </Button>
+
+          <Button 
+            variant="outline"
+            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+            onClick={handleExportExcel}
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Xuất Excel</span>
           </Button>
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
