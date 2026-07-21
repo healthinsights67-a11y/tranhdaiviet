@@ -55,86 +55,114 @@ const TotalsFooter = ({
   colSpan, 
   lang = 'vi',
   exchangeRate = 25400,
-  formatPrice 
+  formatVnd,
+  formatUsd
 }: { 
   quotation: Quotation, 
   colSpan: number, 
   lang?: 'vi' | 'en' | 'km',
   exchangeRate?: number,
-  formatPrice: (val: number) => string
-}) => (
-  <tfoot>
-    <tr className="bg-gray-50 border-t-2 border-black">
-      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Subtotal ($)' : lang === 'km' ? 'សរុបរង ($)' : 'Cộng tiền hàng'}
-      </td>
-      <td className="p-2 text-right font-mono font-bold">
-        {formatPrice(quotation.subTotal)}
-      </td>
-    </tr>
-    <tr className="bg-gray-50 border-t border-black">
-      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Discount ($)' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ ($)' : 'Giảm giá & Chiết khấu'}
-      </td>
-      <td className="p-2 text-right font-mono font-bold text-red-600">
-        -{formatPrice(quotation.discount)}
-      </td>
-    </tr>
-    {quotation.hasVat && (
+  formatVnd: (val: number) => string,
+  formatUsd: (val: number) => string
+}) => {
+  const labelColSpan = colSpan;
+  const vatVal = quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08);
+  const remainingVal = (quotation.totalAmount || 0) - (quotation.depositAmount || 0);
+
+  return (
+    <tfoot>
+      <tr className="bg-gray-50 border-t-2 border-black">
+        <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+          {lang === 'en' ? 'Subtotal' : lang === 'km' ? 'សរុបរង' : 'Cộng tiền hàng'}
+        </td>
+        <td className="p-2 text-right font-mono font-bold border-r border-black text-xs">
+          {formatVnd(quotation.subTotal)}
+        </td>
+        <td className="p-2 text-right font-mono font-bold text-blue-700 bg-gray-50 text-xs">
+          {formatUsd(quotation.subTotal)}
+        </td>
+      </tr>
       <tr className="bg-gray-50 border-t border-black">
-        <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-          {lang === 'en' ? 'VAT Tax (8%) ($)' : lang === 'km' ? 'ពន្ធ VAT (8%) ($)' : 'Thuế VAT (8%)'}
+        <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+          {lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'Giảm giá & Chiết khấu'}
         </td>
-        <td className="p-2 text-right font-mono font-bold">
-          {formatPrice(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08))}
+        <td className="p-2 text-right font-mono font-bold text-red-600 border-r border-black text-xs">
+          -{formatVnd(quotation.discount)}
+        </td>
+        <td className="p-2 text-right font-mono font-bold text-red-600 bg-gray-50 text-xs">
+          -{formatUsd(quotation.discount)}
         </td>
       </tr>
-    )}
-    <tr className="bg-gray-100 border-t-2 border-black">
-      <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
-         {lang === 'en'
-           ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'} ($)`
-           : lang === 'km'
-           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'}`
-           : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
-         }
-      </td>
-      <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
-        {formatPrice(quotation.totalAmount)}
-      </td>
-    </tr>
-    {(quotation.depositAmount ?? 0) > 0 && (
-      <>
+      {quotation.hasVat && (
         <tr className="bg-gray-50 border-t border-black">
-          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-            {lang === 'en' ? 'Deposit Paid ($)' : lang === 'km' ? 'ប្រាក់កក់បានបង់ ($)' : 'Đã đặt cọc'}
+          <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+            {lang === 'en' ? 'VAT Tax (8%)' : lang === 'km' ? 'ពន្ធ VAT (8%)' : 'Thuế VAT (8%)'}
           </td>
-          <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
-            -{formatPrice(quotation.depositAmount || 0)}
+          <td className="p-2 text-right font-mono font-bold border-r border-black text-xs">
+            {formatVnd(vatVal)}
           </td>
-        </tr>
-        <tr className="bg-emerald-50 border-t-2 border-emerald-200">
-          <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
-             {lang === 'en' ? 'REMAINING BALANCE DUE ($)' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់ ($)' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
-          </td>
-          <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
-            {formatPrice((quotation.totalAmount || 0) - (quotation.depositAmount || 0))}
+          <td className="p-2 text-right font-mono font-bold text-blue-700 bg-gray-50 text-xs">
+            {formatUsd(vatVal)}
           </td>
         </tr>
-      </>
-    )}
-    {lang !== 'vi' && exchangeRate > 0 && (
-      <tr className="bg-amber-50 border-t border-amber-300">
-        <td colSpan={colSpan + 1} className="p-1.5 px-3 text-right font-bold text-[10px] text-amber-900 italic">
-          {lang === 'en'
-            ? `* Applied Exchange Rate: 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
-            : `* អត្រាប្តូរប្រាក់អនុវត្ត៖ 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
-          }
+      )}
+      <tr className="bg-gray-100 border-t-2 border-black">
+        <td colSpan={labelColSpan} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-black border-r border-black">
+           {lang === 'en'
+             ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'}`
+             : lang === 'km'
+             ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'}`
+             : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
+           }
+        </td>
+        <td className="p-2 pr-2 text-right font-mono text-[13px] font-bold text-gray-950 border-r border-black">
+          {formatVnd(quotation.totalAmount)}
+        </td>
+        <td className="p-2 pr-2 text-right font-mono text-[13px] font-bold text-blue-700 bg-gray-100">
+          {formatUsd(quotation.totalAmount)}
         </td>
       </tr>
-    )}
-  </tfoot>
-);
+      {(quotation.depositAmount ?? 0) > 0 && (
+        <>
+          <tr className="bg-gray-50 border-t border-black">
+            <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+              {lang === 'en' ? 'Deposit Paid' : lang === 'km' ? 'ប្រាក់កក់បានបង់' : 'Đã đặt cọc'}
+            </td>
+            <td className="p-2 pr-2 text-right font-mono font-bold text-emerald-600 border-r border-black text-xs">
+              -{formatVnd(quotation.depositAmount || 0)}
+            </td>
+            <td className="p-2 pr-2 text-right font-mono font-bold text-emerald-600 bg-gray-50 text-xs">
+              -{formatUsd(quotation.depositAmount || 0)}
+            </td>
+          </tr>
+          <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+            <td colSpan={labelColSpan} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-emerald-700 border-r border-emerald-200">
+               {lang === 'en' ? 'REMAINING BALANCE DUE' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
+            </td>
+            <td className="p-2 pr-2 text-right font-mono text-[13px] font-bold text-emerald-700 border-r border-emerald-200">
+              {formatVnd(remainingVal)}
+            </td>
+            <td className="p-2 pr-2 text-right font-mono text-[13px] font-bold text-emerald-700 bg-emerald-50">
+              {formatUsd(remainingVal)}
+            </td>
+          </tr>
+        </>
+      )}
+      {exchangeRate > 0 && (
+        <tr className="bg-amber-50 border-t border-amber-300">
+          <td colSpan={labelColSpan + 2} className="p-1.5 px-3 text-right font-bold text-[10px] text-amber-900 italic">
+            {lang === 'en'
+              ? `* Applied Exchange Rate: 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
+              : lang === 'km'
+              ? `* អត្រាប្តូរប្រាក់អនុវត្ត៖ 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
+              : `* Tỷ giá áp dụng: 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VNĐ`
+            }
+          </td>
+        </tr>
+      )}
+    </tfoot>
+  );
+};
 
 export function QuotationPreview({ 
   isOpen, 
@@ -179,14 +207,15 @@ export function QuotationPreview({
   const [lang, setLang] = React.useState<'vi' | 'en' | 'km'>('vi');
   const [exchangeRate, setExchangeRate] = React.useState<number>(25400);
 
-  const formatPrice = React.useCallback((amountVnd: number) => {
-    if (lang === 'vi') {
-      return (amountVnd || 0).toLocaleString('vi-VN');
-    }
+  const formatVnd = React.useCallback((amountVnd: number) => {
+    return (amountVnd || 0).toLocaleString('vi-VN');
+  }, []);
+
+  const formatUsd = React.useCallback((amountVnd: number) => {
     const rate = exchangeRate > 0 ? exchangeRate : 25400;
     const usdAmount = (amountVnd || 0) / rate;
     return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }, [lang, exchangeRate]);
+  }, [exchangeRate]);
 
   const translateUnit = React.useCallback((unit: string) => {
     if (lang === 'vi') return unit;
@@ -1673,15 +1702,15 @@ export function QuotationPreview({
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
-                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatPrice(item.unitPrice)}</td>
-                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{formatPrice(item.total)}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatVnd(item.unitPrice)}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50 text-blue-700">{formatUsd(item.unitPrice)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} />
+                      <TotalsFooter quotation={quotation} colSpan={5} lang={lang} exchangeRate={exchangeRate} formatVnd={formatVnd} formatUsd={formatUsd} />
                     )}
                   </table>
                 </>
@@ -1733,14 +1762,14 @@ export function QuotationPreview({
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
-                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatPrice(item.unitPrice)}</td>
-                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{formatPrice(item.total)}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatVnd(item.unitPrice)}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50 text-blue-700">{formatUsd(item.unitPrice)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                     </tbody>
-                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} />
+                    <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatVnd={formatVnd} formatUsd={formatUsd} />
                   </table>
                 </>
               )}
