@@ -401,8 +401,8 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
                         <th className="p-2 border-r border-gray-200">STT</th>
                         <th className="p-2 border-r border-gray-200 text-left">Tên sản phẩm</th>
                         <th className="p-2 border-r border-gray-200">SL</th>
-                        <th className="p-2 border-r border-gray-200">Đơn giá</th>
-                        <th className="p-2">Thành tiền</th>
+                        <th className="p-2 border-r border-gray-200">Đơn giá VNĐ</th>
+                        <th className="p-2">Đơn giá USD</th>
                       </tr>
                     </thead>
                     <tbody>

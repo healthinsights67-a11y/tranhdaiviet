@@ -1012,12 +1012,26 @@ export function QuotationPreview({
          row.height = size * 1.5;
          return row;
       };
-
       const isReadyMade = quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0);
 
       addHeader(template.companyName || 'CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN', true, 16);
       addHeader(isReadyMade ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG', true, 18);
       
+      const applyBorderAndFont = (row: ExcelJS.Row, isBold = false) => {
+         for(let i=1; i<=maxCol; i++) {
+             row.getCell(i).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+             row.getCell(i).font = { name: 'Times New Roman', bold: isBold, size: 12 };
+             row.getCell(i).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+         }
+      }
+
+      const getExcelPrice = (val: number) => {
+         if (lang === 'vi') return val;
+         const rate = exchangeRate > 0 ? exchangeRate : 25400;
+         return Number(((val || 0) / rate).toFixed(2));
+      };
+      const numFmt = lang === 'vi' ? '#,##0' : '$#,##0.00';
+
       const noRow = sheet.addRow([`HỒ SƠ SỐ: ${quotation.quotationNumber}`]);
       sheet.mergeCells(noRow.number, 1, noRow.number, maxCol);
       noRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
@@ -1057,13 +1071,6 @@ export function QuotationPreview({
 
       sheet.addRow([]);
 
-      const applyBorderAndFont = (row: ExcelJS.Row, isBold = false) => {
-         for(let i=1; i<=maxCol; i++) {
-             row.getCell(i).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-             row.getCell(i).font = { name: 'Times New Roman', bold: isBold, size: 12 };
-             row.getCell(i).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-         }
-      }
 
       if (customItems.length > 0) {
          const titleRow = sheet.addRow(['CHI TIẾT HẠNG MỤC THI CÔNG']);
@@ -1072,18 +1079,11 @@ export function QuotationPreview({
          titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
          titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
+         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ VNĐ', 'ĐƠN GIÁ USD']);
          if (maxCol === 8) {
             sheet.mergeCells(headerRow.number, 3, headerRow.number, 4);
          }
          applyBorderAndFont(headerRow, true);
-
-         const getExcelPrice = (val: number) => {
-            if (lang === 'vi') return val;
-            const rate = exchangeRate > 0 ? exchangeRate : 25400;
-            return Number(((val || 0) / rate).toFixed(2));
-         };
-         const numFmt = lang === 'vi' ? '#,##0' : '$#,##0.00';
 
          Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
             const groupRow = sheet.addRow([String.fromCharCode(65 + groupIdx), translateCategory(cat)]);
@@ -1139,8 +1139,8 @@ export function QuotationPreview({
            lang === 'en' ? 'TECHNICAL SPECS' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស' : 'QC KỸ THUẬT / DIỄN GIẢI',
            lang === 'en' ? 'UNIT' : lang === 'km' ? 'ខ្នាត' : 'ĐVT',
            lang === 'en' ? 'QTY' : lang === 'km' ? 'ចំនួន' : 'SL',
-           lang === 'en' ? 'UNIT PRICE ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'ĐƠN GIÁ',
-           lang === 'en' ? 'AMOUNT ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'THÀNH TIỀN'
+           lang === 'en' ? 'UNIT PRICE ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'ĐƠN GIÁ VNĐ',
+           lang === 'en' ? 'AMOUNT ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'ĐƠN GIÁ USD'
          ]);
          applyBorderAndFont(headerRow, true);
 
@@ -1651,8 +1651,8 @@ export function QuotationPreview({
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá VNĐ'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Đơn giá USD'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1702,8 +1702,8 @@ export function QuotationPreview({
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá VNĐ'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Đơn giá USD'}</th>
                       </tr>
                     </thead>
                     <tbody>

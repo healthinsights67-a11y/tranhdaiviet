@@ -819,6 +819,8 @@ export function CustomerPage({
         'completed': 'Hoàn thành',
         'lost': 'Tạm dừng',
       };
+      const oldStageName = stageNames[existingCustomer.stage] || existingCustomer.stage;
+      const newStageName = stageNames[updateData.stage] || updateData.stage;
       const codeText = existingCustomer.code ? `\n🔢 Mã đơn: ${existingCustomer.code}` : '';
       const priceText = existingCustomer.orderValue ? `\n💰 Giá trị: ${formatCurrency(existingCustomer.orderValue)}` : '';
       

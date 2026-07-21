@@ -5,6 +5,7 @@ import {
   Trash2, 
   Calculator,
   User,
+  Users,
   Phone,
   MapPin,
   Clock,
@@ -752,14 +753,45 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                       Khách hàng {formData.type !== 'ready-made' && <span className="text-destructive">*</span>}
                     </Label>
                     <div className="flex gap-1 items-center">
-                      <div className="flex-1">
-                        <Select onValueChange={handleCustomerSelect} value={formData.customerId || undefined}>
-                          <SelectTrigger className="h-9 w-full bg-white">
-                            <SelectValue placeholder="Chọn khách hàng mục tiêu">
-                              {formData.customerName || undefined}
-                            </SelectValue>
+                      <div className="relative flex-1">
+                        <Input 
+                          className="h-9 w-full bg-white text-xs font-medium pr-8"
+                          placeholder="Nhập tên khách hàng..."
+                          value={formData.customerName}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const matched = customers.find(c => c.name.toLowerCase() === val.toLowerCase());
+                            if (matched) {
+                              handleCustomerSelect(matched.id);
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                customerName: val,
+                                customerId: ''
+                              }));
+                            }
+                          }}
+                          list="customer-suggestions"
+                        />
+                        <datalist id="customer-suggestions">
+                          {customers.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.phone ? `${c.phone}` : ''}
+                            </option>
+                          ))}
+                        </datalist>
+                      </div>
+
+                      {customers.length > 0 && (
+                        <Select 
+                          onValueChange={(id) => handleCustomerSelect(id)} 
+                          value={formData.customerId || ''}
+                        >
+                          <SelectTrigger className="h-9 px-2 bg-white text-xs text-slate-600 hover:text-slate-900 border border-input w-auto shrink-0" title="Chọn từ danh sách khách hàng">
+                            <span className="hidden sm:inline text-xs font-medium mr-1">Chọn từ DS</span>
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent align="end" className="max-h-60 overflow-y-auto">
                             {customers.map((c) => (
                               <SelectItem key={c.id} value={c.id}>
                                 <div className="flex flex-col items-start">
@@ -770,8 +802,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      {formData.customerId && (
+                      )}
+
+                      {(formData.customerId || formData.customerName) && (
                         <Button 
                           type="button"
                           variant="outline" 
@@ -787,7 +820,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                               quotationNumber: `BG-${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
                             });
                           }}
-                          title="Bỏ chọn khách hàng"
+                          title="Bỏ chọn/Xóa tên khách hàng"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -1241,7 +1274,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-[10px] font-bold text-primary uppercase block text-center">Thành tiền</Label>
+                              <Label className="text-[10px] font-bold text-primary uppercase block text-center">Đơn giá USD</Label>
                               <div className="h-9 flex items-center justify-end px-1.5 bg-primary/10 rounded-lg font-mono text-[11px] font-black text-primary border border-primary/20 truncate">
                                 {item.total.toLocaleString()} đ
                               </div>
