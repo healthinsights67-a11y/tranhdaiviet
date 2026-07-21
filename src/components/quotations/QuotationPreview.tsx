@@ -490,23 +490,12 @@ export function QuotationPreview({
       element.className = originalClassName;
       element.style.transform = originalStyleTransform;
 
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      
       const pdfWidth = 210; // A4 width in mm
       const pageHeight = 297; // A4 height in mm
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      
-      // Calculate how high the entire image will be in the PDF
-      let pdfImageWidth = pdfWidth;
-      let pdfImageHeight = (imgHeight * pdfWidth) / imgWidth;
 
-      // Ensure it fits exactly on 1 page by scaling down if needed
-      if (pdfImageHeight > pageHeight) {
-        const ratio = pageHeight / pdfImageHeight;
-        pdfImageHeight = pageHeight;
-        pdfImageWidth = pdfWidth * ratio;
-      }
+      const totalPdfHeight = (imgHeight * pdfWidth) / imgWidth;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -514,10 +503,47 @@ export function QuotationPreview({
         format: 'a4'
       });
 
-      // Center horizontally if it was scaled down
-      const xOffset = (pdfWidth - pdfImageWidth) / 2;
+      if (totalPdfHeight <= pageHeight) {
+        // Fits on a single page
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, totalPdfHeight);
+      } else {
+        // Multi-page export: slice the canvas into A4 page-sized chunks
+        const pxPerPage = (imgWidth * pageHeight) / pdfWidth;
+        let sourceY = 0;
+        let pageIndex = 0;
 
-      pdf.addImage(imgData, 'JPEG', xOffset, 0, pdfImageWidth, pdfImageHeight);
+        while (sourceY < imgHeight) {
+          const sliceHeight = Math.min(pxPerPage, imgHeight - sourceY);
+          
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = imgWidth;
+          pageCanvas.height = sliceHeight;
+
+          const ctx = pageCanvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, imgWidth, sliceHeight);
+            ctx.drawImage(
+              canvas,
+              0, sourceY, imgWidth, sliceHeight,
+              0, 0, imgWidth, sliceHeight
+            );
+          }
+
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 1.0);
+          const slicePdfHeight = (sliceHeight * pdfWidth) / imgWidth;
+
+          if (pageIndex > 0) {
+            pdf.addPage();
+          }
+
+          pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfWidth, slicePdfHeight);
+
+          sourceY += pxPerPage;
+          pageIndex++;
+        }
+      }
 
       pdf.save(`${getFileName()}.pdf`);
       
