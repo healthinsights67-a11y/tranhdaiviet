@@ -50,63 +50,73 @@ interface QuotationPreviewProps {
   onDeleteQuotation?: (id: string) => Promise<void>;
 }
 
-const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotation, colSpan: number, lang?: 'vi' | 'en' | 'km' }) => (
+const TotalsFooter = ({ 
+  quotation, 
+  colSpan, 
+  lang = 'vi',
+  formatPrice 
+}: { 
+  quotation: Quotation, 
+  colSpan: number, 
+  lang?: 'vi' | 'en' | 'km',
+  formatPrice: (val: number) => string
+}) => (
   <tfoot>
     <tr className="bg-gray-50 border-t-2 border-black">
       <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Subtotal' : lang === 'km' ? 'សរុបរង' : 'Cộng tiền hàng'}
+        {lang === 'en' ? 'Subtotal ($)' : lang === 'km' ? 'សរុបរង ($)' : 'Cộng tiền hàng'}
       </td>
       <td className="p-2 text-right font-mono font-bold">
-        {quotation.subTotal.toLocaleString()}
+        {formatPrice(quotation.subTotal)}
       </td>
     </tr>
     <tr className="bg-gray-50 border-t border-black">
       <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'Giảm giá & Chiết khấu'}
+        {lang === 'en' ? 'Discount ($)' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ ($)' : 'Giảm giá & Chiết khấu'}
       </td>
       <td className="p-2 text-right font-mono font-bold text-red-600">
-        -{quotation.discount.toLocaleString()}
+        -{formatPrice(quotation.discount)}
       </td>
     </tr>
     {quotation.hasVat && (
       <tr className="bg-gray-50 border-t border-black">
         <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-          {lang === 'en' ? 'VAT Tax (8%)' : lang === 'km' ? 'ពន្ធ VAT (8%)' : 'Thuế VAT (8%)'}
+          {lang === 'en' ? 'VAT Tax (8%) ($)' : lang === 'km' ? 'ពន្ធ VAT (8%) ($)' : 'Thuế VAT (8%)'}
         </td>
         <td className="p-2 text-right font-mono font-bold">
-          {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
+          {formatPrice(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08))}
         </td>
       </tr>
     )}
     <tr className="bg-gray-100 border-t-2 border-black">
       <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
          {lang === 'en'
-           ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'}`
+           ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'} ($)`
            : lang === 'km'
-           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'}`
+           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'} ($)`
            : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
          }
       </td>
       <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
-        {quotation.totalAmount.toLocaleString()}
+        {formatPrice(quotation.totalAmount)}
       </td>
     </tr>
     {(quotation.depositAmount ?? 0) > 0 && (
       <>
         <tr className="bg-gray-50 border-t border-black">
           <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-            {lang === 'en' ? 'Deposit Paid' : lang === 'km' ? 'ប្រាក់កក់បានបង់' : 'Đã đặt cọc'}
+            {lang === 'en' ? 'Deposit Paid ($)' : lang === 'km' ? 'ប្រាក់កក់បានបង់ ($)' : 'Đã đặt cọc'}
           </td>
           <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
-            -{(quotation.depositAmount || 0).toLocaleString()}
+            -{formatPrice(quotation.depositAmount || 0)}
           </td>
         </tr>
         <tr className="bg-emerald-50 border-t-2 border-emerald-200">
           <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
-             {lang === 'en' ? 'REMAINING BALANCE DUE' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
+             {lang === 'en' ? 'REMAINING BALANCE DUE ($)' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់ ($)' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
           </td>
           <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
-            {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
+            {formatPrice((quotation.totalAmount || 0) - (quotation.depositAmount || 0))}
           </td>
         </tr>
       </>
@@ -155,6 +165,16 @@ export function QuotationPreview({
   const [zoom, setZoom] = React.useState<number>(1);
   const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
   const [lang, setLang] = React.useState<'vi' | 'en' | 'km'>('vi');
+  const [exchangeRate, setExchangeRate] = React.useState<number>(25400);
+
+  const formatPrice = React.useCallback((amountVnd: number) => {
+    if (lang === 'vi') {
+      return (amountVnd || 0).toLocaleString('vi-VN');
+    }
+    const rate = exchangeRate > 0 ? exchangeRate : 25400;
+    const usdAmount = (amountVnd || 0) / rate;
+    return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [lang, exchangeRate]);
 
   const translateUnit = React.useCallback((unit: string) => {
     if (lang === 'vi') return unit;
@@ -1200,6 +1220,20 @@ export function QuotationPreview({
               </button>
             </div>
 
+            {lang !== 'vi' && (
+              <div className="flex items-center gap-1 bg-amber-50 border-2 border-amber-200 text-amber-800 rounded-lg px-2 py-1 text-[10px] md:text-xs font-bold shadow-sm">
+                <span className="whitespace-nowrap">💵 1$ =</span>
+                <input
+                  type="number"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(Math.max(1, Number(e.target.value) || 25400))}
+                  className="w-16 md:w-20 px-1 py-0.5 text-center bg-white border border-amber-300 rounded font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 text-[11px]"
+                  title="Nhập tỷ giá 1 USD đổi ra bao nhiêu VNĐ"
+                />
+                <span className="text-[9px] text-amber-600 font-extrabold">VND</span>
+              </div>
+            )}
+
             <Button variant="outline" size="sm" onClick={onEdit} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-blue-600 border-blue-100 hover:bg-blue-50 text-[10px] md:text-sm">
               <Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Chỉnh sửa</span>
@@ -1430,8 +1464,8 @@ export function QuotationPreview({
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : lang === 'km' ? 'តម្លៃរាយ' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : lang === 'km' ? 'តម្លៃសរុប' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1452,15 +1486,15 @@ export function QuotationPreview({
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
-                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
-                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatPrice(item.unitPrice)}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{formatPrice(item.total)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} />
+                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} formatPrice={formatPrice} />
                     )}
                   </table>
                 </>
@@ -1481,8 +1515,8 @@ export function QuotationPreview({
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : lang === 'km' ? 'តម្លៃរាយ' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : lang === 'km' ? 'តម្លៃសរុប' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1512,14 +1546,14 @@ export function QuotationPreview({
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
-                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
-                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
+                              <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{formatPrice(item.unitPrice)}</td>
+                              <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{formatPrice(item.total)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                     </tbody>
-                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} />
+                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} formatPrice={formatPrice} />
                   </table>
                 </>
               )}
