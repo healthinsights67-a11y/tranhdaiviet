@@ -241,16 +241,16 @@ export function QuotationPreview({
 
     if (lang === 'en') {
       n = n
-        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, '$1-Door Wardrobe with $2 Shelves')
+        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, '$1-Door Wardrobe ($2 Shelves)')
         .replace(/tủ áo\s*(\d+)\s*cánh/gi, '$1-Door Wardrobe')
         .replace(/tủ áo cánh lùa/gi, 'Sliding Door Wardrobe')
         .replace(/tủ áo/gi, 'Wardrobe')
-        .replace(/giường ngủ/gi, 'Bed')
+        .replace(/giường ngủ|giường/gi, 'Bed')
         .replace(/bàn trang điểm/gi, 'Dressing Table')
         .replace(/tủ đầu giường|tab đầu giường/gi, 'Bedside Table')
         .replace(/bàn học|bàn làm việc/gi, 'Desk')
         .replace(/kệ sách/gi, 'Bookshelf')
-        .replace(/sofa gỗ|ghế sofa/gi, 'Sofa')
+        .replace(/sofa gỗ|ghế sofa|sofa/gi, 'Sofa')
         .replace(/bàn ăn/gi, 'Dining Table')
         .replace(/ghế ăn/gi, 'Dining Chair')
         .replace(/tủ bếp trên/gi, 'Upper Kitchen Cabinet')
@@ -258,23 +258,26 @@ export function QuotationPreview({
         .replace(/tủ bếp/gi, 'Kitchen Cabinet')
         .replace(/tủ giày/gi, 'Shoe Cabinet')
         .replace(/kệ tivi|kệ tv/gi, 'TV Stand')
-        .replace(/vách ốp tường/gi, 'Wall Panel')
+        .replace(/vách ốp tường|vách ốp/gi, 'Wall Panel')
         .replace(/vách trang trí/gi, 'Decorative Panel')
         .replace(/tủ rượu/gi, 'Wine Cabinet')
         .replace(/tủ lavabo/gi, 'Vanity Cabinet')
-        .replace(/gương soi/gi, 'Mirror');
+        .replace(/gương soi|gương/gi, 'Mirror')
+        .replace(/hàng đóng sẵn/gi, 'Ready-made Item')
+        .replace(/\b(\d+)\s*cánh\b/gi, '$1 Doors')
+        .replace(/\b(\d+)\s*kệ\b/gi, '$1 Shelves');
     } else if (lang === 'km') {
       n = n
-        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, 'ទូខោអាវទ្វារ$1មានធ្នើរ$2')
+        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, 'ទូខោអាវទ្វារ$1 មានធ្នើរ$2')
         .replace(/tủ áo\s*(\d+)\s*cánh/gi, 'ទូខោអាវទ្វារ$1')
         .replace(/tủ áo cánh lùa/gi, 'ទូខោអាវទ្វាររុញ')
         .replace(/tủ áo/gi, 'ទូខោអាវ')
-        .replace(/giường ngủ/gi, 'គ្រែគេង')
+        .replace(/giường ngủ|giường/gi, 'គ្រែគេង')
         .replace(/bàn trang điểm/gi, 'តុសំអាង')
         .replace(/tủ đầu giường|tab đầu giường/gi, 'តុចុងគ្រែ')
         .replace(/bàn học|bàn làm việc/gi, 'តុរៀន / តុធ្វើការ')
         .replace(/kệ sách/gi, 'ធ្នើររូបសៀវភៅ')
-        .replace(/sofa gỗ|ghế sofa/gi, 'កៅអីសូហ្វា')
+        .replace(/sofa gỗ|ghế sofa|sofa/gi, 'កៅអីសូហ្វា')
         .replace(/bàn ăn/gi, 'តុបាយ')
         .replace(/ghế ăn/gi, 'កៅអីបាយ')
         .replace(/tủ bếp trên/gi, 'ទូបាយលើ')
@@ -282,11 +285,14 @@ export function QuotationPreview({
         .replace(/tủ bếp/gi, 'ទូបាយ')
         .replace(/tủ giày/gi, 'ទូស្បែកជើង')
         .replace(/kệ tivi|kệ tv/gi, 'ទូរទស្សន៍')
-        .replace(/vách ốp tường/gi, 'ជញ្ជាំងអប')
+        .replace(/vách ốp tường|vách ốp/gi, 'ជញ្ជាំងអប')
         .replace(/vách trang trí/gi, 'ផ្ទាំងលម្អ')
         .replace(/tủ rượu/gi, 'ទូស្រា')
         .replace(/tủ lavabo/gi, 'ទូឡាបូ')
-        .replace(/gương soi/gi, 'កញ្ចក់');
+        .replace(/gương soi|gương/gi, 'កញ្ចក់')
+        .replace(/hàng đóng sẵn/gi, 'គ្រឿងសង្ហារិមស្រាប់')
+        .replace(/\b(\d+)\s*cánh\b/gi, 'ទ្វារ$1')
+        .replace(/\b(\d+)\s*kệ\b/gi, 'ធ្នើរ$1');
     }
 
     return n;
@@ -299,21 +305,21 @@ export function QuotationPreview({
     if (lang === 'en') {
       d = d
         .replace(/Chất liệu\s*:?/gi, 'Material:')
-        .replace(/khung cánh/gi, 'frame & door')
+        .replace(/khung cánh/gi, 'Frame & Door')
         .replace(/Khung/gi, 'Frame')
         .replace(/Cánh/gi, 'Door')
-        .replace(/Hậu Tủ|Hậu tủ/gi, 'Back Panel')
-        .replace(/li|mm/gi, 'mm')
-        .replace(/kệ/gi, 'shelf')
-        .replace(/ngăn kéo/gi, 'drawers')
-        .replace(/nhựa/gi, 'PVC plastic')
-        .replace(/gỗ công nghiệp/gi, 'engineered wood')
-        .replace(/gỗ tự nhiên/gi, 'solid wood')
-        .replace(/phủ melamine/gi, 'Melamine coated')
-        .replace(/kính cường lực/gi, 'tempered glass')
-        .replace(/phụ kiện/gi, 'fittings')
-        .replace(/bản lề giảm chấn/gi, 'soft-close hinges')
-        .replace(/ray trượt/gi, 'drawer slides')
+        .replace(/Hậu Tủ|Hậu tủ|hậu tủ/gi, 'Back Panel')
+        .replace(/li\b|mm\b/gi, 'mm')
+        .replace(/kệ/gi, 'Shelf')
+        .replace(/ngăn kéo/gi, 'Drawers')
+        .replace(/nhựa/gi, 'PVC Plastic')
+        .replace(/gỗ công nghiệp/gi, 'Engineered Wood')
+        .replace(/gỗ tự nhiên/gi, 'Solid Wood')
+        .replace(/phủ melamine/gi, 'Melamine Coated')
+        .replace(/kính cường lực/gi, 'Tempered Glass')
+        .replace(/phụ kiện/gi, 'Hardware Fittings')
+        .replace(/bản lề giảm chấn/gi, 'Soft-close Hinges')
+        .replace(/ray trượt/gi, 'Drawer Slides')
         .replace(/\(R x C x S\)/gi, '(W x H x D)')
         .replace(/\(D x R x C\)/gi, '(L x W x H)');
     } else if (lang === 'km') {
@@ -322,8 +328,8 @@ export function QuotationPreview({
         .replace(/khung cánh/gi, 'ស៊ុម និង ទ្វារ')
         .replace(/Khung/gi, 'ស៊ុម')
         .replace(/Cánh/gi, 'ទ្វារ')
-        .replace(/Hậu Tủ|Hậu tủ/gi, 'ផ្ទាំងខាងក្រោយ')
-        .replace(/li|mm/gi, 'mm')
+        .replace(/Hậu Tủ|Hậu tủ|hậu tủ/gi, 'ផ្ទាំងខាងក្រោយ')
+        .replace(/li\b|mm\b/gi, 'mm')
         .replace(/kệ/gi, 'ធ្នើរ')
         .replace(/ngăn kéo/gi, 'ថត')
         .replace(/nhựa/gi, 'ប្លាស្ទិក')
@@ -333,6 +339,7 @@ export function QuotationPreview({
         .replace(/kính cường lực/gi, 'កញ្ចក់ស្វិត')
         .replace(/phụ kiện/gi, 'គ្រឿងបន្លាស់')
         .replace(/bản lề giảm chấn/gi, 'ត្រចៀកកាត់បន្ថយកម្លាំង')
+        .replace(/ray trượt/gi, 'រ៉ៃរុញ')
         .replace(/\(R x C x S\)/gi, '(ទទឹង x កំពស់ x ជម្រៅ)')
         .replace(/\(D x R x C\)/gi, '(ប្រវែង x ទទឹង x កំពស់)');
     }
@@ -1045,38 +1052,47 @@ export function QuotationPreview({
          }
          applyBorderAndFont(headerRow, true);
 
+         const getExcelPrice = (val: number) => {
+            if (lang === 'vi') return val;
+            const rate = exchangeRate > 0 ? exchangeRate : 25400;
+            return Number(((val || 0) / rate).toFixed(2));
+         };
+         const numFmt = lang === 'vi' ? '#,##0' : '$#,##0.00';
+
          Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
-            const groupRow = sheet.addRow([String.fromCharCode(65 + groupIdx), cat]);
+            const groupRow = sheet.addRow([String.fromCharCode(65 + groupIdx), translateCategory(cat)]);
             sheet.mergeCells(groupRow.number, 2, groupRow.number, maxCol);
             applyBorderAndFont(groupRow, true);
             groupRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
 
             customItems.filter(item => item.category === cat).forEach((item, idx) => {
+               const uPrice = getExcelPrice(item.unitPrice);
+               const tot = getExcelPrice(item.total);
                const dataRow = sheet.addRow([
                   idx + 1,
-                  item.name,
-                  item.description,
-                  maxCol === 8 ? '' : item.unit,
-                  maxCol === 8 ? item.unit : item.quantity,
-                  maxCol === 8 ? item.quantity : item.unitPrice,
-                  maxCol === 8 ? item.unitPrice : item.total,
-                  maxCol === 8 ? item.total : ''
+                  translateName(item.name),
+                  translateDescription(item.description),
+                  maxCol === 8 ? '' : translateUnit(item.unit),
+                  maxCol === 8 ? translateUnit(item.unit) : item.quantity,
+                  maxCol === 8 ? item.quantity : uPrice,
+                  maxCol === 8 ? uPrice : tot,
+                  maxCol === 8 ? tot : ''
                ]);
                
                if (maxCol === 8) {
                    sheet.mergeCells(dataRow.number, 3, dataRow.number, 4);
-                   dataRow.getCell(3).value = item.description;
-                   dataRow.getCell(5).value = item.unit;
+                   dataRow.getCell(3).value = translateDescription(item.description);
+                   dataRow.getCell(5).value = translateUnit(item.unit);
                    dataRow.getCell(6).value = item.quantity;
-                   dataRow.getCell(7).value = item.unitPrice;
-                   dataRow.getCell(8).value = item.total;
+                   dataRow.getCell(7).value = uPrice;
+                   dataRow.getCell(8).value = tot;
                }
 
                applyBorderAndFont(dataRow, false);
                dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
                dataRow.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(maxCol - 1).numFmt = '#,##0';
-               dataRow.getCell(maxCol).numFmt = '#,##0';
+               dataRow.getCell(maxCol - 1).numFmt = numFmt;
+               dataRow.getCell(maxCol).numFmt = numFmt;
             });
          });
       }
@@ -1084,38 +1100,49 @@ export function QuotationPreview({
       if (readyMadeItems.length > 0) {
          if (customItems.length > 0) sheet.addRow([]);
 
-         const titleRow = sheet.addRow(['CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)']);
+         const titleRow = sheet.addRow([lang === 'en' ? 'PRODUCT LIST & SPECIFICATIONS (READY-MADE)' : lang === 'km' ? 'បញ្ជីផលិតផលស្រាប់' : 'CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)']);
          sheet.mergeCells(titleRow.number, 1, titleRow.number, maxCol);
          applyBorderAndFont(titleRow, true);
          titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
          titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'HÌNH ẢNH', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
+         const headerRow = sheet.addRow([
+           lang === 'en' ? 'NO.' : lang === 'km' ? 'ល.រ' : 'STT',
+           lang === 'en' ? 'ITEM NAME' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'TÊN HẠNG MỤC',
+           lang === 'en' ? 'IMAGE' : lang === 'km' ? 'រូបភាព' : 'HÌNH ẢNH',
+           lang === 'en' ? 'TECHNICAL SPECS' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស' : 'QC KỸ THUẬT / DIỄN GIẢI',
+           lang === 'en' ? 'UNIT' : lang === 'km' ? 'ខ្នាត' : 'ĐVT',
+           lang === 'en' ? 'QTY' : lang === 'km' ? 'ចំនួន' : 'SL',
+           lang === 'en' ? 'UNIT PRICE ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'ĐƠN GIÁ',
+           lang === 'en' ? 'AMOUNT ($)' : lang === 'km' ? 'តម្លៃសរុប ($)' : 'THÀNH TIỀN'
+         ]);
          applyBorderAndFont(headerRow, true);
 
          Array.from(new Set(readyMadeItems.map(item => item.category))).forEach((cat, groupIdx) => {
-            const groupRow = sheet.addRow([String.fromCharCode(65 + (customItems.length > 0 ? new Set(customItems.map(i => i.category)).size : 0) + groupIdx), cat]);
+            const groupRow = sheet.addRow([String.fromCharCode(65 + (customItems.length > 0 ? new Set(customItems.map(i => i.category)).size : 0) + groupIdx), translateCategory(cat)]);
             sheet.mergeCells(groupRow.number, 2, groupRow.number, maxCol);
             applyBorderAndFont(groupRow, true);
             groupRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
 
             readyMadeItems.filter(item => item.category === cat).forEach((item, idx) => {
+               const uPrice = getExcelPrice(item.unitPrice);
+               const tot = getExcelPrice(item.total);
                const dataRow = sheet.addRow([
                   idx + 1,
-                  item.name,
-                  item.imageUrl ? '(Có ảnh)' : '', 
-                  item.description,
-                  item.unit,
+                  translateName(item.name),
+                  item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '', 
+                  translateDescription(item.description),
+                  translateUnit(item.unit),
                   item.quantity,
-                  item.unitPrice,
-                  item.total
+                  uPrice,
+                  tot
                ]);
                
                applyBorderAndFont(dataRow, false);
                dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
                dataRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(7).numFmt = '#,##0';
-               dataRow.getCell(8).numFmt = '#,##0';
+               dataRow.getCell(7).numFmt = numFmt;
+               dataRow.getCell(8).numFmt = numFmt;
             });
          });
       }
@@ -1124,23 +1151,23 @@ export function QuotationPreview({
          const row = sheet.addRow([]);
          sheet.mergeCells(row.number, 1, row.number, maxCol - 1);
          row.getCell(1).value = label;
-         row.getCell(maxCol).value = val;
+         row.getCell(maxCol).value = getExcelPrice(val);
 
          applyBorderAndFont(row, isBold);
          row.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
-         row.getCell(maxCol).numFmt = '#,##0';
+         row.getCell(maxCol).numFmt = numFmt;
       };
 
-      addTotalRow('CỘNG TIỀN HÀNG', quotation.subTotal, false);
-      addTotalRow('GIẢM GIÁ & CHIẾT KHẤU', -quotation.discount, false);
+      addTotalRow(lang === 'en' ? 'Subtotal' : lang === 'km' ? 'សរុបរង' : 'CỘNG TIỀN HÀNG', quotation.subTotal, false);
+      addTotalRow(lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'GIẢM GIÁ & CHIẾT KHẤU', -quotation.discount, false);
       if (quotation.hasVat) {
-          addTotalRow('THUẾ VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08), false);
+          addTotalRow(lang === 'en' ? 'VAT Tax (8%)' : lang === 'km' ? 'ពន្ធ VAT (8%)' : 'THUẾ VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08), false);
       }
-      addTotalRow('TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount, true);
+      addTotalRow(lang === 'en' ? 'TOTAL QUOTATION AMOUNT' : lang === 'km' ? 'តម្លៃសរុបរួម' : 'TỔNG GIÁ TRỊ BÁO GIÁ', quotation.totalAmount, true);
       
       if ((quotation.depositAmount || 0) > 0) {
-          addTotalRow('ĐÃ ĐẶT CỌC', -quotation.depositAmount!, false);
-          addTotalRow('CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!, true);
+          addTotalRow(lang === 'en' ? 'Deposit Paid' : lang === 'km' ? 'ប្រាក់កក់បានបង់' : 'ĐÃ ĐẶT CỌC', -quotation.depositAmount!, false);
+          addTotalRow(lang === 'en' ? 'REMAINING BALANCE DUE' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់' : 'CÒN LẠI CẦN THANH TOÁN', quotation.totalAmount - quotation.depositAmount!, true);
       }
 
       sheet.addRow([]);
