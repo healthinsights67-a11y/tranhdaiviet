@@ -54,11 +54,13 @@ const TotalsFooter = ({
   quotation, 
   colSpan, 
   lang = 'vi',
+  exchangeRate = 25400,
   formatPrice 
 }: { 
   quotation: Quotation, 
   colSpan: number, 
   lang?: 'vi' | 'en' | 'km',
+  exchangeRate?: number,
   formatPrice: (val: number) => string
 }) => (
   <tfoot>
@@ -93,7 +95,7 @@ const TotalsFooter = ({
          {lang === 'en'
            ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'} ($)`
            : lang === 'km'
-           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'} ($)`
+           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'}`
            : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
          }
       </td>
@@ -120,6 +122,16 @@ const TotalsFooter = ({
           </td>
         </tr>
       </>
+    )}
+    {lang !== 'vi' && exchangeRate > 0 && (
+      <tr className="bg-amber-50 border-t border-amber-300">
+        <td colSpan={colSpan + 1} className="p-1.5 px-3 text-right font-bold text-[10px] text-amber-900 italic">
+          {lang === 'en'
+            ? `* Applied Exchange Rate: 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
+            : `* អត្រាប្តូរប្រាក់អនុវត្ត៖ 1 USD = ${exchangeRate.toLocaleString('vi-VN')} VND`
+          }
+        </td>
+      </tr>
     )}
   </tfoot>
 );
@@ -1669,7 +1681,7 @@ export function QuotationPreview({
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} formatPrice={formatPrice} />
+                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} />
                     )}
                   </table>
                 </>
@@ -1728,7 +1740,7 @@ export function QuotationPreview({
                         </React.Fragment>
                       ))}
                     </tbody>
-                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} formatPrice={formatPrice} />
+                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} />
                   </table>
                 </>
               )}
