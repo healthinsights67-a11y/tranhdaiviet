@@ -1274,7 +1274,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-[10px] font-bold text-primary uppercase block text-center">Đơn giá USD</Label>
+                              <Label className="text-[10px] font-bold text-primary uppercase block text-center">{formData.type === 'ready-made' ? 'Đơn giá USD' : 'Thành tiền'}</Label>
                               <div className="h-9 flex items-center justify-end px-1.5 bg-primary/10 rounded-lg font-mono text-[11px] font-black text-primary border border-primary/20 truncate">
                                 {item.total.toLocaleString()} đ
                               </div>
