@@ -50,11 +50,11 @@ interface QuotationPreviewProps {
   onDeleteQuotation?: (id: string) => Promise<void>;
 }
 
-const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotation, colSpan: number, lang?: 'vi' | 'en' }) => (
+const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotation, colSpan: number, lang?: 'vi' | 'en' | 'km' }) => (
   <tfoot>
     <tr className="bg-gray-50 border-t-2 border-black">
       <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Subtotal' : 'Cộng tiền hàng'}
+        {lang === 'en' ? 'Subtotal' : lang === 'km' ? 'សរុបរង' : 'Cộng tiền hàng'}
       </td>
       <td className="p-2 text-right font-mono font-bold">
         {quotation.subTotal.toLocaleString()}
@@ -62,7 +62,7 @@ const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotatio
     </tr>
     <tr className="bg-gray-50 border-t border-black">
       <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-        {lang === 'en' ? 'Discount' : 'Giảm giá & Chiết khấu'}
+        {lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'Giảm giá & Chiết khấu'}
       </td>
       <td className="p-2 text-right font-mono font-bold text-red-600">
         -{quotation.discount.toLocaleString()}
@@ -71,7 +71,7 @@ const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotatio
     {quotation.hasVat && (
       <tr className="bg-gray-50 border-t border-black">
         <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-          {lang === 'en' ? 'VAT Tax (8%)' : 'Thuế VAT (8%)'}
+          {lang === 'en' ? 'VAT Tax (8%)' : lang === 'km' ? 'ពន្ធ VAT (8%)' : 'Thuế VAT (8%)'}
         </td>
         <td className="p-2 text-right font-mono font-bold">
           {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
@@ -82,6 +82,8 @@ const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotatio
       <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
          {lang === 'en'
            ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'}`
+           : lang === 'km'
+           ? `តម្លៃសរុបរួម ${quotation.hasVat ? '(រាប់បញ្ចូលទាំងពន្ធ VAT 8%)' : '(មិនទាន់រាប់បញ្ចូលពន្ធ)'}`
            : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
          }
       </td>
@@ -93,7 +95,7 @@ const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotatio
       <>
         <tr className="bg-gray-50 border-t border-black">
           <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-            {lang === 'en' ? 'Deposit Paid' : 'Đã đặt cọc'}
+            {lang === 'en' ? 'Deposit Paid' : lang === 'km' ? 'ប្រាក់កក់បានបង់' : 'Đã đặt cọc'}
           </td>
           <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
             -{(quotation.depositAmount || 0).toLocaleString()}
@@ -101,7 +103,7 @@ const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotatio
         </tr>
         <tr className="bg-emerald-50 border-t-2 border-emerald-200">
           <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
-             {lang === 'en' ? 'REMAINING BALANCE DUE' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
+             {lang === 'en' ? 'REMAINING BALANCE DUE' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
           </td>
           <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
             {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
@@ -152,20 +154,35 @@ export function QuotationPreview({
   const [isShareModalOpen, setIsShareModalOpen] = React.useState<boolean>(false);
   const [zoom, setZoom] = React.useState<number>(1);
   const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
-  const [lang, setLang] = React.useState<'vi' | 'en'>('vi');
+  const [lang, setLang] = React.useState<'vi' | 'en' | 'km'>('vi');
 
   const translateUnit = React.useCallback((unit: string) => {
-    if (lang !== 'en') return unit;
+    if (lang === 'vi') return unit;
     const u = (unit || '').toLowerCase().trim();
-    if (u === 'cái' || u === 'chiếc') return 'Pcs';
-    if (u === 'bộ') return 'Set';
-    if (u === 'md' || u === 'm tới') return 'Lm';
-    if (u === 'm2' || u === 'm²') return 'Sqm';
-    if (u === 'm3' || u === 'm³') return 'Cbm';
-    if (u === 'hệ') return 'Sys';
-    if (u === 'lô') return 'Lot';
-    if (u === 'kg') return 'Kg';
-    if (u === 'tấm') return 'Sheet';
+    if (lang === 'en') {
+      if (u === 'cái' || u === 'chiếc') return 'Pcs';
+      if (u === 'bộ') return 'Set';
+      if (u === 'md' || u === 'm tới') return 'Lm';
+      if (u === 'm2' || u === 'm²') return 'Sqm';
+      if (u === 'm3' || u === 'm³') return 'Cbm';
+      if (u === 'hệ') return 'Sys';
+      if (u === 'lô') return 'Lot';
+      if (u === 'kg') return 'Kg';
+      if (u === 'tấm') return 'Sheet';
+      return unit;
+    }
+    if (lang === 'km') {
+      if (u === 'cái' || u === 'chiếc') return 'គ្រឿង';
+      if (u === 'bộ') return 'ឈុត';
+      if (u === 'md' || u === 'm tới') return 'ម៉ែត្រ';
+      if (u === 'm2' || u === 'm²') return 'ម៉ែត្រការ៉េ';
+      if (u === 'm3' || u === 'm³') return 'ម៉ែត្រគូប';
+      if (u === 'hệ') return 'ប្រព័ន្ធ';
+      if (u === 'lô') return 'ឡូត៍';
+      if (u === 'kg') return 'គីឡូក្រាម';
+      if (u === 'tấm') return 'បន្ទះ';
+      return unit;
+    }
     return unit;
   }, [lang]);
   
@@ -1147,21 +1164,41 @@ export function QuotationPreview({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 md:gap-2 w-full xl:w-auto pb-1 md:pb-0">
-            <Button 
-               variant="outline" 
-               size="sm" 
-               onClick={() => setLang(l => l === 'vi' ? 'en' : 'vi')}
-               className={cn(
-                 "h-8 md:h-10 px-2 md:px-3 gap-1 md:gap-1.5 font-bold border-2 text-[10px] md:text-sm transition-all shadow-sm",
-                 lang === 'en' 
-                   ? "bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100" 
-                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-               )}
-               title="Đổi ngôn ngữ báo giá (Tiếng Việt / English)"
-            >
-              <Globe className="h-3.5 w-3.5 md:h-4 md:w-4 text-purple-600" />
-              <span className="font-mono font-black">{lang === 'vi' ? 'VIE 🇻🇳' : 'ENG 🇬🇧'}</span>
-            </Button>
+            <div className="flex items-center rounded-lg border-2 border-purple-200 bg-purple-50/60 p-0.5 shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setLang('vi')}
+                className={cn(
+                  "h-7 md:h-8 px-2 text-[10px] md:text-xs font-black rounded-md transition-all flex items-center gap-1 cursor-pointer border-none",
+                  lang === 'vi' ? "bg-purple-600 text-white shadow-sm" : "text-slate-600 hover:bg-purple-100/60"
+                )}
+                title="Tiếng Việt"
+              >
+                🇻🇳 VIE
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                className={cn(
+                  "h-7 md:h-8 px-2 text-[10px] md:text-xs font-black rounded-md transition-all flex items-center gap-1 cursor-pointer border-none",
+                  lang === 'en' ? "bg-purple-600 text-white shadow-sm" : "text-slate-600 hover:bg-purple-100/60"
+                )}
+                title="English"
+              >
+                🇬🇧 ENG
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('km')}
+                className={cn(
+                  "h-7 md:h-8 px-2 text-[10px] md:text-xs font-black rounded-md transition-all flex items-center gap-1 cursor-pointer border-none",
+                  lang === 'km' ? "bg-purple-600 text-white shadow-sm" : "text-slate-600 hover:bg-purple-100/60"
+                )}
+                title="Tiếng Campuchia (Khmer)"
+              >
+                🇰🇭 KHM
+              </button>
+            </div>
 
             <Button variant="outline" size="sm" onClick={onEdit} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-blue-600 border-blue-100 hover:bg-blue-50 text-[10px] md:text-sm">
               <Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1305,12 +1342,14 @@ export function QuotationPreview({
                           <div className="text-2xl font-bold tracking-[0.2em] text-black uppercase">
                              {lang === 'en'
                                ? ((quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'PRODUCT QUOTATION' : 'CONSTRUCTION QUOTATION')
+                               : lang === 'km'
+                               ? ((quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'ការសម្រង់តម្លៃផលិតផល' : 'ការសម្រង់តម្លៃការងារសាងសង់')
                                : ((quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG')
                              }
                           </div>
                           <div className="mt-1 flex items-center gap-3">
                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                                {lang === 'en' ? 'QUOTATION NO:' : 'HỒ SƠ SỐ:'}
+                                {lang === 'en' ? 'QUOTATION NO:' : lang === 'km' ? 'លេខកូដសម្រង់តម្លៃ:' : 'HỒ SƠ SỐ:'}
                              </span>
                              <span className="text-lg font-mono font-bold text-black">{quotation.quotationNumber.split('-')[1]}</span>
                           </div>
@@ -1323,6 +1362,8 @@ export function QuotationPreview({
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
                 {lang === 'en'
                   ? `Dear Client: ${template.companyName.toUpperCase()} appreciates ${quotation.customerName || 'valued customer'}'s interest in our products and services. We are pleased to submit our quotation as follows:`
+                  : lang === 'km'
+                  ? `សូមគោរព៖ ${template.companyName.toUpperCase()} សូមថ្លែងអំណរគុណយ៉ាងជ្រាលជ្រៅចំពោះលោក/លោកស្រី ${quotation.customerName || 'អតិថិជន'} ដែលបានចាប់អារម្មណ៍លើផលិតផល និងសេវាកម្មរបស់យើង។ យើងខ្ញុំសូមផ្ញើជូននូវការសម្រង់តម្លៃដូចខាងក្រោម៖`
                   : `Kính gửi: ${template.companyName.toUpperCase()} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`
                 }
               </div>
@@ -1332,43 +1373,43 @@ export function QuotationPreview({
                 <tbody>
                   <tr className="border-b border-black">
                     <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">
-                       {lang === 'en' ? 'Customer' : 'Khách hàng'}
+                       {lang === 'en' ? 'Customer' : lang === 'km' ? 'អតិថិជន' : 'Khách hàng'}
                     </td>
                     <td className="p-1.5 border-r border-black font-bold text-base w-[40%] text-blue-700">{quotation.customerName}</td>
                     <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">
-                       {lang === 'en' ? 'Phone' : 'Điện thoại'}
+                       {lang === 'en' ? 'Phone' : lang === 'km' ? 'លេខទូរស័ព្ទ' : 'Điện thoại'}
                     </td>
                     <td className="p-1.5 font-mono font-bold text-base">{quotation.phone}</td>
                   </tr>
                   <tr className="border-b border-black">
                     <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">
-                       {lang === 'en' ? 'Project' : 'Công trình'}
+                       {lang === 'en' ? 'Project' : lang === 'km' ? 'គម្រោង' : 'Công trình'}
                     </td>
                     <td className="p-1.5 border-r border-black font-bold lowercase first-letter:uppercase">
-                       {quotation.constructionType || (lang === 'en' ? 'Residential Project' : 'Nhà ở dân dụng')}
+                       {quotation.constructionType || (lang === 'en' ? 'Residential Project' : lang === 'km' ? 'ផ្ទះលំនៅដ្ឋាន' : 'Nhà ở dân dụng')}
                     </td>
                     <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">
-                       {lang === 'en' ? 'Address' : 'Địa chỉ'}
+                       {lang === 'en' ? 'Address' : lang === 'km' ? 'អាសយដ្ឋាន' : 'Địa chỉ'}
                     </td>
                     <td className="p-1.5 font-bold">{quotation.address}</td>
                   </tr>
                   <tr className="bg-gray-100">
                     {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? (
                       <td colSpan={2} className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider text-center text-blue-700">
-                         {lang === 'en' ? 'Ready-Made Products' : 'Đơn hàng đóng sẵn'}
+                         {lang === 'en' ? 'Ready-Made Products' : lang === 'km' ? 'ការបញ្ជាទិញផលិតផលស្រាប់' : 'Đơn hàng đóng sẵn'}
                       </td>
                     ) : (
                       <>
                         <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">
-                           {lang === 'en' ? 'Duration' : 'Thời gian'}
+                           {lang === 'en' ? 'Duration' : lang === 'km' ? 'រយៈពេល' : 'Thời gian'}
                         </td>
                         <td className="p-1.5 border-r border-black font-bold">
-                           {lang === 'en' ? `${quotation.estimatedTime} working days` : `${quotation.estimatedTime} ngày làm việc`}
+                           {lang === 'en' ? `${quotation.estimatedTime} working days` : lang === 'km' ? `${quotation.estimatedTime} ថ្ងៃធ្វើការ` : `${quotation.estimatedTime} ngày làm việc`}
                         </td>
                       </>
                     )}
                     <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">
-                       {lang === 'en' ? 'Date' : 'Ngày báo giá'}
+                       {lang === 'en' ? 'Date' : lang === 'km' ? 'កាលបរិច្ឆេទ' : 'Ngày báo giá'}
                     </td>
                     <td className="p-1.5 font-bold">{format(new Date(quotation.date), 'dd/MM/yyyy')}</td>
                   </tr>
@@ -1379,18 +1420,18 @@ export function QuotationPreview({
               {customItems.length > 0 && (
                 <>
                   <div className="bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black">
-                     {lang === 'en' ? 'DETAILED SCOPE OF WORK & CUSTOM FURNITURE' : 'CHI TIẾT HẠNG MỤC THI CÔNG'}
+                     {lang === 'en' ? 'DETAILED SCOPE OF WORK & CUSTOM FURNITURE' : lang === 'km' ? 'ព័ត៌មានលម្អិតអំពីការងារសាងសង់ និងគ្រឿងសង្ហារិម' : 'CHI TIẾT HẠNG MỤC THI CÔNG'}
                   </div>
                   <table className="w-full border-2 border-black text-[11px] table-fixed mb-4">
                     <thead>
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
-                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : 'STT'}</th>
-                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : 'Tên hạng mục'}</th>
-                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : 'QC kỹ thuật / Diễn giải'}</th>
-                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : 'ĐVT'}</th>
-                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : lang === 'km' ? 'ល.រ' : 'STT'}</th>
+                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'Tên hạng mục'}</th>
+                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : lang === 'km' ? 'តម្លៃរាយ' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : lang === 'km' ? 'តម្លៃសរុប' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1429,19 +1470,19 @@ export function QuotationPreview({
               {readyMadeItems.length > 0 && (
                 <>
                   <div className={`bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black ${customItems.length > 0 ? 'mt-4' : ''}`}>
-                     {lang === 'en' ? 'PRODUCT LIST & SPECIFICATIONS (READY-MADE)' : 'CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)'}
+                     {lang === 'en' ? 'PRODUCT LIST & SPECIFICATIONS (READY-MADE)' : lang === 'km' ? 'បញ្ជីផលិតផលស្រាប់' : 'CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)'}
                   </div>
                   <table className="w-full border-2 border-black text-[11px] table-fixed">
                     <thead>
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
-                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : 'STT'}</th>
-                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : 'Tên hạng mục'}</th>
-                        <th className="border-r border-black p-1 w-[80px]">{lang === 'en' ? 'Image' : 'Hình ảnh'}</th>
-                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : 'QC kỹ thuật / Diễn giải'}</th>
-                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : 'ĐVT'}</th>
-                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : 'SL'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : 'Đơn giá'}</th>
-                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : 'Thành tiền'}</th>
+                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : lang === 'km' ? 'ល.រ' : 'STT'}</th>
+                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'Tên hạng mục'}</th>
+                        <th className="border-r border-black p-1 w-[80px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
+                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : lang === 'km' ? 'តម្លៃរាយ' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : lang === 'km' ? 'តម្លៃសរុប' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1462,7 +1503,7 @@ export function QuotationPreview({
                                   <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
                                 ) : (
                                   <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
-                                    {lang === 'en' ? 'No Image' : 'Không có ảnh'}
+                                    {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
                                   </div>
                                 )}
                               </td>
@@ -1487,28 +1528,28 @@ export function QuotationPreview({
               <div className="mt-4 grid grid-cols-2 gap-4 items-start">
                  <div className={cn("space-y-2", !hasBankInfo && "col-span-2")}>
                     <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
-                       {lang === 'en' ? 'TERMS & CONDITIONS' : 'CHÍNH SÁCH VÀ GHI CHÚ'}
+                       {lang === 'en' ? 'TERMS & CONDITIONS' : lang === 'km' ? 'លក្ខខណ្ឌ និងចំណាំ' : 'CHÍNH SÁCH VÀ GHI CHÚ'}
                     </div>
                     <div className="text-[10px] text-black whitespace-pre-line leading-relaxed pl-1 pt-1 font-medium">
-                       {template.terms || (lang === 'en' ? 'No terms specified' : 'Chưa có điều khoản')}
+                       {template.terms || (lang === 'en' ? 'No terms specified' : lang === 'km' ? 'មិនទាន់មានលក្ខខណ្ឌ' : 'Chưa có điều khoản')}
                     </div>
                  </div>
                  {hasBankInfo && (
                    <div className="space-y-2">
                       <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
-                         {lang === 'en' ? 'BANK TRANSFER PAYMENT' : 'THANH TOÁN CHUYỂN KHOẢN'}
+                         {lang === 'en' ? 'BANK TRANSFER PAYMENT' : lang === 'km' ? 'ការទូទាត់តាមធនាគារ' : 'THANH TOÁN CHUYỂN KHOẢN'}
                       </div>
                       <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 space-y-1 text-[10px] relative">
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Bank Name' : 'Ngân hàng'}</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Bank Name' : lang === 'km' ? 'ធនាគារ' : 'Ngân hàng'}</span>
                             <span className="font-bold text-black text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
                          </div>
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account No.' : 'Số tài khoản'}</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account No.' : lang === 'km' ? 'លេខគណនី' : 'Số tài khoản'}</span>
                             <span className="font-mono font-bold text-sm tracking-tighter text-primary text-right">{template.bankAccount || quotation.paymentInfo.accountNumber}</span>
                          </div>
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account Holder' : 'Chủ tài khoản'}</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account Holder' : lang === 'km' ? 'ឈ្មោះម្ចាស់គណនី' : 'Chủ tài khoản'}</span>
                             <span className="font-bold text-black uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
                          </div>
                          {template.qrCodeUrl && (
@@ -1518,7 +1559,7 @@ export function QuotationPreview({
                          )}
                       </div>
                       <p className="text-[9px] italic text-gray-500 font-medium leading-tight">
-                        {lang === 'en' ? 'Payment Ref:' : 'Nội dung ghi:'} <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span>
+                        {lang === 'en' ? 'Payment Ref:' : lang === 'km' ? 'ខ្លឹមសារទូទាត់៖' : 'Nội dung ghi:'} <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span>
                       </p>
                    </div>
                  )}
@@ -1529,6 +1570,8 @@ export function QuotationPreview({
                    <p>
                      {lang === 'en' 
                        ? `"${template.companyName.toUpperCase()} — Creating Spaces, Elevating Living Standard"`
+                       : lang === 'km'
+                       ? `"${template.companyName.toUpperCase()} — បង្កើតលំហរ រំលេចជីវិតទាន់សម័យ"`
                        : `"${template.companyName.toUpperCase()} — Kiến tạo không gian, nâng tầm cuộc sống"`
                      }
                    </p>
@@ -1539,14 +1582,14 @@ export function QuotationPreview({
               <div className="mt-3 flex justify-between px-10">
                  <div className="text-center space-y-1 w-1/3">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">
-                       {lang === 'en' ? 'Client Confirmation' : 'Khách hàng xác nhận'}
+                       {lang === 'en' ? 'Client Confirmation' : lang === 'km' ? 'ការបញ្ជាក់ពីអតិថិជន' : 'Khách hàng xác nhận'}
                     </p>
                     <p className="text-sm font-bold text-black">
-                       {lang === 'en' ? 'SIGN & FULL NAME' : 'KÝ VÀ GHI HỌ TÊN'}
+                       {lang === 'en' ? 'SIGN & FULL NAME' : lang === 'km' ? 'ហត្ថលេខា និងឈ្មោះពេញ' : 'KÝ VÀ GHI HỌ TÊN'}
                     </p>
                     <div className="h-10" />
                     <p className="text-[9px] font-medium text-gray-500 italic pt-1 px-4 border-t border-gray-200 items-center justify-center flex gap-1">
-                      <Download className="h-3 w-3" /> {lang === 'en' ? 'Date ...... / ...... / 202...' : 'Ngày ...... / ...... / 202...'}
+                      <Download className="h-3 w-3" /> {lang === 'en' ? 'Date ...... / ...... / 202...' : lang === 'km' ? 'ថ្ងៃទី ...... / ...... / 202...' : 'Ngày ...... / ...... / 202...'}
                     </p>
                  </div>
                  
@@ -1565,7 +1608,7 @@ export function QuotationPreview({
                        )}
                      </a>
                      <span className="text-[8px] uppercase tracking-widest text-gray-400 mt-1 font-bold">
-                        {lang === 'en' ? 'Visit Website' : 'Truy cập Website'}
+                        {lang === 'en' ? 'Visit Website' : lang === 'km' ? 'ចូលមើលគេហទំព័រ' : 'Truy cập Website'}
                      </span>
                    </div>
                  ) : (
@@ -1574,15 +1617,15 @@ export function QuotationPreview({
 
                  <div className="text-center space-y-1 w-1/3">
                     <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">
-                       {lang === 'en' ? 'Company Representative' : 'Đại diện Công ty'}
+                       {lang === 'en' ? 'Company Representative' : lang === 'km' ? 'តំណាងក្រុមហ៊ុន' : 'Đại diện Công ty'}
                     </p>
                     <p className="text-sm font-bold text-black uppercase">
-                       {lang === 'en' ? 'PREPARED BY' : 'NGƯỜI LẬP BIỂU'}
+                       {lang === 'en' ? 'PREPARED BY' : lang === 'km' ? 'អ្នករៀបចំ' : 'NGƯỜI LẬP BIỂU'}
                     </p>
                     <div className="h-10 flex items-center justify-center relative">
                     </div>
                     <p className="font-bold text-gray-950 text-sm border-t border-gray-200 pt-1 px-4">
-                       {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : (lang === 'en' ? 'MANAGEMENT' : 'BAN QUẢN TRỊ'))}
+                       {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : (lang === 'en' ? 'MANAGEMENT' : lang === 'km' ? 'ក្រុមប្រឹក្សាភិបាល' : 'BAN QUẢN TRỊ'))}
                     </p>
                  </div>
               </div>
