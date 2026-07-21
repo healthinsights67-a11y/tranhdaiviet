@@ -203,7 +203,141 @@ export function QuotationPreview({
       if (u === 'tấm') return 'បន្ទះ';
       return unit;
     }
-    return unit;
+  }, [lang]);
+
+  const translateCategory = React.useCallback((cat: string) => {
+    if (lang === 'vi' || !cat) return cat;
+    const c = cat.trim();
+    const cLower = c.toLowerCase();
+    
+    if (cLower.includes('đóng sẵn')) {
+      return lang === 'en' ? 'READY-MADE FURNITURE' : 'គ្រឿងសង្ហារិមស្រាប់';
+    }
+    if (cLower.includes('phòng khách')) {
+      return lang === 'en' ? 'LIVING ROOM' : 'បន្ទប់ទទួលភ្ញៀវ';
+    }
+    if (cLower.includes('phòng ngủ')) {
+      return lang === 'en' ? 'BEDROOM' : 'បន្ទប់គេង';
+    }
+    if (cLower.includes('bếp') || cLower.includes('phòng ăn')) {
+      return lang === 'en' ? 'KITCHEN & DINING' : 'បន្ទប់បាយ';
+    }
+    if (cLower.includes('tắm') || cLower.includes('vệ sinh')) {
+      return lang === 'en' ? 'BATHROOM' : 'បន្ទប់ទឹក';
+    }
+    if (cLower.includes('làm việc') || cLower.includes('văn phòng')) {
+      return lang === 'en' ? 'OFFICE & WORKSPACE' : 'បន្ទប់ធ្វើការ';
+    }
+    if (cLower.includes('thi công') || cLower.includes('may đo')) {
+      return lang === 'en' ? 'CUSTOM FURNITURE & CONSTRUCTION' : 'គ្រឿងសង្ហារិមតាមតម្រូវការ';
+    }
+
+    return c;
+  }, [lang]);
+
+  const translateName = React.useCallback((name: string) => {
+    if (lang === 'vi' || !name) return name;
+    let n = name;
+
+    if (lang === 'en') {
+      n = n
+        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, '$1-Door Wardrobe with $2 Shelves')
+        .replace(/tủ áo\s*(\d+)\s*cánh/gi, '$1-Door Wardrobe')
+        .replace(/tủ áo cánh lùa/gi, 'Sliding Door Wardrobe')
+        .replace(/tủ áo/gi, 'Wardrobe')
+        .replace(/giường ngủ/gi, 'Bed')
+        .replace(/bàn trang điểm/gi, 'Dressing Table')
+        .replace(/tủ đầu giường|tab đầu giường/gi, 'Bedside Table')
+        .replace(/bàn học|bàn làm việc/gi, 'Desk')
+        .replace(/kệ sách/gi, 'Bookshelf')
+        .replace(/sofa gỗ|ghế sofa/gi, 'Sofa')
+        .replace(/bàn ăn/gi, 'Dining Table')
+        .replace(/ghế ăn/gi, 'Dining Chair')
+        .replace(/tủ bếp trên/gi, 'Upper Kitchen Cabinet')
+        .replace(/tủ bếp dưới/gi, 'Lower Kitchen Cabinet')
+        .replace(/tủ bếp/gi, 'Kitchen Cabinet')
+        .replace(/tủ giày/gi, 'Shoe Cabinet')
+        .replace(/kệ tivi|kệ tv/gi, 'TV Stand')
+        .replace(/vách ốp tường/gi, 'Wall Panel')
+        .replace(/vách trang trí/gi, 'Decorative Panel')
+        .replace(/tủ rượu/gi, 'Wine Cabinet')
+        .replace(/tủ lavabo/gi, 'Vanity Cabinet')
+        .replace(/gương soi/gi, 'Mirror');
+    } else if (lang === 'km') {
+      n = n
+        .replace(/tủ áo\s*(\d+)\s*cánh\s*(\d+)\s*kệ/gi, 'ទូខោអាវទ្វារ$1មានធ្នើរ$2')
+        .replace(/tủ áo\s*(\d+)\s*cánh/gi, 'ទូខោអាវទ្វារ$1')
+        .replace(/tủ áo cánh lùa/gi, 'ទូខោអាវទ្វាររុញ')
+        .replace(/tủ áo/gi, 'ទូខោអាវ')
+        .replace(/giường ngủ/gi, 'គ្រែគេង')
+        .replace(/bàn trang điểm/gi, 'តុសំអាង')
+        .replace(/tủ đầu giường|tab đầu giường/gi, 'តុចុងគ្រែ')
+        .replace(/bàn học|bàn làm việc/gi, 'តុរៀន / តុធ្វើការ')
+        .replace(/kệ sách/gi, 'ធ្នើររូបសៀវភៅ')
+        .replace(/sofa gỗ|ghế sofa/gi, 'កៅអីសូហ្វា')
+        .replace(/bàn ăn/gi, 'តុបាយ')
+        .replace(/ghế ăn/gi, 'កៅអីបាយ')
+        .replace(/tủ bếp trên/gi, 'ទូបាយលើ')
+        .replace(/tủ bếp dưới/gi, 'ទូបាយក្រោម')
+        .replace(/tủ bếp/gi, 'ទូបាយ')
+        .replace(/tủ giày/gi, 'ទូស្បែកជើង')
+        .replace(/kệ tivi|kệ tv/gi, 'ទូរទស្សន៍')
+        .replace(/vách ốp tường/gi, 'ជញ្ជាំងអប')
+        .replace(/vách trang trí/gi, 'ផ្ទាំងលម្អ')
+        .replace(/tủ rượu/gi, 'ទូស្រា')
+        .replace(/tủ lavabo/gi, 'ទូឡាបូ')
+        .replace(/gương soi/gi, 'កញ្ចក់');
+    }
+
+    return n;
+  }, [lang]);
+
+  const translateDescription = React.useCallback((desc: string) => {
+    if (lang === 'vi' || !desc) return desc;
+    let d = desc;
+
+    if (lang === 'en') {
+      d = d
+        .replace(/Chất liệu\s*:?/gi, 'Material:')
+        .replace(/khung cánh/gi, 'frame & door')
+        .replace(/Khung/gi, 'Frame')
+        .replace(/Cánh/gi, 'Door')
+        .replace(/Hậu Tủ|Hậu tủ/gi, 'Back Panel')
+        .replace(/li|mm/gi, 'mm')
+        .replace(/kệ/gi, 'shelf')
+        .replace(/ngăn kéo/gi, 'drawers')
+        .replace(/nhựa/gi, 'PVC plastic')
+        .replace(/gỗ công nghiệp/gi, 'engineered wood')
+        .replace(/gỗ tự nhiên/gi, 'solid wood')
+        .replace(/phủ melamine/gi, 'Melamine coated')
+        .replace(/kính cường lực/gi, 'tempered glass')
+        .replace(/phụ kiện/gi, 'fittings')
+        .replace(/bản lề giảm chấn/gi, 'soft-close hinges')
+        .replace(/ray trượt/gi, 'drawer slides')
+        .replace(/\(R x C x S\)/gi, '(W x H x D)')
+        .replace(/\(D x R x C\)/gi, '(L x W x H)');
+    } else if (lang === 'km') {
+      d = d
+        .replace(/Chất liệu\s*:?/gi, 'សម្ភារៈ៖')
+        .replace(/khung cánh/gi, 'ស៊ុម និង ទ្វារ')
+        .replace(/Khung/gi, 'ស៊ុម')
+        .replace(/Cánh/gi, 'ទ្វារ')
+        .replace(/Hậu Tủ|Hậu tủ/gi, 'ផ្ទាំងខាងក្រោយ')
+        .replace(/li|mm/gi, 'mm')
+        .replace(/kệ/gi, 'ធ្នើរ')
+        .replace(/ngăn kéo/gi, 'ថត')
+        .replace(/nhựa/gi, 'ប្លាស្ទិក')
+        .replace(/gỗ công nghiệp/gi, 'ឈើកែច្នៃ')
+        .replace(/gỗ tự nhiên/gi, 'ឈើធម្មជាតិ')
+        .replace(/phủ melamine/gi, 'ស្រោប Melamine')
+        .replace(/kính cường lực/gi, 'កញ្ចក់ស្វិត')
+        .replace(/phụ kiện/gi, 'គ្រឿងបន្លាស់')
+        .replace(/bản lề giảm chấn/gi, 'ត្រចៀកកាត់បន្ថយកម្លាំង')
+        .replace(/\(R x C x S\)/gi, '(ទទឹង x កំពស់ x ជម្រៅ)')
+        .replace(/\(D x R x C\)/gi, '(ប្រវែង x ទទឹង x កំពស់)');
+    }
+
+    return d;
   }, [lang]);
   
   const customItems = React.useMemo(() => {
@@ -1474,15 +1608,15 @@ export function QuotationPreview({
                           <tr className="bg-gray-200 font-bold border-b border-black">
                             <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
                             <td colSpan={6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
-                              {cat}
+                              {translateCategory(cat)}
                             </td>
                           </tr>
                           {customItems.filter(item => item.category === cat).map((item, idx) => (
                             <tr key={item.id} className="border-b border-black last:border-b-0">
                               <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
-                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
+                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{translateName(item.name)}</td>
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
-                                <div className="whitespace-pre-wrap">{item.description}</div>
+                                <div className="whitespace-pre-wrap">{translateDescription(item.description)}</div>
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
@@ -1525,13 +1659,13 @@ export function QuotationPreview({
                           <tr className="bg-gray-200 font-bold border-b border-black">
                             <td className="border-r border-black p-1 text-center">{String.fromCharCode(customItems.length > 0 ? 65 + new Set(customItems.map(i => i.category)).size + groupIdx : 65 + groupIdx)}</td>
                             <td colSpan={7} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
-                              {cat}
+                              {translateCategory(cat)}
                             </td>
                           </tr>
                           {readyMadeItems.filter(item => item.category === cat).map((item, idx) => (
                             <tr key={item.id} className="border-b border-black last:border-b-0">
                               <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
-                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{item.name}</td>
+                              <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{translateName(item.name)}</td>
                               <td className="border-r border-black p-1 text-center">
                                 {item.imageUrl ? (
                                   <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
@@ -1542,7 +1676,7 @@ export function QuotationPreview({
                                 )}
                               </td>
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
-                                <div className="whitespace-pre-wrap">{item.description}</div>
+                                <div className="whitespace-pre-wrap">{translateDescription(item.description)}</div>
                               </td>
                               <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
