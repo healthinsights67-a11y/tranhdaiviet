@@ -12,7 +12,8 @@ import {
   Pencil,
   ZoomIn,
   ZoomOut,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,23 +50,29 @@ interface QuotationPreviewProps {
   onDeleteQuotation?: (id: string) => Promise<void>;
 }
 
-const TotalsFooter = ({ quotation, colSpan }: { quotation: Quotation, colSpan: number }) => (
+const TotalsFooter = ({ quotation, colSpan, lang = 'vi' }: { quotation: Quotation, colSpan: number, lang?: 'vi' | 'en' }) => (
   <tfoot>
     <tr className="bg-gray-50 border-t-2 border-black">
-      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Cộng tiền hàng</td>
+      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+        {lang === 'en' ? 'Subtotal' : 'Cộng tiền hàng'}
+      </td>
       <td className="p-2 text-right font-mono font-bold">
         {quotation.subTotal.toLocaleString()}
       </td>
     </tr>
     <tr className="bg-gray-50 border-t border-black">
-      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Giảm giá & Chiết khấu</td>
+      <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+        {lang === 'en' ? 'Discount' : 'Giảm giá & Chiết khấu'}
+      </td>
       <td className="p-2 text-right font-mono font-bold text-red-600">
         -{quotation.discount.toLocaleString()}
       </td>
     </tr>
     {quotation.hasVat && (
       <tr className="bg-gray-50 border-t border-black">
-        <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Thuế VAT (8%)</td>
+        <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+          {lang === 'en' ? 'VAT Tax (8%)' : 'Thuế VAT (8%)'}
+        </td>
         <td className="p-2 text-right font-mono font-bold">
           {(quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08)).toLocaleString()}
         </td>
@@ -73,7 +80,10 @@ const TotalsFooter = ({ quotation, colSpan }: { quotation: Quotation, colSpan: n
     )}
     <tr className="bg-gray-100 border-t-2 border-black">
       <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-black border-r border-black">
-         TỔNG GIÁ TRỊ BÁO GIÁ {quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}
+         {lang === 'en'
+           ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'}`
+           : `TỔNG GIÁ TRỊ BÁO GIÁ ${quotation.hasVat ? '(ĐÃ BAO GỒM VAT 8%)' : '(CHƯA BAO GỒM THUẾ)'}`
+         }
       </td>
       <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-gray-950">
         {quotation.totalAmount.toLocaleString()}
@@ -82,14 +92,16 @@ const TotalsFooter = ({ quotation, colSpan }: { quotation: Quotation, colSpan: n
     {(quotation.depositAmount ?? 0) > 0 && (
       <>
         <tr className="bg-gray-50 border-t border-black">
-          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">Đã đặt cọc</td>
+          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+            {lang === 'en' ? 'Deposit Paid' : 'Đã đặt cọc'}
+          </td>
           <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600">
             -{(quotation.depositAmount || 0).toLocaleString()}
           </td>
         </tr>
         <tr className="bg-emerald-50 border-t-2 border-emerald-200">
           <td colSpan={colSpan} className="p-2 text-right text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700 border-r border-emerald-200">
-             SỐ TIỀN CÒN LẠI CẦN THANH TOÁN
+             {lang === 'en' ? 'REMAINING BALANCE DUE' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
           </td>
           <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
             {((quotation.totalAmount || 0) - (quotation.depositAmount || 0)).toLocaleString()}
@@ -140,6 +152,22 @@ export function QuotationPreview({
   const [isShareModalOpen, setIsShareModalOpen] = React.useState<boolean>(false);
   const [zoom, setZoom] = React.useState<number>(1);
   const [websiteQrCodeDataUrl, setWebsiteQrCodeDataUrl] = React.useState<string>('');
+  const [lang, setLang] = React.useState<'vi' | 'en'>('vi');
+
+  const translateUnit = React.useCallback((unit: string) => {
+    if (lang !== 'en') return unit;
+    const u = (unit || '').toLowerCase().trim();
+    if (u === 'cái' || u === 'chiếc') return 'Pcs';
+    if (u === 'bộ') return 'Set';
+    if (u === 'md' || u === 'm tới') return 'Lm';
+    if (u === 'm2' || u === 'm²') return 'Sqm';
+    if (u === 'm3' || u === 'm³') return 'Cbm';
+    if (u === 'hệ') return 'Sys';
+    if (u === 'lô') return 'Lot';
+    if (u === 'kg') return 'Kg';
+    if (u === 'tấm') return 'Sheet';
+    return unit;
+  }, [lang]);
   
   const customItems = React.useMemo(() => {
     if (!quotation) return [];
@@ -1119,6 +1147,22 @@ export function QuotationPreview({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 md:gap-2 w-full xl:w-auto pb-1 md:pb-0">
+            <Button 
+               variant="outline" 
+               size="sm" 
+               onClick={() => setLang(l => l === 'vi' ? 'en' : 'vi')}
+               className={cn(
+                 "h-8 md:h-10 px-2 md:px-3 gap-1 md:gap-1.5 font-bold border-2 text-[10px] md:text-sm transition-all shadow-sm",
+                 lang === 'en' 
+                   ? "bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100" 
+                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+               )}
+               title="Đổi ngôn ngữ báo giá (Tiếng Việt / English)"
+            >
+              <Globe className="h-3.5 w-3.5 md:h-4 md:w-4 text-purple-600" />
+              <span className="font-mono font-black">{lang === 'vi' ? 'VIE 🇻🇳' : 'ENG 🇬🇧'}</span>
+            </Button>
+
             <Button variant="outline" size="sm" onClick={onEdit} className="h-8 md:h-10 px-2 md:px-4 gap-1 md:gap-2 font-bold border-2 text-blue-600 border-blue-100 hover:bg-blue-50 text-[10px] md:text-sm">
               <Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Chỉnh sửa</span>
@@ -1259,10 +1303,15 @@ export function QuotationPreview({
                     <td className="p-2 text-center border-t-2 border-r-2 border-black">
                        <div className="flex flex-col items-center">
                           <div className="text-2xl font-bold tracking-[0.2em] text-black uppercase">
-                             {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG'}
+                             {lang === 'en'
+                               ? ((quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'PRODUCT QUOTATION' : 'CONSTRUCTION QUOTATION')
+                               : ((quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG')
+                             }
                           </div>
                           <div className="mt-1 flex items-center gap-3">
-                             <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">HỒ SƠ SỐ:</span>
+                             <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                                {lang === 'en' ? 'QUOTATION NO:' : 'HỒ SƠ SỐ:'}
+                             </span>
                              <span className="text-lg font-mono font-bold text-black">{quotation.quotationNumber.split('-')[1]}</span>
                           </div>
                        </div>
@@ -1272,34 +1321,55 @@ export function QuotationPreview({
               </table>
 
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
-                Kính gửi: {template.companyName.toUpperCase()} xin cảm ơn {quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:
+                {lang === 'en'
+                  ? `Dear Client: ${template.companyName.toUpperCase()} appreciates ${quotation.customerName || 'valued customer'}'s interest in our products and services. We are pleased to submit our quotation as follows:`
+                  : `Kính gửi: ${template.companyName.toUpperCase()} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`
+                }
               </div>
 
               {/* Customer Information Grid Style */}
               <table className="w-full border-2 border-black mb-3 text-[11px] table-fixed">
                 <tbody>
                   <tr className="border-b border-black">
-                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">Khách hàng</td>
+                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">
+                       {lang === 'en' ? 'Customer' : 'Khách hàng'}
+                    </td>
                     <td className="p-1.5 border-r border-black font-bold text-base w-[40%] text-blue-700">{quotation.customerName}</td>
-                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">Điện thoại</td>
+                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider w-[15%]">
+                       {lang === 'en' ? 'Phone' : 'Điện thoại'}
+                    </td>
                     <td className="p-1.5 font-mono font-bold text-base">{quotation.phone}</td>
                   </tr>
                   <tr className="border-b border-black">
-                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">Công trình</td>
-                    <td className="p-1.5 border-r border-black font-bold lowercase first-letter:uppercase">{quotation.constructionType || 'Nhà ở dân dụng'}</td>
-                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">Địa chỉ</td>
+                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">
+                       {lang === 'en' ? 'Project' : 'Công trình'}
+                    </td>
+                    <td className="p-1.5 border-r border-black font-bold lowercase first-letter:uppercase">
+                       {quotation.constructionType || (lang === 'en' ? 'Residential Project' : 'Nhà ở dân dụng')}
+                    </td>
+                    <td className="p-1.5 border-r border-black font-bold bg-gray-50 uppercase text-[9px] tracking-wider">
+                       {lang === 'en' ? 'Address' : 'Địa chỉ'}
+                    </td>
                     <td className="p-1.5 font-bold">{quotation.address}</td>
                   </tr>
                   <tr className="bg-gray-100">
                     {(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? (
-                      <td colSpan={2} className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider text-center text-blue-700">Đơn hàng đóng sẵn</td>
+                      <td colSpan={2} className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider text-center text-blue-700">
+                         {lang === 'en' ? 'Ready-Made Products' : 'Đơn hàng đóng sẵn'}
+                      </td>
                     ) : (
                       <>
-                        <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">Thời gian</td>
-                        <td className="p-1.5 border-r border-black font-bold">{quotation.estimatedTime} ngày làm việc</td>
+                        <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">
+                           {lang === 'en' ? 'Duration' : 'Thời gian'}
+                        </td>
+                        <td className="p-1.5 border-r border-black font-bold">
+                           {lang === 'en' ? `${quotation.estimatedTime} working days` : `${quotation.estimatedTime} ngày làm việc`}
+                        </td>
                       </>
                     )}
-                    <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">Ngày báo giá</td>
+                    <td className="p-1.5 border-r border-black font-bold uppercase text-[9px] tracking-wider">
+                       {lang === 'en' ? 'Date' : 'Ngày báo giá'}
+                    </td>
                     <td className="p-1.5 font-bold">{format(new Date(quotation.date), 'dd/MM/yyyy')}</td>
                   </tr>
                 </tbody>
@@ -1309,18 +1379,18 @@ export function QuotationPreview({
               {customItems.length > 0 && (
                 <>
                   <div className="bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black">
-                     CHI TIẾT HẠNG MỤC THI CÔNG
+                     {lang === 'en' ? 'DETAILED SCOPE OF WORK & CUSTOM FURNITURE' : 'CHI TIẾT HẠNG MỤC THI CÔNG'}
                   </div>
                   <table className="w-full border-2 border-black text-[11px] table-fixed mb-4">
                     <thead>
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
-                        <th className="border-r border-black p-1 w-[35px]">STT</th>
-                        <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
-                        <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
-                        <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
-                        <th className="border-r border-black p-1 w-[40px]">SL</th>
-                        <th className="border-r border-black p-1 w-[90px]">Đơn giá</th>
-                        <th className="border-black p-1 w-[100px]">Thành tiền</th>
+                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : 'STT'}</th>
+                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : 'Tên hạng mục'}</th>
+                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : 'QC kỹ thuật / Diễn giải'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : 'ĐVT'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : 'SL'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1339,7 +1409,7 @@ export function QuotationPreview({
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                                 <div className="whitespace-pre-wrap">{item.description}</div>
                               </td>
-                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{item.unit}</td>
+                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
                               <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
                               <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
@@ -1349,7 +1419,7 @@ export function QuotationPreview({
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={6} />
+                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} />
                     )}
                   </table>
                 </>
@@ -1359,19 +1429,19 @@ export function QuotationPreview({
               {readyMadeItems.length > 0 && (
                 <>
                   <div className={`bg-black text-white text-center font-bold text-xs py-1.5 uppercase tracking-[0.3em] mb-0 border-x-2 border-t-2 border-black ${customItems.length > 0 ? 'mt-4' : ''}`}>
-                     CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)
+                     {lang === 'en' ? 'PRODUCT LIST & SPECIFICATIONS (READY-MADE)' : 'CHI TIẾT DANH SÁCH SẢN PHẨM (HÀNG ĐÓNG SẴN)'}
                   </div>
                   <table className="w-full border-2 border-black text-[11px] table-fixed">
                     <thead>
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
-                        <th className="border-r border-black p-1 w-[35px]">STT</th>
-                        <th className="border-r border-black p-1 w-[130px]">Tên hạng mục</th>
-                        <th className="border-r border-black p-1 w-[80px]">Hình ảnh</th>
-                        <th className="border-r border-black p-1">QC kỹ thuật / Diễn giải</th>
-                        <th className="border-r border-black p-1 w-[40px]">ĐVT</th>
-                        <th className="border-r border-black p-1 w-[40px]">SL</th>
-                        <th className="border-r border-black p-1 w-[90px]">Đơn giá</th>
-                        <th className="border-black p-1 w-[100px]">Thành tiền</th>
+                        <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : 'STT'}</th>
+                        <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : 'Tên hạng mục'}</th>
+                        <th className="border-r border-black p-1 w-[80px]">{lang === 'en' ? 'Image' : 'Hình ảnh'}</th>
+                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : 'QC kỹ thuật / Diễn giải'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : 'ĐVT'}</th>
+                        <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : 'SL'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price' : 'Đơn giá'}</th>
+                        <th className="border-black p-1 w-[100px]">{lang === 'en' ? 'Amount' : 'Thành tiền'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1391,13 +1461,15 @@ export function QuotationPreview({
                                 {item.imageUrl ? (
                                   <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
                                 ) : (
-                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">Không có ảnh</div>
+                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
+                                    {lang === 'en' ? 'No Image' : 'Không có ảnh'}
+                                  </div>
                                 )}
                               </td>
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                                 <div className="whitespace-pre-wrap">{item.description}</div>
                               </td>
-                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{item.unit}</td>
+                              <td className="border-r border-black p-1 text-center font-bold text-gray-500 text-[9px]">{translateUnit(item.unit)}</td>
                               <td className="border-r border-black p-1 text-center font-bold">{item.quantity}</td>
                               <td className="border-r border-black p-1.5 text-right font-mono text-gray-600">{item.unitPrice.toLocaleString()}</td>
                               <td className="p-1.5 text-right font-mono font-bold bg-gray-50">{item.total.toLocaleString()}</td>
@@ -1406,7 +1478,7 @@ export function QuotationPreview({
                         </React.Fragment>
                       ))}
                     </tbody>
-                    <TotalsFooter quotation={quotation} colSpan={7} />
+                    <TotalsFooter quotation={quotation} colSpan={7} lang={lang} />
                   </table>
                 </>
               )}
@@ -1415,28 +1487,28 @@ export function QuotationPreview({
               <div className="mt-4 grid grid-cols-2 gap-4 items-start">
                  <div className={cn("space-y-2", !hasBankInfo && "col-span-2")}>
                     <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
-                       CHÍNH SÁCH VÀ GHI CHÚ
+                       {lang === 'en' ? 'TERMS & CONDITIONS' : 'CHÍNH SÁCH VÀ GHI CHÚ'}
                     </div>
                     <div className="text-[10px] text-black whitespace-pre-line leading-relaxed pl-1 pt-1 font-medium">
-                       {template.terms || 'Chưa có điều khoản'}
+                       {template.terms || (lang === 'en' ? 'No terms specified' : 'Chưa có điều khoản')}
                     </div>
                  </div>
                  {hasBankInfo && (
                    <div className="space-y-2">
                       <div className="flex items-center gap-2 font-bold text-black uppercase tracking-widest text-[10px] border-b border-black pb-1">
-                         THANH TOÁN CHUYỂN KHOẢN
+                         {lang === 'en' ? 'BANK TRANSFER PAYMENT' : 'THANH TOÁN CHUYỂN KHOẢN'}
                       </div>
                       <div className="bg-gray-50 p-2 rounded-sm border border-gray-200 space-y-1 text-[10px] relative">
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">Ngân hàng</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Bank Name' : 'Ngân hàng'}</span>
                             <span className="font-bold text-black text-right">{template.bankName || quotation.paymentInfo.bankName}</span>
                          </div>
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">Số tài khoản</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account No.' : 'Số tài khoản'}</span>
                             <span className="font-mono font-bold text-sm tracking-tighter text-primary text-right">{template.bankAccount || quotation.paymentInfo.accountNumber}</span>
                          </div>
                          <div className="flex justify-between items-center relative z-10 w-2/3">
-                            <span className="text-gray-500 font-bold uppercase text-[8px]">Chủ tài khoản</span>
+                            <span className="text-gray-500 font-bold uppercase text-[8px]">{lang === 'en' ? 'Account Holder' : 'Chủ tài khoản'}</span>
                             <span className="font-bold text-black uppercase tracking-tight text-right">{template.bankAccountName || quotation.paymentInfo.accountHolder}</span>
                          </div>
                          {template.qrCodeUrl && (
@@ -1445,25 +1517,36 @@ export function QuotationPreview({
                            </div>
                          )}
                       </div>
-                      <p className="text-[9px] italic text-gray-500 font-medium leading-tight">Nội dung ghi: <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span></p>
+                      <p className="text-[9px] italic text-gray-500 font-medium leading-tight">
+                        {lang === 'en' ? 'Payment Ref:' : 'Nội dung ghi:'} <span className="font-bold text-black uppercase tracking-tighter">"{quotation.paymentInfo.content}"</span>
+                      </p>
                    </div>
                  )}
               </div>
 
               <div className="mt-3 text-center opacity-70">
                  <div className="font-serif italic text-xs px-10 text-gray-400 leading-normal">
-                   <p>"{template.companyName.toUpperCase()} — Kiến tạo không gian, nâng tầm cuộc sống"</p>
+                   <p>
+                     {lang === 'en' 
+                       ? `"${template.companyName.toUpperCase()} — Creating Spaces, Elevating Living Standard"`
+                       : `"${template.companyName.toUpperCase()} — Kiến tạo không gian, nâng tầm cuộc sống"`
+                     }
+                   </p>
                  </div>
               </div>
 
               {/* Signature Section */}
               <div className="mt-3 flex justify-between px-10">
                  <div className="text-center space-y-1 w-1/3">
-                    <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Khách hàng xác nhận</p>
-                    <p className="text-sm font-bold text-black">KÝ VÀ GHI HỌ TÊN</p>
+                    <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">
+                       {lang === 'en' ? 'Client Confirmation' : 'Khách hàng xác nhận'}
+                    </p>
+                    <p className="text-sm font-bold text-black">
+                       {lang === 'en' ? 'SIGN & FULL NAME' : 'KÝ VÀ GHI HỌ TÊN'}
+                    </p>
                     <div className="h-10" />
                     <p className="text-[9px] font-medium text-gray-500 italic pt-1 px-4 border-t border-gray-200 items-center justify-center flex gap-1">
-                      <Download className="h-3 w-3" /> Ngày ...... / ...... / 202...
+                      <Download className="h-3 w-3" /> {lang === 'en' ? 'Date ...... / ...... / 202...' : 'Ngày ...... / ...... / 202...'}
                     </p>
                  </div>
                  
@@ -1481,19 +1564,25 @@ export function QuotationPreview({
                          <div className="w-16 h-16 border border-dashed border-gray-300 flex items-center justify-center text-[6px] text-gray-400">QR CODE</div>
                        )}
                      </a>
-                     <span className="text-[8px] uppercase tracking-widest text-gray-400 mt-1 font-bold">Truy cập Website</span>
+                     <span className="text-[8px] uppercase tracking-widest text-gray-400 mt-1 font-bold">
+                        {lang === 'en' ? 'Visit Website' : 'Truy cập Website'}
+                     </span>
                    </div>
                  ) : (
                    <div className="w-1/3" />
                  )}
 
                  <div className="text-center space-y-1 w-1/3">
-                    <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Đại diện Công ty</p>
-                    <p className="text-sm font-bold text-black uppercase">NGƯỜI LẬP BIỂU</p>
+                    <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">
+                       {lang === 'en' ? 'Company Representative' : 'Đại diện Công ty'}
+                    </p>
+                    <p className="text-sm font-bold text-black uppercase">
+                       {lang === 'en' ? 'PREPARED BY' : 'NGƯỜI LẬP BIỂU'}
+                    </p>
                     <div className="h-10 flex items-center justify-center relative">
                     </div>
                     <p className="font-bold text-gray-950 text-sm border-t border-gray-200 pt-1 px-4">
-                       {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : 'BAN QUẢN TRỊ')}
+                       {member?.name || (quotation.createdBy === user?.uid ? user?.displayName : (lang === 'en' ? 'MANAGEMENT' : 'BAN QUẢN TRỊ'))}
                     </p>
                  </div>
               </div>
