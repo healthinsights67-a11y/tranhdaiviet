@@ -303,6 +303,15 @@ export function QuotationPreview({
     return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [exchangeRate]);
 
+  const formatPrice = React.useCallback((amountVnd: number) => {
+    if (lang === 'vi') {
+      return (amountVnd || 0).toLocaleString('vi-VN');
+    }
+    const rate = exchangeRate > 0 ? exchangeRate : 25400;
+    const usdAmount = (amountVnd || 0) / rate;
+    return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [lang, exchangeRate]);
+
   const translateUnit = React.useCallback((unit: string) => {
     if (lang === 'vi') return unit;
     const u = (unit || '').toLowerCase().trim();
