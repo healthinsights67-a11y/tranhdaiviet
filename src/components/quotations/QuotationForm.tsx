@@ -18,7 +18,9 @@ import {
   ImagePlus,
   Loader2,
   Settings,
-  Check
+  Check,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { uploadToImgBB } from '@/src/services/uploadService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -452,6 +454,24 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
       items: newItems, 
       ...amounts
     });
+  };
+
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+    const newItems = [...formData.items];
+    const temp = newItems[index];
+    newItems[index] = newItems[index - 1];
+    newItems[index - 1] = temp;
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= formData.items.length - 1) return;
+    const newItems = [...formData.items];
+    const temp = newItems[index];
+    newItems[index] = newItems[index + 1];
+    newItems[index + 1] = temp;
+    setFormData({ ...formData, items: newItems });
   };
 
   const updateItem = (id: string, updates: Partial<QuotationItem>) => {
@@ -937,10 +957,36 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                     <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary/20 group-hover:bg-primary transition-colors" />
                     
                     <CardContent className="p-3">
-                      {/* Header: Số thứ tự và Nút xóa */}
+                      {/* Header: Số thứ tự, Nút di chuyển lên/xuống và Nút xóa */}
                       <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-                        <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold font-mono">
-                          {index + 1 < 10 ? `0${index + 1}` : index + 1}
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold font-mono">
+                            {index + 1 < 10 ? `0${index + 1}` : index + 1}
+                          </div>
+                          <div className="flex items-center gap-0.5 bg-slate-100/80 rounded-md p-0.5 border border-slate-200/60">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              disabled={index === 0}
+                              className="h-5 w-5 text-slate-600 hover:text-blue-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent"
+                              onClick={() => handleMoveUp(index)}
+                              title="Di chuyển lên"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              disabled={index === formData.items.length - 1}
+                              className="h-5 w-5 text-slate-600 hover:text-blue-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent"
+                              onClick={() => handleMoveDown(index)}
+                              title="Di chuyển xuống"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         <Button
                           type="button"
@@ -948,6 +994,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           size="icon"
                           className="h-6 w-6 text-destructive hover:bg-destructive/10"
                           onClick={() => handleRemoveItem(item.id)}
+                          title="Xóa hạng mục"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
