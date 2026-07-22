@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { Customer, Member, Task } from '@/src/types';
 import { db, doc, updateDoc, setDoc } from '@/src/lib/firebase';
@@ -41,7 +41,7 @@ import {
 import { format, parseISO, differenceInDays, addYears, isValid } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { cn, calculateDistance } from '@/src/lib/utils';
+import { cn, calculateDistance, getDrivingDistance } from '@/src/lib/utils';
 import { fetchSystemSettings } from '@/src/services/dataService';
 import { notifyManagers } from '@/src/services/notificationService';
 import { sendSystemNotification } from '@/src/services/botNotificationService';
@@ -64,6 +64,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
   const [sortBy, setSortBy] = useState<'default' | 'nearest' | 'farthest'>('default');
+  const [drivingDistances, setDrivingDistances] = useState<Record<string, { distance: number; duration: number }>>({});
   
   // State for adding care log
   const [selectedCustomerForLog, setSelectedCustomerForLog] = useState<Customer | null>(null);
@@ -259,20 +260,67 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
     return customers.filter(c => c.stage === 'completed');
   }, [customers]);
 
+  // Background fetch actual road distances from OSRM for completed customers
+  useEffect(() => {
+    if (!systemSettings?.factoryLocation || completedCustomers.length === 0) return;
+
+    const fetchDistances = async () => {
+      const newDistances = { ...drivingDistances };
+      let updated = false;
+
+      for (const c of completedCustomers) {
+        if (c.location && !newDistances[c.id]) {
+          try {
+            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${systemSettings.factoryLocation.lng},${systemSettings.factoryLocation.lat};${c.location.lng},${c.location.lat}?overview=false`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.routes && data.routes.length > 0) {
+                const route = data.routes[0];
+                newDistances[c.id] = {
+                  distance: Number((route.distance / 1000).toFixed(1)),
+                  duration: Math.round(route.duration / 60)
+                };
+                updated = true;
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching OSRM distance:', error);
+          }
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+
+      if (updated) {
+        setDrivingDistances(newDistances);
+      }
+    };
+
+    fetchDistances();
+  }, [completedCustomers, systemSettings]);
+
   // Apply search and filter
   const processedCustomers = useMemo(() => {
     const mapped = completedCustomers.map(c => {
       const warranty = getWarrantyInfo(c);
       let distance: number | null = null;
-      if (systemSettings?.factoryLocation && c.location) {
+      let duration: number | null = null;
+      let isRealRoute = false;
+
+      if (drivingDistances[c.id]) {
+        distance = drivingDistances[c.id].distance;
+        duration = drivingDistances[c.id].duration;
+        isRealRoute = true;
+      } else if (systemSettings?.factoryLocation && c.location) {
         distance = calculateDistance(
           systemSettings.factoryLocation.lat,
           systemSettings.factoryLocation.lng,
           c.location.lat,
           c.location.lng
         );
+        duration = Math.round((distance / 35) * 60);
       }
-      return { ...c, warranty, distance };
+
+      return { ...c, warranty, distance, duration, isRealRoute };
     });
 
     const filtered = mapped.filter(c => {
@@ -657,9 +705,23 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                         <span className="line-clamp-1">{customer.address}</span>
                       </div>
                       {customer.distance !== undefined && customer.distance !== null && (
-                        <div className="flex items-center text-muted-foreground gap-2 mt-1">
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-                          <span>Cách xưởng: <strong className="text-foreground">{customer.distance.toFixed(1)} km</strong></span>
+                        <div className="flex flex-col gap-0.5 text-muted-foreground mt-1 bg-slate-50/50 p-1.5 rounded-lg border border-border/40">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary animate-pulse" />
+                            <span>
+                              Cách xưởng: <strong className="text-foreground">{customer.distance.toFixed(1)} km</strong>
+                              {customer.isRealRoute ? (
+                                <span className="text-[10px] text-emerald-600 font-bold ml-1 bg-emerald-50 px-1.5 py-0.5 rounded">Đường bộ</span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 font-bold ml-1 bg-slate-100 px-1.5 py-0.5 rounded">Chim bay</span>
+                              )}
+                            </span>
+                          </div>
+                          {customer.duration && (
+                            <div className="text-[10px] pl-5 font-bold text-slate-500">
+                              Thời gian di chuyển: <strong className="text-foreground">~{customer.duration} phút</strong>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

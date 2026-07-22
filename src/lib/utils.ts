@@ -187,3 +187,145 @@ export const geocodeAddressOSM = async (address: string): Promise<{ lat: number;
 function deg2rad(deg: number): number {
   return deg * (Math.PI/180);
 }
+
+/**
+ * Fetches the actual road network (driving) distance and duration between two coordinates using OSRM.
+ * Falls back to Haversine distance if the API request fails.
+ * @returns Object containing distance in km and duration in minutes
+ */
+export async function getDrivingDistance(lat1: number, lon1: number, lat2: number, lon2: number): Promise<{ distance: number, duration: number }> {
+  try {
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const distanceKm = route.distance / 1000;
+        const durationMin = route.duration / 60;
+        return {
+          distance: Number(distanceKm.toFixed(1)),
+          duration: Math.round(durationMin)
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching OSRM route:', error);
+  }
+  
+  // Fallback to straight-line distance (assuming 35km/h average speed)
+  const straightLine = calculateDistance(lat1, lon1, lat2, lon2);
+  const estimatedDuration = Math.round((straightLine / 35) * 60);
+  return {
+    distance: straightLine,
+    duration: estimatedDuration
+  };
+}
+
+export interface RoutePoint {
+  id: string;
+  name: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface OptimizedRouteStep {
+  point: RoutePoint;
+  distanceFromPrevKm: number;
+  durationFromPrevMin: number;
+}
+
+export interface OptimizedRouteResult {
+  steps: OptimizedRouteStep[];
+  totalDistanceKm: number;
+  totalDurationMin: number;
+}
+
+/**
+ * Solves Traveling Salesperson Problem (TSP) using OSRM driving distances where possible.
+ * Starts from startPoint (e.g., Factory).
+ */
+export async function optimizeRoute(
+  startPoint: { lat: number; lng: number; name: string; address: string },
+  points: RoutePoint[]
+): Promise<OptimizedRouteResult> {
+  const resultSteps: OptimizedRouteStep[] = [];
+  let totalDistanceKm = 0;
+  let totalDurationMin = 0;
+
+  // 1. Geocode any points that do not have coordinates
+  const resolvedPoints: (RoutePoint & { lat: number; lng: number })[] = [];
+  for (const p of points) {
+    let lat = p.latitude;
+    let lng = p.longitude;
+    if (lat === undefined || lng === undefined) {
+      const coords = await geocodeAddressOSM(p.address);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
+    if (lat !== undefined && lng !== undefined) {
+      resolvedPoints.push({ ...p, lat, lng });
+    }
+  }
+
+  if (resolvedPoints.length === 0) {
+    return { steps: [], totalDistanceKm: 0, totalDurationMin: 0 };
+  }
+
+  // 2. Nearest Neighbor TSP algorithm
+  let currentLat = startPoint.lat;
+  let currentLng = startPoint.lng;
+  const unvisited = [...resolvedPoints];
+
+  while (unvisited.length > 0) {
+    let bestIndex = -1;
+    let bestDistance = Infinity;
+    let bestDuration = Infinity;
+
+    for (let i = 0; i < unvisited.length; i++) {
+      const p = unvisited[i];
+      let dist = calculateDistance(currentLat, currentLng, p.lat, p.lng);
+      let dur = Math.round((dist / 35) * 60);
+
+      try {
+        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${currentLng},${currentLat};${p.lng},${p.lat}?overview=false`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.routes && data.routes.length > 0) {
+            dist = data.routes[0].distance / 1000;
+            dur = Math.round(data.routes[0].duration / 60);
+          }
+        }
+      } catch (e) {
+        // Ignore fallback handles it
+      }
+
+      if (dist < bestDistance) {
+        bestDistance = dist;
+        bestDuration = dur;
+        bestIndex = i;
+      }
+    }
+
+    if (bestIndex !== -1) {
+      const nextPoint = unvisited.splice(bestIndex, 1)[0];
+      resultSteps.push({
+        point: nextPoint,
+        distanceFromPrevKm: Number(bestDistance.toFixed(1)),
+        durationFromPrevMin: bestDuration
+      });
+      totalDistanceKm += bestDistance;
+      totalDurationMin += bestDuration;
+      currentLat = nextPoint.lat;
+      currentLng = nextPoint.lng;
+    }
+  }
+
+  return {
+    steps: resultSteps,
+    totalDistanceKm: Number(totalDistanceKm.toFixed(1)),
+    totalDurationMin
+  };
+}

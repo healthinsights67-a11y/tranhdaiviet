@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { InstallationSchedule, Member, Customer, Task } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Hammer, Wrench, CheckCircle2, ClipboardList } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, MapPin, Phone, User, Clock, ChevronLeft, ChevronRight, X, Hammer, Wrench, CheckCircle2, ClipboardList, Loader2, Navigation, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { InstallationScheduleSchema } from '@/src/schemas';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendSystemNotification } from '@/src/services/botNotificationService';
-import { cn, getCurrentVNDate } from '@/src/lib/utils';
+import { cn, getCurrentVNDate, optimizeRoute } from '@/src/lib/utils';
 import { notifyManagers } from '@/src/services/notificationService';
 
 interface InstallationPageProps {
@@ -61,6 +61,8 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [optimizedRoute, setOptimizedRoute] = useState<any>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const [formData, setFormData] = useState<Partial<InstallationSchedule>>({
     taskId: '',
@@ -508,7 +510,75 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   const openDayDetails = (day: Date) => {
     setSelectedDate(day);
     setDetailsOpen(true);
+    setOptimizedRoute(null);
   };
+
+  const handleOptimizeRoute = async () => {
+    if (!selectedDate) return;
+    const daySchedules = getSchedulesForDay(selectedDate);
+    if (daySchedules.length === 0) return;
+
+    setIsOptimizing(true);
+    try {
+      let startPoint = {
+        lat: 21.0278,
+        lng: 105.8342,
+        name: 'Vị trí mặc định',
+        address: 'Hà Nội'
+      };
+
+      try {
+        const settingsSnap = await getDoc(doc(db, 'settings', 'system'));
+        if (settingsSnap.exists()) {
+          const settings = settingsSnap.data();
+          if (settings.factoryLocation) {
+            startPoint = {
+              lat: settings.factoryLocation.lat,
+              lng: settings.factoryLocation.lng,
+              name: 'Xưởng sản xuất',
+              address: settings.factoryLocation.address || 'Địa chỉ xưởng'
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load workshop settings, using fallback.', err);
+      }
+
+      const points = daySchedules.map(s => {
+        const cust = customers.find(c => c.id === s.customerId || c.name === s.customerName);
+        return {
+          id: s.id,
+          name: s.customerName,
+          address: s.address,
+          latitude: cust?.location?.lat,
+          longitude: cust?.location?.lng
+        };
+      });
+
+      const optimized = await optimizeRoute(startPoint, points);
+      setOptimizedRoute(optimized);
+      toast.success('Đã tối ưu lộ trình di chuyển thành công!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi tối ưu lộ trình.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const sortedSchedules = React.useMemo(() => {
+    const daySchedules = getSchedulesForDay(selectedDate || new Date());
+    if (!optimizedRoute || optimizedRoute.steps.length === 0) return daySchedules;
+    
+    return [...daySchedules].sort((a, b) => {
+      const idxA = optimizedRoute.steps.findIndex((step: any) => step.point.id === a.id);
+      const idxB = optimizedRoute.steps.findIndex((step: any) => step.point.id === b.id);
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+  }, [selectedDate, filteredSchedules, optimizedRoute]);
 
   const openAddForDate = (date: Date) => {
     const newDate = new Date(date);
@@ -920,8 +990,59 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
             
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <div className="space-y-4">
-                {selectedDate && getSchedulesForDay(selectedDate).length > 0 ? (
-                  getSchedulesForDay(selectedDate).map((schedule) => {
+                {selectedDate && getSchedulesForDay(selectedDate).length > 1 && (
+                  <div className="bg-slate-50/50 dark:bg-zinc-900/50 p-3.5 rounded-xl border border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        Tối ưu hóa đường đi
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={handleOptimizeRoute}
+                        disabled={isOptimizing}
+                        className="h-8 text-[11px] font-bold border-primary/20 text-primary hover:bg-primary/5 flex items-center gap-1 cursor-pointer"
+                      >
+                        {isOptimizing ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Navigation className="h-3 w-3" />
+                        )}
+                        Lộ trình tối ưu
+                      </Button>
+                    </div>
+
+                    {optimizedRoute && optimizedRoute.steps.length > 0 && (
+                      <div className="mt-3.5 space-y-2 border-t pt-3 text-xs">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500 animate-pulse" />
+                          Lộ trình đề xuất (Bắt đầu từ xưởng):
+                        </div>
+                        <div className="space-y-2.5 pl-2 border-l-2 border-primary/30 mt-2">
+                          <div className="text-[10px] text-muted-foreground font-black uppercase">Điểm xuất phát: Xưởng sản xuất</div>
+                          {optimizedRoute.steps.map((step: any, idx: number) => (
+                            <div key={idx} className="flex flex-col gap-0.5">
+                              <div className="font-semibold flex items-center gap-1.5">
+                                <span className="w-4 h-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[9px] font-black">{idx + 1}</span>
+                                <span className="text-slate-950 dark:text-slate-50">{step.point.name}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground pl-5.5">
+                                Quãng đường: <strong className="text-foreground">{step.distanceFromPrevKm} km</strong> | Thời gian: <strong className="text-foreground">~{step.durationFromPrevMin} phút</strong>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 bg-primary/5 border border-primary/10 rounded-lg p-2.5 flex justify-between text-[11px] font-bold text-primary">
+                          <span>Tổng quãng đường: {optimizedRoute.totalDistanceKm} km</span>
+                          <span>Tổng di chuyển: ~{optimizedRoute.totalDurationMin} phút</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedDate && sortedSchedules.length > 0 ? (
+                  sortedSchedules.map((schedule) => {
                     const assignee = members.find(m => m.id === schedule.assigneeId);
                     return (
                       <div key={schedule.id} className="p-4 rounded-xl border bg-card shadow-sm space-y-3 dark:border-zinc-800">
