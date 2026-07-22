@@ -588,7 +588,9 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
             
             <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
               <SelectTrigger className="w-[180px] h-9 text-xs bg-white border border-border rounded-xl shrink-0">
-                <SelectValue placeholder="Sắp xếp" />
+                <SelectValue placeholder="Sắp xếp">
+                  {sortBy === 'default' ? 'Mặc định (Mới nhất)' : sortBy === 'nearest' ? 'Khoảng cách: Gần nhất' : 'Khoảng cách: Xa nhất'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="default" className="text-xs">Mặc định (Mới nhất)</SelectItem>
@@ -938,7 +940,11 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
               <Label className="text-sm font-bold text-foreground">Thợ phụ trách chính</Label>
               <Select value={assigneeId} onValueChange={setAssigneeId}>
                 <SelectTrigger className="w-full bg-white border-border">
-                  <SelectValue placeholder="Chọn thợ thi công/bảo hành" />
+                  <SelectValue placeholder="Chọn thợ thi công/bảo hành">
+                    {assigneeId 
+                      ? (members.find(m => m.id === assigneeId)?.name || assigneeId) 
+                      : "Chọn thợ thi công/bảo hành"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {members
@@ -969,7 +975,9 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                 <Label className="text-sm font-bold text-foreground">Mức độ ưu tiên</Label>
                 <Select value={assignPriority} onValueChange={(val: any) => setAssignPriority(val)}>
                   <SelectTrigger className="w-full bg-white border-border">
-                    <SelectValue placeholder="Độ ưu tiên" />
+                    <SelectValue placeholder="Độ ưu tiên">
+                      {assignPriority === 'low' ? 'Thấp' : assignPriority === 'medium' ? 'Trung bình' : 'Cao'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Thấp</SelectItem>
