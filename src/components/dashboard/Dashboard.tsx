@@ -433,7 +433,13 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
                   {unscheduledMeasurements.map((c: any) => (
                     <div key={c.id} className="flex items-center justify-between p-2.5 bg-card border border-destructive/10 rounded-lg group shadow-sm">
                       <div className="min-w-0 pr-2">
-                        <p className="text-xs font-bold text-foreground truncate">{c.code} - {c.name}</p>
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {c.code 
+                            ? (c.code.toLowerCase().includes(c.name.toLowerCase()) 
+                                ? c.code 
+                                : `${c.code}_${c.name}`)
+                            : c.name}
+                        </p>
                         <p className="text-[10px] text-muted-foreground truncate">
                           SĐT: {c.phone} | Trạng thái: {c.stage === 'consulting' ? 'Đang tư vấn' : 'Chốt cọc'}
                         </p>
