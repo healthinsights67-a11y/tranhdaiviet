@@ -87,6 +87,7 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
   const [deptFilter, setDeptFilter] = React.useState<DepartmentFilter>('all');
+  const [activeSubTab, setActiveSubTab] = React.useState<'performance' | 'analytics'>('performance');
 
   const matchesTime = React.useCallback((dateStr?: string) => {
     if (!selectedMonth || selectedMonth === 'all') return true;
@@ -291,6 +292,43 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
     name: s.name.split(' ').pop(),
     "Doanh thu": s.revenue / 1000000
   }));
+
+  // Workshop conversion rate calculation
+  const workshopStats = React.useMemo(() => {
+    const workshops = ['Cơ Sở 1', 'Cơ Sở 2'];
+    return workshops.map(ws => {
+      const wsCustomers = filteredCustomers.filter(c => c.workshop === ws);
+      const totalCount = wsCustomers.length;
+      const contractedCount = wsCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+      const conversionRate = totalCount > 0 ? (contractedCount / totalCount) * 100 : 0;
+      return {
+        name: ws,
+        rate: Math.round(conversionRate * 10) / 10,
+        total: totalCount,
+        contracted: contractedCount
+      };
+    });
+  }, [filteredCustomers]);
+
+  // Product categories quoted calculation
+  const categoryChartData = React.useMemo(() => {
+    const categoryCounts: Record<string, number> = {};
+    quotations.forEach(q => {
+      if (q.items && Array.isArray(q.items)) {
+        q.items.forEach(item => {
+          let cat = item.category || 'Khác';
+          cat = cat.trim();
+          if (cat) {
+            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+          }
+        });
+      }
+    });
+    return Object.entries(categoryCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [quotations]);
 
   // Daily Revenue Growth (Cumulative)
   const growthData = (() => {
@@ -510,205 +548,353 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border border-border shadow-md bg-card text-card-foreground relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-            <div>
-              <CardTitle className="text-lg md:text-xl font-black">Tăng trưởng doanh thu</CardTitle>
-              <CardDescription className="text-xs font-medium">Biểu đồ tích lũy doanh thu theo ngày trong tháng.</CardDescription>
-            </div>
-            <div className="bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-500/20 shadow-sm">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="text-[10px] font-black uppercase text-emerald-600">Tăng trưởng</span>
-            </div>
-          </CardHeader>
-          <CardContent className="w-full min-w-0 relative z-10">
-            <div className="h-[320px] w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={growthData}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis 
-                    dataKey="date" 
-                    fontSize={10} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }}
-                    interval={Math.floor(growthData.length / 6)}
-                  />
-                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
-                    itemStyle={{ color: 'hsl(var(--primary))' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    name="Doanh thu (M)"
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={4}
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)"
-                    activeDot={{ r: 8, strokeWidth: 0, fill: "hsl(var(--primary))" }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border shadow-sm bg-card text-card-foreground">
-          <CardHeader>
-            <CardTitle className="text-lg font-black">Phễu khách hàng</CardTitle>
-            <CardDescription className="text-xs font-medium">Tỷ lệ chuyển đổi qua từng giai đoạn.</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="space-y-4">
-              {funnelData.map((item, i) => {
-                const prevValue = i > 0 ? funnelData[i-1].value : item.value;
-                const conversion = i > 0 && prevValue > 0 ? (item.value / prevValue) * 100 : 100;
-                const totalConversion = i > 0 ? (item.value / funnelData[0].value) * 100 : 100;
-
-                return (
-                  <div key={item.name} className="relative">
-                    {i > 0 && (
-                      <div className="absolute -top-3 left-6 h-3 border-l-2 border-dashed border-border/50" />
-                    )}
-                    <div className="flex items-center justify-between mb-1.5">
-                       <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-secondary/50">
-                            <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                          </div>
-                          <span className="text-xs font-black">{item.name}</span>
-                       </div>
-                       <div className="text-right">
-                          <span className="text-sm font-black">{item.value}</span>
-                          <span className="text-[10px] text-muted-foreground font-bold ml-1">khách</span>
-                       </div>
-                    </div>
-                    <div className="w-full h-8 bg-secondary/20 rounded-lg overflow-hidden relative border border-border/50">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${totalConversion}%` }}
-                        className="h-full relative overflow-hidden"
-                        style={{ backgroundColor: item.color }}
-                      >
-                         <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent" />
-                      </motion.div>
-                      {i > 0 && (
-                        <div className="absolute inset-y-0 right-2 flex items-center">
-                          <span className="text-[10px] font-black text-white drop-shadow-sm">{conversion.toFixed(0)}%</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="mt-8 p-4 rounded-2xl bg-primary/5 border border-primary/10">
-               <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-primary tracking-widest">Tỉ lệ chốt tổng</span>
-                  <span className="text-lg font-black text-primary">{( (funnelData[3].value / (funnelData[0].value || 1)) * 100 ).toFixed(1)}%</span>
-               </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex border-b border-border/80 gap-6 mt-4 pb-0.5">
+        <button 
+          onClick={() => setActiveSubTab('performance')} 
+          className={cn(
+            "pb-3 text-sm font-black border-b-2 transition-all cursor-pointer", 
+            activeSubTab === 'performance' ? "border-primary text-primary" : "border-transparent text-muted-foreground/75 hover:text-foreground"
+          )}
+        >
+          Hiệu suất & Doanh thu
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('analytics')} 
+          className={cn(
+            "pb-3 text-sm font-black border-b-2 transition-all cursor-pointer", 
+            activeSubTab === 'analytics' ? "border-primary text-primary" : "border-transparent text-muted-foreground/75 hover:text-foreground"
+          )}
+        >
+          Phân tích chuyển đổi & Sản phẩm
+        </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {memberStats.length > 0 && (() => {
-          const topMember = memberStats[0];
-          return (
-            <Card className="lg:col-span-1 border border-amber-500/30 shadow-lg bg-gradient-to-br from-amber-500/10 via-background to-background text-card-foreground relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4">
-                 <Crown className="h-12 w-12 text-amber-500/20 group-hover:scale-110 transition-transform duration-500" />
-              </div>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-black uppercase tracking-widest text-[8px] px-2 border-none">
-                    <Award className="h-3 w-3 mr-1" />
-                    Nhân viên xuất sắc
-                  </Badge>
+      {activeSubTab === 'performance' ? (
+        <>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2 border border-border shadow-md bg-card text-card-foreground relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+              <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+                <div>
+                  <CardTitle className="text-lg md:text-xl font-black">Tăng trưởng doanh thu</CardTitle>
+                  <CardDescription className="text-xs font-medium">Biểu đồ tích lũy doanh thu theo ngày trong tháng.</CardDescription>
                 </div>
-                <CardTitle className="text-xl font-black">Vinh danh tháng</CardTitle>
-                <CardDescription className="text-xs font-medium">Người dẫn đầu về doanh thu và hiệu suất.</CardDescription>
+                <div className="bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-500/20 shadow-sm">
+                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <span className="text-[10px] font-black uppercase text-emerald-600">Tăng trưởng</span>
+                </div>
               </CardHeader>
-              <CardContent className="pt-4 flex flex-col items-center text-center relative z-10">
-                <div className="relative mb-4">
-                  <div className="absolute inset-0 bg-amber-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
-                  <Avatar className="h-24 w-24 border-4 border-background shadow-xl relative z-10">
-                    <AvatarImage src={topMember.avatar} />
-                    <AvatarFallback className="font-black text-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white">{topMember.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] font-black px-3 py-0.5 rounded-full shadow-md whitespace-nowrap border border-white/20 z-20">
-                    #1 TOP SALE
-                  </div>
+              <CardContent className="w-full min-w-0 relative z-10">
+                <div className="h-[320px] w-full pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={growthData}>
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                      <XAxis 
+                        dataKey="date" 
+                        fontSize={10} 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }}
+                        interval={Math.floor(growthData.length / 6)}
+                      />
+                      <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--primary))' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="value" 
+                        name="Doanh thu (M)"
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={4}
+                        fillOpacity={1} 
+                        fill="url(#colorRevenue)"
+                        activeDot={{ r: 8, strokeWidth: 0, fill: "hsl(var(--primary))" }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                <h3 className="text-xl font-black mt-2">{topMember.name}</h3>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{topMember.role}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border shadow-sm bg-card text-card-foreground">
+              <CardHeader>
+                <CardTitle className="text-lg font-black">Phễu khách hàng</CardTitle>
+                <CardDescription className="text-xs font-medium">Tỷ lệ chuyển đổi qua từng giai đoạn.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-2">
+                <div className="space-y-4">
+                  {funnelData.map((item, i) => {
+                    const prevValue = i > 0 ? funnelData[i-1].value : item.value;
+                    const conversion = i > 0 && prevValue > 0 ? (item.value / prevValue) * 100 : 100;
+                    const totalConversion = i > 0 ? (item.value / funnelData[0].value) * 100 : 100;
+
+                    return (
+                      <div key={item.name} className="relative">
+                        {i > 0 && (
+                          <div className="absolute -top-3 left-6 h-3 border-l-2 border-dashed border-border/50" />
+                        )}
+                        <div className="flex items-center justify-between mb-1.5">
+                           <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-lg bg-secondary/50">
+                                <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                              <span className="text-xs font-black">{item.name}</span>
+                           </div>
+                           <div className="text-right">
+                              <span className="text-sm font-black">{item.value}</span>
+                              <span className="text-[10px] text-muted-foreground font-bold ml-1">khách</span>
+                           </div>
+                        </div>
+                        <div className="w-full h-8 bg-secondary/20 rounded-lg overflow-hidden relative border border-border/50">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${totalConversion}%` }}
+                            className="h-full relative overflow-hidden"
+                            style={{ backgroundColor: item.color }}
+                          >
+                             <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent" />
+                          </motion.div>
+                          {i > 0 && (
+                            <div className="absolute inset-y-0 right-2 flex items-center">
+                              <span className="text-[10px] font-black text-white drop-shadow-sm">{conversion.toFixed(0)}%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
                 
-                <div className="grid grid-cols-2 gap-4 w-full mt-6">
-                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Doanh thu</p>
-                      <p className="text-sm font-black text-amber-600">{formatCurrency(topMember.revenue)}</p>
-                   </div>
-                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Điểm KPI</p>
-                      <p className="text-sm font-black text-primary">{topMember.kpi}</p>
+                <div className="mt-8 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                   <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-primary tracking-widest">Tỉ lệ chốt tổng</span>
+                      <span className="text-lg font-black text-primary">{( (funnelData[3].value / (funnelData[0].value || 1)) * 100 ).toFixed(1)}%</span>
                    </div>
                 </div>
               </CardContent>
             </Card>
-          );
-        })()}
+          </div>
 
-        <Card className="lg:col-span-2 border border-border shadow-sm bg-card text-card-foreground">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-lg font-black">So sánh KPI nhân sự</CardTitle>
-              <CardDescription className="text-xs font-medium">Điểm tích lũy dựa trên checklist và nhiệm vụ.</CardDescription>
-            </div>
-            <div className="bg-primary/10 px-3 py-1 rounded-full flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-black uppercase text-primary">Theo tháng</span>
-            </div>
-          </CardHeader>
-          <CardContent className="w-full min-w-0">
-            <div className="h-[320px] w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={memberStats.map(s => ({ name: s.name.split(' ').pop(), "KPI": s.kpi }))}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip 
-                    cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.2 }}
-                    contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
-                    itemStyle={{ color: 'hsl(var(--primary))' }}
-                  />
-                  <Bar dataKey="KPI" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40}>
-                     {memberStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? "url(#colorKpiTop)" : "hsl(var(--primary))"} fillOpacity={index === 0 ? 1 : 0.6} />
-                     ))}
-                  </Bar>
-                  <defs>
-                    <linearGradient id="colorKpiTop" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#d97706" stopOpacity={0.8}/>
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {memberStats.length > 0 && (() => {
+              const topMember = memberStats[0];
+              return (
+                <Card className="lg:col-span-1 border border-amber-500/30 shadow-lg bg-gradient-to-br from-amber-500/10 via-background to-background text-card-foreground relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4">
+                     <Crown className="h-12 w-12 text-amber-500/20 group-hover:scale-110 transition-transform duration-500" />
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-black uppercase tracking-widest text-[8px] px-2 border-none">
+                        <Award className="h-3 w-3 mr-1" />
+                        Nhân viên xuất sắc
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-xl font-black">Vinh danh tháng</CardTitle>
+                    <CardDescription className="text-xs font-medium">Người dẫn đầu về doanh thu và hiệu suất.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-4 flex flex-col items-center text-center relative z-10">
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 bg-amber-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
+                      <Avatar className="h-24 w-24 border-4 border-background shadow-xl relative z-10">
+                        <AvatarImage src={topMember.avatar} />
+                        <AvatarFallback className="font-black text-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white">{topMember.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] font-black px-3 py-0.5 rounded-full shadow-md whitespace-nowrap border border-white/20 z-20">
+                        #1 TOP SALE
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-black mt-2">{topMember.name}</h3>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{topMember.role}</p>
+                    
+                    <div className="grid grid-cols-2 gap-4 w-full mt-6">
+                       <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
+                          <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Doanh thu</p>
+                          <p className="text-sm font-black text-amber-600">{formatCurrency(topMember.revenue)}</p>
+                       </div>
+                       <div className="bg-background/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col items-center">
+                          <p className="text-[9px] font-black uppercase text-muted-foreground mb-1">Điểm KPI</p>
+                          <p className="text-sm font-black text-primary">{topMember.kpi}</p>
+                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            <Card className="lg:col-span-2 border border-border shadow-sm bg-card text-card-foreground">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-lg font-black">So sánh KPI nhân sự</CardTitle>
+                  <CardDescription className="text-xs font-medium">Điểm tích lũy dựa trên checklist và nhiệm vụ.</CardDescription>
+                </div>
+                <div className="bg-primary/10 px-3 py-1 rounded-full flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-[10px] font-black uppercase text-primary">Theo tháng</span>
+                </div>
+              </CardHeader>
+              <CardContent className="w-full min-w-0">
+                <div className="h-[320px] w-full pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={memberStats.map(s => ({ name: s.name.split(' ').pop(), "KPI": s.kpi }))}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                      <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                      <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                      <Tooltip 
+                        cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.2 }}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--primary))' }}
+                      />
+                      <Bar dataKey="KPI" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={40}>
+                         {memberStats.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={index === 0 ? "url(#colorKpiTop)" : "hsl(var(--primary))"} fillOpacity={index === 0 ? 1 : 0.6} />
+                         ))}
+                      </Bar>
+                      <defs>
+                        <linearGradient id="colorKpiTop" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f59e0b" stopOpacity={1}/>
+                          <stop offset="100%" stopColor="#d97706" stopOpacity={0.8}/>
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Workshop Conversion Rate Card */}
+          <Card className="border border-border shadow-sm bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle className="text-lg font-black">Hiệu suất chốt cọc Cơ sở</CardTitle>
+              <CardDescription className="text-xs font-medium">Tỉ lệ chốt cọc thành công theo từng xưởng.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-2">
+              {workshopStats.map((ws, i) => (
+                <div key={ws.name} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="text-sm font-black">{ws.name}</span>
+                    </div>
+                    <span className="text-sm font-black text-primary">{ws.rate}%</span>
+                  </div>
+                  <div className="w-full h-3 bg-secondary rounded-full overflow-hidden border border-border/50">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${ws.rate}%` }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+                    <span>Đã chốt: {ws.contracted} khách</span>
+                    <span>Tổng khách hàng: {ws.total}</span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Product Category Share (Pie Chart) */}
+          <Card className="border border-border shadow-sm bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle className="text-lg font-black">Nhóm sản phẩm báo giá</CardTitle>
+              <CardDescription className="text-xs font-medium">Cơ cấu danh mục sản phẩm được báo giá nhiều nhất.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center min-h-[250px] pt-0">
+              {categoryChartData.length > 0 ? (
+                <div className="h-[220px] w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {categoryChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Legend Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase">Tổng số mục</span>
+                      <p className="text-2xl font-black">{categoryChartData.reduce((sum, item) => sum + item.value, 0)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[220px] flex items-center justify-center">
+                  <p className="text-xs text-muted-foreground">Chưa có dữ liệu sản phẩm báo giá.</p>
+                </div>
+              )}
+              {/* Custom Legend */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 w-full mt-2 text-[10px] font-bold text-muted-foreground">
+                {categoryChartData.map((item, idx) => (
+                  <div key={item.name} className="flex items-center gap-1.5 truncate">
+                    <span className="w-2 h-2 rounded-xs shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                    <span className="truncate">{item.name}: {item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sales Revenue Chart (Bar Chart) */}
+          <Card className="border border-border shadow-sm bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle className="text-lg font-black">Doanh thu Sales thực tế</CardTitle>
+              <CardDescription className="text-xs font-medium">So sánh doanh thu thực tế đã thu được của từng Sales.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {revenueChartData.length > 0 ? (
+                <div className="h-[250px] w-full pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueChartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                      <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                      <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }} />
+                      <Tooltip 
+                        cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.2 }}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid hsl(var(--border))', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800 }}
+                      />
+                      <Bar dataKey="Doanh thu" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={35}>
+                        {revenueChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center">
+                  <p className="text-xs text-muted-foreground">Chưa có dữ liệu doanh thu của Sales.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className="border border-border shadow-sm overflow-hidden bg-card text-card-foreground">
         <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50">
