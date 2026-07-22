@@ -63,9 +63,11 @@ export function InstallerDashboard({ tasks, customers = [], currentUser }: Insta
       const customer = customers.find(c => c.id === t.customerId);
       const isCustomerActive = customer && (customer.stage === 'production' || customer.stage === 'installation');
       
-      return isProduction || isWaitingInstall || hasCheckedIn || hasWaitingInstallAt || isCustomerActive;
+      const isAssignedToMe = t.assigneeId === currentUser?.id;
+      
+      return isProduction || isWaitingInstall || hasCheckedIn || hasWaitingInstallAt || isCustomerActive || isAssignedToMe;
     });
-  }, [tasks, customers]);
+  }, [tasks, customers, currentUser]);
 
   // Separate tasks into active and completed
   const { activeTasks, completedTasks } = useMemo(() => {

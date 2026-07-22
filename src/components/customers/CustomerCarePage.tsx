@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { Customer, Member } from '@/src/types';
-import { db, doc, updateDoc } from '@/src/lib/firebase';
-import { CustomerSchema } from '@/src/schemas';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
+import { Customer, Member, Task } from '@/src/types';
+import { db, doc, updateDoc, setDoc } from '@/src/lib/firebase';
+import { CustomerSchema, TaskSchema } from '@/src/schemas';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,13 @@ import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   HeartHandshake, 
   Search, 
@@ -27,12 +34,17 @@ import {
   FileText,
   MessageSquare,
   Pencil,
-  X
+  X,
+  MapPin,
+  Wrench
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, addYears, isValid } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { cn } from '@/src/lib/utils';
+import { cn, calculateDistance } from '@/src/lib/utils';
+import { fetchSystemSettings } from '@/src/services/dataService';
+import { notifyManagers } from '@/src/services/notificationService';
+import { sendSystemNotification } from '@/src/services/botNotificationService';
 
 interface CustomerCarePageProps {
   customers: Customer[];
@@ -42,8 +54,16 @@ interface CustomerCarePageProps {
 
 export function CustomerCarePage({ customers, members, currentUser }: CustomerCarePageProps) {
   const queryClient = useQueryClient();
+  
+  // Fetch system settings for factory location
+  const { data: systemSettings } = useQuery({
+    queryKey: ['systemSettings'],
+    queryFn: fetchSystemSettings,
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'nearest' | 'farthest'>('default');
   
   // State for adding care log
   const [selectedCustomerForLog, setSelectedCustomerForLog] = useState<Customer | null>(null);
@@ -56,6 +76,113 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
   const [startDateStr, setStartDateStr] = useState('');
   const [endDateStr, setEndDateStr] = useState('');
   const [isWarrantyDialogOpen, setIsWarrantyDialogOpen] = useState(false);
+
+  // State for assigning warranty task
+  const [selectedCustomerForAssign, setSelectedCustomerForAssign] = useState<Customer | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [assignTitle, setAssignTitle] = useState('');
+  const [assignDescription, setAssignDescription] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [assignDueDate, setAssignDueDate] = useState('');
+  const [assignPriority, setAssignPriority] = useState<'low' | 'medium' | 'high'>('medium');
+
+  // Mutation to create new Task
+  const addTaskMutation = useMutation({
+    mutationFn: async (newTask: Task) => {
+      const taskDoc = doc(db, 'tasks', newTask.id);
+      const validated = TaskSchema.parse(newTask);
+      await setDoc(taskDoc, validated);
+      return validated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error: any) => {
+      toast.error('Lỗi tạo công việc: ' + error.message);
+    }
+  });
+
+  const openAssignWarrantyDialog = (customer: Customer) => {
+    setSelectedCustomerForAssign(customer);
+    setAssignTitle(`[Bảo hành] Bảo dưỡng định kỳ/Sửa chữa cho khách hàng ${customer.name}`);
+    setAssignDescription('');
+    
+    // Filter technician members and select the first one if available
+    const technicians = members.filter(m => 
+      !!m.role?.toLowerCase()?.includes('thi công') || 
+      !!m.role?.toLowerCase()?.includes('lắp đặt') || 
+      !!m.role?.toLowerCase()?.includes('sản xuất') ||
+      !!m.role?.toLowerCase()?.includes('kỹ thuật')
+    );
+    setAssigneeId(technicians.length > 0 ? technicians[0].id : '');
+    
+    // Default due date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setAssignDueDate(format(tomorrow, 'yyyy-MM-dd'));
+    
+    setAssignPriority('medium');
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssignWarrantySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomerForAssign) return;
+    if (!assignTitle.trim()) {
+      toast.error('Vui lòng nhập tiêu đề công việc.');
+      return;
+    }
+    if (!assigneeId) {
+      toast.error('Vui lòng chọn thợ phụ trách.');
+      return;
+    }
+    if (!assignDueDate) {
+      toast.error('Vui lòng chọn hạn hoàn thành.');
+      return;
+    }
+
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      title: assignTitle.trim(),
+      description: assignDescription.trim(),
+      assigneeId: assigneeId,
+      dueDate: assignDueDate,
+      priority: assignPriority,
+      status: 'todo',
+      createdAt: new Date().toISOString(),
+      type: 'general',
+      customerId: selectedCustomerForAssign.id,
+      customerName: selectedCustomerForAssign.name,
+      phone: selectedCustomerForAssign.phone,
+      address: selectedCustomerForAssign.address,
+    };
+
+    const assignee = members.find(m => m.id === assigneeId);
+
+    toast.promise(
+      addTaskMutation.mutateAsync(newTask),
+      {
+        loading: 'Đang tạo và giao việc bảo hành...',
+        success: () => {
+          setIsAssignDialogOpen(false);
+          
+          // Notify managers
+          notifyManagers(
+            'Giao việc bảo hành mới',
+            `Thợ ${assignee?.name || 'nào đó'} vừa được giao việc bảo hành cho khách ${newTask.customerName} lúc ${format(new Date(), 'HH:mm dd/MM')}`,
+            { taskId: newTask.id, type: 'general' },
+            assigneeId
+          );
+
+          // Telegram/Zalo bot notification
+          sendSystemNotification(`🔧 Công việc bảo hành mới!\n\n👤 Khách hàng: ${newTask.customerName}\n📞 SĐT: ${newTask.phone}\n📍 Địa chỉ: ${newTask.address}\n⏰ Hạn hoàn thành: ${format(new Date(newTask.dueDate), 'dd/MM/yyyy')}\n👤 Người phụ trách: ${assignee?.name || 'Chưa rõ'}\n📝 Ghi chú: ${newTask.description || 'Không có'}\n\nĐược giao bởi: ${currentUser?.name || 'Hệ thống'}`);
+
+          return 'Đã giao việc bảo hành cho thợ thành công!';
+        },
+        error: 'Không thể giao việc.'
+      }
+    );
+  };
 
   // Helpers for dates
   const getWarrantyInfo = (customer: Customer) => {
@@ -134,10 +261,21 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
 
   // Apply search and filter
   const processedCustomers = useMemo(() => {
-    return completedCustomers.map(c => {
+    const mapped = completedCustomers.map(c => {
       const warranty = getWarrantyInfo(c);
-      return { ...c, warranty };
-    }).filter(c => {
+      let distance: number | null = null;
+      if (systemSettings?.factoryLocation && c.location) {
+        distance = calculateDistance(
+          systemSettings.factoryLocation.lat,
+          systemSettings.factoryLocation.lng,
+          c.location.lat,
+          c.location.lng
+        );
+      }
+      return { ...c, warranty, distance };
+    });
+
+    const filtered = mapped.filter(c => {
       // Search term
       const matchesSearch = 
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,7 +289,26 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
       if (statusFilter === 'all') return true;
       return c.warranty.status === statusFilter;
     });
-  }, [completedCustomers, searchTerm, statusFilter]);
+
+    // Sorting
+    if (sortBy === 'nearest') {
+      filtered.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
+      });
+    } else if (sortBy === 'farthest') {
+      filtered.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return b.distance - a.distance;
+      });
+    }
+
+    return filtered;
+  }, [completedCustomers, searchTerm, statusFilter, systemSettings, sortBy]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -383,7 +540,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
 
       {/* Search and Filters */}
       <Card className="border border-border shadow-sm">
-        <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -393,39 +550,52 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
               className="pl-10 w-full bg-white"
             />
           </div>
-          <div className="flex gap-2 bg-secondary/50 p-1.5 rounded-xl border border-secondary self-start md:self-auto overflow-x-auto max-w-full">
-            <Button
-              variant={statusFilter === 'all' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusFilter('all')}
-              className="rounded-lg text-xs"
-            >
-              Tất cả ({completedCustomers.length})
-            </Button>
-            <Button
-              variant={statusFilter === 'active' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusFilter('active')}
-              className="rounded-lg text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
-            >
-              Còn bảo hành ({stats.active})
-            </Button>
-            <Button
-              variant={statusFilter === 'expiring' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusFilter('expiring')}
-              className="rounded-lg text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
-            >
-              Sắp hết hạn ({stats.expiring})
-            </Button>
-            <Button
-              variant={statusFilter === 'expired' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusFilter('expired')}
-              className="rounded-lg text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:text-rose-400"
-            >
-              Đã hết hạn ({stats.expired})
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex gap-2 bg-secondary/50 p-1.5 rounded-xl border border-secondary overflow-x-auto max-w-full">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+                className="rounded-lg text-xs"
+              >
+                Tất cả ({completedCustomers.length})
+              </Button>
+              <Button
+                variant={statusFilter === 'active' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setStatusFilter('active')}
+                className="rounded-lg text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+              >
+                Còn bảo hành ({stats.active})
+              </Button>
+              <Button
+                variant={statusFilter === 'expiring' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setStatusFilter('expiring')}
+                className="rounded-lg text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+              >
+                Sắp hết hạn ({stats.expiring})
+              </Button>
+              <Button
+                variant={statusFilter === 'expired' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setStatusFilter('expired')}
+                className="rounded-lg text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:text-rose-400"
+              >
+                Đã hết hạn ({stats.expired})
+              </Button>
+            </div>
+            
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-[180px] h-9 text-xs bg-white border border-border rounded-xl shrink-0">
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default" className="text-xs">Mặc định (Mới nhất)</SelectItem>
+                <SelectItem value="nearest" className="text-xs">Khoảng cách: Gần nhất</SelectItem>
+                <SelectItem value="farthest" className="text-xs">Khoảng cách: Xa nhất</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -484,6 +654,12 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                         <User className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                         <span className="line-clamp-1">{customer.address}</span>
                       </div>
+                      {customer.distance !== undefined && customer.distance !== null && (
+                        <div className="flex items-center text-muted-foreground gap-2 mt-1">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span>Cách xưởng: <strong className="text-foreground">{customer.distance.toFixed(1)} km</strong></span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Warranty Progress */}
@@ -547,23 +723,32 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                 </div>
 
                 {/* Card Actions */}
-                <div className="p-4 border-t border-border bg-secondary/10 flex gap-2">
+                <div className="p-4 border-t border-border bg-secondary/10 flex gap-1.5">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => openWarrantyDialog(customer)}
-                    className="flex-1 bg-white hover:bg-secondary text-xs h-9 rounded-lg"
+                    className="flex-1 bg-white hover:bg-secondary text-[11px] h-9 px-1 rounded-lg shrink-0"
                   >
-                    <Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                    <Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground shrink-0" />
                     Cài đặt hạn
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => openAssignWarrantyDialog(customer)}
+                    className="flex-1 bg-white hover:bg-secondary text-[11px] h-9 px-1 rounded-lg text-primary border-primary/20 hover:border-primary/40 shrink-0"
+                  >
+                    <Wrench className="h-3.5 w-3.5 mr-1 shrink-0" />
+                    Giao việc
                   </Button>
                   <Button 
                     variant="default" 
                     size="sm" 
                     onClick={() => openLogDialog(customer)}
-                    className="flex-1 text-xs h-9 rounded-lg shadow-sm"
+                    className="flex-1 text-[11px] h-9 px-1 rounded-lg shadow-sm shrink-0"
                   >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    <Plus className="h-3.5 w-3.5 mr-1 shrink-0" />
                     Chăm sóc
                   </Button>
                 </div>
@@ -706,6 +891,102 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
               <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/95 text-white">
                 <Save className="h-4 w-4" />
                 Cập Nhật
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Warranty Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="max-w-md bg-white p-6 border border-border">
+          <DialogHeader className="pb-3 border-b border-border">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" />
+              Giao việc bảo hành
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleAssignWarrantySubmit} className="space-y-4 pt-4">
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-foreground">Khách hàng</Label>
+              <Input value={selectedCustomerForAssign?.name || ''} disabled className="bg-secondary/40 text-muted-foreground border-border" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-bold text-foreground">Tiêu đề công việc</Label>
+              <Input
+                value={assignTitle}
+                onChange={(e) => setAssignTitle(e.target.value)}
+                placeholder="Nhập tiêu đề công việc bảo hành..."
+                className="bg-white border-border"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-bold text-foreground">Chi tiết nội dung cần bảo hành</Label>
+              <Textarea
+                value={assignDescription}
+                onChange={(e) => setAssignDescription(e.target.value)}
+                placeholder="Mô tả chi tiết lỗi hoặc thiết bị cần sửa chữa/bảo dưỡng..."
+                className="min-h-[80px] resize-none bg-white border-border"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-bold text-foreground">Thợ phụ trách chính</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
+                <SelectTrigger className="w-full bg-white border-border">
+                  <SelectValue placeholder="Chọn thợ thi công/bảo hành" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members
+                    .filter(m => 
+                      !!m.role?.toLowerCase()?.includes('thi công') || 
+                      !!m.role?.toLowerCase()?.includes('lắp đặt') || 
+                      !!m.role?.toLowerCase()?.includes('sản xuất') ||
+                      !!m.role?.toLowerCase()?.includes('kỹ thuật')
+                    )
+                    .map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name} ({m.role})</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-bold text-foreground">Hạn hoàn thành</Label>
+                <DatePicker
+                  value={assignDueDate}
+                  onChange={setAssignDueDate}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-bold text-foreground">Mức độ ưu tiên</Label>
+                <Select value={assignPriority} onValueChange={(val: any) => setAssignPriority(val)}>
+                  <SelectTrigger className="w-full bg-white border-border">
+                    <SelectValue placeholder="Độ ưu tiên" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="medium">Trung bình</SelectItem>
+                    <SelectItem value="high">Cao</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 border-t border-border flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsAssignDialogOpen(false)} className="bg-white">
+                Hủy
+              </Button>
+              <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/95 text-white">
+                <Wrench className="h-4 w-4" />
+                Giao Việc
               </Button>
             </DialogFooter>
           </form>
