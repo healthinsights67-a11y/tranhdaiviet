@@ -77,7 +77,7 @@ const TotalsFooter = ({
     return (
       <tfoot>
         <tr className="bg-gray-50 border-t-2 border-black">
-          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+          <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
             {lang === 'en' ? 'Subtotal ($)' : lang === 'km' ? 'សរុបរង ($)' : 'Cộng tiền hàng'}
           </td>
           <td className="p-2 text-right font-mono font-bold text-xs">
@@ -85,7 +85,7 @@ const TotalsFooter = ({
           </td>
         </tr>
         <tr className="bg-gray-50 border-t border-black">
-          <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+          <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
             {lang === 'en' ? 'Discount ($)' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ ($)' : 'Giảm giá & Chiết khấu'}
           </td>
           <td className="p-2 text-right font-mono font-bold text-red-600 text-xs">
@@ -94,7 +94,7 @@ const TotalsFooter = ({
         </tr>
         {quotation.hasVat && (
           <tr className="bg-gray-50 border-t border-black">
-            <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+            <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
               {lang === 'en' ? 'VAT Tax (8%) ($)' : lang === 'km' ? 'ពន្ធ VAT (8%) ($)' : 'Thuế VAT (8%)'}
             </td>
             <td className="p-2 text-right font-mono font-bold text-xs">
@@ -103,7 +103,7 @@ const TotalsFooter = ({
           </tr>
         )}
         <tr className="bg-gray-100 border-t-2 border-black">
-          <td colSpan={colSpan} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-black border-r border-black">
+          <td colSpan={colSpan + 1} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-black border-r border-black">
              {lang === 'en'
                ? `TOTAL QUOTATION AMOUNT ${quotation.hasVat ? '(INCL. VAT 8%)' : '(EXCL. TAX)'} ($)`
                : lang === 'km'
@@ -118,7 +118,7 @@ const TotalsFooter = ({
         {(quotation.depositAmount ?? 0) > 0 && (
           <>
             <tr className="bg-gray-50 border-t border-black">
-              <td colSpan={colSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+              <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
                 {lang === 'en' ? 'Deposit Paid ($)' : lang === 'km' ? 'ប្រាក់កក់បានបង់ ($)' : 'Đã đặt cọc'}
               </td>
               <td className="p-2 pr-3 text-right font-mono font-bold text-emerald-600 text-xs">
@@ -126,7 +126,7 @@ const TotalsFooter = ({
               </td>
             </tr>
             <tr className="bg-emerald-50 border-t-2 border-emerald-200">
-              <td colSpan={colSpan} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-emerald-700 border-r border-emerald-200">
+              <td colSpan={colSpan + 1} className="p-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-emerald-700 border-r border-emerald-200">
                  {lang === 'en' ? 'REMAINING BALANCE DUE ($)' : lang === 'km' ? 'ចំនួនប្រាក់នៅសល់ត្រូវទូទាត់ ($)' : 'SỐ TIỀN CÒN LẠI CẦN THANH TOÁN'}
               </td>
               <td className="p-2 pr-3 text-right font-mono text-[14px] font-bold text-emerald-700">
