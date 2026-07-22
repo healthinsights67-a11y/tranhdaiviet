@@ -2204,13 +2204,13 @@ export function CustomerPage({
                         <span className="text-[7px] md:text-[9px] opacity-50 font-medium">{getWorkshopName(customer.workshop)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 w-full justify-between">
-                      <div className="flex items-center gap-1">
+                    <div className="flex flex-col gap-1 w-full border-t border-border/40 pt-2 mt-auto">
+                      <div className="flex items-center gap-1 w-full">
                         {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg px-1.5 md:px-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 shrink-0 flex items-center gap-0.5 md:gap-1"
+                            className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg px-1 md:px-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex-1 flex items-center justify-center gap-0.5"
                             onClick={() => {
                               const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
                               const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
@@ -2229,7 +2229,7 @@ export function CustomerPage({
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg px-1.5 md:px-2 border-primary/20 text-primary hover:bg-primary/5 shrink-0 flex items-center gap-0.5 md:gap-1"
+                            className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg px-1 md:px-2 border-primary/20 text-primary hover:bg-primary/5 flex-1 flex items-center justify-center gap-0.5"
                             onClick={() => onCreateQuotation(customer.id)}
                           >
                             <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />
@@ -2241,7 +2241,7 @@ export function CustomerPage({
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg px-1.5 md:px-2 shrink-0"
+                        className="h-6 md:h-8 text-[8px] md:text-[10px] font-bold rounded-md md:rounded-lg w-full"
                         onClick={() => openViewDialog(customer)}
                       >
                         Chi tiết
