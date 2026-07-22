@@ -447,8 +447,15 @@ export function QuotationPreview({
   }, [lang]);
 
   const translateDescription = React.useCallback((desc: string) => {
-    if (lang === 'vi' || !desc) return desc;
-    let d = desc;
+    if (!desc) return '';
+    const cleanDesc = desc
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+
+    if (lang === 'vi') return cleanDesc;
+    let d = cleanDesc;
 
     if (lang === 'en') {
       d = d
@@ -1724,7 +1731,7 @@ export function QuotationPreview({
                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
                                 {lang === 'en' ? 'QUOTATION NO:' : lang === 'km' ? 'លេខកូដសម្រង់តម្លៃ:' : 'HỒ SƠ SỐ:'}
                              </span>
-                             <span className="text-lg font-mono font-bold text-black">{quotation.quotationNumber.split('-')[1]}</span>
+                             <span className="text-lg font-mono font-bold text-black">{(quotation.quotationNumber.split('-')[1] || quotation.quotationNumber).trim()}</span>
                           </div>
                        </div>
                     </td>
@@ -1734,10 +1741,10 @@ export function QuotationPreview({
 
               <div className="p-1 px-2 italic text-[10px] text-gray-600 mb-2 font-medium">
                 {lang === 'en'
-                  ? `Dear Client: ${template.companyName.toUpperCase()} appreciates ${quotation.customerName || 'valued customer'}'s interest in our products and services. We are pleased to submit our quotation as follows:`
+                  ? `Dear Client: ${template.companyName.toUpperCase()} appreciates ${(quotation.customerName || '').trim() || 'valued customer'}'s interest in our products and services. We are pleased to submit our quotation as follows:`
                   : lang === 'km'
-                  ? `សូមគោរព៖ ${template.companyName.toUpperCase()} សូមថ្លែងអំណរគុណយ៉ាងជ្រាលជ្រៅចំពោះលោក/លោកស្រី ${quotation.customerName || 'អតិថិជន'} ដែលបានចាប់អារម្មណ៍លើផលិតផល និងសេវាកម្មរបស់យើង។ យើងខ្ញុំសូមផ្ញើជូននូវការសម្រង់តម្លៃដូចខាងក្រោម៖`
-                  : `Kính gửi: ${template.companyName.toUpperCase()} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`
+                  ? `សូមគោរព៖ ${template.companyName.toUpperCase()} សូមថ្លែងអំណរគុណយ៉ាងជ្រាលជ្រៅចំពោះលោក/លោកស្រី ${(quotation.customerName || '').trim() || 'អតិថិជន'} ដែលបានចាប់អារម្មណ៍លើផលិតផល និងសេវាកម្មរបស់យើង។ យើងខ្ញុំសូមផ្ញើជូននូវការសម្រង់តម្លៃដូចខាងក្រោម៖`
+                  : `Kính gửi: ${(quotation.customerName || '').trim() || 'Quý khách hàng'}, ${template.companyName.toUpperCase()} xin cảm ơn Quý khách đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${(quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0)) ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`
                 }
               </div>
 
