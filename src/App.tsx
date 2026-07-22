@@ -384,6 +384,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [initialQuotationCustomerId, setInitialQuotationCustomerId] = React.useState<string | null>(null);
   const [initialQuotationSearchTerm, setInitialQuotationSearchTerm] = React.useState<string | null>(null);
+  const [initialQuotationId, setInitialQuotationId] = React.useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = React.useState(() => {
     // Check if user has previously saved a theme preference
     const savedTheme = localStorage.getItem('theme');
@@ -819,6 +820,8 @@ function AppContent() {
               onClearInitialQuotationCustomerId={() => setInitialQuotationCustomerId(null)}
               initialSearchTerm={initialQuotationSearchTerm}
               onClearInitialSearchTerm={() => setInitialQuotationSearchTerm(null)}
+              initialQuotationId={initialQuotationId}
+              onClearInitialQuotationId={() => setInitialQuotationId(null)}
             />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
@@ -849,8 +852,9 @@ function AppContent() {
                 setInitialQuotationCustomerId(customerId);
                 setActiveTab('quotations');
               }}
-              onViewQuotation={(customerName) => {
+              onViewQuotation={(quotationId, customerName) => {
                 setInitialQuotationSearchTerm(customerName);
+                setInitialQuotationId(quotationId);
                 setActiveTab('quotations');
               }}
             />;

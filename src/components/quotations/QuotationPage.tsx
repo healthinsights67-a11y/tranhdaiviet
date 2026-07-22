@@ -88,6 +88,8 @@ interface QuotationPageProps {
   onClearInitialQuotationCustomerId?: () => void;
   initialSearchTerm?: string | null;
   onClearInitialSearchTerm?: () => void;
+  initialQuotationId?: string | null;
+  onClearInitialQuotationId?: () => void;
 }
 
 type FilterStatus = Quotation['status'] | 'all';
@@ -102,7 +104,9 @@ export function QuotationPage({
   initialQuotationCustomerId, 
   onClearInitialQuotationCustomerId,
   initialSearchTerm,
-  onClearInitialSearchTerm
+  onClearInitialSearchTerm,
+  initialQuotationId,
+  onClearInitialQuotationId
 }: QuotationPageProps) {
   const queryClient = useQueryClient();
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
@@ -178,6 +182,17 @@ export function QuotationPage({
       onClearInitialSearchTerm?.();
     }
   }, [initialSearchTerm, onClearInitialSearchTerm]);
+
+  React.useEffect(() => {
+    if (initialQuotationId) {
+      const quote = quotations.find(q => q.id === initialQuotationId);
+      if (quote) {
+        setSelectedQuotation(quote);
+        setIsPreviewOpen(true);
+      }
+      onClearInitialQuotationId?.();
+    }
+  }, [initialQuotationId, quotations, onClearInitialQuotationId]);
 
   const filteredQuotations = quotations.filter(q => {
     const search = searchTerm.trim().toLowerCase();

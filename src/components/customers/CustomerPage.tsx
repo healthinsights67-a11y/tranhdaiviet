@@ -94,7 +94,7 @@ interface CustomerPageProps {
   user?: any;
   currentUser: any;
   onCreateQuotation?: (customerId: string) => void;
-  onViewQuotation?: (customerName: string) => void;
+  onViewQuotation?: (quotationId: string, customerName: string) => void;
 }
 
 const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: any }> = {
@@ -2036,7 +2036,14 @@ export function CustomerPage({
                       <DropdownMenuContent align="end" className="rounded-xl">
                         {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
                           <DropdownMenuItem 
-                            onClick={() => onViewQuotation(customer.name)} 
+                            onClick={() => {
+                              const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
+                              const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+                              const latestQuote = sortedQuotes[0];
+                              if (latestQuote) {
+                                onViewQuotation(latestQuote.id, latestQuote.customerName);
+                              }
+                            }}
                             className="text-xs text-emerald-600 font-bold gap-1"
                           >
                             <FileText className="h-3.5 w-3.5" />
@@ -2203,7 +2210,14 @@ export function CustomerPage({
                           variant="outline" 
                           size="sm" 
                           className="h-6 md:h-8 text-[8px] md:text-[11px] font-bold rounded-md md:rounded-lg px-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 shrink-0"
-                          onClick={() => onViewQuotation(customer.name)}
+                          onClick={() => {
+                            const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
+                            const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+                            const latestQuote = sortedQuotes[0];
+                            if (latestQuote) {
+                              onViewQuotation(latestQuote.id, latestQuote.customerName);
+                            }
+                          }}
                         >
                           Xem báo giá
                         </Button>
