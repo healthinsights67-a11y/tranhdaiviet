@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, 
+  FileText,
   Search, 
   Phone, 
   MapPin, 
@@ -93,6 +94,7 @@ interface CustomerPageProps {
   user?: any;
   currentUser: any;
   onCreateQuotation?: (customerId: string) => void;
+  onViewQuotation?: (customerName: string) => void;
 }
 
 const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: any }> = {
@@ -125,7 +127,8 @@ export function CustomerPage({
   schedules, 
   user, 
   currentUser,
-  onCreateQuotation
+  onCreateQuotation,
+  onViewQuotation
 }: CustomerPageProps) {
   const queryClient = useQueryClient();
 
@@ -2031,6 +2034,15 @@ export function CustomerPage({
                         </Button>
                       } />
                       <DropdownMenuContent align="end" className="rounded-xl">
+                        {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
+                          <DropdownMenuItem 
+                            onClick={() => onViewQuotation(customer.name)} 
+                            className="text-xs text-emerald-600 font-bold gap-1"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Xem báo giá
+                          </DropdownMenuItem>
+                        )}
                         {onCreateQuotation && (
                           <DropdownMenuItem 
                             onClick={() => onCreateQuotation(customer.id)} 
@@ -2186,6 +2198,16 @@ export function CustomerPage({
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 md:h-8 text-[8px] md:text-[11px] font-bold rounded-md md:rounded-lg px-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 shrink-0"
+                          onClick={() => onViewQuotation(customer.name)}
+                        >
+                          Xem báo giá
+                        </Button>
+                      )}
                       {onCreateQuotation && (
                         <Button 
                           variant="outline" 

@@ -383,6 +383,7 @@ function AppContent() {
   
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [initialQuotationCustomerId, setInitialQuotationCustomerId] = React.useState<string | null>(null);
+  const [initialQuotationSearchTerm, setInitialQuotationSearchTerm] = React.useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = React.useState(() => {
     // Check if user has previously saved a theme preference
     const savedTheme = localStorage.getItem('theme');
@@ -816,6 +817,8 @@ function AppContent() {
               products={productLibraryData} 
               initialQuotationCustomerId={initialQuotationCustomerId}
               onClearInitialQuotationCustomerId={() => setInitialQuotationCustomerId(null)}
+              initialSearchTerm={initialQuotationSearchTerm}
+              onClearInitialSearchTerm={() => setInitialQuotationSearchTerm(null)}
             />;
       case 'measurements':
         return redirect(perms.menuMeasurement)
@@ -844,6 +847,10 @@ function AppContent() {
               currentUser={currentMember} 
               onCreateQuotation={(customerId) => {
                 setInitialQuotationCustomerId(customerId);
+                setActiveTab('quotations');
+              }}
+              onViewQuotation={(customerName) => {
+                setInitialQuotationSearchTerm(customerName);
                 setActiveTab('quotations');
               }}
             />;

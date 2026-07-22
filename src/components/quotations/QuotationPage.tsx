@@ -86,6 +86,8 @@ interface QuotationPageProps {
   products?: any[];
   initialQuotationCustomerId?: string | null;
   onClearInitialQuotationCustomerId?: () => void;
+  initialSearchTerm?: string | null;
+  onClearInitialSearchTerm?: () => void;
 }
 
 type FilterStatus = Quotation['status'] | 'all';
@@ -98,7 +100,9 @@ export function QuotationPage({
   members, 
   products = [], 
   initialQuotationCustomerId, 
-  onClearInitialQuotationCustomerId 
+  onClearInitialQuotationCustomerId,
+  initialSearchTerm,
+  onClearInitialSearchTerm
 }: QuotationPageProps) {
   const queryClient = useQueryClient();
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
@@ -164,6 +168,16 @@ export function QuotationPage({
       onClearInitialQuotationCustomerId?.();
     }
   }, [initialQuotationCustomerId, customers, user, onClearInitialQuotationCustomerId]);
+
+  React.useEffect(() => {
+    if (initialSearchTerm) {
+      setSearchTerm(initialSearchTerm);
+      setWorkshopFilter('all');
+      setStatusFilter('all');
+      setSelectedMonth('all');
+      onClearInitialSearchTerm?.();
+    }
+  }, [initialSearchTerm, onClearInitialSearchTerm]);
 
   const filteredQuotations = quotations.filter(q => {
     const search = searchTerm.trim().toLowerCase();
