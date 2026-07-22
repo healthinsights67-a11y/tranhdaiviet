@@ -13,7 +13,8 @@ import {
   ZoomIn,
   ZoomOut,
   FileSpreadsheet,
-  Globe
+  Globe,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1427,35 +1428,35 @@ export function QuotationPreview({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-card text-card-foreground border border-gray-200 shadow-2xl">
-        <DialogHeader className="p-3 md:p-4 border-b bg-slate-50 flex flex-col shrink-0 gap-2.5">
+        <DialogHeader className="p-2.5 md:p-4 border-b bg-slate-50 flex flex-col shrink-0 gap-2 md:gap-2.5">
           {/* Row 1: Title & Main Document Actions */}
           <div className="flex items-center justify-between w-full flex-wrap gap-2">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-primary shrink-0 border border-blue-200">
+            <div className="flex items-center gap-1.5 md:gap-3">
+              <div className="hidden md:flex h-9 w-9 rounded-xl bg-blue-500/10 items-center justify-center text-primary shrink-0 border border-blue-200">
                 <Eye className="h-5 w-5" />
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <DialogTitle className="text-base md:text-lg font-bold text-slate-900">Xem trước báo giá</DialogTitle>
-                <span className="text-[10px] font-bold text-slate-600 font-mono bg-white px-2 py-0.5 rounded border border-slate-200 uppercase tracking-wider">{quotation.quotationNumber}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <DialogTitle className="text-sm md:text-lg font-bold text-slate-900">Xem trước báo giá</DialogTitle>
+                <span className="text-[9px] md:text-[10px] font-bold text-slate-600 font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-wider">{quotation.quotationNumber}</span>
                 {quotation.status === 'accepted' && (
-                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[9px] h-4">Hoàn Thành</Badge>
+                  <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[8px] md:text-[9px] h-4 px-1.5">Hoàn Thành</Badge>
                 )}
                 {quotation.status === 'deposit' && (
-                  <Badge className="bg-purple-500 hover:bg-purple-600 text-[9px] h-4">Đã cọc</Badge>
+                  <Badge className="bg-purple-500 hover:bg-purple-600 text-[8px] md:text-[9px] h-4 px-1.5">Đã cọc</Badge>
                 )}
               </div>
             </div>
 
             {/* Primary Document Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={onEdit} 
-                className="h-8 px-3 gap-1.5 font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 text-xs shadow-sm"
+                className="h-8 px-2 md:px-3 gap-1 md:gap-1.5 font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 text-xs shadow-sm"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                <span>Chỉnh sửa</span>
+                <span className="hidden md:inline">Chỉnh sửa</span>
               </Button>
 
               <Button 
@@ -1463,25 +1464,25 @@ export function QuotationPreview({
                 size="sm" 
                 onClick={handleShare}
                 disabled={isExporting || isPreloading}
-                className="h-8 px-3 gap-1.5 font-bold border border-emerald-200 hover:bg-emerald-50 text-emerald-700 text-xs shadow-sm"
+                className="h-8 px-2 md:px-3 gap-1 md:gap-1.5 font-bold border border-emerald-200 hover:bg-emerald-50 text-emerald-700 text-xs shadow-sm"
               >
                 {isExporting || isPreloading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Share2 className="h-3.5 w-3.5" />
                 )}
-                <span>Chia sẻ</span>
+                <span className="hidden md:inline">Chia sẻ</span>
               </Button>
             </div>
           </div>
 
           {/* Row 2: Sub-toolbar for Version History & Viewing/Export Tools */}
-          <div className="flex items-center justify-between w-full flex-wrap gap-2 pt-2 border-t border-slate-200/80">
+          <div className="flex items-center justify-between w-full gap-2 pt-2 border-t border-slate-200/80 overflow-x-auto custom-scrollbar pb-1">
             {/* Left Side: Version / Revision Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 max-w-full">
+            <div className="flex items-center gap-1 md:gap-1.5 py-0.5 shrink-0">
               {siblingQuotations && siblingQuotations.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">Phiên bản:</span>
+                <div className="flex items-center gap-1 md:gap-1.5">
+                  <span className="hidden md:inline text-[10px] text-slate-500 font-bold uppercase tracking-wider whitespace-nowrap">Phiên bản:</span>
                   {siblingQuotations.map((sibling, idx) => {
                     const isActive = sibling.id === quotation.id;
                     return (
@@ -1490,7 +1491,7 @@ export function QuotationPreview({
                           type="button"
                           onClick={() => onSwitchQuotation && onSwitchQuotation(sibling)}
                           className={cn(
-                            "px-2.5 py-1 text-[10.5px] font-bold cursor-pointer transition-all border-none flex items-center gap-1",
+                            "px-2 py-1 text-[10px] md:text-[10.5px] font-bold cursor-pointer transition-all border-none flex items-center gap-1",
                             isActive 
                               ? "bg-primary text-primary-foreground font-black" 
                               : "bg-white text-slate-700 hover:bg-slate-100"
@@ -1506,7 +1507,7 @@ export function QuotationPreview({
                               onDeleteQuotation(sibling.id);
                             }}
                             className={cn(
-                              "px-1.5 py-1 text-[10px] font-bold cursor-pointer transition-all border-none border-l flex items-center justify-center",
+                              "px-1 py-1 text-[9px] md:text-[10px] font-bold cursor-pointer transition-all border-none border-l flex items-center justify-center",
                               isActive 
                                 ? "bg-primary text-primary-foreground/80 hover:bg-red-600 hover:text-white border-primary-foreground/20" 
                                 : "bg-white text-slate-400 border-slate-200 hover:bg-red-50 hover:text-red-600"
@@ -1526,10 +1527,11 @@ export function QuotationPreview({
                         onClose();
                         onCreateNewVersion(quotation);
                       }}
-                      className="px-2.5 py-1 text-[10.5px] font-bold rounded-lg cursor-pointer bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all flex items-center gap-1 shrink-0 shadow-sm"
+                      className="px-2 py-1 text-[10px] md:text-[10.5px] font-bold rounded-lg cursor-pointer bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all flex items-center gap-1 shrink-0 shadow-sm"
                       title="Tạo bản báo giá mới (Lần tiếp theo) dựa trên bản này"
                     >
-                      + Bản Mới
+                      <Plus className="h-3 w-3 md:hidden" />
+                      <span className="hidden md:inline">+ Bản Mới</span>
                     </button>
                   )}
                 </div>
@@ -1537,61 +1539,64 @@ export function QuotationPreview({
             </div>
 
             {/* Right Side: Language Switcher, Exchange Rate, Zoom, & Export Action Buttons */}
-            <div className="flex items-center gap-2 flex-wrap ml-auto">
+            <div className="flex items-center gap-1.5 md:gap-2 ml-auto shrink-0">
               {/* Language Toggle */}
-              <div className="flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm">
+              <div className="flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm shrink-0">
                 <button
                   type="button"
                   onClick={() => setLang('vi')}
                   className={cn(
-                    "h-7 px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
+                    "h-7 px-1.5 md:px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
                     lang === 'vi' ? "bg-purple-600 text-white shadow-sm font-black" : "text-slate-600 hover:bg-slate-100"
                   )}
                   title="Tiếng Việt"
                 >
-                  🇻🇳 VIE
+                  <span className="hidden md:inline">🇻🇳 VIE</span>
+                  <span className="md:hidden">🇻🇳</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setLang('en')}
                   className={cn(
-                    "h-7 px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
+                    "h-7 px-1.5 md:px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
                     lang === 'en' ? "bg-purple-600 text-white shadow-sm font-black" : "text-slate-600 hover:bg-slate-100"
                   )}
                   title="English"
                 >
-                  🇬🇧 ENG
+                  <span className="hidden md:inline">🇬🇧 ENG</span>
+                  <span className="md:hidden">🇬🇧</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setLang('km')}
                   className={cn(
-                    "h-7 px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
+                    "h-7 px-1.5 md:px-2 text-[10px] md:text-xs font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none",
                     lang === 'km' ? "bg-purple-600 text-white shadow-sm font-black" : "text-slate-600 hover:bg-slate-100"
                   )}
                   title="Tiếng Campuchia (Khmer)"
                 >
-                  🇰🇭 KHM
+                  <span className="hidden md:inline">🇰🇭 KHM</span>
+                  <span className="md:hidden">🇰🇭</span>
                 </button>
               </div>
 
               {/* Exchange Rate Input */}
               {lang !== 'vi' && (
-                <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg px-2 py-0.5 text-xs font-bold shadow-sm">
-                  <span className="whitespace-nowrap text-[10px]">💵 1$ =</span>
+                <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg px-1.5 md:px-2 py-0.5 text-xs font-bold shadow-sm shrink-0">
+                  <span className="whitespace-nowrap text-[9px] md:text-[10px]">💵 1$ =</span>
                   <input
                     type="number"
                     value={exchangeRate}
                     onChange={(e) => setExchangeRate(Math.max(1, Number(e.target.value) || 25400))}
-                    className="w-16 px-1 py-0.5 text-center bg-white border border-amber-300 rounded font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 text-[11px]"
+                    className="w-12 md:w-16 px-1 py-0.5 text-center bg-white border border-amber-300 rounded font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 text-[10px] md:text-[11px]"
                     title="Nhập tỷ giá 1 USD đổi ra bao nhiêu VNĐ"
                   />
-                  <span className="text-[9px] text-amber-700 font-black">VND</span>
+                  <span className="text-[8px] md:text-[9px] text-amber-700 font-black">VND</span>
                 </div>
               )}
 
               {/* Zoom Controls */}
-              <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm h-7">
+              <div className="hidden md:flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm h-7 shrink-0">
                 <button type="button" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="h-full px-2 text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center" title="Thu nhỏ">
                   <ZoomOut className="h-3.5 w-3.5" />
                 </button>
@@ -1604,17 +1609,16 @@ export function QuotationPreview({
               </div>
 
               {/* Export Actions Group */}
-              <div className="flex items-center gap-1.5 pl-1 border-l border-slate-300">
+              <div className="flex items-center gap-1 md:gap-1.5 pl-1.5 border-l border-slate-300 shrink-0">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handlePrint} 
                   disabled={isPreloading} 
-                  className="h-8 px-2.5 gap-1.5 font-bold border-slate-300 hover:bg-slate-100 text-xs shadow-sm"
+                  className="h-8 px-2 md:px-2.5 gap-1 md:gap-1.5 font-bold border-slate-300 hover:bg-slate-100 text-xs shadow-sm"
                 >
                   <Printer className="h-3.5 w-3.5 text-slate-700" />
-                  <span className="hidden sm:inline">In báo giá</span>
-                  <span className="sm:hidden">In</span>
+                  <span className="hidden md:inline">In báo giá</span>
                 </Button>
 
                 <Button 
@@ -1622,11 +1626,10 @@ export function QuotationPreview({
                   size="sm" 
                   onClick={handleExportExcel}
                   disabled={isExporting || isPreloading}
-                  className="h-8 px-2.5 gap-1.5 font-bold border-green-300 text-green-700 hover:bg-green-50 text-xs shadow-sm"
+                  className="h-8 px-2 md:px-2.5 gap-1 md:gap-1.5 font-bold border-green-300 text-green-700 hover:bg-green-50 text-xs shadow-sm"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" />
-                  <span className="hidden sm:inline">Tải Excel</span>
-                  <span className="sm:hidden">Excel</span>
+                  <span className="hidden md:inline">Tải Excel</span>
                 </Button>
 
                 <Button 
@@ -1634,14 +1637,16 @@ export function QuotationPreview({
                   size="sm" 
                   onClick={handleDownloadPDF}
                   disabled={isExporting || isPreloading}
-                  className="h-8 px-3 gap-1.5 font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-sm"
+                  className="h-8 px-2 md:px-3 gap-1 md:gap-1.5 font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs shadow-sm"
                 >
                   {isExporting || isPreloading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <Download className="h-3.5 w-3.5" />
                   )}
-                  {isExporting ? 'Đang tạo...' : (isPreloading ? 'Đang tải...' : 'Tải PDF')}
+                  <span className="hidden md:inline">
+                    {isExporting ? 'Đang tạo...' : (isPreloading ? 'Đang tải...' : 'Tải PDF')}
+                  </span>
                 </Button>
               </div>
             </div>
