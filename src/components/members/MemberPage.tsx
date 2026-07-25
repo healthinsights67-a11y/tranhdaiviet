@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Member, Task, WORKSHOPS, MemberPermissions, getWorkshopName } from '@/src/types';
+import { Member, Task, WORKSHOPS, MemberPermissions, getWorkshopName, getNormalizedWorkshopId } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -318,9 +318,7 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
                     <div className="grid gap-1.5">
                       <Label className="text-xs">Cơ sở</Label>
                       <Select 
-                        value={((newMember.workshop === 'CoSo1' || newMember.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                               (newMember.workshop === 'CoSo2' || newMember.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                               newMember.workshop) || 'all'} 
+                        value={getNormalizedWorkshopId(newMember.workshop)} 
                         onValueChange={(v) => setNewMember({ ...newMember, workshop: v })}
                       >
                         <SelectTrigger className="h-9 text-xs">
@@ -489,9 +487,7 @@ export function MemberPage({ members, setMembers, tasks, user, currentUser }: Me
                 <div className="grid gap-1.5">
                   <Label className="text-xs">Cơ sở</Label>
                   <Select 
-                    value={((editingMember.workshop === 'CoSo1' || editingMember.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                           (editingMember.workshop === 'CoSo2' || editingMember.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                           (editingMember.workshop || 'all')) || 'all'} 
+                    value={getNormalizedWorkshopId(editingMember.workshop)} 
                     onValueChange={(v) => setEditingMember({ ...editingMember, workshop: v })}
                   >
                     <SelectTrigger className="h-9 text-xs">

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
-import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, Quotation, MeasurementSchedule } from '@/src/types';
+import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, getNormalizedWorkshopId, updateCodePrefix, Quotation, MeasurementSchedule } from '@/src/types';
 import { sendSystemNotification, getBotNotificationConfig, sendZaloTestMessage } from '@/src/services/botNotificationService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ import {
   Calendar,
   Palette, 
   Factory, Package, 
-  UserCheck, Users, Target, Map, LayoutGrid, Upload, Download
+  UserCheck, Users, Target, Map, LayoutGrid, Upload, Download, RefreshCw
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
 import { LocationPickerDialog } from '../maps/LocationPickerDialog';
@@ -74,6 +74,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { db, collection, addDoc, updateDoc, deleteDoc, doc, handleFirestoreError, OperationType, getDocs, query, where } from '@/src/lib/firebase';
+import { writeBatch } from 'firebase/firestore';
 import { notifyManagers } from '@/src/services/notificationService';
 import { moveToTrash } from '@/src/services/trashService';
 import { fetchSystemSettings, updateSystemSettings } from '@/src/services/dataService';
@@ -192,7 +193,14 @@ export function CustomerPage({
           else if (stageStr.toLowerCase().includes('tạm dừng')) stage = 'lost';
 
           const newId = Math.random().toString(36).substr(2, 9);
-          const newCode = `KH${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          const rowWorkshop = row['Cơ sở'] || row['Workshop'] || row['Xưởng'] || '';
+          const finalWs = rowWorkshop ? getNormalizedWorkshopId(rowWorkshop) : (currentUser?.workshop && currentUser?.workshop !== 'all' ? getNormalizedWorkshopId(currentUser.workshop) : 'Hà Nội');
+          
+          let prefix = 'HN';
+          if (finalWs === 'Cần Thơ') prefix = 'CT';
+          else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
+
+          const newCode = `${prefix}${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
           
           await addDoc(collection(db, 'customers'), {
             id: newId,
@@ -203,6 +211,7 @@ export function CustomerPage({
             stage,
             notes,
             assignedSaleId: currentUser?.id || '',
+            workshop: finalWs,
             createdAt: nowStr,
             orderValue: 0
           });
@@ -618,14 +627,124 @@ export function CustomerPage({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
   };
 
+  const runMigration = async () => {
+    const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('admin');
+    if (!isManager) {
+      toast.error("Chỉ quản trị viên hoặc quản lý mới có quyền thực hiện đồng bộ dữ liệu.");
+      return;
+    }
+
+    const toastId = toast.loading("Đang chuẩn hoá mã khách hàng & cơ sở...");
+    try {
+      const batch = writeBatch(db);
+      let count = 0;
+      
+      for (const customer of customers) {
+        let changed = false;
+        const updatePayload: any = {};
+        
+        // 1. Normalize workshop
+        let newWorkshop = customer.workshop;
+        if (customer.workshop) {
+          const cleanWs = customer.workshop.trim();
+          if (cleanWs === 'CoSo1' || cleanWs === 'XuongGo' || cleanWs === 'Cơ Sở 1') {
+            newWorkshop = 'Hà Nội';
+          } else if (cleanWs === 'CoSo2' || cleanWs === 'XuongNhua' || cleanWs === 'Cơ Sở 2') {
+            newWorkshop = 'Cần Thơ';
+          } else if (cleanWs === 'CoSo3' || cleanWs === 'Cơ Sở 3') {
+            newWorkshop = 'Đồng Nai';
+          }
+        } else {
+          newWorkshop = 'Hà Nội';
+        }
+        
+        if (newWorkshop !== customer.workshop) {
+          updatePayload.workshop = newWorkshop;
+          changed = true;
+        }
+        
+        // 2. Normalize customer code prefix
+        const code = customer.code;
+        if (code) {
+          let newPrefix = 'HN';
+          if (newWorkshop === 'Cần Thơ') newPrefix = 'CT';
+          else if (newWorkshop === 'Đồng Nai') newPrefix = 'ĐN';
+          
+          if (code.startsWith('KH')) {
+            updatePayload.code = code.replace(/^KH/, newPrefix);
+            changed = true;
+          } else if (!code.startsWith('HN') && !code.startsWith('CT') && !code.startsWith('ĐN')) {
+            const cleanCode = code.replace(/^([a-zA-ZÀ-Ỹà-ỹ\s]+)?/u, '');
+            updatePayload.code = `${newPrefix}${cleanCode}`;
+            changed = true;
+          }
+        } else {
+          let newPrefix = 'HN';
+          if (newWorkshop === 'Cần Thơ') newPrefix = 'CT';
+          else if (newWorkshop === 'Đồng Nai') newPrefix = 'ĐN';
+          const indexStr = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+          updatePayload.code = `${newPrefix}${indexStr}_${customer.name || 'UnNamed'}`;
+          changed = true;
+        }
+        
+        if (changed) {
+          const docRef = doc(db, 'customers', customer.id);
+          batch.update(docRef, updatePayload);
+          count++;
+        }
+      }
+      
+      // Also migrate members workshop names
+      for (const member of members) {
+        if (member.workshop) {
+          const cleanWs = member.workshop.trim();
+          let newWorkshop = member.workshop;
+          if (cleanWs === 'CoSo1' || cleanWs === 'XuongGo' || cleanWs === 'Cơ Sở 1') {
+            newWorkshop = 'Hà Nội';
+          } else if (cleanWs === 'CoSo2' || cleanWs === 'XuongNhua' || cleanWs === 'Cơ Sở 2') {
+            newWorkshop = 'Cần Thơ';
+          } else if (cleanWs === 'CoSo3' || cleanWs === 'Cơ Sở 3') {
+            newWorkshop = 'Đồng Nai';
+          }
+          
+          if (newWorkshop !== member.workshop) {
+            const docRef = doc(db, 'members', member.id);
+            batch.update(docRef, { workshop: newWorkshop });
+            count++;
+          }
+        }
+      }
+      
+      if (count > 0) {
+        await batch.commit();
+        toast.success(`Đã chuẩn hoá đồng bộ thành công ${count} bản ghi!`, { id: toastId });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast.info("Tất cả mã khách hàng & cơ sở đã được chuẩn hoá trước đó.", { id: toastId });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi đồng bộ dữ liệu: " + (err instanceof Error ? err.message : String(err)), { id: toastId });
+    }
+  };
+
   const handleAddCustomer = async () => {
     if (!newCustomer.name || !newCustomer.phone) {
       toast.error("Vui lòng nhập tên và số điện thoại");
       return;
     }
 
-    const codeIndex = String(customers.length + 1).padStart(3, '0');
-    const customerCode = `KH${codeIndex}_${newCustomer.name}`;
+    const normalizedWs = getNormalizedWorkshopId(newCustomer.workshop);
+    const wsCustomers = customers.filter(c => getNormalizedWorkshopId(c.workshop) === normalizedWs);
+    const codeIndex = String(wsCustomers.length + 1).padStart(3, '0');
+    
+    let prefix = 'HN';
+    if (normalizedWs === 'Cần Thơ') prefix = 'CT';
+    else if (normalizedWs === 'Đồng Nai') prefix = 'ĐN';
+    
+    const customerCode = `${prefix}${codeIndex}_${newCustomer.name}`;
 
     const nowStr = new Date().toISOString();
     let finalLocation = newCustomer.location;
@@ -1484,9 +1603,7 @@ export function CustomerPage({
             </PopoverContent>
           </Popover>
           <Select 
-            value={((selectedWorkshop === 'CoSo1' || selectedWorkshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                   (selectedWorkshop === 'CoSo2' || selectedWorkshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                   selectedWorkshop) || 'all'} 
+            value={getNormalizedWorkshopId(selectedWorkshop)} 
             onValueChange={setSelectedWorkshop}
             disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
           >
@@ -1548,6 +1665,17 @@ export function CustomerPage({
             <Download className="h-3.5 w-3.5" />
             <span className="hidden md:inline">Xuất Excel</span>
           </Button>
+
+          {isManager && (
+            <Button 
+              variant="outline"
+              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100"
+              onClick={runMigration}
+            >
+              <RefreshCw className="h-3.5 w-3.5 animate-spin-slow" />
+              <span className="hidden md:inline">Đồng bộ mã & cơ sở</span>
+            </Button>
+          )}
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger 
@@ -1623,9 +1751,7 @@ export function CustomerPage({
                     <div className="grid gap-2">
                       <Label>Cơ sở phụ trách</Label>
                       <Select 
-                        value={((newCustomer.workshop === 'CoSo1' || newCustomer.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                               (newCustomer.workshop === 'CoSo2' || newCustomer.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                               newCustomer.workshop) || 'all'} 
+                        value={getNormalizedWorkshopId(newCustomer.workshop)} 
                         onValueChange={(v) => setNewCustomer({ ...newCustomer, workshop: v })}
                         disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
                       >
@@ -2332,10 +2458,11 @@ export function CustomerPage({
                     <div className="grid gap-2">
                       <Label>Cơ sở phụ trách</Label>
                       <Select 
-                        value={((selectedCustomer.workshop === 'CoSo1' || selectedCustomer.workshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                               (selectedCustomer.workshop === 'CoSo2' || selectedCustomer.workshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                               (selectedCustomer.workshop || WORKSHOPS[1].id)) || 'all'} 
-                        onValueChange={(v) => setSelectedCustomer({ ...selectedCustomer, workshop: v })}
+                        value={getNormalizedWorkshopId(selectedCustomer.workshop)} 
+                        onValueChange={(v) => {
+                          const updatedCode = updateCodePrefix(selectedCustomer.code || '', v, selectedCustomer.name);
+                          setSelectedCustomer({ ...selectedCustomer, workshop: v, code: updatedCode });
+                        }}
                         disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
                       >
                         <SelectTrigger className="h-11 rounded-xl">

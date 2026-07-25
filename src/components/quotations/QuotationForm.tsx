@@ -621,14 +621,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
     if (customer) {
       let newQuotationNumber = formData.quotationNumber;
       if (customer.code) {
-        const baseCode = customer.code.split('-')[0].trim();
-        let finalCode = baseCode;
-        if (baseCode.startsWith('K') && !baseCode.startsWith('KH')) {
-          finalCode = baseCode.replace(/^K/, 'KH');
-        } else if (!baseCode.startsWith('KH')) {
-          finalCode = `KH${baseCode}`;
-        }
-        newQuotationNumber = `BG-${finalCode}`;
+        const baseCode = customer.code.split(/[_-]/)[0].trim();
+        newQuotationNumber = `BG-${baseCode}`;
       }
 
       setFormData({
@@ -847,7 +841,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                       <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                       <Input 
                         className="pl-9 h-9 w-full bg-white font-mono "
-                        placeholder="Vd: BG-KH060"
+                        placeholder="Vd: BG-HN060"
                         value={formData.quotationNumber} 
                         onChange={(e) => setFormData({ ...formData, quotationNumber: e.target.value })}
                       />

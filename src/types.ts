@@ -148,18 +148,45 @@ export interface Task {
 
 export const WORKSHOPS = [
   { id: 'all', name: 'Tất cả cơ sở' },
-  { id: 'Cơ Sở 1', name: 'Cơ Sở 1' },
-  { id: 'Cơ Sở 2', name: 'Cơ Sở 2' }
+  { id: 'Hà Nội', name: 'Hà Nội' },
+  { id: 'Cần Thơ', name: 'Cần Thơ' },
+  { id: 'Đồng Nai', name: 'Đồng Nai' }
 ];
+
+export const getNormalizedWorkshopId = (id?: string) => {
+  if (!id || id === 'all') return 'all';
+  const cleanId = id.trim();
+  if (cleanId === 'CoSo1' || cleanId === 'XuongGo' || cleanId === 'Cơ Sở 1' || cleanId === 'Hà Nội') return 'Hà Nội';
+  if (cleanId === 'CoSo2' || cleanId === 'XuongNhua' || cleanId === 'Cơ Sở 2' || cleanId === 'Cần Thơ') return 'Cần Thơ';
+  if (cleanId === 'CoSo3' || cleanId === 'Cơ Sở 3' || cleanId === 'Đồng Nai') return 'Đồng Nai';
+  return cleanId;
+};
 
 export const getWorkshopName = (id?: string) => {
   if (!id || id === 'all') return 'Tất cả cơ sở';
-  const found = WORKSHOPS.find(w => w.id === id);
+  const normalized = getNormalizedWorkshopId(id);
+  const found = WORKSHOPS.find(w => w.id === normalized);
   if (found) return found.name;
-  // Fallback for legacy IDs
-  if (id === 'CoSo1' || id === 'XuongGo') return 'Cơ Sở 1';
-  if (id === 'CoSo2' || id === 'XuongNhua') return 'Cơ Sở 2';
   return id;
+};
+
+export const updateCodePrefix = (currentCode: string, newWorkshopId: string, customerName: string) => {
+  const normWs = getNormalizedWorkshopId(newWorkshopId);
+  let newPrefix = 'HN';
+  if (normWs === 'Cần Thơ') newPrefix = 'CT';
+  else if (normWs === 'Đồng Nai') newPrefix = 'ĐN';
+  
+  if (!currentCode) {
+    return `${newPrefix}001_${customerName}`;
+  }
+  
+  // Match prefix like KH, HN, CT, ĐN or any letters followed by digits
+  const match = currentCode.match(/^([a-zA-ZÀ-Ỹà-ỹ\s]+)?(\d+)(.*)$/u);
+  if (match) {
+    const [, , digits, rest] = match;
+    return `${newPrefix}${digits}${rest}`;
+  }
+  return `${newPrefix}${currentCode.replace(/^([a-zA-ZÀ-Ỹà-ỹ\s]+)?/u, '')}`;
 };
 
 export interface Notification {

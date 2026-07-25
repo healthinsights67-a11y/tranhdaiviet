@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency, calculateKPIScore } from '@/src/lib/utils';
+import { WORKSHOPS, getNormalizedWorkshopId } from '@/src/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartInsights } from '../dashboard/SmartInsights';
 
@@ -295,9 +296,9 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
 
   // Workshop conversion rate calculation
   const workshopStats = React.useMemo(() => {
-    const workshops = ['Cơ Sở 1', 'Cơ Sở 2'];
+    const workshops = WORKSHOPS.filter(w => w.id !== 'all').map(w => w.id);
     return workshops.map(ws => {
-      const wsCustomers = filteredCustomers.filter(c => c.workshop === ws);
+      const wsCustomers = filteredCustomers.filter(c => getNormalizedWorkshopId(c.workshop) === ws);
       const totalCount = wsCustomers.length;
       const contractedCount = wsCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
       const conversionRate = totalCount > 0 ? (contractedCount / totalCount) * 100 : 0;

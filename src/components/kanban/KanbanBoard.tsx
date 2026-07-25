@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { useQueryClient } from '@tanstack/react-query';
-import { Task, Status, Member, Customer, WORKSHOPS, getWorkshopName } from '@/src/types';
+import { Task, Status, Member, Customer, WORKSHOPS, getWorkshopName, getNormalizedWorkshopId } from '@/src/types';
 import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { createPortal } from 'react-dom';
@@ -726,9 +726,7 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
         </div>
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 w-full md:w-auto">
           <Select 
-            value={((selectedWorkshop === 'CoSo1' || selectedWorkshop === 'XuongGo') ? 'Cơ Sở 1' : 
-                   (selectedWorkshop === 'CoSo2' || selectedWorkshop === 'XuongNhua') ? 'Cơ Sở 2' : 
-                   selectedWorkshop) || 'all'} 
+            value={getNormalizedWorkshopId(selectedWorkshop)} 
             onValueChange={setSelectedWorkshop}
             disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
           >
@@ -808,7 +806,7 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
                   <div className="grid gap-2">
                     <Label>Cơ sở</Label>
                     <Select 
-                      value={newTask.workshop || 'all'} 
+                      value={getNormalizedWorkshopId(newTask.workshop)} 
                       onValueChange={(v: any) => setNewTask({ ...newTask, workshop: v })}
                       disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
                     >
