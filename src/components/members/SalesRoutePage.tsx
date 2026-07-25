@@ -226,6 +226,10 @@ export function SalesRoutePage() {
           const newId = Math.random().toString(36).substr(2, 9);
           const newCode = `KH${new Date().getFullYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
           
+          const customerWorkshop = currentMember?.workshop && currentMember.workshop !== 'all' 
+            ? currentMember.workshop 
+            : 'Hà Nội';
+
           customerPayload = {
             id: newId,
             code: newCode,
@@ -236,7 +240,9 @@ export function SalesRoutePage() {
             notes: noteInput.trim() || 'Khách hàng tự động tạo từ Check-in',
             assignedSaleId: currentMember ? currentMember.id : '',
             createdAt: now,
-            orderValue: 0
+            consultedAt: now,
+            orderValue: 0,
+            workshop: customerWorkshop
           };
           
           finalCustomerId = newId;

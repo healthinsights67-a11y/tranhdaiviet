@@ -633,7 +633,7 @@ function AppContent() {
     if (!user) return MOCK_CUSTOMERS;
     return customers.filter(c => {
       if (isWorkshopRestricted) {
-        const customerWorkshopName = getWorkshopName(c.workshop);
+        const customerWorkshopName = getWorkshopName(c.workshop || 'Hà Nội');
         const userWorkshopName = getWorkshopName(userWorkshop);
         if (customerWorkshopName !== userWorkshopName) {
           return false;

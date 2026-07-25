@@ -200,21 +200,27 @@ export function CustomerPage({
           if (finalWs === 'Cần Thơ') prefix = 'CT';
           else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
 
-          const newCode = `${prefix}${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-          
-          await addDoc(collection(db, 'customers'), {
-            id: newId,
-            code: newCode,
-            name,
-            phone: String(phone),
-            address,
-            stage,
-            notes,
-            assignedSaleId: currentUser?.id || '',
-            workshop: finalWs,
-            createdAt: nowStr,
-            orderValue: 0
-          });
+           const newCode = `${prefix}${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+           const needsStageUpdateAfterCreate = ['production', 'installation', 'completed'].includes(stage);
+           const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
+
+           const docRef = await addDoc(collection(db, 'customers'), {
+             id: newId,
+             code: newCode,
+             name,
+             phone: String(phone),
+             address,
+             stage: initialStage,
+             notes,
+             assignedSaleId: currentUser?.id || '',
+             workshop: finalWs,
+             createdAt: nowStr,
+             orderValue: 0
+           });
+
+          if (needsStageUpdateAfterCreate) {
+            await updateDoc(doc(db, 'customers', docRef.id), { stage });
+          }
           importedCount++;
         }
 
@@ -771,8 +777,12 @@ export function CustomerPage({
       finalNextContactDate = tomorrow.toISOString().split('T')[0];
     }
 
+    const needsStageUpdateAfterCreate = ['production', 'installation', 'completed'].includes(newCustomer.stage);
+    const initialStage = needsStageUpdateAfterCreate ? 'consulting' : newCustomer.stage;
+
     const customerData = {
       ...newCustomer,
+      stage: initialStage,
       location: validLocation,
       code: customerCode,
       createdAt: nowStr,
@@ -801,6 +811,10 @@ export function CustomerPage({
       if (user) {
         const docRef = await addDoc(collection(db, 'customers'), customerData);
         createdCustomerId = docRef.id;
+
+        if (needsStageUpdateAfterCreate) {
+          await updateDoc(doc(db, 'customers', createdCustomerId), { stage: newCustomer.stage });
+        }
         
         // Notify managers about the new customer
         notifyManagers(
@@ -1438,7 +1452,7 @@ export function CustomerPage({
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(c => {
-      const matchWorkshop = selectedWorkshop === 'all' || c.workshop === selectedWorkshop;
+      const matchWorkshop = selectedWorkshop === 'all' || (c.workshop || 'Hà Nội') === selectedWorkshop;
       const matchStage = selectedStage === 'all' || c.stage === selectedStage;
       const matchSale = selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId;
       
