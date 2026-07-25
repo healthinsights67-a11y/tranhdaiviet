@@ -830,7 +830,40 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                         className="pl-9 h-9 w-full bg-white"
                         placeholder="09xx xxx xxx"
                         value={formData.phone} 
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => {
+                          const inputVal = e.target.value;
+                          const cleanVal = inputVal.trim().replace(/\D/g, '');
+                          
+                          // Look for matching customer SĐT
+                          let matchedCustomer = null;
+                          if (cleanVal.length >= 9) {
+                            matchedCustomer = customers.find(c => c.phone.trim().replace(/\D/g, '') === cleanVal);
+                          }
+                          
+                          if (matchedCustomer) {
+                            // Extract quotation number prefix from customer code
+                            let newQuotationNumber = formData.quotationNumber;
+                            if (matchedCustomer.code) {
+                              const baseCode = matchedCustomer.code.split(/[_-]/)[0].trim();
+                              newQuotationNumber = `BG-${baseCode}`;
+                            }
+                            
+                            setFormData({
+                              ...formData,
+                              phone: inputVal,
+                              customerId: matchedCustomer.id,
+                              customerName: matchedCustomer.name,
+                              address: matchedCustomer.address,
+                              quotationNumber: newQuotationNumber,
+                              constructionType: matchedCustomer.workshop ? `Thi công ${matchedCustomer.workshop}` : formData.constructionType,
+                              workshop: matchedCustomer.workshop || ''
+                            });
+                            
+                            toast.success(`Đã tự động nhận diện khách hàng: ${matchedCustomer.name} (${matchedCustomer.code})`);
+                          } else {
+                            setFormData({ ...formData, phone: inputVal });
+                          }
+                        }}
                       />
                     </div>
                   </div>
