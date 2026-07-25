@@ -1715,6 +1715,20 @@ export function CustomerPage({
                         placeholder="090..."
                         className="h-11 rounded-xl"
                       />
+                      {(() => {
+                        const cleanVal = newCustomer.phone.trim().replace(/\D/g, '');
+                        if (cleanVal.length >= 8) {
+                          const dup = customers.find(c => c.phone.trim().replace(/\D/g, '') === cleanVal);
+                          if (dup) {
+                            return (
+                              <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-1.5 rounded-md border border-amber-200 leading-normal">
+                                ⚠️ SĐT đã tồn tại trên hệ thống (Khách: {dup.name} - {dup.code}). Bạn nên tìm và tạo báo giá mới cho khách cũ này thay vì tạo trùng lặp.
+                              </p>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
                     </div>
                     <div className="grid gap-2 relative">
                       <Label htmlFor="address" className="flex items-center justify-between">
