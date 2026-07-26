@@ -11,8 +11,8 @@ import { useAuth } from '@/src/contexts/AuthContext';
 export function NotificationSettings() {
   const { user } = useAuth();
   const [config, setConfig] = React.useState<BotNotificationConfig>({
-    telegram: { botToken: '', chatId: '', isActive: true },
-    zalo: { botToken: '', chatId: '', isActive: true },
+    telegram: { botToken: '', chatId: '', isActive: true, groups: { customers: '', measurements: '', production: '', design: '' } },
+    zalo: { botToken: '', chatId: '', isActive: true, groups: { customers: '', measurements: '', production: '', design: '' } },
     updatedAt: new Date().toISOString()
   });
   const [isLoading, setIsLoading] = React.useState(true);
@@ -28,8 +28,16 @@ export function NotificationSettings() {
           setConfig(prev => ({
             ...prev,
             ...data,
-            telegram: { ...prev.telegram, ...data.telegram },
-            zalo: { ...prev.zalo, ...data.zalo }
+            telegram: { 
+              ...prev.telegram, 
+              ...data.telegram,
+              groups: { ...prev.telegram?.groups, ...data.telegram?.groups }
+            },
+            zalo: { 
+              ...prev.zalo, 
+              ...data.zalo,
+              groups: { ...prev.zalo?.groups, ...data.zalo?.groups }
+            }
           }));
         }
       } catch (error) {
@@ -120,7 +128,7 @@ export function NotificationSettings() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="telegram-chat-id" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chat ID (Hoặc Group ID)</Label>
+              <Label htmlFor="telegram-chat-id" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chat ID Mặc định</Label>
               <Input
                 id="telegram-chat-id"
                 placeholder="Ví dụ: -100123456789"
@@ -128,6 +136,76 @@ export function NotificationSettings() {
                 onChange={(e) => setConfig(prev => ({ ...prev, telegram: { ...prev.telegram, chatId: e.target.value } }))}
                 className="font-mono text-sm"
               />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Telegram (Tùy chọn)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="telegram-group-customers" className="text-xs text-slate-500 font-medium">Nhóm 1: Data Khách Hàng</Label>
+                <Input
+                  id="telegram-group-customers"
+                  placeholder="ID nhóm chat Data Khách Hàng"
+                  value={config.telegram?.groups?.customers || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    telegram: {
+                      ...prev.telegram!,
+                      groups: { ...prev.telegram?.groups, customers: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="telegram-group-measurements" className="text-xs text-slate-500 font-medium">Nhóm 2: Lịch Đo Đạc</Label>
+                <Input
+                  id="telegram-group-measurements"
+                  placeholder="ID nhóm chat Lịch Đo Đạc"
+                  value={config.telegram?.groups?.measurements || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    telegram: {
+                      ...prev.telegram!,
+                      groups: { ...prev.telegram?.groups, measurements: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="telegram-group-production" className="text-xs text-slate-500 font-medium">Nhóm 3: Lịch Sản Xuất</Label>
+                <Input
+                  id="telegram-group-production"
+                  placeholder="ID nhóm chat Lịch Sản Xuất"
+                  value={config.telegram?.groups?.production || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    telegram: {
+                      ...prev.telegram!,
+                      groups: { ...prev.telegram?.groups, production: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="telegram-group-design" className="text-xs text-slate-500 font-medium">Nhóm 4: Thiết Kế</Label>
+                <Input
+                  id="telegram-group-design"
+                  placeholder="ID nhóm chat Thiết Kế"
+                  value={config.telegram?.groups?.design || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    telegram: {
+                      ...prev.telegram!,
+                      groups: { ...prev.telegram?.groups, design: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
@@ -169,7 +247,7 @@ export function NotificationSettings() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="zalo-chat-id" className="text-xs font-bold text-slate-500 uppercase tracking-wider">User ID Zalo Test</Label>
+              <Label htmlFor="zalo-chat-id" className="text-xs font-bold text-slate-500 uppercase tracking-wider">User ID Zalo Test Mặc định</Label>
               <Input
                 id="zalo-chat-id"
                 placeholder="Ví dụ: 1234567890123456"
@@ -177,6 +255,76 @@ export function NotificationSettings() {
                 onChange={(e) => setConfig(prev => ({ ...prev, zalo: { ...prev.zalo, chatId: e.target.value } }))}
                 className="font-mono text-sm"
               />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Zalo (Tùy chọn)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="zalo-group-customers" className="text-xs text-slate-500 font-medium">Nhóm 1: Data Khách Hàng</Label>
+                <Input
+                  id="zalo-group-customers"
+                  placeholder="ID nhóm Zalo Data Khách Hàng"
+                  value={config.zalo?.groups?.customers || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    zalo: {
+                      ...prev.zalo!,
+                      groups: { ...prev.zalo?.groups, customers: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="zalo-group-measurements" className="text-xs text-slate-500 font-medium">Nhóm 2: Lịch Đo Đạc</Label>
+                <Input
+                  id="zalo-group-measurements"
+                  placeholder="ID nhóm Zalo Lịch Đo Đạc"
+                  value={config.zalo?.groups?.measurements || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    zalo: {
+                      ...prev.zalo!,
+                      groups: { ...prev.zalo?.groups, measurements: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="zalo-group-production" className="text-xs text-slate-500 font-medium">Nhóm 3: Lịch Sản Xuất</Label>
+                <Input
+                  id="zalo-group-production"
+                  placeholder="ID nhóm Zalo Lịch Sản Xuất"
+                  value={config.zalo?.groups?.production || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    zalo: {
+                      ...prev.zalo!,
+                      groups: { ...prev.zalo?.groups, production: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="zalo-group-design" className="text-xs text-slate-500 font-medium">Nhóm 4: Thiết Kế</Label>
+                <Input
+                  id="zalo-group-design"
+                  placeholder="ID nhóm Zalo Thiết Kế"
+                  value={config.zalo?.groups?.design || ''}
+                  onChange={(e) => setConfig(prev => ({
+                    ...prev,
+                    zalo: {
+                      ...prev.zalo!,
+                      groups: { ...prev.zalo?.groups, design: e.target.value }
+                    }
+                  }))}
+                  className="font-mono text-xs h-9"
+                />
+              </div>
             </div>
           </div>
           

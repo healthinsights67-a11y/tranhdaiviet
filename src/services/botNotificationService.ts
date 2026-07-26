@@ -112,11 +112,11 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
   }
 }
 
-/**
- * Send a notification to all enabled bot platforms
- */
-export async function sendSystemNotification(message: string): Promise<void> {
-  console.log('sendSystemNotification called with message:', message);
+export async function sendSystemNotification(
+  message: string,
+  module?: 'customers' | 'measurements' | 'production' | 'design'
+): Promise<void> {
+  console.log(`sendSystemNotification called for module ${module} with message:`, message);
   try {
     const config = await getBotNotificationConfig();
     console.log('Fetched bot config:', config);
@@ -125,29 +125,43 @@ export async function sendSystemNotification(message: string): Promise<void> {
     const promises: Promise<any>[] = [];
 
     // Send to Telegram if enabled
-    if (config.telegram?.isActive !== false && config.telegram.botToken && config.telegram.chatId) {
-      console.log('Sending to Telegram...');
-      const chatIds = config.telegram.chatId.split(',').map(id => id.trim()).filter(id => !!id);
-      chatIds.forEach(id => {
-        promises.push(
-          sendTelegramTestMessage(config.telegram.botToken, id, message)
-            .then(() => console.log(`Telegram message sent successfully to ${id}!`))
-            .catch(err => console.error(`Failed to send Telegram notification to ${id}:`, err))
-        );
-      });
+    if (config.telegram?.isActive !== false && config.telegram.botToken) {
+      let targetChatId = config.telegram.chatId || '';
+      if (module && config.telegram.groups?.[module]) {
+        targetChatId = config.telegram.groups[module]!;
+      }
+
+      if (targetChatId) {
+        console.log('Sending to Telegram...');
+        const chatIds = targetChatId.split(',').map(id => id.trim()).filter(id => !!id);
+        chatIds.forEach(id => {
+          promises.push(
+            sendTelegramTestMessage(config.telegram.botToken!, id, message)
+              .then(() => console.log(`Telegram message sent successfully to ${id}!`))
+              .catch(err => console.error(`Failed to send Telegram notification to ${id}:`, err))
+          );
+        });
+      }
     }
 
     // Send to Zalo if enabled
-    if (config.zalo?.isActive !== false && config.zalo.botToken && config.zalo.chatId) {
-      console.log('Sending to Zalo...');
-      const chatIds = config.zalo.chatId.split(',').map(id => id.trim()).filter(id => !!id);
-      chatIds.forEach(id => {
-        promises.push(
-          sendZaloTestMessage(config.zalo.botToken, id, message)
-            .then(() => console.log(`Zalo message sent successfully to ${id}!`))
-            .catch(err => console.error(`Failed to send Zalo notification to ${id}:`, err))
-        );
-      });
+    if (config.zalo?.isActive !== false && config.zalo.botToken) {
+      let targetChatId = config.zalo.chatId || '';
+      if (module && config.zalo.groups?.[module]) {
+        targetChatId = config.zalo.groups[module]!;
+      }
+
+      if (targetChatId) {
+        console.log('Sending to Zalo...');
+        const chatIds = targetChatId.split(',').map(id => id.trim()).filter(id => !!id);
+        chatIds.forEach(id => {
+          promises.push(
+            sendZaloTestMessage(config.zalo.botToken!, id, message)
+              .then(() => console.log(`Zalo message sent successfully to ${id}!`))
+              .catch(err => console.error(`Failed to send Zalo notification to ${id}:`, err))
+          );
+        });
+      }
     }
 
     await Promise.allSettled(promises);

@@ -300,11 +300,23 @@ export const BotNotificationConfigSchema = z.object({
     botToken: z.string().optional(),
     chatId: z.string().optional(),
     isActive: z.boolean().optional(),
+    groups: z.object({
+      customers: z.string().optional(),
+      measurements: z.string().optional(),
+      production: z.string().optional(),
+      design: z.string().optional(),
+    }).optional(),
   }).optional(),
   zalo: z.object({
     botToken: z.string().optional(),
     chatId: z.string().optional(),
     isActive: z.boolean().optional(),
+    groups: z.object({
+      customers: z.string().optional(),
+      measurements: z.string().optional(),
+      production: z.string().optional(),
+      design: z.string().optional(),
+    }).optional(),
   }).optional(),
   updatedAt: timestampSchema,
   updatedBy: z.string().optional(),

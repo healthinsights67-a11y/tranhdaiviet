@@ -340,7 +340,7 @@ export function QuotationPage({
           const moreItemsText = data.items.length > 5 ? `\n... và ${data.items.length - 5} hạng mục khác` : '';
 
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`✏️ Cập nhật báo giá!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
+          sendSystemNotification(`✏️ Cập nhật báo giá!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền mới: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`, 'customers');
 
           // Automatically update customer order value
           if (data.customerId) {
@@ -367,7 +367,7 @@ export function QuotationPage({
           const moreItemsText = data.items.length > 5 ? `\n... và ${data.items.length - 5} hạng mục khác` : '';
 
           // Send to external bot platforms (Zalo/Telegram)
-          sendSystemNotification(`📄 Báo giá mới!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n📝 Trạng thái: Bản nháp\n\nĐược tạo bởi: ${user?.displayName || 'Hệ thống'}`);
+          sendSystemNotification(`📄 Báo giá mới!\n\n👤 Khách hàng: ${data.customerName}\n💰 Tổng tiền: ${formatCurrency(data.totalAmount || 0)}\n📦 Hạng mục:\n${itemsListText}${moreItemsText}\n📝 Trạng thái: Bản nháp\n\nĐược tạo bởi: ${user?.displayName || 'Hệ thống'}`, 'customers');
 
           // Automatically update customer order value
           if (data.customerId) {
@@ -542,7 +542,7 @@ export function QuotationPage({
       
       if (prevData && prevData.status !== status) {
         const depositText = (status === 'deposit' && depositAmount !== undefined) ? `\n💵 Tiền cọc: ${formatCurrency(depositAmount)}` : '';
-        sendSystemNotification(`📊 Cập nhật trạng thái báo giá!\n\n👤 Khách hàng: ${prevData.customerName}\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}${depositText}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`);
+        sendSystemNotification(`📊 Cập nhật trạng thái báo giá!\n\n👤 Khách hàng: ${prevData.customerName}\n💰 Tổng tiền: ${formatCurrency(prevData.totalAmount || 0)}${depositText}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${user?.displayName || 'Hệ thống'}`, 'customers');
       }
 
       // Automatically update customer stage and order value if quotation is accepted or deposited

@@ -133,6 +133,13 @@ export function CustomerPage({
 }: CustomerPageProps) {
   const queryClient = useQueryClient();
 
+  const getTargetModule = (stage: string) => {
+    if (stage === 'surveying') return 'measurements';
+    if (stage === 'contracted') return 'design';
+    if (stage === 'production' || stage === 'installation') return 'production';
+    return 'customers';
+  };
+
   const { data: systemSettings } = useQuery({
     queryKey: ['systemSettings'],
     queryFn: fetchSystemSettings,
@@ -226,7 +233,7 @@ export function CustomerPage({
 
         // Notify managers about bulk import
         if (importedCount > 0) {
-          sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới vào hệ thống.`);
+          sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới vào hệ thống.`, 'customers');
         }
 
         toast.success(`Đã nhập thành công ${importedCount} khách hàng`);
@@ -823,7 +830,7 @@ export function CustomerPage({
         );
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`);
+        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'customers');
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
@@ -964,7 +971,8 @@ export function CustomerPage({
         `🔄 Cập nhật trạng thái đơn hàng!\n\n` +
         `👤 Khách hàng: ${existingCustomer.name}${codeText}${priceText}\n` +
         `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
-        `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+        `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
+        getTargetModule(updateData.stage)
       );
       
       // Update tasks
@@ -1138,7 +1146,8 @@ export function CustomerPage({
               `✏️ Cập nhật thông tin đơn hàng!\n\n` +
               `👤 Đơn hàng: ${selectedCustomer.name}${codeText}\n` +
               `🛠 Thay đổi:\n` + changedFields.map(f => `- ${f}`).join('\n') + `\n\n` +
-              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
+              getTargetModule(selectedCustomer.stage)
             );
           }
         }
@@ -1165,10 +1174,14 @@ export function CustomerPage({
               `🔄 Cập nhật trạng thái đơn hàng!\n\n` +
               `👤 Khách hàng: ${selectedCustomer.name}${codeText}${priceText}\n` +
               `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
-              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`
+              `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
+              getTargetModule(selectedCustomer.stage)
             );
           } else {
-            sendSystemNotification(`🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`);
+            sendSystemNotification(
+              `🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
+              getTargetModule(selectedCustomer.stage)
+            );
           }
         }
 
