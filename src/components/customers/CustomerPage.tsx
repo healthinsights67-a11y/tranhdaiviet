@@ -2346,9 +2346,13 @@ export function CustomerPage({
                       const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
                       const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
                       
+                      const latestQuotationVal = customerQuotations.length > 0
+                        ? [...customerQuotations].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())[0].totalAmount
+                        : 0;
+
                       const totalOrdersSum = validQuotations.length > 0 
                         ? validQuotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0)
-                        : (customer.orderValue || 0);
+                        : (customer.orderValue || latestQuotationVal || 0);
 
                       const totalDepositSum = validQuotations.length > 0
                         ? validQuotations.reduce((sum, q) => sum + (q.depositAmount || 0), 0)
@@ -2418,24 +2422,28 @@ export function CustomerPage({
                     <span>{customer.address || '—'}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-2 border-t border-border mt-auto gap-1">
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Avatar className="h-4 w-4 md:h-6 md:w-6 border border-border shadow-xs">
-                        <AvatarImage src={sale?.avatar} />
-                        <AvatarFallback className="text-[6px] md:text-[8px] bg-gray-50 text-primary">{sale?.name?.charAt(0) || '?'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] md:text-[11px] font-bold opacity-80 leading-none">{sale?.name?.split(' ').pop() || 'Chưa gán'}</span>
-                        <span className="text-[7px] md:text-[9px] opacity-50 font-medium">{getWorkshopName(customer.workshop)}</span>
+                  <div className="flex flex-col gap-2 pt-2 border-t border-border mt-auto">
+                    {/* Hàng 1: Thông tin Sale và Cơ sở */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Avatar className="h-5 w-5 border border-border shadow-xs">
+                          <AvatarImage src={sale?.avatar} />
+                          <AvatarFallback className="text-[7px] bg-gray-50 text-primary">{sale?.name?.charAt(0) || '?'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[10px] md:text-[11px] font-bold opacity-80 leading-none">{sale?.name || 'Chưa gán'}</span>
+                          <span className="text-[8px] md:text-[9px] opacity-50 font-medium">{getWorkshopName(customer.workshop)}</span>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-1 shrink-0">
+                    {/* Hàng 2: Các nút hành động */}
+                    <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-dashed border-border/50 justify-end w-full">
                       {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
+                          className="h-7 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2"
                           onClick={() => {
                             const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
                             const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
@@ -2447,30 +2455,30 @@ export function CustomerPage({
                           title="Xem báo giá"
                         >
                           <FileText className="h-3.5 w-3.5" />
-                          <span className="hidden 2xl:inline">Xem báo giá</span>
+                          <span>Xem báo giá</span>
                         </Button>
                       )}
                       {onCreateQuotation && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 border-primary/20 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
+                          className="h-7 border-primary/20 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2"
                           onClick={() => onCreateQuotation(customer.id)}
                           title="Tạo báo giá"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          <span className="hidden 2xl:inline">Tạo báo giá</span>
+                          <span>Tạo báo giá</span>
                         </Button>
                       )}
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0 border border-transparent md:border-none"
+                        className="h-7 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 border border-slate-100"
                         onClick={() => openViewDialog(customer)}
                         title="Chi tiết"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
-                        <span className="hidden 2xl:inline">Chi tiết</span>
+                        <span>Chi tiết</span>
                       </Button>
                     </div>
                   </div>
