@@ -128,6 +128,11 @@ export function QuotationPage({
     return products.filter(p => !hidden.includes(p.productName) && !hidden.includes(p.id));
   }, [products, systemSettings]);
 
+  const currentUser = React.useMemo(() => {
+    if (!user || !members) return null;
+    return members.find(m => m.id === user.uid || m.email === user.email);
+  }, [user, members]);
+
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
@@ -791,7 +796,7 @@ export function QuotationPage({
         </div>
 
         <div className="hidden lg:flex items-center gap-3">
-          <QuotationTemplateConfig />
+          <QuotationTemplateConfig currentUser={currentUser} />
           <Button onClick={() => {
             setSelectedQuotation(null);
             setIsFormOpen(true);
@@ -812,7 +817,7 @@ export function QuotationPage({
             className="space-y-6"
           >
             <div className="lg:hidden flex items-center gap-2">
-              <QuotationTemplateConfig />
+              <QuotationTemplateConfig currentUser={currentUser} />
               <Button onClick={() => {
                 setSelectedQuotation(null);
                 setIsFormOpen(true);

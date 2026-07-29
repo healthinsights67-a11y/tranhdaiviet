@@ -11,6 +11,14 @@ import { cn } from '@/src/lib/utils';
 import html2canvas from 'html2canvas';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { db, doc, getDoc, setDoc } from '@/src/lib/firebase';
+import { getNormalizedWorkshopId } from '@/src/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface QuotationTemplate {
   companyName: string;
@@ -40,37 +48,51 @@ export const defaultTemplate: QuotationTemplate = {
   terms: '- Tạm ứng 30% ngay sau khi ký hợp đồng.\n- Thanh toán 70% còn lại trước khi giao hàng.\n- Báo giá có giá trị trong vòng 15 ngày.',
 };
 
-export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode }) => {
+export const QuotationTemplateConfig = ({ trigger, currentUser }: { trigger?: React.ReactNode, currentUser?: any }) => {
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<QuotationTemplate>(defaultTemplate);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingQR, setIsUploadingQR] = useState(false);
 
+  const userWorkshop = currentUser?.workshop && currentUser?.workshop !== 'all' ? getNormalizedWorkshopId(currentUser.workshop) : 'Hà Nội';
+  const [selectedWorkshop, setSelectedWorkshop] = useState<string>(userWorkshop);
+
+  // Sync selectedWorkshop when currentUser's workshop updates
+  useEffect(() => {
+    if (currentUser?.workshop && currentUser?.workshop !== 'all') {
+      setSelectedWorkshop(getNormalizedWorkshopId(currentUser.workshop));
+    }
+  }, [currentUser]);
+
   const queryClient = useQueryClient();
   const { data: dbConfig } = useQuery<QuotationTemplate>({
-    queryKey: ['quotation_template_config'],
+    queryKey: ['quotation_template_config', selectedWorkshop],
     queryFn: async () => {
-      const docRef = doc(db, 'configs', 'quotation_template');
+      const docRef = doc(db, 'configs', `quotation_template_${selectedWorkshop}`);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        // Tự động ghi đè nếu phát hiện dữ liệu cũ là PLASTIHOME (để người dùng không cần bấm gì)
         if (data.companyName?.includes('PLASTIHOME') || data.companyName === 'CÔNG TY TNHH ABC') {
           await setDoc(docRef, defaultTemplate);
-          localStorage.setItem('quotation_template_config', JSON.stringify(defaultTemplate));
           return defaultTemplate;
         }
         return { ...defaultTemplate, ...data } as QuotationTemplate;
       }
+      
+      // Fallback to global config
+      const globalRef = doc(db, 'configs', 'quotation_template');
+      const globalSnap = await getDoc(globalRef);
+      if (globalSnap.exists()) {
+        const globalData = globalSnap.data();
+        return { ...defaultTemplate, ...globalData } as QuotationTemplate;
+      }
+      
       // Fallback to localStorage if no Firestore data yet
-      const saved = localStorage.getItem('quotation_template_config');
+      const saved = localStorage.getItem(`quotation_template_config_${selectedWorkshop}`);
       if (saved && saved.trim() !== 'undefined' && saved.trim() !== 'null') {
         try {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object') {
-            if (parsed.companyName?.includes('PLASTIHOME') || parsed.companyName === 'CÔNG TY TNHH ABC') {
-              return defaultTemplate;
-            }
             return { ...defaultTemplate, ...parsed } as QuotationTemplate;
           }
         } catch (e) {
@@ -94,11 +116,11 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
 
   const handleSave = async () => {
     try {
-      const docRef = doc(db, 'configs', 'quotation_template');
+      const docRef = doc(db, 'configs', `quotation_template_${selectedWorkshop}`);
       await setDoc(docRef, config);
-      localStorage.setItem('quotation_template_config', JSON.stringify(config));
-      queryClient.setQueryData(['quotation_template_config'], config);
-      toast.success('Đã lưu cấu hình biểu mẫu báo giá lên hệ thống!');
+      localStorage.setItem(`quotation_template_config_${selectedWorkshop}`, JSON.stringify(config));
+      queryClient.setQueryData(['quotation_template_config', selectedWorkshop], config);
+      toast.success(`Đã lưu cấu hình biểu mẫu báo giá cho cơ sở ${selectedWorkshop} lên hệ thống!`);
       setOpen(false);
     } catch (error) {
       console.error('Failed to save config', error);
@@ -160,6 +182,26 @@ export const QuotationTemplateConfig = ({ trigger }: { trigger?: React.ReactNode
           <div className="h-full w-full overflow-y-auto border-r border-border bg-muted/20">
             <div className="p-6 space-y-8">
               
+              {(!currentUser?.workshop || currentUser?.workshop === 'all') ? (
+                <div className="space-y-2 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Chọn Cơ sở cấu hình</Label>
+                  <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop}>
+                    <SelectTrigger className="h-10 w-full rounded-xl bg-card border-slate-200 text-xs font-bold px-4">
+                      <SelectValue placeholder="Chọn cơ sở" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                      <SelectItem value="Hà Nội" className="rounded-lg font-medium">Hà Nội</SelectItem>
+                      <SelectItem value="Cần Thơ" className="rounded-lg font-medium">Cần Thơ</SelectItem>
+                      <SelectItem value="Đồng Nai" className="rounded-lg font-medium">Đồng Nai</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="p-3 bg-primary/5 border border-primary/20 text-primary text-[10px] font-black rounded-xl mb-6 text-center uppercase tracking-widest">
+                  Cơ sở cấu hình: {selectedWorkshop}
+                </div>
+              )}
+
               {/* Section: Thông tin doanh nghiệp */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">

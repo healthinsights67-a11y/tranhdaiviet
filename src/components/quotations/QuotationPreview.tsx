@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-import { Quotation, Member } from '@/src/types';
+import { Quotation, Member, getNormalizedWorkshopId } from '@/src/types';
 import { format } from 'date-fns';
 import { useReactToPrint } from 'react-to-print';
 import { jsPDF } from 'jspdf';
@@ -556,16 +556,26 @@ export function QuotationPreview({
     }
   }, [isOpen]);
 
+  const quotationWorkshop = quotation?.workshop ? getNormalizedWorkshopId(quotation.workshop) : 'Hà Nội';
+
   const { data: dbConfig, isLoading: isConfigLoading } = useQuery<QuotationTemplate>({
-    queryKey: ['quotation_template_config'],
+    queryKey: ['quotation_template_config', quotationWorkshop],
     queryFn: async () => {
       const { db, doc, getDoc } = await import('@/src/lib/firebase');
-      const docRef = doc(db, 'configs', 'quotation_template');
+      const docRef = doc(db, 'configs', `quotation_template_${quotationWorkshop}`);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return { ...defaultTemplate, ...docSnap.data() } as QuotationTemplate;
       }
-      const saved = localStorage.getItem('quotation_template_config');
+      
+      // Fallback to global
+      const globalRef = doc(db, 'configs', 'quotation_template');
+      const globalSnap = await getDoc(globalRef);
+      if (globalSnap.exists()) {
+        return { ...defaultTemplate, ...globalSnap.data() } as QuotationTemplate;
+      }
+      
+      const saved = localStorage.getItem(`quotation_template_config_${quotationWorkshop}`);
       if (saved && saved.trim() !== 'undefined' && saved.trim() !== 'null') {
         try {
           const parsed = JSON.parse(saved);
