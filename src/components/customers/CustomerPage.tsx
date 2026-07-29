@@ -928,6 +928,56 @@ export function CustomerPage({
     }
   };
 
+  const handleCancelDeposit = async (customerId: string) => {
+    try {
+      const existingCustomer = customers.find(c => c.id === customerId);
+      if (!existingCustomer) return;
+
+      if (!window.confirm(`Bạn có chắc chắn muốn hủy cọc cho khách hàng ${existingCustomer.name}? Tiến độ sẽ chuyển về "Đã tư vấn" và tiền cọc sẽ bị xóa.`)) {
+        return;
+      }
+
+      const updateData: any = {
+        stage: 'consulting',
+        orderValue: 0
+      };
+
+      await updateDoc(doc(db, 'customers', customerId), updateData);
+
+      // Find all quotations for this customer and revert status
+      try {
+        const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', customerId));
+        const quotationSnap = await getDocs(quotationQ);
+        for (const qDoc of quotationSnap.docs) {
+          const qData = qDoc.data();
+          if (qData.status === 'deposit' || qData.status === 'accepted') {
+            await updateDoc(doc(db, 'quotations', qDoc.id), {
+              status: 'sent',
+              depositAmount: 0
+            });
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      } catch (err) {
+        console.error("Error updating quotations on cancel deposit:", err);
+      }
+
+      // Send System Notification for Stage Change / Cancel Deposit
+      sendSystemNotification(
+        `🔴 Hủy cọc đơn hàng!\n\n` +
+        `👤 Khách hàng: ${existingCustomer.name}\n` +
+        `🏷 Tiến độ: Chốt cọc ➡️ Đã tư vấn\n` +
+        `Được thực hiện bởi: ${currentUser?.name || 'Hệ thống'}`,
+        'customers'
+      );
+
+      toast.success('Đã hủy cọc và đưa khách hàng về trạng thái tư vấn');
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    } catch (error: any) {
+      toast.error('Lỗi khi hủy cọc: ' + error.message);
+    }
+  };
+
   const handleQuickCompleteCustomer = async (customerId: string) => {
     try {
       const existingCustomer = customers.find(c => c.id === customerId);
@@ -2239,6 +2289,14 @@ export function CustomerPage({
                             Giao việc thiết kế
                           </DropdownMenuItem>
                         )}
+                        {customer.stage === 'contracted' && (
+                          <DropdownMenuItem 
+                            onClick={() => handleCancelDeposit(customer.id)} 
+                            className="text-xs text-rose-600 font-medium"
+                          >
+                            Hủy cọc
+                          </DropdownMenuItem>
+                        )}
                         {customer.stage !== 'completed' && customer.stage !== 'lost' && (
                           <DropdownMenuItem 
                             onClick={() => handleQuickCompleteCustomer(customer.id)} 
@@ -2870,6 +2928,18 @@ export function CustomerPage({
 
               <div className="p-4 border-t bg-slate-50/80 flex justify-end gap-3 shrink-0">
                 <Button variant="outline" className="rounded-xl px-6 h-10 text-xs font-semibold" onClick={() => setIsViewDialogOpen(false)}>Đóng</Button>
+                {selectedCustomer.stage === 'contracted' && (
+                  <Button 
+                    variant="destructive"
+                    className="rounded-xl px-6 h-10 text-xs font-bold"
+                    onClick={() => {
+                      setIsViewDialogOpen(false);
+                      handleCancelDeposit(selectedCustomer.id);
+                    }}
+                  >
+                    Hủy cọc
+                  </Button>
+                )}
                 {onCreateQuotation && (
                   <Button 
                     variant="outline" 
