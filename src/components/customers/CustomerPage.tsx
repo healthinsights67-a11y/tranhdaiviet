@@ -939,7 +939,7 @@ export function CustomerPage({
 
       const updateData: any = {
         stage: 'consulting',
-        orderValue: 0
+        orderValue: existingCustomer.orderValue || 0
       };
 
       await updateDoc(doc(db, 'customers', customerId), updateData);
@@ -2435,7 +2435,7 @@ export function CustomerPage({
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 w-7 md:h-8 md:w-auto px-0 md:px-2.5 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
+                          className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
                           onClick={() => {
                             const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
                             const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
@@ -2447,30 +2447,30 @@ export function CustomerPage({
                           title="Xem báo giá"
                         >
                           <FileText className="h-3.5 w-3.5" />
-                          <span className="hidden md:inline">Xem báo giá</span>
+                          <span className="hidden 2xl:inline">Xem báo giá</span>
                         </Button>
                       )}
                       {onCreateQuotation && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 w-7 md:h-8 md:w-auto px-0 md:px-2.5 border-primary/20 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
+                          className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 border-primary/20 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0"
                           onClick={() => onCreateQuotation(customer.id)}
                           title="Tạo báo giá"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          <span className="hidden md:inline">Tạo báo giá</span>
+                          <span className="hidden 2xl:inline">Tạo báo giá</span>
                         </Button>
                       )}
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 w-7 md:h-8 md:w-auto px-0 md:px-2.5 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0 border border-transparent md:border-none"
+                        className="h-7 w-7 md:h-8 md:w-8 2xl:w-auto px-0 2xl:px-2.5 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1 text-[10px] md:text-[11px] font-bold rounded-lg shrink-0 border border-transparent md:border-none"
                         onClick={() => openViewDialog(customer)}
                         title="Chi tiết"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
-                        <span className="hidden md:inline">Chi tiết</span>
+                        <span className="hidden 2xl:inline">Chi tiết</span>
                       </Button>
                     </div>
                   </div>
