@@ -186,6 +186,7 @@ export const ProductLibraryItemSchema = z.object({
   imageUrl: z.string().optional().catch(''),
   unit: z.string(),
   unitPrice: z.number(),
+  workshopPrices: z.record(z.string(), z.number()).optional().catch(() => ({})),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
   category: z.string().optional(),

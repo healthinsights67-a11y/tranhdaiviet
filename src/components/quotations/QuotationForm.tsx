@@ -47,7 +47,7 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/components/ui/select";
-import { Quotation, QuotationItem, Customer, ProductLibraryItem } from '@/src/types';
+import { Quotation, QuotationItem, Customer, ProductLibraryItem, getNormalizedWorkshopId } from '@/src/types';
 import { cn, getCurrentVNYear, getCurrentVNDateString } from '@/src/lib/utils';
 import { STANDARD_PRICES } from '@/src/constants/priceList';
 import { Card, CardContent } from '@/components/ui/card';
@@ -225,6 +225,15 @@ const DEFAULT_ITEMS: QuotationItem[] = [
 ];
 
 export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialData, products = [] }: QuotationFormProps) {
+  const getProductPriceForWorkshop = (product: any, workshop?: string) => {
+    if (!workshop || workshop === 'all') return product.unitPrice;
+    const normWs = getNormalizedWorkshopId(workshop);
+    if (product.workshopPrices && product.workshopPrices[normWs] !== undefined && product.workshopPrices[normWs] > 0) {
+      return product.workshopPrices[normWs];
+    }
+    return product.unitPrice;
+  };
+
   const getDisplayValue = (val: any) => {
     if (val === undefined || val === null || val === 0 || val === '0') return '';
     return String(val).replace('.', ',');
@@ -517,7 +526,8 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
             updates.name!.toLowerCase().includes(p.productName.toLowerCase())
           );
           if (standard) {
-            updated.basePrice = standard.unitPrice;
+            const resolvedPrice = getProductPriceForWorkshop(standard, formData.workshop);
+            updated.basePrice = resolvedPrice;
             updated.unit = standard.unit;
             const isAcc = isAccessoryItem(standard.productName, standard.category);
             const accCode = isAcc ? getAccessoryMaterialCode(standard.productName, standard.category) : 'ECO';
@@ -526,9 +536,9 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
             
             const multiplier = multipliers.find(m => m.code === accCode);
             if (multiplier) {
-              updated.unitPrice = Math.round(standard.unitPrice * (multiplier.percentage / 100));
+              updated.unitPrice = Math.round(resolvedPrice * (multiplier.percentage / 100));
             } else {
-              updated.unitPrice = standard.unitPrice;
+              updated.unitPrice = resolvedPrice;
             }
             
             updated.description = standard.description || updated.description || '';
@@ -1089,7 +1099,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       const isAccessory = isAccessoryItem(standard.productName, standard.category);
                                       const ecoMultiplier = multipliers.find(m => m.code === 'ECO');
                                       const ecoRatio = ecoMultiplier ? ecoMultiplier.percentage / 100 : 1;
-                                      const basePrice = standard.unitPrice;
+                                      const basePrice = getProductPriceForWorkshop(standard, formData.workshop);
                                       const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
                                       const accCode = isAccessory ? getAccessoryMaterialCode(standard.productName, standard.category) : 'ECO';
                                       const desc = updateDescriptionWithMaterial(standard.description || '', accCode);

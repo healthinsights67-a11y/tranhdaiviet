@@ -66,6 +66,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       productName: p.name, 
       category: p.category, 
       unitPrice: p.price, 
+      workshopPrices: {} as Record<string, number>,
       unit: p.unit, 
       description: p.description,
       imageUrl: '',
@@ -79,6 +80,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
         productName: p.productName,
         category: p.category || 'Khác',
         unitPrice: p.unitPrice,
+        workshopPrices: p.workshopPrices,
         unit: p.unit,
         description: p.description,
         imageUrl: p.imageUrl,
@@ -96,10 +98,14 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
   const [viewMode, setViewMode] = React.useState<'grid' | 'table'>('table');
   const [editingProduct, setEditingProduct] = React.useState<any>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-
   // Form State
   const [formName, setFormName] = React.useState('');
   const [formPrice, setFormPrice] = React.useState(0);
+  const [formWorkshopPrices, setFormWorkshopPrices] = React.useState<Record<string, number>>({
+    'Hà Nội': 0,
+    'Cần Thơ': 0,
+    'Đồng Nai': 0
+  });
   const [formUnit, setFormUnit] = React.useState('');
   const [formDescription, setFormDescription] = React.useState('');
   const [formCategory, setFormCategory] = React.useState('');
@@ -122,7 +128,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
 
   const filteredProducts = productList.filter(p => {
     const matchesSearch = p.productName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         p.description.toLowerCase().includes(searchTerm.toLowerCase());
+                          p.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -157,6 +163,11 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       id: editingProduct.id,
       productName: formName,
       unitPrice: Number(formPrice),
+      workshopPrices: {
+        'Hà Nội': Number(formWorkshopPrices['Hà Nội'] ?? formPrice),
+        'Cần Thơ': Number(formWorkshopPrices['Cần Thơ'] ?? formPrice),
+        'Đồng Nai': Number(formWorkshopPrices['Đồng Nai'] ?? formPrice),
+      },
       unit: formUnit,
       description: formDescription,
       imageUrl: previewUrl || '',
@@ -177,6 +188,11 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
   const resetForm = (product: any) => {
     setFormName(product.productName || '');
     setFormPrice(product.unitPrice || 0);
+    setFormWorkshopPrices({
+      'Hà Nội': product.workshopPrices?.['Hà Nội'] ?? product.unitPrice ?? 0,
+      'Cần Thơ': product.workshopPrices?.['Cần Thơ'] ?? product.unitPrice ?? 0,
+      'Đồng Nai': product.workshopPrices?.['Đồng Nai'] ?? product.unitPrice ?? 0,
+    });
     setFormUnit(product.unit || '');
     setFormDescription(product.description || '');
     setFormCategory(product.category || 'Phòng khách');
@@ -189,6 +205,11 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       productName: 'Sản phẩm mới',
       category: 'Phòng khách',
       unitPrice: 0,
+      workshopPrices: {
+        'Hà Nội': 0,
+        'Cần Thơ': 0,
+        'Đồng Nai': 0
+      },
       unit: 'md',
       description: '',
       imageUrl: ''
@@ -500,6 +521,13 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                           {product.unitPrice?.toLocaleString()}
                           <span className="text-xs ml-1 opacity-60">VNĐ</span>
                         </p>
+                        {product.workshopPrices && Object.values(product.workshopPrices).some(v => v > 0) && (
+                          <div className="text-[9px] font-bold text-slate-400 mt-1 flex flex-wrap gap-x-2">
+                            {!!product.workshopPrices['Hà Nội'] && <span>HN: {product.workshopPrices['Hà Nội'].toLocaleString()}đ</span>}
+                            {!!product.workshopPrices['Cần Thơ'] && <span>CT: {product.workshopPrices['Cần Thơ'].toLocaleString()}đ</span>}
+                            {!!product.workshopPrices['Đồng Nai'] && <span>DN: {product.workshopPrices['Đồng Nai'].toLocaleString()}đ</span>}
+                          </div>
+                        )}
                       </div>
                       <div className="h-10 w-10 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white mb-1 shadow-sm transition-all pointer-events-none">
                         <CheckCircle2 className="w-5 h-5" />
@@ -548,8 +576,17 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{product.category}</td>
                     <td className="px-4 py-3 text-center">{product.unit}</td>
-                    <td className="px-4 py-3 text-right font-bold text-primary font-mono tracking-tighter text-base">
-                      {product.unitPrice?.toLocaleString()}
+                    <td className="px-4 py-3 text-right">
+                      <div className="font-bold text-primary font-mono tracking-tighter text-base">
+                        {product.unitPrice?.toLocaleString()}
+                      </div>
+                      {product.workshopPrices && Object.values(product.workshopPrices).some(v => v > 0) && (
+                        <div className="text-[9px] font-medium text-slate-400 mt-0.5 space-x-1.5">
+                          {!!product.workshopPrices['Hà Nội'] && <span>HN: {(product.workshopPrices['Hà Nội'] / 1000).toLocaleString()}k</span>}
+                          {!!product.workshopPrices['Cần Thơ'] && <span>CT: {(product.workshopPrices['Cần Thơ'] / 1000).toLocaleString()}k</span>}
+                          {!!product.workshopPrices['Đồng Nai'] && <span>DN: {(product.workshopPrices['Đồng Nai'] / 1000).toLocaleString()}k</span>}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -705,7 +742,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-price" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Giá niêm yết (VNĐ)</Label>
+                    <Label htmlFor="edit-price" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Giá niêm yết mặc định (VNĐ)</Label>
                     <div className="relative group">
                       <Input 
                         id="edit-price" 
@@ -725,6 +762,45 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                       onChange={(e) => setFormUnit(e.target.value)}
                       className="h-14 w-full rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-card text-card-foreground focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all font-bold text-slate-800 text-center px-5 uppercase" 
                     />
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Đơn giá riêng theo cơ sở (Tùy chọn)</span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-price-hn" className="text-[10px] font-bold text-slate-500">Giá Hà Nội</Label>
+                      <Input 
+                        id="edit-price-hn" 
+                        type="number" 
+                        value={formWorkshopPrices['Hà Nội'] ?? 0}
+                        onChange={(e) => setFormWorkshopPrices(prev => ({ ...prev, 'Hà Nội': Number(e.target.value) }))}
+                        placeholder={formPrice.toString()}
+                        className="h-10 w-full rounded-xl bg-slate-50/50 border-slate-100 text-xs text-slate-800 font-mono font-bold" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-price-ct" className="text-[10px] font-bold text-slate-500">Giá Cần Thơ</Label>
+                      <Input 
+                        id="edit-price-ct" 
+                        type="number" 
+                        value={formWorkshopPrices['Cần Thơ'] ?? 0}
+                        onChange={(e) => setFormWorkshopPrices(prev => ({ ...prev, 'Cần Thơ': Number(e.target.value) }))}
+                        placeholder={formPrice.toString()}
+                        className="h-10 w-full rounded-xl bg-slate-50/50 border-slate-100 text-xs text-slate-800 font-mono font-bold" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-price-dn" className="text-[10px] font-bold text-slate-500">Giá Đồng Nai</Label>
+                      <Input 
+                        id="edit-price-dn" 
+                        type="number" 
+                        value={formWorkshopPrices['Đồng Nai'] ?? 0}
+                        onChange={(e) => setFormWorkshopPrices(prev => ({ ...prev, 'Đồng Nai': Number(e.target.value) }))}
+                        placeholder={formPrice.toString()}
+                        className="h-10 w-full rounded-xl bg-slate-50/50 border-slate-100 text-xs text-slate-800 font-mono font-bold" 
+                      />
+                    </div>
                   </div>
                 </div>
 

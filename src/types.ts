@@ -264,6 +264,7 @@ export interface ProductLibraryItem {
   imageUrl: string;
   unit: string;
   unitPrice: number;
+  workshopPrices?: Record<string, number>;
   createdAt: string;
   updatedAt: string;
   category?: string;
