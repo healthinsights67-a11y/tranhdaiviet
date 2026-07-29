@@ -1430,7 +1430,7 @@ export function QuotationPreview({
       <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-card text-card-foreground border border-gray-200 shadow-2xl">
         <DialogHeader className="p-2.5 md:p-4 border-b bg-slate-50 flex flex-col shrink-0 gap-2 md:gap-2.5">
           {/* Row 1: Title & Main Document Actions */}
-          <div className="flex items-center justify-between w-full flex-wrap gap-2">
+          <div className="flex items-center justify-between w-full flex-wrap gap-2 pr-8 md:pr-10">
             <div className="flex items-center gap-1.5 md:gap-3">
               <div className="hidden md:flex h-9 w-9 rounded-xl bg-blue-500/10 items-center justify-center text-primary shrink-0 border border-blue-200">
                 <Eye className="h-5 w-5" />
