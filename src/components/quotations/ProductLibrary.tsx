@@ -494,7 +494,6 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                       variant="destructive" 
                       className="rounded-2xl h-12 w-12 hover:scale-110 transition-transform shadow-lg shadow-red-500/20"
                       onClick={() => onDelete(product.id)}
-                      disabled={product.isStandard}
                     >
                       <Trash2 className="w-5 h-5" />
                     </Button>
@@ -598,7 +597,6 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
                           size="icon" 
                           className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" 
                           onClick={() => onDelete(product.id)}
-                          disabled={product.isStandard}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

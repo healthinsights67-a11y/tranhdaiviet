@@ -293,6 +293,7 @@ export const SystemSettingsSchema = z.object({
     lat: z.number(),
     lng: z.number(),
   }).optional(),
+  hiddenStandardProducts: z.array(z.string()).optional().catch(() => []),
   updatedAt: z.string().optional(),
 });
 

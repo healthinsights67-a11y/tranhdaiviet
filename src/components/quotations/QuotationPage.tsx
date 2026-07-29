@@ -63,7 +63,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { fetchSystemSettings, updateSystemSettings } from '@/src/services/dataService';
 import { Quotation, Customer, Member, WORKSHOPS, getWorkshopName } from '@/src/types';
 import { format } from 'date-fns';
 import { QuotationForm } from './QuotationForm';
@@ -109,6 +110,24 @@ export function QuotationPage({
   onClearInitialQuotationId
 }: QuotationPageProps) {
   const queryClient = useQueryClient();
+
+  const { data: systemSettings } = useQuery({
+    queryKey: ['systemSettings'],
+    queryFn: fetchSystemSettings,
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: updateSystemSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['systemSettings'] });
+    }
+  });
+
+  const filteredProducts = React.useMemo(() => {
+    const hidden = systemSettings?.hiddenStandardProducts || [];
+    return products.filter(p => !hidden.includes(p.productName) && !hidden.includes(p.id));
+  }, [products, systemSettings]);
+
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
@@ -676,9 +695,22 @@ export function QuotationPage({
   const handleDeleteProduct = async (id: string) => {
     if (!confirm("Xác nhận xóa sản phẩm này khỏi kho mẫu?")) return;
     try {
+      if (id.startsWith('std-')) {
+        const productName = id.replace('std-', '');
+        const currentHidden = systemSettings?.hiddenStandardProducts || [];
+        if (!currentHidden.includes(productName)) {
+          const updatedHidden = [...currentHidden, productName, id];
+          await updateSettingsMutation.mutateAsync({
+            hiddenStandardProducts: updatedHidden
+          });
+        }
+        toast.success("Đã xóa sản phẩm mẫu khỏi danh sách");
+        return;
+      }
+
       if (user) {
         const product = products.find(p => p.id === id);
-        const title = product ? `Sản phẩm mẫu: ${product.name}` : id;
+        const title = product ? `Sản phẩm mẫu: ${product.productName || product.name}` : id;
         await moveToTrash('product_library', id, title, user.email || '');
       }
       queryClient.invalidateQueries({ queryKey: ['product_library'] });
@@ -1195,7 +1227,7 @@ export function QuotationPage({
             exit={{ opacity: 0, x: -10 }}
           >
             <ProductLibrary 
-              products={products} 
+              products={filteredProducts} 
               user={user} 
               onSave={handleSaveProduct}
               onDelete={handleDeleteProduct}
@@ -1215,7 +1247,7 @@ export function QuotationPage({
             onSubmit={handleCreateQuotation}
             customers={customers}
             initialData={selectedQuotation}
-            products={products}
+            products={filteredProducts}
           />
         )}
 

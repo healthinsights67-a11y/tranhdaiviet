@@ -361,6 +361,7 @@ export interface SystemSettings {
     lat: number;
     lng: number;
   };
+  hiddenStandardProducts?: string[];
   updatedAt?: string;
 }
 
