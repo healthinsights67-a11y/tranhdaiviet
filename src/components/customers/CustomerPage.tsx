@@ -292,12 +292,13 @@ export function CustomerPage({
       const spaceRow = sheet.addRow([]);
       spaceRow.height = 10;
 
-      // Document Title
       let docTitle = 'DANH SÁCH TOÀN BỘ KHÁCH HÀNG';
       if (selectedMonth === 'today') {
         docTitle = 'DANH SÁCH KHÁCH HÀNG - HÔM NAY';
       } else if (selectedMonth === 'week') {
         docTitle = 'DANH SÁCH KHÁCH HÀNG - TUẦN NÀY';
+      } else if (selectedMonth === 'last-week') {
+        docTitle = 'DANH SÁCH KHÁCH HÀNG - TUẦN TRƯỚC';
       } else if (selectedMonth) {
         const [year, month] = selectedMonth.split('-');
         docTitle = `DANH SÁCH KHÁCH HÀNG THÁNG ${month}/${year}`;
@@ -1514,6 +1515,19 @@ export function CustomerPage({
       lastDay.setDate(firstDay.getDate() + 6);
       lastDay.setHours(23, 59, 59, 999);
       return date >= firstDay && date <= lastDay;
+    } else if (selectedMonth === 'last-week') {
+      const day = now.getDay() || 7; 
+      const firstDayThisWeek = new Date(now);
+      firstDayThisWeek.setHours(0, 0, 0, 0);
+      firstDayThisWeek.setDate(now.getDate() - day + 1);
+      
+      const firstDayLastWeek = new Date(firstDayThisWeek);
+      firstDayLastWeek.setDate(firstDayThisWeek.getDate() - 7);
+      
+      const lastDayLastWeek = new Date(firstDayLastWeek);
+      lastDayLastWeek.setDate(firstDayLastWeek.getDate() + 6);
+      lastDayLastWeek.setHours(23, 59, 59, 999);
+      return date >= firstDayLastWeek && date <= lastDayLastWeek;
     }
     return getVNMonth(dateStr) === selectedMonth;
   }, [selectedMonth]);
@@ -1596,7 +1610,7 @@ export function CustomerPage({
           </div>
           <Popover>
             <PopoverTrigger className="hidden lg:inline-flex items-center justify-between w-auto min-w-[180px] whitespace-nowrap h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
+              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
               <Calendar className="ml-2 h-4 w-4 opacity-50" />
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground" align="start">
@@ -1632,8 +1646,8 @@ export function CustomerPage({
                    <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
+                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
                 </div>
               </div>
             </PopoverContent>
@@ -1642,7 +1656,7 @@ export function CustomerPage({
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 w-full lg:w-auto">
           <Popover>
             <PopoverTrigger className="inline-flex items-center justify-between w-[140px] h-8 md:h-11 text-[10px] md:text-xs font-medium border border-border bg-card text-card-foreground hover:bg-muted px-4 py-2 rounded-xl transition-colors lg:hidden shadow-sm">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Thg ${selectedMonth.split('-')[1]}, ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
+              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Thg ${selectedMonth.split('-')[1]}, ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
               <Calendar className="mr-2 h-3.5 w-3.5 opacity-50" />
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground" align="start">
@@ -1678,8 +1692,8 @@ export function CustomerPage({
                    <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
+                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
                 </div>
               </div>
             </PopoverContent>
