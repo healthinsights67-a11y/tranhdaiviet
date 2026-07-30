@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/dialog";
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { fetchSystemSettings, updateSystemSettings } from '@/src/services/dataService';
-import { Quotation, Customer, Member, WORKSHOPS, getWorkshopName } from '@/src/types';
+import { Quotation, Customer, Member, WORKSHOPS, getWorkshopName, getNormalizedWorkshopId } from '@/src/types';
 import { format } from 'date-fns';
 import { QuotationForm } from './QuotationForm';
 import { QuotationPreview } from './QuotationPreview';
@@ -876,7 +876,9 @@ export function QuotationPage({
                       <Select value={workshopFilter} onValueChange={setWorkshopFilter}>
                         <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
                            <Building className="h-4 w-4 text-muted-foreground" />
-                           <SelectValue placeholder="Cơ sở" />
+                           <SelectValue>
+                             {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(workshopFilter))?.name || 'Tất cả cơ sở'}
+                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10">
                           {WORKSHOPS.map(w => (

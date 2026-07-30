@@ -1690,7 +1690,9 @@ export function CustomerPage({
             disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
           >
             <SelectTrigger className="h-8 md:h-11 flex-1 md:flex-none md:w-[140px] rounded-xl border border-border bg-card text-card-foreground text-[10px] md:text-xs shadow-sm">
-              <SelectValue placeholder="Cơ sở" />
+              <SelectValue>
+                {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {WORKSHOPS.map(w => (
@@ -1703,11 +1705,13 @@ export function CustomerPage({
             onValueChange={setSelectedSaleId}
           >
             <SelectTrigger className="h-8 md:h-11 flex-1 md:flex-none md:w-[140px] rounded-xl border border-border bg-card text-card-foreground text-[10px] md:text-xs shadow-sm">
-              <SelectValue placeholder="Sale phụ trách" />
+              <SelectValue>
+                {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs font-bold text-primary">Tất cả Sale</SelectItem>
-              {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
+              {members.map(m => (
                 <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
               ))}
             </SelectContent>
