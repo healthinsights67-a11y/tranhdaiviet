@@ -38,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, Clock, UserCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -782,7 +783,22 @@ function AppContent() {
       case 'sale':
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
+          : (
+            <div className="space-y-4">
+              <Tabs defaultValue="planner" className="w-full animate-in fade-in duration-300">
+                <TabsList className="grid w-full max-w-[400px] grid-cols-2 rounded-xl h-10 p-1 bg-gray-100/80 border mb-4">
+                  <TabsTrigger value="planner" className="rounded-lg text-xs font-bold py-1.5">Kế hoạch tuần</TabsTrigger>
+                  <TabsTrigger value="routes" className="rounded-lg text-xs font-bold py-1.5">Lịch trình di chuyển</TabsTrigger>
+                </TabsList>
+                <TabsContent value="planner" className="mt-0 space-y-4">
+                  <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />
+                </TabsContent>
+                <TabsContent value="routes" className="mt-0 space-y-4">
+                  <SalesRoutePage />
+                </TabsContent>
+              </Tabs>
+            </div>
+          );
       case 'marketing':
         return redirect(perms.menuMarketing)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
