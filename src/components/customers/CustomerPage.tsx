@@ -2249,12 +2249,30 @@ export function CustomerPage({
                         )}
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={
-                        <Button variant="ghost" size="icon" className="h-6 w-6 md:h-8 md:w-8 rounded-lg">
-                          <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                      } />
+                    <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
+                      {customer.workshop && (
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-sm md:rounded-md border select-none uppercase tracking-wider leading-none shrink-0 shadow-xs",
+                            (() => {
+                              const norm = getNormalizedWorkshopId(customer.workshop);
+                              if (norm === 'Hà Nội') return 'bg-rose-50 text-rose-700 border-rose-200/60';
+                              if (norm === 'Cần Thơ') return 'bg-sky-50 text-sky-700 border-sky-200/60';
+                              if (norm === 'Đồng Nai') return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
+                              return 'bg-slate-50 text-slate-700 border-slate-200/60';
+                            })()
+                          )}
+                        >
+                          {getWorkshopName(customer.workshop)}
+                        </Badge>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Button variant="ghost" size="icon" className="h-6 w-6 md:h-8 md:w-8 rounded-lg">
+                            <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                        } />
                       <DropdownMenuContent align="end" className="rounded-xl">
                         {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
                           <DropdownMenuItem 
@@ -2313,6 +2331,7 @@ export function CustomerPage({
                         <DropdownMenuItem className="text-destructive text-xs" onClick={() => handleDeleteCustomer(customer.id)}>Xóa</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </div>
                   
                   <div className="space-y-1">
