@@ -286,6 +286,7 @@ export interface MeasurementSchedule {
   imageUrls?: string[];
   designAssigneeId?: string;
   isPushedToDesign?: boolean;
+  workshop?: string;
 }
 
 export interface InstallationSchedule {
@@ -302,6 +303,7 @@ export interface InstallationSchedule {
   notes?: string;
   createdAt: string;
   imageUrls?: string[];
+  workshop?: string;
 }
 
 export interface TrashItem {

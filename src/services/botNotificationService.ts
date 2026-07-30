@@ -1,6 +1,7 @@
 import { db, doc, getDoc, setDoc, serverTimestamp } from '@/src/lib/firebase';
 import { BotNotificationConfigSchema } from '@/src/schemas';
 import { z } from 'zod';
+import { getNormalizedWorkshopId } from '@/src/types';
 
 export type BotNotificationConfig = z.infer<typeof BotNotificationConfigSchema>;
 
@@ -114,21 +115,27 @@ export async function sendZaloTestMessage(botToken: string, userId: string, mess
 
 export async function sendSystemNotification(
   message: string,
-  module?: 'customers' | 'measurements' | 'production' | 'design'
+  module?: 'customers' | 'measurements' | 'production' | 'design',
+  workshop?: string
 ): Promise<void> {
-  console.log(`sendSystemNotification called for module ${module} with message:`, message);
+  console.log(`sendSystemNotification called for module ${module}, workshop ${workshop} with message:`, message);
   try {
     const config = await getBotNotificationConfig();
     console.log('Fetched bot config:', config);
     if (!config) return;
 
+    const normWs = workshop ? getNormalizedWorkshopId(workshop) : '';
     const promises: Promise<any>[] = [];
 
     // Send to Telegram if enabled
     if (config.telegram?.isActive !== false && config.telegram.botToken) {
       let targetChatId = config.telegram.chatId || '';
-      if (module && config.telegram.groups?.[module]) {
-        targetChatId = config.telegram.groups[module]!;
+      if (module) {
+        if (normWs && (config.telegram as any).workshopGroups?.[normWs]?.[module]) {
+          targetChatId = (config.telegram as any).workshopGroups[normWs][module]!;
+        } else if (config.telegram.groups?.[module]) {
+          targetChatId = config.telegram.groups[module]!;
+        }
       }
 
       if (targetChatId) {
@@ -147,8 +154,12 @@ export async function sendSystemNotification(
     // Send to Zalo if enabled
     if (config.zalo?.isActive !== false && config.zalo.botToken) {
       let targetChatId = config.zalo.chatId || '';
-      if (module && config.zalo.groups?.[module]) {
-        targetChatId = config.zalo.groups[module]!;
+      if (module) {
+        if (normWs && (config.zalo as any).workshopGroups?.[normWs]?.[module]) {
+          targetChatId = (config.zalo as any).workshopGroups[normWs][module]!;
+        } else if (config.zalo.groups?.[module]) {
+          targetChatId = config.zalo.groups[module]!;
+        }
       }
 
       if (targetChatId) {

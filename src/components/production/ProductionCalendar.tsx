@@ -164,7 +164,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     address: '',
     date: new Date().toISOString().slice(0, 16),
     assigneeId: '',
-    notes: ''
+    notes: '',
+    workshop: ''
   });
 
   const [isInstallOpen, setIsInstallOpen] = React.useState(false);
@@ -374,7 +375,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         });
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`✏️ Cập nhật lịch sản xuất!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót mới: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'production');
+        sendSystemNotification(`✏️ Cập nhật lịch sản xuất!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót mới: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'production', formData.workshop);
       } else {
         taskId = `prod-${formData.customerId || 'manual'}-${Date.now()}`;
         const prodTask = {
@@ -395,7 +396,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         await setDoc(doc(db, 'tasks', taskId), prodTask);
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🔨 Lịch sản xuất mới!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'production');
+        sendSystemNotification(`🔨 Lịch sản xuất mới!\n\n👤 Khách hàng: ${formData.customerName}\n📞 SĐT: ${formData.phone}\n📍 Địa chỉ: ${formData.address}\n⏰ Hạn chót: ${format(new Date(dueDateIso), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${formData.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'production', formData.workshop);
       }
 
       if (formData.customerId) {
@@ -417,7 +418,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         address: '',
         date: new Date().toISOString().slice(0, 16),
         assigneeId: '',
-        notes: ''
+        notes: '',
+        workshop: ''
       });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
@@ -1045,7 +1047,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                       address: task.address || '',
                                       date: new Date().toISOString().slice(0, 16),
                                       assigneeId: task.assigneeId || '',
-                                      notes: task.description || ''
+                                      notes: task.description || '',
+                                      workshop: task.workshop || ''
                                     });
                                   } else {
                                     const customer = item.rawCustomer!;
@@ -1057,7 +1060,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                       address: customer.address || '',
                                       date: new Date().toISOString().slice(0, 16),
                                       assigneeId: '',
-                                      notes: ''
+                                      notes: '',
+                                      workshop: customer.workshop || ''
                                     });
                                   }
                                   setIsOpen(true);
@@ -1235,7 +1239,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                     address: task.address || '',
                                     date: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
                                     assigneeId: task.assigneeId || '',
-                                    notes: task.description || ''
+                                    notes: task.description || '',
+                                    workshop: task.workshop || ''
                                   });
                                   setIsOpen(true);
                                   setSelectedDay(null);

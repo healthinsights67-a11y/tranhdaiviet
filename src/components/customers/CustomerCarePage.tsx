@@ -176,7 +176,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
           );
 
           // Telegram/Zalo bot notification
-          sendSystemNotification(`🔧 Công việc bảo hành mới!\n\n👤 Khách hàng: ${newTask.customerName}\n📞 SĐT: ${newTask.phone}\n📍 Địa chỉ: ${newTask.address}\n⏰ Hạn hoàn thành: ${format(new Date(newTask.dueDate), 'dd/MM/yyyy')}\n👤 Người phụ trách: ${assignee?.name || 'Chưa rõ'}\n📝 Ghi chú: ${newTask.description || 'Không có'}\n\nĐược giao bởi: ${currentUser?.name || 'Hệ thống'}`, 'production');
+          sendSystemNotification(`🔧 Công việc bảo hành mới!\n\n👤 Khách hàng: ${newTask.customerName}\n📞 SĐT: ${newTask.phone}\n📍 Địa chỉ: ${newTask.address}\n⏰ Hạn hoàn thành: ${format(new Date(newTask.dueDate), 'dd/MM/yyyy')}\n👤 Người phụ trách: ${assignee?.name || 'Chưa rõ'}\n📝 Ghi chú: ${newTask.description || 'Không có'}\n\nĐược giao bởi: ${currentUser?.name || 'Hệ thống'}`, 'production', selectedCustomerForAssign.workshop);
 
           return 'Đã giao việc bảo hành cho thợ thành công!';
         },

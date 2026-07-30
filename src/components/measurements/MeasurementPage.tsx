@@ -282,7 +282,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
       );
 
       // Send to external bot platforms (Zalo/Telegram)
-      sendSystemNotification(`📅 Lịch đo đạc mới!\n\n👤 Khách hàng: ${schedule.customerName}\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements');
+      sendSystemNotification(`📅 Lịch đo đạc mới!\n\n👤 Khách hàng: ${schedule.customerName}\n📞 SĐT: ${schedule.phone}\n📍 Địa chỉ: ${schedule.address}\n⏰ Thời gian: ${format(new Date(schedule.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${schedule.notes || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements', schedule.workshop);
 
       // Notify the assigned member directly via Zalo
       if (assignee && assignee.zaloUserId) {
@@ -416,7 +416,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
         await updateDoc(scheduleRef, dataToUpdate);
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`✏️ Cập nhật lịch đo đạc!\n\n👤 Khách hàng: ${updatedData.customerName}\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements');
+        sendSystemNotification(`✏️ Cập nhật lịch đo đạc!\n\n👤 Khách hàng: ${updatedData.customerName}\n📞 SĐT: ${updatedData.phone}\n📍 Địa chỉ: ${updatedData.address}\n⏰ Thời gian: ${format(new Date(updatedData.date), 'HH:mm dd/MM/yyyy')}\n📝 Ghi chú: ${updatedData.notes || 'Không có'}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements', updatedData.workshop);
 
         toast.success('Đã cập nhật lịch đo');
         setEditingId(null);
@@ -512,7 +512,7 @@ export function MeasurementPage({ schedules, members, customers, user, currentUs
       let statusText = 'Chờ đo đạc';
       if (newStatus === 'completed') statusText = 'Hoàn tất';
       else if (newStatus === 'cancelled') statusText = 'Đã hủy';
-      sendSystemNotification(`📊 Cập nhật trạng thái lịch đo đạc!\n\n👤 Khách hàng: ${freshItem.customerName}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements');
+      sendSystemNotification(`📊 Cập nhật trạng thái lịch đo đạc!\n\n👤 Khách hàng: ${freshItem.customerName}\n🏷 Trạng thái mới: ${statusText}\n\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`, 'measurements', freshItem.workshop);
 
       queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
       

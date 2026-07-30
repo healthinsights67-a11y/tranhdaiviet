@@ -7,14 +7,34 @@ import { Loader2, Send, Save, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { BotNotificationConfig, getBotNotificationConfig, updateBotNotificationConfig, sendTelegramTestMessage, sendZaloTestMessage } from '@/src/services/botNotificationService';
 import { useAuth } from '@/src/contexts/AuthContext';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function NotificationSettings() {
   const { user } = useAuth();
   const [config, setConfig] = React.useState<BotNotificationConfig>({
-    telegram: { botToken: '', chatId: '', isActive: true, groups: { customers: '', measurements: '', production: '', design: '' } },
-    zalo: { botToken: '', chatId: '', isActive: true, groups: { customers: '', measurements: '', production: '', design: '' } },
+    telegram: { 
+      botToken: '', 
+      chatId: '', 
+      isActive: true, 
+      groups: { customers: '', measurements: '', production: '', design: '' },
+      workshopGroups: {}
+    },
+    zalo: { 
+      botToken: '', 
+      chatId: '', 
+      isActive: true, 
+      groups: { customers: '', measurements: '', production: '', design: '' },
+      workshopGroups: {}
+    },
     updatedAt: new Date().toISOString()
   });
+  const [selectedWorkshop, setSelectedWorkshop] = React.useState<string>('default');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isTestingTelegram, setIsTestingTelegram] = React.useState(false);
@@ -31,12 +51,14 @@ export function NotificationSettings() {
             telegram: { 
               ...prev.telegram, 
               ...data.telegram,
-              groups: { ...prev.telegram?.groups, ...data.telegram?.groups }
+              groups: { ...prev.telegram?.groups, ...data.telegram?.groups },
+              workshopGroups: (data.telegram as any)?.workshopGroups || {}
             },
             zalo: { 
               ...prev.zalo, 
               ...data.zalo,
-              groups: { ...prev.zalo?.groups, ...data.zalo?.groups }
+              groups: { ...prev.zalo?.groups, ...data.zalo?.groups },
+              workshopGroups: (data.zalo as any)?.workshopGroups || {}
             }
           }));
         }
@@ -48,6 +70,72 @@ export function NotificationSettings() {
     };
     loadConfig();
   }, []);
+
+  const getTelegramGroupVal = (module: 'customers' | 'measurements' | 'production' | 'design') => {
+    if (selectedWorkshop === 'default') {
+      return config.telegram?.groups?.[module] || '';
+    }
+    return (config.telegram as any)?.workshopGroups?.[selectedWorkshop]?.[module] || '';
+  };
+
+  const setTelegramGroupVal = (module: 'customers' | 'measurements' | 'production' | 'design', val: string) => {
+    setConfig(prev => {
+      const telegram = prev.telegram || { botToken: '', chatId: '', isActive: true };
+      if (selectedWorkshop === 'default') {
+        return {
+          ...prev,
+          telegram: {
+            ...telegram,
+            groups: { ...telegram.groups, [module]: val }
+          }
+        };
+      } else {
+        const workshopGroups = { ...(telegram as any).workshopGroups };
+        const wsGroup = workshopGroups[selectedWorkshop] || {};
+        workshopGroups[selectedWorkshop] = { ...wsGroup, [module]: val };
+        return {
+          ...prev,
+          telegram: {
+            ...telegram,
+            workshopGroups
+          }
+        };
+      }
+    });
+  };
+
+  const getZaloGroupVal = (module: 'customers' | 'measurements' | 'production' | 'design') => {
+    if (selectedWorkshop === 'default') {
+      return config.zalo?.groups?.[module] || '';
+    }
+    return (config.zalo as any)?.workshopGroups?.[selectedWorkshop]?.[module] || '';
+  };
+
+  const setZaloGroupVal = (module: 'customers' | 'measurements' | 'production' | 'design', val: string) => {
+    setConfig(prev => {
+      const zalo = prev.zalo || { botToken: '', chatId: '', isActive: true };
+      if (selectedWorkshop === 'default') {
+        return {
+          ...prev,
+          zalo: {
+            ...zalo,
+            groups: { ...zalo.groups, [module]: val }
+          }
+        };
+      } else {
+        const workshopGroups = { ...(zalo as any).workshopGroups };
+        const wsGroup = workshopGroups[selectedWorkshop] || {};
+        workshopGroups[selectedWorkshop] = { ...wsGroup, [module]: val };
+        return {
+          ...prev,
+          zalo: {
+            ...zalo,
+            workshopGroups
+          }
+        };
+      }
+    });
+  };
 
   const handleSave = async (type: 'telegram' | 'zalo') => {
     setIsSaving(true);
@@ -140,21 +228,31 @@ export function NotificationSettings() {
           </div>
 
           <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Telegram (Tùy chọn)</h4>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 mb-2 border-b border-slate-100 gap-2">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Telegram (Tùy chọn)</h4>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="telegram-workshop-select" className="text-[10px] font-black uppercase text-slate-400">Cơ sở:</Label>
+                <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop}>
+                  <SelectTrigger id="telegram-workshop-select" className="h-8 w-[180px] text-xs font-bold rounded-lg border-slate-200">
+                    <SelectValue placeholder="Chọn cơ sở" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                    <SelectItem value="default" className="rounded-lg font-medium text-xs">Mặc định (Chung)</SelectItem>
+                    <SelectItem value="Hà Nội" className="rounded-lg font-medium text-xs">Hà Nội</SelectItem>
+                    <SelectItem value="Cần Thơ" className="rounded-lg font-medium text-xs">Cần Thơ</SelectItem>
+                    <SelectItem value="Đồng Nai" className="rounded-lg font-medium text-xs">Đồng Nai</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="telegram-group-customers" className="text-xs text-slate-500 font-medium">Nhóm 1: Data Khách Hàng</Label>
                 <Input
                   id="telegram-group-customers"
                   placeholder="ID nhóm chat Data Khách Hàng"
-                  value={config.telegram?.groups?.customers || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    telegram: {
-                      ...prev.telegram!,
-                      groups: { ...prev.telegram?.groups, customers: e.target.value }
-                    }
-                  }))}
+                  value={getTelegramGroupVal('customers')}
+                  onChange={(e) => setTelegramGroupVal('customers', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -163,14 +261,8 @@ export function NotificationSettings() {
                 <Input
                   id="telegram-group-measurements"
                   placeholder="ID nhóm chat Lịch Đo Đạc"
-                  value={config.telegram?.groups?.measurements || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    telegram: {
-                      ...prev.telegram!,
-                      groups: { ...prev.telegram?.groups, measurements: e.target.value }
-                    }
-                  }))}
+                  value={getTelegramGroupVal('measurements')}
+                  onChange={(e) => setTelegramGroupVal('measurements', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -179,14 +271,8 @@ export function NotificationSettings() {
                 <Input
                   id="telegram-group-production"
                   placeholder="ID nhóm chat Lịch Sản Xuất"
-                  value={config.telegram?.groups?.production || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    telegram: {
-                      ...prev.telegram!,
-                      groups: { ...prev.telegram?.groups, production: e.target.value }
-                    }
-                  }))}
+                  value={getTelegramGroupVal('production')}
+                  onChange={(e) => setTelegramGroupVal('production', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -195,14 +281,8 @@ export function NotificationSettings() {
                 <Input
                   id="telegram-group-design"
                   placeholder="ID nhóm chat Thiết Kế"
-                  value={config.telegram?.groups?.design || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    telegram: {
-                      ...prev.telegram!,
-                      groups: { ...prev.telegram?.groups, design: e.target.value }
-                    }
-                  }))}
+                  value={getTelegramGroupVal('design')}
+                  onChange={(e) => setTelegramGroupVal('design', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -259,21 +339,31 @@ export function NotificationSettings() {
           </div>
 
           <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Zalo (Tùy chọn)</h4>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 mb-2 border-b border-slate-100 gap-2">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân bổ thông báo theo nhóm Zalo (Tùy chọn)</h4>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="zalo-workshop-select" className="text-[10px] font-black uppercase text-slate-400">Cơ sở:</Label>
+                <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop}>
+                  <SelectTrigger id="zalo-workshop-select" className="h-8 w-[180px] text-xs font-bold rounded-lg border-slate-200">
+                    <SelectValue placeholder="Chọn cơ sở" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                    <SelectItem value="default" className="rounded-lg font-medium text-xs">Mặc định (Chung)</SelectItem>
+                    <SelectItem value="Hà Nội" className="rounded-lg font-medium text-xs">Hà Nội</SelectItem>
+                    <SelectItem value="Cần Thơ" className="rounded-lg font-medium text-xs">Cần Thơ</SelectItem>
+                    <SelectItem value="Đồng Nai" className="rounded-lg font-medium text-xs">Đồng Nai</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="zalo-group-customers" className="text-xs text-slate-500 font-medium">Nhóm 1: Data Khách Hàng</Label>
                 <Input
                   id="zalo-group-customers"
                   placeholder="ID nhóm Zalo Data Khách Hàng"
-                  value={config.zalo?.groups?.customers || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    zalo: {
-                      ...prev.zalo!,
-                      groups: { ...prev.zalo?.groups, customers: e.target.value }
-                    }
-                  }))}
+                  value={getZaloGroupVal('customers')}
+                  onChange={(e) => setZaloGroupVal('customers', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -282,14 +372,8 @@ export function NotificationSettings() {
                 <Input
                   id="zalo-group-measurements"
                   placeholder="ID nhóm Zalo Lịch Đo Đạc"
-                  value={config.zalo?.groups?.measurements || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    zalo: {
-                      ...prev.zalo!,
-                      groups: { ...prev.zalo?.groups, measurements: e.target.value }
-                    }
-                  }))}
+                  value={getZaloGroupVal('measurements')}
+                  onChange={(e) => setZaloGroupVal('measurements', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -298,14 +382,8 @@ export function NotificationSettings() {
                 <Input
                   id="zalo-group-production"
                   placeholder="ID nhóm Zalo Lịch Sản Xuất"
-                  value={config.zalo?.groups?.production || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    zalo: {
-                      ...prev.zalo!,
-                      groups: { ...prev.zalo?.groups, production: e.target.value }
-                    }
-                  }))}
+                  value={getZaloGroupVal('production')}
+                  onChange={(e) => setZaloGroupVal('production', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>
@@ -314,14 +392,8 @@ export function NotificationSettings() {
                 <Input
                   id="zalo-group-design"
                   placeholder="ID nhóm Zalo Thiết Kế"
-                  value={config.zalo?.groups?.design || ''}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    zalo: {
-                      ...prev.zalo!,
-                      groups: { ...prev.zalo?.groups, design: e.target.value }
-                    }
-                  }))}
+                  value={getZaloGroupVal('design')}
+                  onChange={(e) => setZaloGroupVal('design', e.target.value)}
                   className="font-mono text-xs h-9"
                 />
               </div>

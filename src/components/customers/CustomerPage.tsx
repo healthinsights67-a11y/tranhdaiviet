@@ -830,7 +830,7 @@ export function CustomerPage({
         );
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'customers');
+        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'customers', customerData.workshop);
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
@@ -968,7 +968,8 @@ export function CustomerPage({
         `👤 Khách hàng: ${existingCustomer.name}\n` +
         `🏷 Tiến độ: Chốt cọc ➡️ Đã tư vấn\n` +
         `Được thực hiện bởi: ${currentUser?.name || 'Hệ thống'}`,
-        'customers'
+        'customers',
+        existingCustomer.workshop
       );
 
       toast.success('Đã hủy cọc và đưa khách hàng về trạng thái tư vấn');
@@ -1022,7 +1023,8 @@ export function CustomerPage({
         `👤 Khách hàng: ${existingCustomer.name}${codeText}${priceText}\n` +
         `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
         `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
-        getTargetModule(updateData.stage)
+        getTargetModule(updateData.stage),
+        existingCustomer.workshop
       );
       
       // Update tasks
@@ -1197,7 +1199,8 @@ export function CustomerPage({
               `👤 Đơn hàng: ${selectedCustomer.name}${codeText}\n` +
               `🛠 Thay đổi:\n` + changedFields.map(f => `- ${f}`).join('\n') + `\n\n` +
               `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
-              getTargetModule(selectedCustomer.stage)
+              getTargetModule(selectedCustomer.stage),
+              selectedCustomer.workshop
             );
           }
         }
@@ -1225,12 +1228,14 @@ export function CustomerPage({
               `👤 Khách hàng: ${selectedCustomer.name}${codeText}${priceText}\n` +
               `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
               `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
-              getTargetModule(selectedCustomer.stage)
+              getTargetModule(selectedCustomer.stage),
+              selectedCustomer.workshop
             );
           } else {
             sendSystemNotification(
               `🔄 Cập nhật trạng thái khách hàng\n\n👤 Tên: ${selectedCustomer.name}\n📞 SĐT: ${selectedCustomer.phone}\n🏷 Trạng thái: ${oldStageName} ➡️ ${newStageName}\nĐược cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
-              getTargetModule(selectedCustomer.stage)
+              getTargetModule(selectedCustomer.stage),
+              selectedCustomer.workshop
             );
           }
         }

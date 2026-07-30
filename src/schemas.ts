@@ -308,6 +308,15 @@ export const BotNotificationConfigSchema = z.object({
       production: z.string().optional(),
       design: z.string().optional(),
     }).optional(),
+    workshopGroups: z.record(
+      z.string(),
+      z.object({
+        customers: z.string().optional(),
+        measurements: z.string().optional(),
+        production: z.string().optional(),
+        design: z.string().optional(),
+      })
+    ).optional().catch(() => ({})),
   }).optional(),
   zalo: z.object({
     botToken: z.string().optional(),
@@ -319,6 +328,15 @@ export const BotNotificationConfigSchema = z.object({
       production: z.string().optional(),
       design: z.string().optional(),
     }).optional(),
+    workshopGroups: z.record(
+      z.string(),
+      z.object({
+        customers: z.string().optional(),
+        measurements: z.string().optional(),
+        production: z.string().optional(),
+        design: z.string().optional(),
+      })
+    ).optional().catch(() => ({})),
   }).optional(),
   updatedAt: timestampSchema,
   updatedBy: z.string().optional(),
