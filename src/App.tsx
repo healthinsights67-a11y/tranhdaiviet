@@ -977,6 +977,7 @@ function AppContent() {
             onLogin={() => setLoginDialogOpen(true)} 
             onLogout={handleLogout} 
             currentUser={currentMember}
+            setActiveTab={setActiveTab}
           />
           <main className="flex-1 overflow-y-auto px-3 md:px-10 py-4 md:py-8 pb-28 md:pb-10">
             <AnimatePresence mode="wait">

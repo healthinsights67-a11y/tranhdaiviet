@@ -38,6 +38,7 @@ interface NavbarProps {
   onLogin?: () => void;
   onLogout?: () => void;
   currentUser?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
 const playNotificationSound = () => {
@@ -74,11 +75,48 @@ const playNotificationSound = () => {
   }
 };
 
-export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: NavbarProps) {
+export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser, setActiveTab }: NavbarProps) {
   const [notifications, setNotifications] = React.useState<NotificationType[]>([]);
   const [showPopup, setShowPopup] = React.useState(false);
   const currentUserId = currentUser?.id || user?.uid || user?.email;
   const isInitialLoad = React.useRef(true);
+
+  const handleNotificationClick = async (notif: NotificationType) => {
+    if (currentUserId) {
+      if (!(notif.readBy || []).includes(currentUserId)) {
+        setNotifications(notifications.map(n => n.id === notif.id ? { ...n, readBy: [...(n.readBy || []), currentUserId] } : n));
+        await updateDoc(doc(db, 'notifications', notif.id), { readBy: arrayUnion(currentUserId) });
+      }
+    }
+    
+    const title = notif.title.toLowerCase();
+    const msg = notif.message.toLowerCase();
+    
+    if (title.includes('đo đạc') || msg.includes('đo đạc') || title.includes('khảo sát') || msg.includes('khảo sát')) {
+      setActiveTab?.('measurements');
+    } else if (title.includes('lắp đặt') || msg.includes('lắp đặt') || title.includes('thi công') || msg.includes('thi công')) {
+      setActiveTab?.('installations');
+    } else if (title.includes('sản xuất') || msg.includes('sản xuất')) {
+      setActiveTab?.('production');
+    } else if (title.includes('thiết kế') || msg.includes('thiết kế')) {
+      setActiveTab?.('design');
+    } else if (title.includes('bảo hành') || msg.includes('bảo hành') || title.includes('cskh') || msg.includes('cskh')) {
+      setActiveTab?.('customer-care');
+    } else if (title.includes('báo giá') || msg.includes('báo giá')) {
+      setActiveTab?.('quotations');
+    } else if (title.includes('khách hàng') || msg.includes('khách hàng')) {
+      setActiveTab?.('customers');
+    } else {
+      if (notif.targetGroup === 'sales') {
+        setActiveTab?.('sale');
+      } else if (notif.targetGroup === 'designers') {
+        setActiveTab?.('design');
+      } else if (notif.targetGroup === 'installers') {
+        setActiveTab?.('installations');
+      }
+    }
+    setShowPopup(false);
+  };
 
   React.useEffect(() => {
     if (!currentUserId) return;
@@ -232,19 +270,26 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
                         notifications.map((n) => {
                           const isUnread = !(n.readBy || []).includes(currentUserId);
                           return (
-                            <DropdownMenuItem key={n.id} className={cn("flex flex-col items-start gap-1 p-3 cursor-default focus:bg-transparent", isUnread ? "bg-blue-50/50" : "")}>
+                            <DropdownMenuItem 
+                              key={n.id} 
+                              className={cn(
+                                "flex flex-col items-start gap-1 p-3 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-b-0 transition-colors", 
+                                isUnread ? "bg-blue-50/40 hover:bg-blue-50/60" : ""
+                              )}
+                              onClick={() => handleNotificationClick(n)}
+                            >
                               <div className="flex items-start justify-between w-full gap-2">
-                                <span className={cn("text-sm", isUnread ? "font-bold text-blue-900" : "font-medium text-foreground")}>{n.title}</span>
-                                <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{getRelativeTime(n.createdAt)}</span>
+                                <span className={cn("text-xs md:text-sm", isUnread ? "font-bold text-blue-900" : "font-semibold text-foreground")}>{n.title}</span>
+                                <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">{getRelativeTime(n.createdAt)}</span>
                               </div>
-                              <p className={cn("text-xs leading-relaxed whitespace-pre-wrap line-clamp-2", isUnread ? "text-blue-800" : "text-muted-foreground")}>
+                              <p className={cn("text-[11px] md:text-xs leading-relaxed whitespace-pre-wrap line-clamp-2", isUnread ? "text-blue-800/90" : "text-muted-foreground")}>
                                 {n.message}
                               </p>
                               {isUnread && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-6 text-[10px] px-2 mt-1 -ml-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                  className="h-6 text-[10px] px-2 mt-1 -ml-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100/60"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -288,12 +333,16 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser }: Na
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
              {notifications.filter(n => !(n.readBy || []).includes(currentUserId)).map((n) => (
-                <div key={n.id} className="flex flex-col items-start gap-1 p-4 rounded-xl bg-secondary/50 border">
+                <div 
+                  key={n.id} 
+                  className="flex flex-col items-start gap-1 p-4 rounded-xl bg-secondary/30 hover:bg-secondary/60 border cursor-pointer transition-all duration-200 text-left w-full"
+                  onClick={() => handleNotificationClick(n)}
+                >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-semibold text-sm">{n.title}</span>
+                    <span className="font-bold text-sm text-foreground">{n.title}</span>
                     <span className="text-[10px] text-muted-foreground">{getRelativeTime(n.createdAt)}</span>
                   </div>
-                  <p className="text-xs text-foreground mt-1 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed whitespace-pre-wrap">
                     {n.message}
                   </p>
                 </div>

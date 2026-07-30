@@ -25,6 +25,7 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -219,81 +220,8 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   const hasTodayItems = todaySchedules.length > 0 || todayInstallations.length > 0 || todayTasks.length > 0;
 
   React.useEffect(() => {
-    if (!currentUser?.id || hasShownAlerts) return;
-
-    const generateSmartAlerts = async () => {
-      const todayStr = todayDate.toDateString();
-      const storageKey = `smart_alerts_gen_${currentUser.id}`;
-      
-      if (localStorage.getItem(storageKey) === todayStr) {
-        setHasShownAlerts(true);
-        return; // Already generated today
-      }
-
-      let generated = false;
-
-      if (todaySchedules.length > 0) {
-        toast.info(`Bạn có ${todaySchedules.length} lịch đo đạc/khảo sát trong ngày hôm nay!`, { duration: 5000 });
-        await addDoc(collection(db, 'notifications'), {
-          title: 'Lịch khảo sát/đo đạc hôm nay',
-          message: `Bạn có ${todaySchedules.length} lịch đo đạc/khảo sát cần thực hiện trong ngày hôm nay!`,
-          type: 'smart_alert',
-          createdAt: new Date().toISOString(),
-          readBy: [],
-          isGlobal: false,
-          userId: currentUser.id
-        });
-        generated = true;
-      }
-      if (todayInstallations.length > 0) {
-        toast.info(`Bạn có ${todayInstallations.length} lịch lắp đặt trong ngày hôm nay!`, { duration: 5000 });
-        await addDoc(collection(db, 'notifications'), {
-          title: 'Lịch lắp đặt hôm nay',
-          message: `Bạn có ${todayInstallations.length} lịch lắp đặt cần thực hiện trong ngày hôm nay!`,
-          type: 'smart_alert',
-          createdAt: new Date().toISOString(),
-          readBy: [],
-          isGlobal: false,
-          userId: currentUser.id
-        });
-        generated = true;
-      }
-      if (overdueTasks.length > 0) {
-        toast.error(`Cảnh báo: Bạn đang có ${overdueTasks.length} nhiệm vụ bị trễ hạn!`, { duration: 8000 });
-        await addDoc(collection(db, 'notifications'), {
-          title: 'Nhiệm vụ trễ hạn',
-          message: `Cảnh báo: Bạn đang có ${overdueTasks.length} nhiệm vụ đã bị trễ hạn! Vui lòng kiểm tra và xử lý ngay.`,
-          type: 'smart_alert',
-          createdAt: new Date().toISOString(),
-          readBy: [],
-          isGlobal: false,
-          userId: currentUser.id
-        });
-        generated = true;
-      }
-      
-      if (unscheduledMeasurements.length > 0) {
-        toast.warning(`Bạn đang có ${unscheduledMeasurements.length} khách hàng chưa được lên lịch đo đạc!`, { duration: 8000 });
-        await addDoc(collection(db, 'notifications'), {
-          title: 'Bỏ sót lịch đo đạc',
-          message: `Cảnh báo: Bạn đang có ${unscheduledMeasurements.length} khách hàng trong giai đoạn Tư vấn/Chốt cọc chưa được xếp lịch đo đạc. Vui lòng kiểm tra ngay.`,
-          type: 'smart_alert',
-          createdAt: new Date().toISOString(),
-          readBy: [],
-          isGlobal: false,
-          userId: currentUser.id
-        });
-        generated = true;
-      }
-      
-      if (generated) {
-        localStorage.setItem(storageKey, todayStr);
-      }
-      setHasShownAlerts(true);
-    };
-
-    generateSmartAlerts();
-  }, [hasShownAlerts, todaySchedules.length, todayInstallations.length, overdueTasks.length, unscheduledMeasurements.length, currentUser?.id]);
+    setHasShownAlerts(true);
+  }, []);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-16 px-0.5">
@@ -451,6 +379,48 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
                         onClick={() => setActiveTab && setActiveTab('measurements')}
                       >
                         Xếp lịch đo
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {overdueTasks.length > 0 && (
+            <Card className="border border-destructive/30 bg-destructive/5 text-destructive-foreground shadow-sm">
+              <CardHeader className="p-4 pb-2 flex flex-row items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5 animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-sm font-bold tracking-tight">Cảnh báo nhiệm vụ trễ hạn</CardTitle>
+                  <CardDescription className="text-[10px] text-destructive/80 mt-0.5">
+                    Phát hiện {overdueTasks.length} nhiệm vụ đã quá hạn hoàn thành. Vui lòng kiểm tra và xử lý ngay.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-1">
+                <div className="grid gap-2 md:grid-cols-2 max-h-[220px] overflow-y-auto pr-1">
+                  {overdueTasks.map((t: any) => (
+                    <div key={t.id} className="flex items-center justify-between p-2.5 bg-card border border-destructive/10 rounded-lg group shadow-sm">
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-bold text-foreground truncate">{t.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          Khách hàng: {t.customerName || 'Không xác định'} | Hạn chót: {t.dueDate ? format(new Date(t.dueDate), 'dd/MM/yyyy') : 'Chưa rõ'}
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        className="h-7 text-[10px] px-3 font-semibold rounded-md shadow-sm shrink-0"
+                        onClick={() => {
+                          if (t.type === 'design') setActiveTab?.('design');
+                          else if (t.type === 'production') setActiveTab?.('production');
+                          else if (t.type === 'sale') setActiveTab?.('sale');
+                          else if (t.type === 'marketing') setActiveTab?.('marketing');
+                          else setActiveTab?.('dashboard');
+                        }}
+                      >
+                        Xử lý ngay
                       </Button>
                     </div>
                   ))}
