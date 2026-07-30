@@ -784,19 +784,15 @@ function AppContent() {
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : (
-            <div className="space-y-4">
-              <Tabs defaultValue="planner" className="w-full animate-in fade-in duration-300">
-                <TabsList className="grid w-full max-w-[400px] grid-cols-2 rounded-xl h-10 p-1 bg-gray-100/80 border mb-4">
-                  <TabsTrigger value="planner" className="rounded-lg text-xs font-bold py-1.5">Kế hoạch tuần</TabsTrigger>
-                  <TabsTrigger value="routes" className="rounded-lg text-xs font-bold py-1.5">Lịch trình di chuyển</TabsTrigger>
-                </TabsList>
-                <TabsContent value="planner" className="mt-0 space-y-4">
+            <div className="flex flex-col gap-6 w-full h-full min-h-0">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full h-full items-start">
+                <div className="xl:col-span-7 w-full min-w-0">
                   <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />
-                </TabsContent>
-                <TabsContent value="routes" className="mt-0 space-y-4">
+                </div>
+                <div className="xl:col-span-5 w-full min-w-0 border-t xl:border-t-0 xl:border-l border-border pt-6 xl:pt-0 xl:pl-6">
                   <SalesRoutePage />
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
             </div>
           );
       case 'marketing':

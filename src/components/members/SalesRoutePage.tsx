@@ -368,7 +368,7 @@ export function SalesRoutePage() {
   );
 
   return (
-    <div className="space-y-4 md:space-y-6 p-4 md:p-6 h-full flex flex-col min-h-0">
+    <div className="space-y-4 md:space-y-6 h-full flex flex-col min-h-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Lịch trình Sale</h1>
