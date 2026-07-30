@@ -784,14 +784,15 @@ function AppContent() {
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : (
-            <div className="flex flex-col gap-6 w-full h-full min-h-0">
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full h-full items-start">
-                <div className="xl:col-span-7 w-full min-w-0">
-                  <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />
-                </div>
-                <div className="xl:col-span-5 w-full min-w-0 border-t xl:border-t-0 xl:border-l border-border pt-6 xl:pt-0 xl:pl-6">
-                  <SalesRoutePage />
-                </div>
+            <div className="space-y-8 w-full">
+              {/* Lịch trình di chuyển (Sales Route) ở trên */}
+              <div className="bg-card border border-border rounded-2xl p-4 md:p-6 shadow-sm">
+                <SalesRoutePage />
+              </div>
+              
+              {/* Kế hoạch tuần (Weekly Planner) ở dưới */}
+              <div className="bg-card border border-border rounded-2xl p-4 md:p-6 shadow-sm">
+                <SaleWeeklyPlanner tasks={filteredTasks.filter(t => t.type === 'sale')} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />
               </div>
             </div>
           );
