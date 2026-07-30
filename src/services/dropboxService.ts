@@ -65,7 +65,7 @@ const getAccessToken = async (creds: DropboxCredentials): Promise<string> => {
 /**
  * Tải file lên Dropbox và trả về link chia sẻ công khai
  */
-export const uploadToDropbox = async (file: File, customName?: string): Promise<string | null> => {
+export const uploadToDropbox = async (file: File, customName?: string, folderName: string = 'tasks'): Promise<string | null> => {
   try {
     const creds = await getCredentials();
     const accessToken = await getAccessToken(creds);
@@ -79,7 +79,7 @@ export const uploadToDropbox = async (file: File, customName?: string): Promise<
       .replace(/[^a-zA-Z0-9_-]/g, '_')
       .toUpperCase();
     const fileName = `${Date.now()}_${cleanBaseName}.${extension}`;
-    const dropboxPath = `/tasks/${fileName}`;
+    const dropboxPath = `/${folderName}/${fileName}`;
 
     // 1. Thực hiện tải file lên Dropbox
     const uploadRes = await fetch('https://content.dropboxapi.com/2/files/upload', {

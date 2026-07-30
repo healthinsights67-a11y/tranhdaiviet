@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { uploadToImgBB } from '../../services/uploadService';
+import { uploadToDropbox } from '../../services/dropboxService';
 
 interface DocumentFolder {
   id: string;
@@ -118,7 +119,19 @@ export const ProductDocuments = () => {
           let type = file.type || '';
           let size = file.size;
 
-          if (isImage) {
+          // 1. Try uploading to Dropbox first
+          try {
+            const dbUrl = await uploadToDropbox(file, undefined, 'product_documents');
+            if (dbUrl) {
+              url = dbUrl;
+              type = file.type || 'application/octet-stream';
+            }
+          } catch (dbErr) {
+            console.warn("Dropbox upload failed, falling back...", dbErr);
+          }
+
+          // 2. Fallbacks
+          if (!url && isImage) {
             const imgbbUrl = await uploadToImgBB(file);
             if (imgbbUrl) {
               url = imgbbUrl;
