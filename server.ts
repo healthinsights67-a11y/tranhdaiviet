@@ -107,15 +107,13 @@ function getFCM() {
   }
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = parseInt(process.env.PORT || "3000", 10);
+export const app = express();
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // Serve uploads folder statically for fallback storage
-  app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
+// Serve uploads folder statically for fallback storage
+app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
 
   // API Routes
   app.post("/api/send-notification", async (req, res) => {
@@ -771,24 +769,29 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('/*any', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+  // Vite middleware for development / Production static files (conditional for serverless)
+  async function startServer() {
+    const PORT = parseInt(process.env.PORT || "3000", 10);
+    
+    if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('/*any', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    if (!process.env.VERCEL) {
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+      });
+    }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+  startServer();
