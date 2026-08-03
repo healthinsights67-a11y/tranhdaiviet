@@ -346,7 +346,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
             changed = true;
             return {
               ...item,
-              basePrice: matchedProduct.unitPrice
+              basePrice: getProductPriceForWorkshop(matchedProduct, formData.workshop)
             };
           }
         }
@@ -401,7 +401,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
 
     const newItemsToAdd = selectedProductsForBulk.map(product => {
       const isAccessory = isAccessoryItem(product.productName, product.category);
-      const basePrice = product.unitPrice;
+      const basePrice = getProductPriceForWorkshop(product, formData.workshop);
       const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
       return {
         id: Math.random().toString(36).substr(2, 9),
@@ -1626,7 +1626,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                 <div className="flex flex-col">
                                   <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mr-2">Đơn giá</span>
                                   <span className="font-black text-blue-700 text-base">
-                                    {product.unitPrice.toLocaleString()} <span className="text-[9px] opacity-60">VNĐ</span>
+                                    {getProductPriceForWorkshop(product, formData.workshop).toLocaleString()} <span className="text-[9px] opacity-60">VNĐ</span>
                                   </span>
                                 </div>
                               </div>
