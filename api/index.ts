@@ -3,7 +3,37 @@ import path from "path";
 import fs from "fs";
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { SalesRouteSchema } from '../src/schemas';
+import { z } from 'zod';
+
+const timestampSchema = z.any().transform((val) => {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    if (typeof val.toDate === 'function') {
+      try {
+        return val.toDate().toISOString();
+      } catch (e) {
+        return new Date().toISOString();
+      }
+    }
+    if ('seconds' in val && 'nanoseconds' in val) {
+       return new Date(val.seconds * 1000).toISOString();
+    }
+  }
+  return new Date().toISOString();
+});
+
+const SalesRouteSchema = z.object({
+  id: z.string(),
+  memberId: z.string(),
+  memberName: z.string(),
+  zaloUserId: z.string().optional(),
+  latitude: z.number(),
+  longitude: z.number(),
+  timestamp: timestampSchema,
+  note: z.string().optional(),
+  address: z.string().optional(),
+});
 
 let isFirebaseInitialized = false;
 
