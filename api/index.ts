@@ -501,7 +501,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   }
 
   // Zalo Webhook Endpoint
-  app.post("/webhooks/zalo", async (req, res) => {
+  app.post(["/webhooks/zalo", "/api/webhooks/zalo"], async (req, res) => {
     const body = req.body;
     console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
     
