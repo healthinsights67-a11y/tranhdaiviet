@@ -685,7 +685,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   });
 
-  // Proxy for Zalo Bot API to bypass CORS
+  // Proxy for Zalo Bot API to bypass CORS (supports comma-separated IDs)
   app.post("/api/test-zalo-bot", async (req, res) => {
     const { botToken, chatId, text } = req.body;
     
@@ -694,22 +694,47 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
 
     const cleanToken = botToken.trim();
-    const cleanChatId = chatId.trim();
+    const chatIds = chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
+
+    if (chatIds.length === 0) {
+      return res.status(400).json({ error: "No valid Chat ID found" });
+    }
 
     try {
-      const response = await fetch(`https://bot-api.zaloplatforms.com/bot${cleanToken}/sendMessage`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: cleanChatId,
-          text: text
-        }),
-      });
+      const results = [];
+      let lastError = null;
+      let lastResponseStatus = 200;
 
-      const data = await response.json();
-      res.status(response.status).json(data);
+      for (const id of chatIds) {
+        try {
+          const response = await fetch(`https://bot-api.zaloplatforms.com/bot${cleanToken}/sendMessage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: id,
+              text: text
+            }),
+          });
+
+          const data = await response.json();
+          lastResponseStatus = response.status;
+          results.push({ id, status: response.status, data });
+          if (!response.ok || data.error || !data.ok) {
+            lastError = data.message || data.description || data.error || 'Failed to send message';
+          }
+        } catch (err: any) {
+          lastError = err.message;
+          results.push({ id, error: err.message });
+        }
+      }
+
+      if (lastError && chatIds.length === 1) {
+        return res.status(lastResponseStatus).json({ error: lastError });
+      }
+
+      return res.json({ message: "Completed", results });
     } catch (error: any) {
       console.error("Zalo Bot proxy error:", error);
       res.status(500).json({ error: "Failed to fetch from Zalo Bot API", details: error.message });
