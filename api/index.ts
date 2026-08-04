@@ -493,10 +493,12 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   }
 
-  // Khởi tạo các lịch trình cron
-  scheduleDailyReport();
-  scheduleZaloReminders();
-  listenToSalesRoutes();
+  // Khởi tạo các lịch trình cron và listener (Chỉ chạy khi chạy local hoặc VPS độc lập, không chạy trên Serverless Vercel)
+  if (!process.env.VERCEL) {
+    scheduleDailyReport();
+    scheduleZaloReminders();
+    listenToSalesRoutes();
+  }
 
   // Zalo Webhook Endpoint
   app.post("/webhooks/zalo", async (req, res) => {
