@@ -701,6 +701,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
 
     try {
+      console.log("Proxying Zalo Bot request for IDs:", chatIds, "with text:", text);
       const results = [];
       let lastError = null;
       let lastResponseStatus = 200;
@@ -719,12 +720,14 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
           });
 
           const data = await response.json();
+          console.log(`Zalo API response for ID ${id}:`, response.status, data);
           lastResponseStatus = response.status;
           results.push({ id, status: response.status, data });
           if (!response.ok || data.error || !data.ok) {
             lastError = data.message || data.description || data.error || 'Failed to send message';
           }
         } catch (err: any) {
+          console.error(`Error sending Zalo message to ID ${id}:`, err);
           lastError = err.message;
           results.push({ id, error: err.message });
         }
