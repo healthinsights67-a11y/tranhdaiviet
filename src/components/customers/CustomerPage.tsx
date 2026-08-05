@@ -642,9 +642,9 @@ export function CustomerPage({
   };
 
   const runMigration = async () => {
-    const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
-    if (!isManager) {
-      toast.error("Chỉ quản trị viên hoặc quản lý mới có quyền thực hiện đồng bộ dữ liệu.");
+    const canMigrate = !!(currentUser?.role && ['giám đốc', 'tổng quản lý', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
+    if (!canMigrate) {
+      toast.error("Chỉ quản trị viên hoặc ban giám đốc mới có quyền thực hiện đồng bộ dữ liệu.");
       return;
     }
 
@@ -1766,7 +1766,7 @@ export function CustomerPage({
             <span className="hidden md:inline">Xuất Excel</span>
           </Button>
 
-          {isManager && (
+          {!!(currentUser?.role && ['giám đốc', 'tổng quản lý', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r))) && (
             <Button 
               variant="outline"
               className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100"
