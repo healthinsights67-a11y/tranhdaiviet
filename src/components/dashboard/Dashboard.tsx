@@ -61,7 +61,7 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
   const [hasShownAlerts, setHasShownAlerts] = React.useState(false);
 
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
-  const isManager = isAdmin || !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const isManager = isAdmin || !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu'].some(r => currentUser.role.toLowerCase().includes(r)));
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
   const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 

@@ -146,7 +146,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
       return permissions[item.permission] !== false;
     }
     // Fallback: check on currentUser.permissions directly
-    const isManager = isAdmin || !!currentUser?.role?.toLowerCase()?.includes('quản lý');
+    const isManager = isAdmin || !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu'].some(r => currentUser.role.toLowerCase().includes(r)));
     if (isManager) return true;
     if (currentUser?.permissions) {
       return (currentUser.permissions as any)[item.permission] !== false;

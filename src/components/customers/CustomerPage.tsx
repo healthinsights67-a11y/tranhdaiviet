@@ -635,14 +635,14 @@ export function CustomerPage({
   }, [customers, user, setCustomers]);
 
   const formatCurrency = (value?: number) => {
-    const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý');
+    const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
     if (currentUser?.permissions?.viewPrice === false && !isManager) return '*** ₫';
     if (value === undefined) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
   };
 
   const runMigration = async () => {
-    const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('admin');
+    const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
     if (!isManager) {
       toast.error("Chỉ quản trị viên hoặc quản lý mới có quyền thực hiện đồng bộ dữ liệu.");
       return;
@@ -1556,7 +1556,7 @@ export function CustomerPage({
     });
   }, [customers, selectedWorkshop, selectedStage, selectedSaleId, selectedMonth, searchTerm, matchesTime]);
 
-  const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role === 'Giám đốc' || currentUser?.role === 'Trợ lý';
+  const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
 
   const { actualRevenue, expectedRevenue, totalCustomers, wonCustomers, winRate } = React.useMemo(() => {

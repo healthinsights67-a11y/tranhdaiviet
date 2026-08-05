@@ -23,7 +23,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, onMenuClick, currentU
   const filteredTabs = tabs.filter(tab => {
     if (!tab.permission) return true;
     if (permissions) return permissions[tab.permission] !== false;
-    const isManager = !!currentUser?.role?.toLowerCase()?.includes('quản lý');
+    const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu'].some(r => currentUser.role.toLowerCase().includes(r)));
     if (isManager) return true;
     if (currentUser?.permissions) {
       return (currentUser.permissions as any)[tab.permission] !== false;

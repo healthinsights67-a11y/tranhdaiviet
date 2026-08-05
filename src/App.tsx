@@ -599,7 +599,7 @@ function AppContent() {
     return null;
   }, [dbMember, user, userProfile, isAdmin]);
 
-  const isManager = isAdmin || !!(currentMember?.role?.toLowerCase()?.includes('quản lý'));
+  const isManager = isAdmin || !!(currentMember?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu'].some(r => currentMember.role.toLowerCase().includes(r)));
 
   // Determine if we should show all data (Manager or missing profile for now)
   const showAllData = !user || isManager || !currentMember;
