@@ -141,6 +141,15 @@ export async function sendSystemNotification(
       if (targetChatId) {
         console.log('Sending to Telegram...');
         const chatIds = targetChatId.split(',').map(id => id.trim()).filter(id => !!id);
+        
+        // Add default chatId if configured and not already included
+        if (config.telegram.chatId) {
+          const defaultId = config.telegram.chatId.trim();
+          if (defaultId && !chatIds.includes(defaultId)) {
+            chatIds.push(defaultId);
+          }
+        }
+
         chatIds.forEach(id => {
           promises.push(
             sendTelegramTestMessage(config.telegram.botToken!, id, message)
@@ -165,6 +174,15 @@ export async function sendSystemNotification(
       if (targetChatId) {
         console.log('Sending to Zalo...');
         const chatIds = targetChatId.split(',').map(id => id.trim()).filter(id => !!id);
+        
+        // Add default chatId if configured and not already included
+        if (config.zalo.chatId) {
+          const defaultId = config.zalo.chatId.trim();
+          if (defaultId && !chatIds.includes(defaultId)) {
+            chatIds.push(defaultId);
+          }
+        }
+
         chatIds.forEach(id => {
           promises.push(
             sendZaloTestMessage(config.zalo.botToken!, id, message)
