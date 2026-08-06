@@ -1077,14 +1077,31 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                           {/* Dòng 1: Ảnh đại diện + Thư viện mẫu + Vật liệu */}
                           <div className="flex items-start gap-2">
                             {/* Avatar */}
-                            <div 
-                              className="h-10 w-10 shrink-0 rounded-lg bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-all overflow-hidden relative"
-                              onClick={() => document.getElementById(`upload-item-${item.id}`)?.click()}
-                            >
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              ) : (
-                                <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                            <div className="relative shrink-0">
+                              <div 
+                                className="h-10 w-10 rounded-lg bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-all overflow-hidden relative"
+                                onClick={() => document.getElementById(`upload-item-${item.id}`)?.click()}
+                                title="Click để tải ảnh lên cho hạng mục này"
+                              >
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              {item.imageUrl && (
+                                <button
+                                  type="button"
+                                  className="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-0.5 shadow-sm transition-all z-10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateItem(item.id, { imageUrl: '' });
+                                    toast.success("Đã xoá ảnh hạng mục");
+                                  }}
+                                  title="Xoá ảnh"
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
                               )}
                             </div>
 

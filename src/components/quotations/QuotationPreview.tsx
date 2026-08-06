@@ -514,6 +514,14 @@ export function QuotationPreview({
     if (!quotation) return [];
     return quotation.items.filter(item => item.category?.toLowerCase()?.includes('đóng sẵn'));
   }, [quotation]);
+
+  const showCustomImageCol = React.useMemo(() => {
+    return customItems.some(item => !!item.imageUrl);
+  }, [customItems]);
+
+  const showReadyMadeImageCol = React.useMemo(() => {
+    return readyMadeItems.some(item => !!item.imageUrl);
+  }, [readyMadeItems]);
   
   // Pinch to zoom state
   const touchStartRef = React.useRef<{ distance: number; zoom: number } | null>(null);
@@ -1121,18 +1129,31 @@ export function QuotationPreview({
          pageSetup: { paperSize: 9, orientation: 'portrait' }
       });
 
-      const maxCol = 8;
+      const showImageCol = customItems.some(item => !!item.imageUrl) || readyMadeItems.some(item => !!item.imageUrl);
+      const maxCol = showImageCol ? 8 : 7;
 
-      sheet.columns = [
-         { width: 8 },  // STT
-         { width: 30 }, // Tên
-         { width: 20 }, // Ảnh
-         { width: 45 }, // QC
-         { width: 10 }, // ĐVT
-         { width: 10 }, // SL
-         { width: 18 }, // Đơn giá
-         { width: 20 }, // Thành tiền
-      ];
+      if (showImageCol) {
+         sheet.columns = [
+            { width: 8 },  // STT
+            { width: 30 }, // Tên
+            { width: 20 }, // Ảnh
+            { width: 45 }, // QC
+            { width: 10 }, // ĐVT
+            { width: 10 }, // SL
+            { width: 18 }, // Đơn giá
+            { width: 20 }, // Thành tiền
+         ];
+      } else {
+         sheet.columns = [
+            { width: 8 },  // STT
+            { width: 30 }, // Tên
+            { width: 45 }, // QC
+            { width: 10 }, // ĐVT
+            { width: 10 }, // SL
+            { width: 18 }, // Đơn giá
+            { width: 20 }, // Thành tiền
+         ];
+      }
 
       const addHeader = (text: string, bold: boolean, size: number) => {
          const row = sheet.addRow([text]);
@@ -1209,7 +1230,22 @@ export function QuotationPreview({
          titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
          titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'HÌNH ẢNH', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
+         const headerValues = [
+            'STT', 
+            'TÊN HẠNG MỤC', 
+         ];
+         if (showImageCol) {
+            headerValues.push('HÌNH ẢNH');
+         }
+         headerValues.push(
+            'QC KỸ THUẬT / DIỄN GIẢI', 
+            'ĐVT', 
+            'SL', 
+            'ĐƠN GIÁ', 
+            'THÀNH TIỀN'
+         );
+
+         const headerRow = sheet.addRow(headerValues);
          applyBorderAndFont(headerRow, true);
 
          Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
@@ -1221,22 +1257,29 @@ export function QuotationPreview({
             customItems.filter(item => item.category === cat).forEach((item, idx) => {
                const uPrice = getExcelPrice(item.unitPrice);
                const tot = getExcelPrice(item.total);
-               const dataRow = sheet.addRow([
+               
+               const rowValues = [
                   idx + 1,
                   translateName(item.name),
-                  item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '',
+               ];
+               if (showImageCol) {
+                  rowValues.push(item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '');
+               }
+               rowValues.push(
                   translateDescription(item.description),
                   translateUnit(item.unit),
                   item.quantity,
                   uPrice,
                   tot
-               ]);
+               );
+
+               const dataRow = sheet.addRow(rowValues);
 
                applyBorderAndFont(dataRow, false);
                dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(7).numFmt = numFmt;
-               dataRow.getCell(8).numFmt = numFmt;
+               dataRow.getCell(showImageCol ? 4 : 3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(maxCol - 1).numFmt = numFmt;
+               dataRow.getCell(maxCol).numFmt = numFmt;
             });
          });
       }
@@ -1250,16 +1293,22 @@ export function QuotationPreview({
          titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
          titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-         const headerRow = sheet.addRow([
-           lang === 'en' ? 'NO.' : lang === 'km' ? 'ល.រ' : 'STT',
-           lang === 'en' ? 'ITEM NAME' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'TÊN HẠNG MỤC',
-           lang === 'en' ? 'IMAGE' : lang === 'km' ? 'រូបភាព' : 'HÌNH ẢNH',
-           lang === 'en' ? 'TECHNICAL SPECS' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស' : 'QC KỸ THUẬT / DIỄN GIẢI',
-           lang === 'en' ? 'UNIT' : lang === 'km' ? 'ខ្នាត' : 'ĐVT',
-           lang === 'en' ? 'QTY' : lang === 'km' ? 'ចំនួន' : 'SL',
-           lang === 'en' ? 'UNIT PRICE (VNĐ/USD)' : lang === 'km' ? 'តម្លៃរាយ (VNĐ/USD)' : 'ĐƠN GIÁ VNĐ / USD',
-           lang === 'en' ? 'AMOUNT (VNĐ/USD)' : lang === 'km' ? 'តម្លៃសរុប (VNĐ/USD)' : 'THÀNH TIỀN VNĐ / USD'
-         ]);
+         const headerValues = [
+            lang === 'en' ? 'NO.' : lang === 'km' ? 'ល.រ' : 'STT',
+            lang === 'en' ? 'ITEM NAME' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'TÊN HẠNG MỤC',
+         ];
+         if (showImageCol) {
+            headerValues.push(lang === 'en' ? 'IMAGE' : lang === 'km' ? 'រូបភាព' : 'HÌNH ẢNH');
+         }
+         headerValues.push(
+            lang === 'en' ? 'TECHNICAL SPECS' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស' : 'QC KỸ THUẬT / DIỄN GIẢI',
+            lang === 'en' ? 'UNIT' : lang === 'km' ? 'ខ្នាត' : 'ĐVT',
+            lang === 'en' ? 'QTY' : lang === 'km' ? 'ចំនួន' : 'SL',
+            lang === 'en' ? 'UNIT PRICE (VNĐ/USD)' : lang === 'km' ? 'តម្លៃរាយ (VNĐ/USD)' : 'ĐƠN GIÁ VNĐ / USD',
+            lang === 'en' ? 'AMOUNT (VNĐ/USD)' : lang === 'km' ? 'តម្លៃសរុប (VNĐ/USD)' : 'THÀNH TIỀN VNĐ / USD'
+         );
+
+         const headerRow = sheet.addRow(headerValues);
          applyBorderAndFont(headerRow, true);
 
          Array.from(new Set(readyMadeItems.map(item => item.category))).forEach((cat, groupIdx) => {
@@ -1269,25 +1318,32 @@ export function QuotationPreview({
             groupRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
 
             readyMadeItems.filter(item => item.category === cat).forEach((item, idx) => {
-               const uPrice = getExcelPrice(item.unitPrice);
-               const tot = getExcelPrice(item.total);
-               const dataRow = sheet.addRow([
-                  idx + 1,
-                  translateName(item.name),
-                  item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '', 
-                  translateDescription(item.description),
-                  translateUnit(item.unit),
-                  item.quantity,
-                  uPrice,
-                  tot
-               ]);
-               
-               applyBorderAndFont(dataRow, false);
-               dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(7).numFmt = numFmt;
-               dataRow.getCell(8).numFmt = numFmt;
-            });
+                const uPrice = getExcelPrice(item.unitPrice);
+                const tot = getExcelPrice(item.total);
+                
+                const rowValues = [
+                   idx + 1,
+                   translateName(item.name),
+                ];
+                if (showImageCol) {
+                   rowValues.push(item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '');
+                }
+                rowValues.push(
+                   translateDescription(item.description),
+                   translateUnit(item.unit),
+                   item.quantity,
+                   uPrice,
+                   tot
+                );
+
+                const dataRow = sheet.addRow(rowValues);
+                
+                applyBorderAndFont(dataRow, false);
+                dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                dataRow.getCell(showImageCol ? 4 : 3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                dataRow.getCell(maxCol - 1).numFmt = numFmt;
+                dataRow.getCell(maxCol).numFmt = numFmt;
+             });
          });
       }
 
@@ -1798,7 +1854,9 @@ export function QuotationPreview({
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
                         <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : lang === 'km' ? 'ល.រ' : 'STT'}</th>
                         <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'Tên hạng mục'}</th>
-                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
+                        {showCustomImageCol && (
+                          <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
+                        )}
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
@@ -1811,7 +1869,7 @@ export function QuotationPreview({
                         <React.Fragment key={cat}>
                           <tr className="bg-gray-200 font-bold border-b border-black">
                             <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
-                            <td colSpan={7} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                            <td colSpan={showCustomImageCol ? 7 : 6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
                               {translateCategory(cat)}
                             </td>
                           </tr>
@@ -1819,15 +1877,17 @@ export function QuotationPreview({
                             <tr key={item.id} className="border-b border-black last:border-b-0">
                               <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
                               <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{translateName(item.name)}</td>
-                              <td className="border-r border-black p-1 text-center">
-                                {item.imageUrl ? (
-                                  <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
-                                ) : (
-                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
-                                    {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
-                                  </div>
-                                )}
-                              </td>
+                              {showCustomImageCol && (
+                                <td className="border-r border-black p-1 text-center">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
+                                      {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
+                                    </div>
+                                  )}
+                                </td>
+                              )}
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                                 <div className="whitespace-pre-wrap">{translateDescription(item.description)}</div>
                               </td>
@@ -1841,7 +1901,7 @@ export function QuotationPreview({
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} isDualCurrency={false} />
+                      <TotalsFooter quotation={quotation} colSpan={showCustomImageCol ? 6 : 5} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} isDualCurrency={false} />
                     )}
                   </table>
                 </>
@@ -1858,8 +1918,10 @@ export function QuotationPreview({
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
                         <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : lang === 'km' ? 'ល.រ' : 'STT'}</th>
                         <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'Tên hạng mục'}</th>
-                        <th className="border-r border-black p-1 w-[80px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
-                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
+                        {showReadyMadeImageCol && (
+                          <th className="border-r border-black p-1 w-[80px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
+                        )}
+                        <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / การពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
                         <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Unit Price ($)' : lang === 'km' ? 'តម្លៃរាយ ($)' : 'Đơn giá VNĐ'}</th>
@@ -1871,7 +1933,7 @@ export function QuotationPreview({
                         <React.Fragment key={cat}>
                           <tr className="bg-gray-200 font-bold border-b border-black">
                             <td className="border-r border-black p-1 text-center">{String.fromCharCode(customItems.length > 0 ? 65 + new Set(customItems.map(i => i.category)).size + groupIdx : 65 + groupIdx)}</td>
-                            <td colSpan={7} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                            <td colSpan={showReadyMadeImageCol ? 7 : 6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
                               {translateCategory(cat)}
                             </td>
                           </tr>
@@ -1879,15 +1941,17 @@ export function QuotationPreview({
                             <tr key={item.id} className="border-b border-black last:border-b-0">
                               <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
                               <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{translateName(item.name)}</td>
-                              <td className="border-r border-black p-1 text-center">
-                                {item.imageUrl ? (
-                                  <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
-                                ) : (
-                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
-                                    {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
-                                  </div>
-                                )}
-                              </td>
+                              {showReadyMadeImageCol && (
+                                <td className="border-r border-black p-1 text-center">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
+                                      {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
+                                    </div>
+                                  )}
+                                </td>
+                              )}
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                                 <div className="whitespace-pre-wrap">{translateDescription(item.description)}</div>
                               </td>
@@ -1900,7 +1964,7 @@ export function QuotationPreview({
                         </React.Fragment>
                       ))}
                     </tbody>
-                    <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatVnd={formatVnd} formatUsd={formatUsd} isDualCurrency={true} />
+                    <TotalsFooter quotation={quotation} colSpan={showReadyMadeImageCol ? 6 : 5} lang={lang} exchangeRate={exchangeRate} formatVnd={formatVnd} formatUsd={formatUsd} isDualCurrency={true} />
                   </table>
                 </>
               )}
