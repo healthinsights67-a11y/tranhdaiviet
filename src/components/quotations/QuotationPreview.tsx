@@ -85,14 +85,16 @@ const TotalsFooter = ({
             {fnPrice(quotation.subTotal)}
           </td>
         </tr>
-        <tr className="bg-gray-50 border-t border-black">
-          <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-            {lang === 'en' ? 'Discount ($)' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ ($)' : 'Giảm giá & Chiết khấu'}
-          </td>
-          <td className="p-2 text-right font-mono font-bold text-red-600 text-xs">
-            -{fnPrice(quotation.discount)}
-          </td>
-        </tr>
+        {(quotation.discount ?? 0) > 0 && (
+          <tr className="bg-gray-50 border-t border-black">
+            <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+              {lang === 'en' ? 'Discount ($)' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ ($)' : 'Giảm giá & Chiết khấu'}
+            </td>
+            <td className="p-2 text-right font-mono font-bold text-red-600 text-xs">
+              -{fnPrice(quotation.discount)}
+            </td>
+          </tr>
+        )}
         {quotation.hasVat && (
           <tr className="bg-gray-50 border-t border-black">
             <td colSpan={colSpan + 1} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
@@ -169,17 +171,19 @@ const TotalsFooter = ({
           {fnUsd(quotation.subTotal)}
         </td>
       </tr>
-      <tr className="bg-gray-50 border-t border-black">
-        <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
-          {lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'Giảm giá & Chiết khấu'}
-        </td>
-        <td className="p-2 text-right font-mono font-bold text-red-600 border-r border-black text-xs">
-          -{fnVnd(quotation.discount)}
-        </td>
-        <td className="p-2 text-right font-mono font-bold text-red-600 bg-gray-50 text-xs">
-          -{fnUsd(quotation.discount)}
-        </td>
-      </tr>
+      {(quotation.discount ?? 0) > 0 && (
+        <tr className="bg-gray-50 border-t border-black">
+          <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
+            {lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'Giảm giá & Chiết khấu'}
+          </td>
+          <td className="p-2 text-right font-mono font-bold text-red-600 border-r border-black text-xs">
+            -{fnVnd(quotation.discount)}
+          </td>
+          <td className="p-2 text-right font-mono font-bold text-red-600 bg-gray-50 text-xs">
+            -{fnUsd(quotation.discount)}
+          </td>
+        </tr>
+      )}
       {quotation.hasVat && (
         <tr className="bg-gray-50 border-t border-black">
           <td colSpan={labelColSpan} className="p-2 text-right font-bold uppercase tracking-wider text-gray-500 border-r border-black text-[9px]">
@@ -1359,7 +1363,9 @@ export function QuotationPreview({
       };
 
       addTotalRow(lang === 'en' ? 'Subtotal' : lang === 'km' ? 'សរុបរង' : 'CỘNG TIỀN HÀNG', quotation.subTotal, false);
-      addTotalRow(lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'GIẢM GIÁ & CHIẾT KHẤU', -quotation.discount, false);
+      if ((quotation.discount || 0) > 0) {
+         addTotalRow(lang === 'en' ? 'Discount' : lang === 'km' ? 'ការបញ្ចុះតម្លៃ' : 'GIẢM GIÁ & CHIẾT KHẤU', -quotation.discount, false);
+      }
       if (quotation.hasVat) {
           addTotalRow(lang === 'en' ? 'VAT Tax (8%)' : lang === 'km' ? 'ពន្ធ VAT (8%)' : 'THUẾ VAT (8%)', quotation.vatAmount || Math.round((quotation.subTotal - quotation.discount) * 0.08), false);
       }
