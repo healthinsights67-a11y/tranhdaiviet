@@ -1121,30 +1121,18 @@ export function QuotationPreview({
          pageSetup: { paperSize: 9, orientation: 'portrait' }
       });
 
-      const maxCol = readyMadeItems.length > 0 ? 8 : 7;
+      const maxCol = 8;
 
-      if (readyMadeItems.length > 0) {
-         sheet.columns = [
-            { width: 8 },  // STT
-            { width: 30 }, // Tên
-            { width: 20 }, // Ảnh
-            { width: 45 }, // QC
-            { width: 10 }, // ĐVT
-            { width: 10 }, // SL
-            { width: 18 }, // Đơn giá
-            { width: 20 }, // Thành tiền
-         ];
-      } else {
-         sheet.columns = [
-            { width: 8 },  // STT
-            { width: 30 }, // Tên
-            { width: 45 }, // QC
-            { width: 10 }, // ĐVT
-            { width: 10 }, // SL
-            { width: 18 }, // Đơn giá
-            { width: 20 }, // Thành tiền
-         ];
-      }
+      sheet.columns = [
+         { width: 8 },  // STT
+         { width: 30 }, // Tên
+         { width: 20 }, // Ảnh
+         { width: 45 }, // QC
+         { width: 10 }, // ĐVT
+         { width: 10 }, // SL
+         { width: 18 }, // Đơn giá
+         { width: 20 }, // Thành tiền
+      ];
 
       const addHeader = (text: string, bold: boolean, size: number) => {
          const row = sheet.addRow([text]);
@@ -1221,10 +1209,7 @@ export function QuotationPreview({
          titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
          titleRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
-         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
-         if (maxCol === 8) {
-            sheet.mergeCells(headerRow.number, 3, headerRow.number, 4);
-         }
+         const headerRow = sheet.addRow(['STT', 'TÊN HẠNG MỤC', 'HÌNH ẢNH', 'QC KỸ THUẬT / DIỄN GIẢI', 'ĐVT', 'SL', 'ĐƠN GIÁ', 'THÀNH TIỀN']);
          applyBorderAndFont(headerRow, true);
 
          Array.from(new Set(customItems.map(item => item.category))).forEach((cat, groupIdx) => {
@@ -1239,28 +1224,19 @@ export function QuotationPreview({
                const dataRow = sheet.addRow([
                   idx + 1,
                   translateName(item.name),
+                  item.imageUrl ? (lang === 'en' ? '(Has Image)' : lang === 'km' ? '(មានរូបភាព)' : '(Có ảnh)') : '',
                   translateDescription(item.description),
-                  maxCol === 8 ? '' : translateUnit(item.unit),
-                  maxCol === 8 ? translateUnit(item.unit) : item.quantity,
-                  maxCol === 8 ? item.quantity : uPrice,
-                  maxCol === 8 ? uPrice : tot,
-                  maxCol === 8 ? tot : ''
+                  translateUnit(item.unit),
+                  item.quantity,
+                  uPrice,
+                  tot
                ]);
-               
-               if (maxCol === 8) {
-                   sheet.mergeCells(dataRow.number, 3, dataRow.number, 4);
-                   dataRow.getCell(3).value = translateDescription(item.description);
-                   dataRow.getCell(5).value = translateUnit(item.unit);
-                   dataRow.getCell(6).value = item.quantity;
-                   dataRow.getCell(7).value = uPrice;
-                   dataRow.getCell(8).value = tot;
-               }
 
                applyBorderAndFont(dataRow, false);
                dataRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(3).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-               dataRow.getCell(maxCol - 1).numFmt = numFmt;
-               dataRow.getCell(maxCol).numFmt = numFmt;
+               dataRow.getCell(4).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+               dataRow.getCell(7).numFmt = numFmt;
+               dataRow.getCell(8).numFmt = numFmt;
             });
          });
       }
@@ -1822,6 +1798,7 @@ export function QuotationPreview({
                       <tr className="bg-gray-100 font-bold uppercase text-[8px] tracking-widest border-b-2 border-black text-black">
                         <th className="border-r border-black p-1 w-[35px]">{lang === 'en' ? 'No.' : lang === 'km' ? 'ល.រ' : 'STT'}</th>
                         <th className="border-r border-black p-1 w-[130px]">{lang === 'en' ? 'Item Name' : lang === 'km' ? 'ឈ្មោះទំនិញ' : 'Tên hạng mục'}</th>
+                        <th className="border-r border-black p-1 w-[90px]">{lang === 'en' ? 'Image' : lang === 'km' ? 'រូបភាព' : 'Hình ảnh'}</th>
                         <th className="border-r border-black p-1">{lang === 'en' ? 'Technical Specs & Description' : lang === 'km' ? 'លក្ខណៈបច្ចេកទេស / ការពិពណ៌នា' : 'QC kỹ thuật / Diễn giải'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Unit' : lang === 'km' ? 'ខ្នាត' : 'ĐVT'}</th>
                         <th className="border-r border-black p-1 w-[40px]">{lang === 'en' ? 'Qty' : lang === 'km' ? 'ចំនួន' : 'SL'}</th>
@@ -1834,7 +1811,7 @@ export function QuotationPreview({
                         <React.Fragment key={cat}>
                           <tr className="bg-gray-200 font-bold border-b border-black">
                             <td className="border-r border-black p-1 text-center">{String.fromCharCode(65 + groupIdx)}</td>
-                            <td colSpan={6} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
+                            <td colSpan={7} className="p-1 px-2 uppercase tracking-[0.2em] text-[10px]">
                               {translateCategory(cat)}
                             </td>
                           </tr>
@@ -1842,6 +1819,15 @@ export function QuotationPreview({
                             <tr key={item.id} className="border-b border-black last:border-b-0">
                               <td className="border-r border-black p-1 text-center text-gray-500 font-bold">{idx + 1}</td>
                               <td className="border-r border-black p-1.5 font-bold text-black leading-tight">{translateName(item.name)}</td>
+                              <td className="border-r border-black p-1 text-center">
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} alt={item.name} className="w-full max-w-[70px] mx-auto h-auto object-contain rounded" style={{ maxHeight: '70px' }} referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-[60px] h-[60px] mx-auto bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 rounded">
+                                    {lang === 'en' ? 'No Image' : lang === 'km' ? 'គ្មានរូបភាព' : 'Không có ảnh'}
+                                  </div>
+                                )}
+                              </td>
                               <td className="border-r border-black p-1.5 text-gray-700 leading-normal text-[10.5px]">
                                 <div className="whitespace-pre-wrap">{translateDescription(item.description)}</div>
                               </td>
@@ -1855,7 +1841,7 @@ export function QuotationPreview({
                       ))}
                     </tbody>
                     {readyMadeItems.length === 0 && (
-                      <TotalsFooter quotation={quotation} colSpan={5} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} isDualCurrency={false} />
+                      <TotalsFooter quotation={quotation} colSpan={6} lang={lang} exchangeRate={exchangeRate} formatPrice={formatPrice} isDualCurrency={false} />
                     )}
                   </table>
                 </>
