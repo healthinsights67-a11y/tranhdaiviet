@@ -554,6 +554,7 @@ export function CustomerPage({
   const [locationPickerFor, setLocationPickerFor] = React.useState<'add' | 'edit' | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'map'>('grid');
   
+  const [isSaving, setIsSaving] = React.useState(false);
   const [geocodingProgress, setGeocodingProgress] = React.useState<{ current: number; total: number } | null>(null);
   const isGeocodingRef = React.useRef(false);
   const failedGeocodesRef = React.useRef<Set<string>>(new Set());
@@ -745,10 +746,14 @@ export function CustomerPage({
   };
 
   const handleAddCustomer = async () => {
+    if (isSaving) return;
     if (!newCustomer.name || !newCustomer.phone) {
       toast.error("Vui lòng nhập tên và số điện thoại");
       return;
     }
+
+    setIsSaving(true);
+    try {
 
     const normalizedWs = getNormalizedWorkshopId(newCustomer.workshop);
     const wsCustomers = customers.filter(c => getNormalizedWorkshopId(c.workshop) === normalizedWs);
@@ -805,8 +810,7 @@ export function CustomerPage({
       }
     });
 
-    try {
-      let createdCustomerId = '';
+    let createdCustomerId = '';
       
       const taskScheduledDate = newCustomer.stage === 'consulting' ? finalNextContactDate : nowStr.split('T')[0];
       const taskTitle = newCustomer.stage === 'consulting' 
@@ -926,6 +930,8 @@ export function CustomerPage({
       } catch (e) {
         // Ignore the re-thrown error from handleFirestoreError
       }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1085,12 +1091,14 @@ export function CustomerPage({
   };
 
   const handleUpdateCustomer = async () => {
+    if (isSaving) return;
     if (!selectedCustomer) return;
     if (!selectedCustomer.name || !selectedCustomer.phone) {
       toast.error("Vui lòng nhập tên và số điện thoại");
       return;
     }
 
+    setIsSaving(true);
     try {
       const existingCustomer = customers.find(c => c.id === selectedCustomer.id);
       
@@ -1348,6 +1356,8 @@ export function CustomerPage({
       try {
         handleFirestoreError(error, OperationType.UPDATE, `customers/${selectedCustomer.id}`);
       } catch (e) {}
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1976,8 +1986,10 @@ export function CustomerPage({
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Hủy</Button>
-                <Button onClick={handleAddCustomer}>Lưu khách hàng</Button>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>Hủy</Button>
+                <Button onClick={handleAddCustomer} disabled={isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu khách hàng"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -2720,8 +2732,10 @@ export function CustomerPage({
               </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Hủy</Button>
-            <Button onClick={handleUpdateCustomer}>Cập nhật</Button>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>Hủy</Button>
+            <Button onClick={handleUpdateCustomer} disabled={isSaving}>
+              {isSaving ? "Đang lưu..." : "Cập nhật"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

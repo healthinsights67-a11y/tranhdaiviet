@@ -134,6 +134,7 @@ export function QuotationPage({
   }, [user, members]);
 
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
+  const [isSaving, setIsSaving] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
   const [workshopFilter, setWorkshopFilter] = React.useState<string>('all');
@@ -347,6 +348,8 @@ export function QuotationPage({
   };
 
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       if (user) {
         if (data.depositAmount && data.depositAmount > 0 && data.status !== 'deposit' && data.status !== 'accepted') {
@@ -423,6 +426,8 @@ export function QuotationPage({
       setSelectedQuotation(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'quotations');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1255,6 +1260,7 @@ export function QuotationPage({
             customers={customers}
             initialData={selectedQuotation}
             products={filteredProducts}
+            isSaving={isSaving}
           />
         )}
 

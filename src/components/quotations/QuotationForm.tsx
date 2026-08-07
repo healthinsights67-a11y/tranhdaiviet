@@ -209,6 +209,7 @@ interface QuotationFormProps {
   customers: Customer[];
   initialData?: Quotation | null;
   products?: ProductLibraryItem[];
+  isSaving?: boolean;
 }
 
 const DEFAULT_ITEMS: QuotationItem[] = [
@@ -224,7 +225,7 @@ const DEFAULT_ITEMS: QuotationItem[] = [
   }
 ];
 
-export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialData, products = [] }: QuotationFormProps) {
+export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialData, products = [], isSaving = false }: QuotationFormProps) {
   const getProductPriceForWorkshop = (product: any, workshop?: string) => {
     if (!workshop || workshop === 'all') return product.unitPrice;
     const normWs = getNormalizedWorkshopId(workshop);
@@ -1520,11 +1521,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
               <Button 
                 type="submit" 
                 form="quotation-form"
+                disabled={isSaving}
                 className="h-10 md:h-12 flex-1 md:flex-none md:px-8 lg:px-10 gap-2 md:gap-3 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 text-[10px] md:text-sm lg:text-md font-black uppercase tracking-tight"
                 onClick={handleExport}
               >
-                <FileText className="h-4 w-4 md:h-5 md:w-5" />
-                {initialData ? 'Cập nhật' : 'Xuất báo giá'}
+                {isSaving ? <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin" /> : <FileText className="h-4 w-4 md:h-5 md:w-5" />}
+                {isSaving ? 'Đang lưu...' : (initialData ? 'Cập nhật' : 'Xuất báo giá')}
               </Button>
             </div>
           </DialogFooter>
