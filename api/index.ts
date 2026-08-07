@@ -725,7 +725,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
 
     const cleanToken = botToken.trim();
-    const chatIds = chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
+    const chatIds = Array.from(new Set(chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id))) as string[];
 
     if (chatIds.length === 0) {
       return res.status(400).json({ error: "No valid Chat ID found" });

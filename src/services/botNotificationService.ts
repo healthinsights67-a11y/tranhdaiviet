@@ -152,7 +152,8 @@ export async function sendSystemNotification(
           });
         }
 
-        chatIds.forEach(id => {
+        const uniqueChatIds = Array.from(new Set(chatIds));
+        uniqueChatIds.forEach(id => {
           promises.push(
             sendTelegramTestMessage(config.telegram.botToken!, id, message)
               .then(() => console.log(`Telegram message sent successfully to ${id}!`))
@@ -187,7 +188,8 @@ export async function sendSystemNotification(
           });
         }
 
-        chatIds.forEach(id => {
+        const uniqueChatIds = Array.from(new Set(chatIds));
+        uniqueChatIds.forEach(id => {
           promises.push(
             sendZaloTestMessage(config.zalo.botToken!, id, message)
               .then(() => console.log(`Zalo message sent successfully to ${id}!`))
