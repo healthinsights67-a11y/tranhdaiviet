@@ -212,134 +212,223 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   }
 
+  // Core logic to generate and send daily report
+  async function runDailyReport() {
+    console.log('Running daily report...');
+    try {
+      const { collection, getDocs, query, where } = require('firebase/firestore');
+      const clientDb = await getAuthenticatedClientDb();
+      
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const startOfDayStr = startOfDay.toISOString();
+      const endOfDayStr = endOfDay.toISOString();
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const startOfMonthStr = startOfMonth.toISOString();
+      const endOfMonthStr = endOfMonth.toISOString();
+      
+      // 1. Khách hàng mới
+      const custQuery = query(
+        collection(clientDb, 'customers'),
+        where('createdAt', '>=', startOfDayStr),
+        where('createdAt', '<=', endOfDayStr)
+      );
+      const custSnap = await getDocs(custQuery);
+      const newCustomers = custSnap.size;
+      
+      // 2. Nhiệm vụ
+      const tasksQuery = query(collection(clientDb, 'tasks'));
+      const tasksSnap = await getDocs(tasksQuery);
+      
+      let completedTasksCount = 0;
+      let newTasksCount = 0;
+      let completedInstalls = 0;
+      let newDesigns = 0;
+      let completedDesigns = 0;
+      
+      tasksSnap.forEach((doc: any) => {
+        const task = doc.data();
+        
+        if (task.completedAt && task.completedAt >= startOfDayStr && task.completedAt <= endOfDayStr) {
+          completedTasksCount++;
+          if (task.type === 'production') completedInstalls++;
+          if (task.type === 'design') completedDesigns++;
+        }
+        
+        if (task.createdAt && task.createdAt >= startOfDayStr && task.createdAt <= endOfDayStr) {
+          newTasksCount++;
+          if (task.type === 'design') newDesigns++;
+        }
+      });
+
+      // 3. Báo giá & Doanh thu
+      const quoteQuery = query(collection(clientDb, 'quotations'));
+      const quoteSnap = await getDocs(quoteQuery);
+      let acceptedQuotes = 0;
+      let newQuotes = 0;
+      let acceptedRevenue = 0;
+      let actualRevenue = 0;
+      let expectedRevenue = 0;
+      
+      const allQuotes: any[] = [];
+      quoteSnap.forEach((doc: any) => {
+         const q = doc.data();
+         allQuotes.push(q);
+         if (q.createdAt && q.createdAt >= startOfDayStr && q.createdAt <= endOfDayStr) {
+           newQuotes++;
+         }
+         if (q.status === 'accepted' || q.status === 'deposit') {
+           if (q.updatedAt && q.updatedAt >= startOfDayStr && q.updatedAt <= endOfDayStr) {
+              acceptedQuotes++;
+              acceptedRevenue += q.totalAmount || 0;
+           }
+         }
+      });
+
+      // Doanh thu thực tế và dự kiến trong tháng (đồng bộ logic với web dashboard)
+      const custUpdatedQuery = query(collection(clientDb, 'customers'));
+      const custAllSnap = await getDocs(custUpdatedQuery);
+      custAllSnap.forEach((doc: any) => {
+        const c = doc.data();
+         if (c.createdAt && c.createdAt >= startOfMonthStr && c.createdAt <= endOfMonthStr) {
+           if (c.stage === 'completed') {
+             actualRevenue += (c.orderValue || 0);
+           } else if (['contracted', 'production', 'installation'].includes(c.stage)) {
+             const q = allQuotes.find((quot: any) => quot.customerId === c.id || (quot.customerName === c.name && quot.phone === c.phone));
+             const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+             actualRevenue += deposit;
+           }
+
+           if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+             expectedRevenue += (c.orderValue || 0);
+           }
+         }
+      });
+
+      const dateStr = now.toLocaleDateString('vi-VN');
+      
+      let reportText = `📊 BÁO CÁO TỔNG QUAN NGÀY ${dateStr}\n`;
+      reportText += `\n👤 Khách hàng mới: ${newCustomers}`;
+      reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
+      reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
+      reportText += `\n💵 Doanh thu thực tế (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
+      reportText += `\n💳 Doanh thu dự kiến (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(expectedRevenue)}`;
+      reportText += `\n----------------------`;
+      reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
+      reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
+      reportText += `\n✅ Tổng tác vụ đã xong: ${completedTasksCount}`;
+      reportText += `\n\nChúc mọi người buổi tối vui vẻ!`;
+      
+      await sendSystemNotificationFromServer(reportText);
+      return { success: true, message: "Daily report sent successfully" };
+    } catch (err: any) {
+      console.error('Error in runDailyReport:', err);
+      throw err;
+    }
+  }
+
+  // Core logic to send Zalo follow-up reminders to Sales
+  async function runZaloReminders() {
+    console.log('Running Zalo reminders...');
+    try {
+      const { collection, getDocs } = require('firebase/firestore');
+      const clientDb = await getAuthenticatedClientDb();
+      
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(now.getDate() - 3);
+
+      // Get Members for Zalo mappings
+      const membersSnap = await getDocs(collection(clientDb, 'members'));
+      const membersMap: Record<string, any> = {};
+      membersSnap.forEach((doc: any) => {
+        membersMap[doc.id] = doc.data();
+      });
+
+      // Get Customers
+      const custSnap = await getDocs(collection(clientDb, 'customers'));
+      let remindersSent = 0;
+
+      // Helper to send DM
+      const sendZaloDM = async (zaloUserId: string, message: string) => {
+        try {
+          const { doc, getDoc } = require('firebase/firestore');
+          const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
+          if (!docSnap.exists()) return;
+          const config = docSnap.data();
+          if (config?.zalo?.isActive !== false && config.zalo.botToken) {
+            await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: zaloUserId, text: message })
+            });
+          }
+        } catch (err) {
+          console.error("Error sending Zalo DM:", err);
+        }
+      };
+
+      const customersData = custSnap.docs.map((d: any) => d.data());
+      
+      for (const c of customersData) {
+        const saleMember = membersMap[c.assignedSaleId];
+        if (!saleMember || !saleMember.zaloUserId) continue;
+
+        let shouldRemind = false;
+        let reminderType = '';
+
+        // Condition 1: nextContactDate
+        if (c.nextContactDate && c.nextContactDate <= todayStr) {
+          shouldRemind = true;
+          reminderType = 'lịch hẹn gọi lại hôm nay (hoặc đã quá hạn)';
+        } else if (c.stage === 'consulting') {
+          // Condition 2: > 3 days no care log
+          let lastCareDateStr = c.createdAt;
+          if (c.careLogs && c.careLogs.length > 0) {
+            const dates = c.careLogs.map((l: any) => l.date);
+            lastCareDateStr = dates.reduce((a: string, b: string) => a > b ? a : b);
+          }
+
+          const lastCareDate = new Date(lastCareDateStr);
+          if (lastCareDate < threeDaysAgo) {
+            shouldRemind = true;
+            reminderType = 'chưa được chăm sóc / cập nhật hơn 3 ngày qua';
+          }
+        }
+
+        if (shouldRemind) {
+          const msg = `🔔 NHẮC NHỞ CSKH\nKhách hàng: ${c.name}\nSĐT: ${c.phone}\nLý do: Khách hàng có ${reminderType}.\nSale phụ trách hãy liên hệ và cập nhật tình trạng nhé!`;
+          await sendZaloDM(saleMember.zaloUserId, msg);
+          remindersSent++;
+        }
+      }
+      
+      console.log(`Zalo reminders sent: ${remindersSent}`);
+      return { success: true, count: remindersSent };
+    } catch (err: any) {
+      console.error('Error in runZaloReminders:', err);
+      throw err;
+    }
+  }
+
   // Schedule daily overview report at 18:00
   async function scheduleDailyReport() {
     try {
       const cron = require('node-cron');
-      
-      // Run every day at 18:00 (Vietnam time)
       cron.schedule('0 18 * * *', async () => {
-        console.log('Running scheduled daily report at 18:00...');
         try {
-          const { collection, getDocs, query, where } = require('firebase/firestore');
-          const clientDb = await getAuthenticatedClientDb();
-          
-          const now = new Date();
-          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-          const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-          const startOfDayStr = startOfDay.toISOString();
-          const endOfDayStr = endOfDay.toISOString();
-
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-          const startOfMonthStr = startOfMonth.toISOString();
-          const endOfMonthStr = endOfMonth.toISOString();
-          
-          // 1. Khách hàng mới
-          const custQuery = query(
-            collection(clientDb, 'customers'),
-            where('createdAt', '>=', startOfDayStr),
-            where('createdAt', '<=', endOfDayStr)
-          );
-          const custSnap = await getDocs(custQuery);
-          const newCustomers = custSnap.size;
-          
-          // 2. Nhiệm vụ
-          const tasksQuery = query(collection(clientDb, 'tasks'));
-          const tasksSnap = await getDocs(tasksQuery);
-          
-          let completedTasksCount = 0;
-          let newTasksCount = 0;
-          let completedInstalls = 0;
-          let newDesigns = 0;
-          let completedDesigns = 0;
-          
-          tasksSnap.forEach((doc: any) => {
-            const task = doc.data();
-            
-            if (task.completedAt && task.completedAt >= startOfDayStr && task.completedAt <= endOfDayStr) {
-              completedTasksCount++;
-              if (task.type === 'production') completedInstalls++;
-              if (task.type === 'design') completedDesigns++;
-            }
-            
-            if (task.createdAt && task.createdAt >= startOfDayStr && task.createdAt <= endOfDayStr) {
-              newTasksCount++;
-              if (task.type === 'design') newDesigns++;
-            }
-          });
-
-          // 3. Báo giá & Doanh thu
-          const quoteQuery = query(collection(clientDb, 'quotations'));
-          const quoteSnap = await getDocs(quoteQuery);
-          let acceptedQuotes = 0;
-          let newQuotes = 0;
-          let acceptedRevenue = 0; // expected revenue of quotes accepted today
-          let actualRevenue = 0; // actual money collected this month
-          let expectedRevenue = 0; // expected revenue this month
-          
-          const allQuotes: any[] = [];
-          quoteSnap.forEach((doc: any) => {
-             const q = doc.data();
-             allQuotes.push(q);
-             if (q.createdAt && q.createdAt >= startOfDayStr && q.createdAt <= endOfDayStr) {
-               newQuotes++;
-             }
-             if (q.status === 'accepted' || q.status === 'deposit') {
-               // Fallback: if we don't have acceptedAt, we use updatedAt
-               if (q.updatedAt && q.updatedAt >= startOfDayStr && q.updatedAt <= endOfDayStr) {
-                  acceptedQuotes++;
-                  acceptedRevenue += q.totalAmount || 0;
-               }
-             }
-          });
-
-          // Doanh thu thực tế và dự kiến trong tháng (đồng bộ logic với web dashboard)
-          const custUpdatedQuery = query(
-            collection(clientDb, 'customers')
-          );
-          const custAllSnap = await getDocs(custUpdatedQuery);
-          custAllSnap.forEach((doc: any) => {
-            const c = doc.data();
-             // Đồng bộ logic: nhóm theo createdAt của tháng hiện tại
-             if (c.createdAt && c.createdAt >= startOfMonthStr && c.createdAt <= endOfMonthStr) {
-               if (c.stage === 'completed') {
-                 actualRevenue += (c.orderValue || 0);
-               } else if (['contracted', 'production', 'installation'].includes(c.stage)) {
-                 const q = allQuotes.find((quot: any) => quot.customerId === c.id || (quot.customerName === c.name && quot.phone === c.phone));
-                 const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-                 actualRevenue += deposit;
-               }
-
-               if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
-                 expectedRevenue += (c.orderValue || 0);
-               }
-             }
-          });
-
-          const dateStr = now.toLocaleDateString('vi-VN');
-          
-          let reportText = `📊 BÁO CÁO TỔNG QUAN NGÀY ${dateStr}\n`;
-          reportText += `\n👤 Khách hàng mới: ${newCustomers}`;
-          reportText += `\n📝 Báo giá mới tạo: ${newQuotes}`;
-          reportText += `\n💰 Báo giá chốt mới: ${acceptedQuotes} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(acceptedRevenue)})`;
-          reportText += `\n💵 Doanh thu thực tế (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(actualRevenue)}`;
-          reportText += `\n💳 Doanh thu dự kiến (Tháng này): ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(expectedRevenue)}`;
-          reportText += `\n----------------------`;
-          reportText += `\n🎨 Thiết kế: ${newDesigns} mới / ${completedDesigns} xong`;
-          reportText += `\n🔨 Thi công: ${completedInstalls} hạng mục xong`;
-          reportText += `\n✅ Tổng tác vụ đã xong: ${completedTasksCount}`;
-          reportText += `\n\nChúc mọi người buổi tối vui vẻ!`;
-          
-          await sendSystemNotificationFromServer(reportText);
-        } catch (err) {
-          console.error('Error generating daily report:', err);
+          await runDailyReport();
+        } catch (e) {
+          console.error("Local daily report failed:", e);
         }
       }, {
         scheduled: true,
         timezone: "Asia/Ho_Chi_Minh"
       });
-      
       console.log("Daily report scheduler initialized (18:00 Asia/Ho_Chi_Minh).");
     } catch (err) {
       console.error("Could not initialize node-cron:", err);
@@ -350,88 +439,11 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   async function scheduleZaloReminders() {
     try {
       const cron = require('node-cron');
-      
       cron.schedule('30 8 * * *', async () => {
-        console.log('Running scheduled Zalo reminders at 08:30...');
         try {
-          const { collection, getDocs } = require('firebase/firestore');
-          const clientDb = await getAuthenticatedClientDb();
-          
-          const now = new Date();
-          const todayStr = now.toISOString().split('T')[0];
-          const threeDaysAgo = new Date();
-          threeDaysAgo.setDate(now.getDate() - 3);
-
-          // Get Members for Zalo mappings
-          const membersSnap = await getDocs(collection(clientDb, 'members'));
-          const membersMap: Record<string, any> = {};
-          membersSnap.forEach((doc: any) => {
-            membersMap[doc.id] = doc.data();
-          });
-
-          // Get Customers
-          const custSnap = await getDocs(collection(clientDb, 'customers'));
-          
-          let remindersSent = 0;
-
-          // Helper to send DM
-          const sendZaloDM = async (zaloUserId: string, message: string) => {
-            try {
-              const { doc, getDoc } = require('firebase/firestore');
-              const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
-              if (!docSnap.exists()) return;
-              const config = docSnap.data();
-              if (config?.zalo?.isActive !== false && config.zalo.botToken) {
-                await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ chat_id: zaloUserId, text: message })
-                });
-              }
-            } catch (err) {
-              console.error("Error sending Zalo DM:", err);
-            }
-          };
-
-          const customersData = custSnap.docs.map((d: any) => d.data());
-          
-          for (const c of customersData) {
-            const saleMember = membersMap[c.assignedSaleId];
-            if (!saleMember || !saleMember.zaloUserId) continue; // Skip if no sale or no zalo ID
-
-            let shouldRemind = false;
-            let reminderType = '';
-
-            // Condition 1: nextContactDate
-            if (c.nextContactDate && c.nextContactDate <= todayStr) {
-              shouldRemind = true;
-              reminderType = 'lịch hẹn gọi lại hôm nay (hoặc đã quá hạn)';
-            } else if (c.stage === 'consulting') {
-              // Condition 2: > 3 days no care log
-              let lastCareDateStr = c.createdAt; // default to created at
-              if (c.careLogs && c.careLogs.length > 0) {
-                // assume sorted or just find max
-                const dates = c.careLogs.map((l: any) => l.date);
-                lastCareDateStr = dates.reduce((a: string, b: string) => a > b ? a : b);
-              }
-
-              const lastCareDate = new Date(lastCareDateStr);
-              if (lastCareDate < threeDaysAgo) {
-                shouldRemind = true;
-                reminderType = 'chưa được chăm sóc / cập nhật hơn 3 ngày qua';
-              }
-            }
-
-            if (shouldRemind) {
-              const msg = `🔔 NHẮC NHỞ CSKH\nKhách hàng: ${c.name}\nSĐT: ${c.phone}\nLý do: Khách hàng có ${reminderType}.\nSale phụ trách hãy liên hệ và cập nhật tình trạng nhé!`;
-              await sendZaloDM(saleMember.zaloUserId, msg);
-              remindersSent++;
-            }
-          }
-          
-          console.log(`Zalo reminders sent: ${remindersSent}`);
-        } catch (err) {
-          console.error('Error generating Zalo reminders:', err);
+          await runZaloReminders();
+        } catch (e) {
+          console.error("Local Zalo reminders failed:", e);
         }
       }, {
         scheduled: true,
@@ -442,6 +454,25 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       console.error("Could not initialize node-cron for reminders:", err);
     }
   }
+
+  // GET endpoints for Vercel Cron Jobs
+  app.get("/api/cron/daily-report", async (req, res) => {
+    try {
+      const result = await runDailyReport();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to generate report", details: err.message });
+    }
+  });
+
+  app.get("/api/cron/zalo-reminders", async (req, res) => {
+    try {
+      const result = await runZaloReminders();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to send reminders", details: err.message });
+    }
+  });
 
   // Listen to sales_routes additions and notify Zalo
   async function listenToSalesRoutes() {
