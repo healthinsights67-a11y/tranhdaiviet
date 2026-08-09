@@ -847,187 +847,191 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
               </div>
             )}
 
-            <div className="border-t pt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">File 2D-3D</label>
-                <div className="flex gap-2">
-                   <input 
-                     type="file" 
-                     multiple
-                     ref={fileInputRef} 
-                     className="hidden" 
-                     onChange={handleFileUpload}
-                     accept="image/*,application/pdf"
-                   />
-                   <Button 
-                     size="sm" 
-                     variant="outline" 
-                     className="h-7 text-[10px] gap-1"
-                     disabled={isUploading}
-                     onClick={() => fileInputRef.current?.click()}
-                   >
-                     {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                     Tải lên Ảnh/PDF
-                   </Button>
+            {task.type !== 'marketing' && (
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">File 2D-3D</label>
+                  <div className="flex gap-2">
+                     <input 
+                       type="file" 
+                       multiple
+                       ref={fileInputRef} 
+                       className="hidden" 
+                       onChange={handleFileUpload}
+                       accept="image/*,application/pdf"
+                     />
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="h-7 text-[10px] gap-1"
+                       disabled={isUploading}
+                       onClick={() => fileInputRef.current?.click()}
+                     >
+                       {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                       Tải lên Ảnh/PDF
+                     </Button>
+                  </div>
                 </div>
-              </div>
-              {task.files2D3D && task.files2D3D.length > 0 ? (
-                <ul className="space-y-2">
-                  {task.files2D3D.map((f, i) => {
-                    const isImg = f.match(/\.(jpeg|jpg|gif|png|webp)$/i) || f.includes('i.ibb.co');
-                    return (
-                      <li key={i} className="flex items-center justify-between bg-card p-2 rounded-xl border border-border shadow-sm group">
-                        <div 
-                          className="flex items-center gap-3 flex-1 min-w-0 pr-2 cursor-pointer group/item"
-                          onClick={() => isImg ? handleOpenPreview(f) : window.open(f, '_blank')}
-                        >
-                          {isImg ? (
-                            <div className="h-10 w-10 rounded-lg border overflow-hidden shrink-0 bg-gray-100 group-hover/item:ring-2 ring-primary/30 transition-all">
-                              <img src={f} alt="preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                {task.files2D3D && task.files2D3D.length > 0 ? (
+                  <ul className="space-y-2">
+                    {task.files2D3D.map((f, i) => {
+                      const isImg = f.match(/\.(jpeg|jpg|gif|png|webp)$/i) || f.includes('i.ibb.co');
+                      return (
+                        <li key={i} className="flex items-center justify-between bg-card p-2 rounded-xl border border-border shadow-sm group">
+                          <div 
+                            className="flex items-center gap-3 flex-1 min-w-0 pr-2 cursor-pointer group/item"
+                            onClick={() => isImg ? handleOpenPreview(f) : window.open(f, '_blank')}
+                          >
+                            {isImg ? (
+                              <div className="h-10 w-10 rounded-lg border overflow-hidden shrink-0 bg-gray-100 group-hover/item:ring-2 ring-primary/30 transition-all">
+                                <img src={f} alt="preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                              </div>
+                            ) : (
+                              <div className="h-10 w-10 rounded-lg border flex items-center justify-center shrink-0 bg-gray-100">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span 
+                                className="text-xs font-bold text-primary group-hover/item:underline truncate"
+                                title={f}
+                              >
+                                {f.split('/').pop() || `File ${i+1}`}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground truncate uppercase tracking-tighter">
+                                {isImg ? 'Bấm để xem ảnh' : 'Tài liệu / Link'}
+                              </span>
                             </div>
-                          ) : (
-                            <div className="h-10 w-10 rounded-lg border flex items-center justify-center shrink-0 bg-gray-100">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span 
-                              className="text-xs font-bold text-primary group-hover/item:underline truncate"
-                              title={f}
-                            >
-                              {f.split('/').pop() || `File ${i+1}`}
-                            </span>
-                            <span className="text-[9px] text-muted-foreground truncate uppercase tracking-tighter">
-                              {isImg ? 'Bấm để xem ảnh' : 'Tài liệu / Link'}
-                            </span>
                           </div>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 text-destructive rounded-full hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" 
-                          onClick={async () => {
-                            const newFiles = task.files2D3D?.filter((_, idx) => idx !== i) || [];
-                            try {
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-destructive rounded-full hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={async () => {
+                              const newFiles = task.files2D3D?.filter((_, idx) => idx !== i) || [];
+                              try {
+                                await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
+                                toast.success("Đã xóa file");
+                              } catch (e) {
+                                toast.error("Không thể xóa file");
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p className="text-sm text-muted-foreground italic pl-1">Chưa có file kèm theo</p>}
+                
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Dán link file..." 
+                    className="h-9 text-xs rounded-lg" 
+                    value={newFileLinkDetail} 
+                    onChange={(e) => setNewFileLinkDetail(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newFileLinkDetail) {
+                          const newFiles = [...(task.files2D3D || []), newFileLinkDetail];
+                          try {
+                            if (task.id.startsWith('virtual-')) {
+                               const { id, ...taskData } = task;
+                               await addDoc(collection(db, 'tasks'), { 
+                                 ...taskData, 
+                                 files2D3D: newFiles,
+                                 title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
+                               });
+                               queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                               toast.success("Đã kích hoạt và thêm file");
+                            } else {
                               await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
-                              toast.success("Đã xóa file");
-                            } catch (e) {
-                              toast.error("Không thể xóa file");
+                              toast.success("Đã thêm file");
                             }
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : <p className="text-sm text-muted-foreground italic pl-1">Chưa có file kèm theo</p>}
-              
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Dán link file..." 
-                  className="h-9 text-xs rounded-lg" 
-                  value={newFileLinkDetail} 
-                  onChange={(e) => setNewFileLinkDetail(e.target.value)}
-                  onKeyDown={async (e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (newFileLinkDetail) {
-                        const newFiles = [...(task.files2D3D || []), newFileLinkDetail];
-                        try {
-                          if (task.id.startsWith('virtual-')) {
-                             const { id, ...taskData } = task;
-                             await addDoc(collection(db, 'tasks'), { 
-                               ...taskData, 
-                               files2D3D: newFiles,
-                               title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
-                             });
-                             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-                             toast.success("Đã kích hoạt và thêm file");
-                          } else {
-                            await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
-                            toast.success("Đã thêm file");
+                            setNewFileLinkDetail('');
+                          } catch (err) {
+                            toast.error("Không thể thêm file");
                           }
-                          setNewFileLinkDetail('');
-                        } catch (err) {
-                          toast.error("Không thể thêm file");
                         }
                       }
-                    }
-                  }}
-                />
-                <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={async () => {
-                   if (newFileLinkDetail) {
-                    const newFiles = [...(task.files2D3D || []), newFileLinkDetail];
-                    try {
-                      if (task.id.startsWith('virtual-')) {
-                        const { id, ...taskData } = task;
-                        await addDoc(collection(db, 'tasks'), { 
-                          ...taskData, 
-                          files2D3D: newFiles,
-                          title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
-                        });
-                        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-                        toast.success("Đã kích hoạt và thêm file");
-                      } else {
-                        await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
-                        toast.success("Đã thêm file");
+                    }}
+                  />
+                  <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={async () => {
+                     if (newFileLinkDetail) {
+                      const newFiles = [...(task.files2D3D || []), newFileLinkDetail];
+                      try {
+                        if (task.id.startsWith('virtual-')) {
+                          const { id, ...taskData } = task;
+                          await addDoc(collection(db, 'tasks'), { 
+                            ...taskData, 
+                            files2D3D: newFiles,
+                            title: task.title.startsWith('Sản xuất:') ? task.title : `Sản xuất: ${task.title}`
+                          });
+                          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                          toast.success("Đã kích hoạt và thêm file");
+                        } else {
+                          await updateDoc(doc(db, 'tasks', task.id), { files2D3D: newFiles });
+                          toast.success("Đã thêm file");
+                        }
+                        setNewFileLinkDetail('');
+                      } catch (err) {
+                        toast.error("Không thể thêm file");
                       }
-                      setNewFileLinkDetail('');
-                    } catch (err) {
-                      toast.error("Không thể thêm file");
                     }
-                  }
-                }}>Thêm</Button>
-              </div>
-            </div>
-
-
-
-            <div className="border-t pt-4 space-y-3">
-               <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tiến độ sản xuất chi tiết</label>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-[10px] gap-1.5 font-bold"
-                    onClick={() => setIsProductionChecklistOpen(true)}
-                  >
-                    <Plus className="h-3 w-3" />
-                    Bản khai tiến độ
-                  </Button>
-               </div>
-               {task.productionChecklist ? (
-                  <div 
-                    className="bg-primary/5 p-3 rounded-xl border border-primary/20 flex items-center justify-between cursor-pointer hover:bg-primary/10 transition-all shadow-sm"
-                    onClick={() => setIsProductionChecklistOpen(true)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                        <CheckCircle2 className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-foreground truncate max-w-[200px]">
-                          {task.productionChecklist.projectName || task.title}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                          Đã khởi tạo bản khai tiến độ
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="link" className="h-auto p-0 text-[10px] text-primary font-bold">XỬ LÝ</Button>
-                  </div>
-               ) : (
-                <div 
-                  className="flex flex-col items-center justify-center py-6 bg-secondary/5 border border-dashed rounded-xl cursor-pointer hover:bg-secondary/10 transition-colors group"
-                  onClick={() => setIsProductionChecklistOpen(true)}
-                >
-                   <CheckCircle2 className="h-6 w-6 text-muted-foreground/30 mb-1 group-hover:text-primary/40 transition-colors" />
-                   <p className="text-[10px] text-muted-foreground italic font-medium">Chưa có checklist tiến độ chi tiết</p>
+                  }}>Thêm</Button>
                 </div>
-               )}
-            </div>
+              </div>
+            )}
+
+
+
+            {task.type !== 'marketing' && (
+              <div className="border-t pt-4 space-y-3">
+                 <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tiến độ sản xuất chi tiết</label>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-[10px] gap-1.5 font-bold"
+                      onClick={() => setIsProductionChecklistOpen(true)}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Bản khai tiến độ
+                    </Button>
+                 </div>
+                 {task.productionChecklist ? (
+                    <div 
+                      className="bg-primary/5 p-3 rounded-xl border border-primary/20 flex items-center justify-between cursor-pointer hover:bg-primary/10 transition-all shadow-sm"
+                      onClick={() => setIsProductionChecklistOpen(true)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground truncate max-w-[200px]">
+                            {task.productionChecklist.projectName || task.title}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
+                            Đã khởi tạo bản khai tiến độ
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="link" className="h-auto p-0 text-[10px] text-primary font-bold">XỬ LÝ</Button>
+                    </div>
+                 ) : (
+                  <div 
+                    className="flex flex-col items-center justify-center py-6 bg-secondary/5 border border-dashed rounded-xl cursor-pointer hover:bg-secondary/10 transition-colors group"
+                    onClick={() => setIsProductionChecklistOpen(true)}
+                  >
+                     <CheckCircle2 className="h-6 w-6 text-muted-foreground/30 mb-1 group-hover:text-primary/40 transition-colors" />
+                     <p className="text-[10px] text-muted-foreground italic font-medium">Chưa có checklist tiến độ chi tiết</p>
+                  </div>
+                 )}
+              </div>
+            )}
 
             {task.type === 'marketing' && (
               <div className="border-t pt-4 space-y-4">
