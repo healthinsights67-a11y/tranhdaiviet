@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0686745109",
-  "appId": "1:841174856506:web:02a50dd9e66eda57f81603",
-  "apiKey": "AIzaSyDRUKwJvcYraU7vAExrHRzPhZejiTnk31U",
-  "authDomain": "gen-lang-client-0686745109.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-5844f605-5e90-4316-99c4-a7078ad935b7",
-  "storageBucket": "gen-lang-client-0686745109.firebasestorage.app",
-  "messagingSenderId": "841174856506",
+  "projectId": "inoithat-app",
+  "appId": "1:736759520817:web:a153d47faff01099c27f10",
+  "apiKey": "AIzaSyCxySA2KIDQzbBfwLT8rRXnY-aBhPbqlRU",
+  "authDomain": "inoithat-app.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "inoithat-app.firebasestorage.app",
+  "messagingSenderId": "736759520817",
   "measurementId": ""
 }

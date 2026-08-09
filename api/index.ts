@@ -92,7 +92,7 @@ function initializeFirebaseAdmin() {
     return;
   }
 
-  let storageBucket = "gen-lang-client-0686745109.firebasestorage.app";
+  let storageBucket = "inoithat-app.firebasestorage.app";
   try {
     const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
     if (fs.existsSync(configPath)) {
