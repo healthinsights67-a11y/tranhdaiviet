@@ -169,6 +169,12 @@ export const TaskSchema = z.object({
     lng: z.number(),
   }).optional().nullable(),
   checkinTime: z.string().optional(),
+  marketingTasks: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    targetQuantity: z.number(),
+    completedQuantity: z.number()
+  })).optional()
 });
 
 export const MediaFolderSchema = z.object({

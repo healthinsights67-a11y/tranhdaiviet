@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Task, Member, WORKSHOPS, Status, getWorkshopName, Customer } from '@/src/types';
+import { Task, Member, WORKSHOPS, Status, getWorkshopName, Customer, MarketingTaskItem } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SDK_VERSION } from 'firebase/app';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, MoreHorizontal, GripVertical, Clock, Package, Eye, CheckCircle2, FileText, User, Trash2, ChevronLeft, ChevronRight, Upload, Loader2, Save, Plus, Image, Wrench } from 'lucide-react';
+import { Calendar, MoreHorizontal, GripVertical, Clock, Package, Eye, CheckCircle2, FileText, User, Trash2, ChevronLeft, ChevronRight, Upload, Loader2, Save, Plus, Image, Wrench, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, getVNTimestamp } from '@/src/lib/utils';
 import { format } from 'date-fns';
@@ -68,6 +68,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
   const [isSaving, setIsSaving] = React.useState(false);
   const [editableDescription, setEditableDescription] = React.useState(task.description || '');
   const [editableTitle, setEditableTitle] = React.useState(task.title || '');
+  const [editableMarketingTasks, setEditableMarketingTasks] = React.useState<MarketingTaskItem[]>(task.marketingTasks || []);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isUploadingRef = React.useRef(false);
   // Remove storedImgbbKey state and useEffect as we use the service now
@@ -127,8 +128,9 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
     if (isDetailOpen) {
       setEditableDescription(task.description || '');
       setEditableTitle(task.title || '');
+      setEditableMarketingTasks(task.marketingTasks || []);
     }
-  }, [isDetailOpen, task.description, task.title]);
+  }, [isDetailOpen, task.description, task.title, task.marketingTasks]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -273,6 +275,7 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
         materialList: task.materialList || [],
         materialRequisition: task.materialRequisition || null,
         productionChecklist: task.productionChecklist || null,
+        marketingTasks: editableMarketingTasks,
         updatedAt: new Date().toISOString()
       };
 
@@ -550,6 +553,30 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
               </p>
             </div>
           )}
+
+          {task.type === 'marketing' && task.marketingTasks && task.marketingTasks.length > 0 && (() => {
+            const totalTarget = task.marketingTasks.reduce((sum, item) => sum + (item.targetQuantity || 0), 0);
+            const totalCompleted = task.marketingTasks.reduce((sum, item) => sum + (item.completedQuantity || 0), 0);
+            const progressPercent = totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : 0;
+            return (
+              <div className="space-y-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100/70 mt-1">
+                <div className="flex items-center justify-between text-[9px] font-bold text-slate-600">
+                  <span className="truncate">Tiến độ MKT</span>
+                  <span className="font-mono text-primary font-bold">{totalCompleted}/{totalTarget} ({progressPercent}%)</span>
+                </div>
+                <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-1 max-h-[36px] overflow-hidden">
+                  {task.marketingTasks.map((item, idx) => (
+                    <Badge key={idx} variant="outline" className="text-[8px] px-1.5 py-0 bg-white text-slate-500 border-slate-200 truncate max-w-[80px]">
+                      {item.title}: {item.completedQuantity}/{item.targetQuantity}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           
           <div className="flex items-center justify-between pt-1">
             <div className="flex gap-1 flex-wrap">
@@ -1001,6 +1028,157 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
                 </div>
                )}
             </div>
+
+            {task.type === 'marketing' && (
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Megaphone className="h-3.5 w-3.5 text-primary animate-pulse" />
+                    Hạng mục Marketing chi tiết
+                  </h4>
+                  <div className="flex gap-1.5">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      size="sm"
+                      className="h-6 text-[9px] px-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-bold"
+                      onClick={() => {
+                        const defaultItems = ["Tạo ảnh", "Đăng bài website", "Chụp ảnh"];
+                        const currentTitles = editableMarketingTasks.map(x => x.title.toLowerCase());
+                        const newTasks = [...editableMarketingTasks];
+                        defaultItems.forEach(title => {
+                          if (!currentTitles.includes(title.toLowerCase())) {
+                            newTasks.push({
+                              id: Date.now().toString() + '_' + Math.random().toString(36).substring(2, 5),
+                              title: title,
+                              targetQuantity: 10,
+                              completedQuantity: 0
+                            });
+                          }
+                        });
+                        setEditableMarketingTasks(newTasks);
+                        toast.success("Đã thêm nhanh các hạng mục cơ bản");
+                      }}
+                    >
+                      Khởi tạo nhanh
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      type="button"
+                      size="sm" 
+                      className="h-6 text-[9px] px-2 gap-1"
+                      onClick={() => {
+                        setEditableMarketingTasks(prev => [
+                          ...prev,
+                          {
+                            id: Date.now().toString() + '_' + Math.random().toString(36).substring(2, 5),
+                            title: 'Nhiệm vụ mới',
+                            targetQuantity: 5,
+                            completedQuantity: 0
+                          }
+                        ]);
+                      }}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                      Thêm thủ công
+                    </Button>
+                  </div>
+                </div>
+
+                {editableMarketingTasks.length > 0 ? (() => {
+                  const totalTarget = editableMarketingTasks.reduce((sum, item) => sum + (item.targetQuantity || 0), 0);
+                  const totalCompleted = editableMarketingTasks.reduce((sum, item) => sum + (item.completedQuantity || 0), 0);
+                  const progressPercent = totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : 0;
+                  return (
+                    <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-border">
+                      <div className="space-y-1 bg-white p-2.5 rounded-lg border border-border/60">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                          <span>Tổng tiến độ Marketing</span>
+                          <span className="text-primary font-mono font-bold">{totalCompleted}/{totalTarget} ({progressPercent}%)</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        {editableMarketingTasks.map((item, index) => {
+                          const itemProgress = item.targetQuantity > 0 ? Math.round((item.completedQuantity / item.targetQuantity) * 100) : 0;
+                          return (
+                            <div key={item.id} className="bg-white p-2.5 rounded-lg border border-border/50 space-y-2 group/mkt-item relative">
+                              <div className="flex items-center gap-2">
+                                <Input 
+                                  value={item.title}
+                                  onChange={(e) => {
+                                    const newTasks = [...editableMarketingTasks];
+                                    newTasks[index].title = e.target.value;
+                                    setEditableMarketingTasks(newTasks);
+                                  }}
+                                  placeholder="Tên nhiệm vụ..."
+                                  className="h-8 text-xs font-bold flex-1 border-none bg-slate-50/30 focus-visible:ring-1 focus-visible:ring-primary/20 px-2 py-1 rounded"
+                                />
+                                <Button
+                                  variant="ghost"
+                                  type="button"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive rounded-full hover:bg-destructive/10 shrink-0 opacity-0 group-hover/mkt-item:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    setEditableMarketingTasks(prev => prev.filter(x => x.id !== item.id));
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="flex items-center justify-between gap-4 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground text-[10px] uppercase font-bold shrink-0">Đã làm:</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={item.completedQuantity}
+                                    onChange={(e) => {
+                                      const newTasks = [...editableMarketingTasks];
+                                      newTasks[index].completedQuantity = Math.max(0, parseInt(e.target.value) || 0);
+                                      setEditableMarketingTasks(newTasks);
+                                    }}
+                                    className="w-16 h-7 text-xs font-bold text-center border-slate-200 focus-visible:ring-1"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground text-[10px] uppercase font-bold shrink-0">Mục tiêu:</span>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={item.targetQuantity}
+                                    onChange={(e) => {
+                                      const newTasks = [...editableMarketingTasks];
+                                      newTasks[index].targetQuantity = Math.max(1, parseInt(e.target.value) || 1);
+                                      setEditableMarketingTasks(newTasks);
+                                    }}
+                                    className="w-16 h-7 text-xs font-bold text-center border-slate-200 focus-visible:ring-1"
+                                  />
+                                </div>
+                                <Badge variant="secondary" className="font-mono text-[10px] py-0.5 px-2 bg-emerald-50 text-emerald-700 border-none">
+                                  {itemProgress}%
+                                </Badge>
+                              </div>
+                              <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-400 rounded-full transition-all duration-300" style={{ width: `${itemProgress}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="flex flex-col items-center justify-center py-6 bg-secondary/5 border border-dashed rounded-xl">
+                    <Megaphone className="h-5 w-5 text-muted-foreground/30 mb-1" />
+                    <p className="text-[10px] text-muted-foreground italic font-medium">Chưa khởi tạo nhiệm vụ marketing nào</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="border-t pt-4 space-y-3">
                <div className="flex items-center justify-between">

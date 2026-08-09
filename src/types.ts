@@ -91,6 +91,13 @@ export interface InstallationProgressImage {
   uploaderName?: string;
 }
 
+export interface MarketingTaskItem {
+  id: string;
+  title: string;
+  targetQuantity: number;
+  completedQuantity: number;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -144,6 +151,7 @@ export interface Task {
   installationIssues?: string;
   checkinLocation?: { lat: number; lng: number };
   checkinTime?: string;
+  marketingTasks?: MarketingTaskItem[];
 }
 
 export const WORKSHOPS = [
