@@ -4,6 +4,22 @@ import fs from "fs";
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getAuth, signInWithCustomToken } from 'firebase/auth';
+import { 
+  getFirestore as getClientFirestore, 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  onSnapshot 
+} from 'firebase/firestore';
+import cron from 'node-cron';
+
 
 const timestampSchema = z.any().transform((val) => {
   if (!val) return new Date().toISOString();
@@ -53,10 +69,6 @@ async function getAuthenticatedClientDb() {
   const dbId = config.firestoreDatabaseId;
 
   const customToken = await admin.auth().createCustomToken('server-system-bot');
-
-  const { initializeApp, getApp, getApps } = require('firebase/app');
-  const { getAuth, signInWithCustomToken } = require('firebase/auth');
-  const { getFirestore: getClientFirestore } = require('firebase/firestore');
 
   let firebaseApp;
   if (getApps().length === 0) {
@@ -184,7 +196,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Helper to send bot notification from Express server using authenticated Client SDK
   async function sendSystemNotificationFromServer(message: string) {
     try {
-      const { doc, getDoc } = require('firebase/firestore');
       const clientDb = await getAuthenticatedClientDb();
       const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
       if (!docSnap.exists()) return;
@@ -216,7 +227,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   async function runDailyReport() {
     console.log('Running daily report...');
     try {
-      const { collection, getDocs, query, where } = require('firebase/firestore');
       const clientDb = await getAuthenticatedClientDb();
       
       const now = new Date();
@@ -334,7 +344,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   async function runZaloReminders() {
     console.log('Running Zalo reminders...');
     try {
-      const { collection, getDocs } = require('firebase/firestore');
       const clientDb = await getAuthenticatedClientDb();
       
       const now = new Date();
@@ -356,7 +365,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       // Helper to send DM
       const sendZaloDM = async (zaloUserId: string, message: string) => {
         try {
-          const { doc, getDoc } = require('firebase/firestore');
           const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
           if (!docSnap.exists()) return;
           const config = docSnap.data();
@@ -418,7 +426,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Schedule daily overview report at 18:00
   async function scheduleDailyReport() {
     try {
-      const cron = require('node-cron');
       cron.schedule('0 18 * * *', async () => {
         try {
           await runDailyReport();
@@ -428,7 +435,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       }, {
         scheduled: true,
         timezone: "Asia/Ho_Chi_Minh"
-      });
+      } as any);
       console.log("Daily report scheduler initialized (18:00 Asia/Ho_Chi_Minh).");
     } catch (err) {
       console.error("Could not initialize node-cron:", err);
@@ -438,7 +445,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Schedule Follow-up Reminders at 08:30
   async function scheduleZaloReminders() {
     try {
-      const cron = require('node-cron');
       cron.schedule('30 8 * * *', async () => {
         try {
           await runZaloReminders();
@@ -448,7 +454,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       }, {
         scheduled: true,
         timezone: "Asia/Ho_Chi_Minh"
-      });
+      } as any);
       console.log("Zalo Reminders scheduler initialized (08:30 Asia/Ho_Chi_Minh).");
     } catch (err) {
       console.error("Could not initialize node-cron for reminders:", err);
@@ -478,7 +484,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   async function listenToSalesRoutes() {
     try {
       const clientDb = await getAuthenticatedClientDb();
-      const { collection, query, where, onSnapshot } = require('firebase/firestore');
       
       const serverStartTime = new Date().toISOString();
       console.log(`Starting Firestore listener for sales_routes created after ${serverStartTime}`);
@@ -575,7 +580,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
         if (trimmedText === '/id' || trimmedText === 'id' || trimmedText === '/myid' || trimmedText === 'mã id') {
           try {
             const clientDb = await getAuthenticatedClientDb();
-            const { doc, getDoc } = require('firebase/firestore');
             const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
             const configData = docSnap.data();
             const botToken = configData?.zalo?.botToken;
@@ -662,9 +666,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
 
             if (!writeSucceeded) {
               // Fallback to Client SDK
-              const { initializeApp, getApp, getApps } = require('firebase/app');
-              const { getFirestore: getClientFirestore, collection, addDoc } = require('firebase/firestore');
-              
               let firebaseApp;
               if (getApps().length === 0) {
                 if (fs.existsSync(configPath)) {
@@ -684,7 +685,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
             // Trigger check-in notification from server using authenticated Client SDK
             let memberName = 'Nhân viên Zalo';
             try {
-              const { collection, query, where, getDocs } = require('firebase/firestore');
               const clientDb = await getAuthenticatedClientDb();
               const q = query(collection(clientDb, 'members'), where('zaloUserId', '==', senderId));
               const memberSnap = await getDocs(q);
