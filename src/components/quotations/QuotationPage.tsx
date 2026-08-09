@@ -135,6 +135,7 @@ export function QuotationPage({
 
   const [activeView, setActiveView] = React.useState<ViewMode>('list');
   const [isSaving, setIsSaving] = React.useState(false);
+  const isSavingRef = React.useRef(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('all');
   const [workshopFilter, setWorkshopFilter] = React.useState<string>('all');
@@ -348,7 +349,8 @@ export function QuotationPage({
   };
 
   const handleCreateQuotation = async (data: Omit<Quotation, 'id'>) => {
-    if (isSaving) return;
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       if (user) {
@@ -427,6 +429,7 @@ export function QuotationPage({
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'quotations');
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };

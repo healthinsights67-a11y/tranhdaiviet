@@ -555,6 +555,7 @@ export function CustomerPage({
   const [viewMode, setViewMode] = React.useState<'grid' | 'map'>('grid');
   
   const [isSaving, setIsSaving] = React.useState(false);
+  const isSavingRef = React.useRef(false);
   const [geocodingProgress, setGeocodingProgress] = React.useState<{ current: number; total: number } | null>(null);
   const isGeocodingRef = React.useRef(false);
   const failedGeocodesRef = React.useRef<Set<string>>(new Set());
@@ -746,12 +747,13 @@ export function CustomerPage({
   };
 
   const handleAddCustomer = async () => {
-    if (isSaving) return;
+    if (isSavingRef.current) return;
     if (!newCustomer.name || !newCustomer.phone) {
       toast.error("Vui lòng nhập tên và số điện thoại");
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
 
@@ -931,6 +933,7 @@ export function CustomerPage({
         // Ignore the re-thrown error from handleFirestoreError
       }
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -1091,13 +1094,14 @@ export function CustomerPage({
   };
 
   const handleUpdateCustomer = async () => {
-    if (isSaving) return;
+    if (isSavingRef.current) return;
     if (!selectedCustomer) return;
     if (!selectedCustomer.name || !selectedCustomer.phone) {
       toast.error("Vui lòng nhập tên và số điện thoại");
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       const existingCustomer = customers.find(c => c.id === selectedCustomer.id);
@@ -1357,6 +1361,7 @@ export function CustomerPage({
         handleFirestoreError(error, OperationType.UPDATE, `customers/${selectedCustomer.id}`);
       } catch (e) {}
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
