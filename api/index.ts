@@ -456,6 +456,293 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   }
 
+  // Core logic to auto push 10 photos or 1 video from Dropbox to Zalo group
+  async function runZaloPushMedia() {
+    console.log('Running Zalo Auto Push Media from Dropbox...');
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+
+      // 1. Get Zalo Bot configurations
+      const notifSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
+      if (!notifSnap.exists()) {
+        console.log('Zalo notifications config not found.');
+        return { success: false, reason: 'Notifications config not found' };
+      }
+      const notifConfig = notifSnap.data();
+      if (!notifConfig?.zalo?.isActive || !notifConfig.zalo.botToken || !notifConfig.zalo.chatId) {
+        console.log('Zalo bot is not active or missing configurations.');
+        return { success: false, reason: 'Zalo bot config inactive or missing' };
+      }
+
+      const zaloBotToken = notifConfig.zalo.botToken.trim();
+      const zaloChatIds = notifConfig.zalo.chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
+
+      if (zaloChatIds.length === 0) {
+        console.log('No Zalo chat IDs configured.');
+        return { success: false, reason: 'No active chat IDs' };
+      }
+
+      // 2. Get Dropbox configurations
+      const dbSnap = await getDoc(doc(clientDb, 'configs', 'dropbox'));
+      if (!dbSnap.exists()) {
+        console.log('Dropbox config not found in Firestore.');
+        return { success: false, reason: 'Dropbox config not found' };
+      }
+      const dbConfig = dbSnap.data();
+      if (!dbConfig?.appKey || !dbConfig.appSecret || !dbConfig.refreshToken) {
+        console.log('Dropbox config is incomplete.');
+        return { success: false, reason: 'Dropbox config incomplete' };
+      }
+
+      const dropboxFolder = dbConfig.folderPath || '/kho_anh_video';
+
+      // 3. Get Dropbox Access Token
+      const tokenParams = new URLSearchParams();
+      tokenParams.append('grant_type', 'refresh_token');
+      tokenParams.append('refresh_token', dbConfig.refreshToken.trim());
+      tokenParams.append('client_id', dbConfig.appKey.trim());
+      tokenParams.append('client_secret', dbConfig.appSecret.trim());
+
+      const tokenRes = await fetch('https://api.dropboxapi.com/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: tokenParams
+      });
+
+      if (!tokenRes.ok) {
+        const errData = await tokenRes.json().catch(() => ({}));
+        throw new Error(errData.error_description || 'Failed to refresh Dropbox access token');
+      }
+      const tokenData = await tokenRes.json();
+      const dbAccessToken = tokenData.access_token;
+
+      // 4. List files in Dropbox folder
+      const listRes = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${dbAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          path: dropboxFolder,
+          recursive: false,
+          include_media_info: true
+        })
+      });
+
+      if (!listRes.ok) {
+        const errData = await listRes.json().catch(() => ({}));
+        throw new Error(errData.error_summary || 'Failed to list Dropbox folder');
+      }
+
+      const listData = await listRes.json();
+      const files = (listData.entries || [])
+        .filter((entry: any) => entry['.tag'] === 'file')
+        .map((entry: any) => ({
+          name: entry.name,
+          path: entry.path_display || entry.path_lower,
+          lowerPath: entry.path_lower
+        }))
+        .sort((a: any, b: any) => a.lowerPath.localeCompare(b.lowerPath));
+
+      if (files.length === 0) {
+        console.log('No files found in Dropbox folder:', dropboxFolder);
+        return { success: true, count: 0, message: 'No files found in folder' };
+      }
+
+      // 5. Get Sent Files State from Firestore
+      const stateRef = doc(clientDb, 'configs', 'zalo_push_state');
+      const stateSnap = await getDoc(stateRef);
+      let sentFilePaths: string[] = [];
+      if (stateSnap.exists()) {
+        sentFilePaths = stateSnap.data().sentFilePaths || [];
+      }
+
+      // Filter out files that have already been sent
+      const unsentFiles = files.filter((f: any) => !sentFilePaths.includes(f.path));
+
+      if (unsentFiles.length === 0) {
+        console.log('All files in Dropbox folder have been sent.');
+        return { success: true, count: 0, message: 'All files sent' };
+      }
+
+      // 6. Select files to send
+      const firstUnsent = unsentFiles[0];
+      const isVideo = (pathStr: string) => {
+        const ext = pathStr.split('.').pop()?.toLowerCase() || '';
+        return ['mp4', 'mov', 'avi', 'mkv', '3gp'].includes(ext);
+      };
+      const isImage = (pathStr: string) => {
+        const ext = pathStr.split('.').pop()?.toLowerCase() || '';
+        return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
+      };
+
+      let filesToSend: any[] = [];
+      let isVideoMessage = false;
+
+      if (isVideo(firstUnsent.path)) {
+        // If the first unsent item is a video, send it
+        filesToSend = [firstUnsent];
+        isVideoMessage = true;
+      } else {
+        // Otherwise, send up to 10 images sequentially
+        for (const file of unsentFiles) {
+          if (isImage(file.path)) {
+            filesToSend.push(file);
+            if (filesToSend.length >= 10) break;
+          } else {
+            // Stop collecting if we hit a video or other file type
+            break;
+          }
+        }
+        // If we found no images, fallback to just the first item
+        if (filesToSend.length === 0) {
+          filesToSend = [firstUnsent];
+          isVideoMessage = isVideo(firstUnsent.path);
+        }
+      }
+
+      console.log(`Selecting ${filesToSend.length} files to send. Video: ${isVideoMessage}`);
+
+      // 7. Process sharing links for the selected files
+      const sentFiles: string[] = [];
+      const mediaUrls: string[] = [];
+
+      for (const file of filesToSend) {
+        try {
+          // Try to create a shared link
+          const shareRes = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dbAccessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: file.path })
+          });
+
+          let sharedUrl = '';
+          if (shareRes.ok) {
+            const shareData = await shareRes.json();
+            sharedUrl = shareData.url;
+          } else {
+            const errorData = await shareRes.json().catch(() => ({}));
+            if (errorData.error?.['.tag'] === 'shared_link_already_exists') {
+              const listLinksRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${dbAccessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ path: file.path, direct_only: true })
+              });
+              if (listLinksRes.ok) {
+                const listData = await listLinksRes.json();
+                if (listData.links && listData.links.length > 0) {
+                  sharedUrl = listData.links[0].url;
+                }
+              }
+            }
+          }
+
+          if (sharedUrl) {
+            // Convert to direct download url by replacing ?dl=0 with ?raw=1
+            const directUrl = sharedUrl.replace(/\?dl=0$/, '?raw=1');
+            mediaUrls.push(directUrl);
+            sentFiles.push(file.path);
+          } else {
+            console.warn(`Could not generate shared link for ${file.path}`);
+          }
+        } catch (linkErr) {
+          console.error(`Error generating link for ${file.path}:`, linkErr);
+        }
+      }
+
+      if (sentFiles.length === 0) {
+        console.log('No valid sharing links generated.');
+        return { success: false, reason: 'Failed to generate sharing links' };
+      }
+
+      // 8. Send to Zalo Bot
+      for (const chatId of zaloChatIds) {
+        try {
+          if (isVideoMessage) {
+            // Send video sharing link via sendMessage
+            const videoUrl = mediaUrls[0];
+            const textMsg = `🎬 [I NỘI THẤT] Gửi nhóm video thiết kế mẫu hôm nay:\n👉 ${videoUrl}`;
+            
+            await fetch(`https://bot-api.zaloplatforms.com/bot${zaloBotToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, text: textMsg })
+            });
+            console.log(`Video link sent successfully to ${chatId}`);
+          } else {
+            // Send images sequentially via sendPhoto
+            let imgCount = 1;
+            for (const imgUrl of mediaUrls) {
+              const captionText = imgCount === 1 ? `📸 [I NỘI THẤT] Gửi nhóm bộ ảnh thiết kế mẫu hôm nay:` : undefined;
+              await fetch(`https://bot-api.zaloplatforms.com/bot${zaloBotToken}/sendPhoto`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  photo: imgUrl,
+                  caption: captionText
+                })
+              });
+              imgCount++;
+              // Sleep a bit to avoid flooding rate limits
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            console.log(`Sent ${mediaUrls.length} photos successfully to ${chatId}`);
+          }
+        } catch (sendErr) {
+          console.error(`Failed to send to Zalo chat ID ${chatId}:`, sendErr);
+        }
+      }
+
+      // 9. Update push state in Firestore
+      const updatedSentFilePaths = Array.from(new Set([...sentFilePaths, ...sentFiles]));
+      await setDoc(stateRef, {
+        sentFilePaths: updatedSentFilePaths,
+        lastPushAt: new Date().toISOString(),
+        lastPushFilesCount: sentFiles.length,
+        lastPushType: isVideoMessage ? 'video' : 'images'
+      }, { merge: true });
+
+      console.log(`State updated in Firestore. Total files tracked: ${updatedSentFilePaths.length}`);
+      return {
+        success: true,
+        type: isVideoMessage ? 'video' : 'images',
+        sentFiles: sentFiles,
+        chatsTargeted: zaloChatIds.length
+      };
+
+    } catch (err: any) {
+      console.error('Error in runZaloPushMedia:', err);
+      throw err;
+    }
+  }
+
+  // Schedule Zalo Push Media at 08:00 Asia/Ho_Chi_Minh
+  async function scheduleZaloPushMedia() {
+    try {
+      cron.schedule('0 8 * * *', async () => {
+        try {
+          await runZaloPushMedia();
+        } catch (e) {
+          console.error("Local Zalo push media failed:", e);
+        }
+      }, {
+        scheduled: true,
+        timezone: "Asia/Ho_Chi_Minh"
+      } as any);
+      console.log("Zalo Push Media scheduler initialized (08:00 Asia/Ho_Chi_Minh).");
+    } catch (err) {
+      console.error("Could not initialize node-cron for zalo push media:", err);
+    }
+  }
+
   // Schedule daily overview report at 18:00
   async function scheduleDailyReport() {
     try {
@@ -513,6 +800,15 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   });
 
+  app.get("/api/cron/zalo-push-media", async (req, res) => {
+    try {
+      const result = await runZaloPushMedia();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to push media", details: err.message });
+    }
+  });
+
   // Listen to sales_routes additions and notify Zalo
   async function listenToSalesRoutes() {
     try {
@@ -566,6 +862,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   if (!process.env.VERCEL) {
     scheduleDailyReport();
     scheduleZaloReminders();
+    scheduleZaloPushMedia();
     listenToSalesRoutes();
   }
 
