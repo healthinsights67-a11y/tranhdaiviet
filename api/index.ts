@@ -188,12 +188,26 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
 
   // Store recent webhooks in memory for debugging
   const recentWebhooks: any[] = [];
+
+  async function getPersistentWebhookLogs() {
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      const snap = await getDocs(query(collection(clientDb, 'webhook_logs')));
+      const logs: any[] = [];
+      snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+      logs.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+      return logs.slice(0, 20);
+    } catch (err: any) {
+      return recentWebhooks;
+    }
+  }
   
   // Robust middleware for Vercel Serverless Function rewrites
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
     const rawUrl = req.originalUrl || req.url || '';
     if (rawUrl.includes('webhook-logs') || rawUrl.includes('webhook_logs')) {
-      return res.json(recentWebhooks);
+      const logs = await getPersistentWebhookLogs();
+      return res.json(logs);
     }
     if (rawUrl.includes('webhooks/zalo') || rawUrl.includes('/zalo')) {
       if (req.method === 'GET') {
@@ -203,8 +217,9 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     next();
   });
 
-  app.get(["/api/webhook-logs", "/api/webhook_logs", "/webhook-logs", "/webhook_logs"], (req, res) => {
-    res.json(recentWebhooks);
+  app.get(["/api/webhook-logs", "/api/webhook_logs", "/webhook-logs", "/webhook_logs"], async (req, res) => {
+    const logs = await getPersistentWebhookLogs();
+    res.json(logs);
   });
 
   // Helper to send bot notification from Express server using authenticated Client SDK
@@ -559,12 +574,20 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     const body = req.body;
     console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
     
-    recentWebhooks.unshift({ 
+    const logItem = { 
       time: new Date().toISOString(), 
       headers: req.headers,
       body 
-    });
+    };
+    recentWebhooks.unshift(logItem);
     if (recentWebhooks.length > 20) recentWebhooks.pop();
+
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      await addDoc(collection(clientDb, 'webhook_logs'), logItem);
+    } catch (saveErr) {
+      console.error("Failed to persist webhook log to Firestore:", saveErr);
+    }
 
     // We should ideally use a secret token from env or database
     const WEBHOOK_SECRET_TOKEN = process.env.ZALO_WEBHOOK_SECRET || 'your-secret-token';
