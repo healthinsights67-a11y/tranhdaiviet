@@ -196,10 +196,10 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       const logs: any[] = [];
       snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
       logs.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
-      return logs.slice(0, 20);
+      return logs.length > 0 ? logs.slice(0, 20) : (recentWebhooks.length > 0 ? recentWebhooks : [{ info: "Chưa có webhook nào được gửi từ Zalo hoặc CSDL rỗng" }]);
     } catch (err: any) {
       console.error("Error fetching persistent webhook logs:", err);
-      return recentWebhooks;
+      return [{ error: err.message || String(err), memoryLogs: recentWebhooks }];
     }
   }
   
