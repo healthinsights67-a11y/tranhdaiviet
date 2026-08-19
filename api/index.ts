@@ -189,7 +189,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Store recent webhooks in memory for debugging
   const recentWebhooks: any[] = [];
   
-  app.get(["/api/webhook-logs", "/api/webhook_logs"], (req, res) => {
+  app.get(["/api/webhook-logs", "/api/webhook_logs", "/webhook-logs", "/webhook_logs"], (req, res) => {
     res.json(recentWebhooks);
   });
 
@@ -537,6 +537,10 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   }
 
   // Zalo Webhook Endpoint
+  app.get(["/webhooks/zalo", "/api/webhooks/zalo"], (req, res) => {
+    res.status(200).send("OK");
+  });
+
   app.post(["/webhooks/zalo", "/api/webhooks/zalo"], async (req, res) => {
     const body = req.body;
     console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
@@ -569,41 +573,49 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
         message = body.result.message || message;
       }
 
-      // Handle the event
-      if (event_name === 'message.text.received' && message) {
-        senderId = message.from?.id || senderId;
-        const text = message.text;
+      // Handle text messages (message.text.received, user_send_text, or any message with text)
+      const text = message?.text || (typeof body.text === 'string' ? body.text : undefined);
+      if (text) {
+        senderId = message?.from?.id || body.sender?.id || senderId;
         console.log(`Received text message from ${senderId}: ${text}`);
         
-        // Auto-reply to get Zalo User ID
+        // Auto-reply to get Zalo User ID & Group Chat ID
         const trimmedText = text?.trim()?.toLowerCase();
-        if (trimmedText === '/id' || trimmedText === 'id' || trimmedText === '/myid' || trimmedText === 'mã id') {
+        if (trimmedText === '/id' || trimmedText === 'id' || trimmedText === '/myid' || trimmedText === 'mã id' || trimmedText === '/groupid' || trimmedText === 'group id') {
           try {
             const clientDb = await getAuthenticatedClientDb();
             const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
             const configData = docSnap.data();
             const botToken = configData?.zalo?.botToken;
             
-            if (botToken && senderId) {
+            const targetChatId = message?.chat_id || message?.chat?.id || body.chat_id || body.recipient?.id || senderId;
+
+            if (botToken && targetChatId) {
+              const replyText = targetChatId !== senderId
+                ? `🆔 THÔNG TIN ID ZALO\n\n📌 Mã Group Chat ID (Nhóm):\n${targetChatId}\n\n👤 Mã User ID (Người gửi):\n${senderId}\n\nHãy sao chép mã Group ID trên để cấu hình nhận thông báo nhóm.`
+                : `🆔 THÔNG TIN ID ZALO\n\n👤 Mã User ID của bạn là:\n${senderId}\n\nHãy sao chép mã này và điền vào thông tin thành viên trên phần mềm.`;
+
               await fetch(`https://bot-api.zaloplatforms.com/bot${botToken.trim()}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                  chat_id: senderId, 
-                  text: `Mã Zalo User ID của bạn là:\n\n${senderId}\n\nHãy sao chép mã này và điền vào thông tin thành viên của bạn trên phần mềm.` 
+                  chat_id: targetChatId, 
+                  text: replyText 
                 })
               });
-              console.log(`Replied with ID to ${senderId} successfully`);
+              console.log(`Replied with ID to chat ${targetChatId} successfully`);
             }
           } catch (replyErr) {
             console.error("Failed to auto-reply Zalo ID:", replyErr);
           }
         }
-      } else if (event_name === 'message.image.received' && message) {
+      }
+
+      if (event_name === 'message.image.received' && message) {
         senderId = message.from?.id || senderId;
         const photoUrl = message.photo;
         console.log(`Received image message from ${senderId}: ${photoUrl}`);
-      } else if ((event_name === 'user_send_location' || event_name === 'user_send_text' || event_name === 'message.location.received') && message) {
+      } else if ((event_name === 'user_send_location' || event_name === 'message.location.received') && message) {
         senderId = message.from?.id || body.sender?.id || senderId;
         let lat: number | undefined;
         let lng: number | undefined;
