@@ -54,10 +54,17 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     contactSupport: '',
     enableAutoBackup: true
   });
+  const [dropboxConfigs, setDropboxConfigs] = React.useState({
+    appKey: '',
+    appSecret: '',
+    refreshToken: '',
+    folderPath: '/kho_anh_video'
+  });
   const [isLoading, setIsLoading] = React.useState(false);
 
   React.useEffect(() => {
     let unsubSnapshot: (() => void) | undefined;
+    let unsubDropbox: (() => void) | undefined;
     const unsubAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         unsubSnapshot = onSnapshot(doc(db, 'configs', 'storage'), (docSnap) => {
@@ -73,24 +80,44 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             });
           }
         });
+        unsubDropbox = onSnapshot(doc(db, 'configs', 'dropbox'), (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setDropboxConfigs({
+              appKey: data.appKey || '',
+              appSecret: data.appSecret || '',
+              refreshToken: data.refreshToken || '',
+              folderPath: data.folderPath || '/kho_anh_video'
+            });
+          }
+        });
       } else {
         if (unsubSnapshot) unsubSnapshot();
+        if (unsubDropbox) unsubDropbox();
       }
     });
     return () => {
       unsubAuth();
       if (unsubSnapshot) unsubSnapshot();
+      if (unsubDropbox) unsubDropbox();
     };
   }, []);
 
   const handleSaveConfig = async () => {
     setIsLoading(true);
     try {
-      await setDoc(doc(db, 'configs', 'storage'), {
-        ...configs,
-        updatedAt: serverTimestamp(),
-        updatedBy: auth.currentUser?.email
-      }, { merge: true });
+      await Promise.all([
+        setDoc(doc(db, 'configs', 'storage'), {
+          ...configs,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email
+        }, { merge: true }),
+        setDoc(doc(db, 'configs', 'dropbox'), {
+          ...dropboxConfigs,
+          updatedAt: serverTimestamp(),
+          updatedBy: auth.currentUser?.email
+        }, { merge: true })
+      ]);
       toast.success("Đã cập nhật cấu hình hệ thống!");
       onOpenChange?.(false);
     } catch (error: any) {
@@ -274,6 +301,63 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                       <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                       <p className="text-xs text-muted-foreground font-medium italic">
                         Tạo khóa API tại <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">Google Cloud Console</a>.
+                      </p>
+                    </div>
+
+                    <div className="mt-8 mb-4 border-t border-gray-100 pt-8" />
+
+                    <div className="space-y-1 mb-4">
+                      <h3 className="text-lg font-bold text-foreground">Cấu hình kho ảnh Dropbox (Auto Push Zalo)</h3>
+                      <p className="text-xs text-muted-foreground font-medium">Kết nối với tài khoản Dropbox để tự động đẩy hình ảnh và video hàng ngày vào nhóm Zalo.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="dropbox-app-key" className="text-[13px] font-bold text-foreground/80">Dropbox App Key</Label>
+                        <Input 
+                          id="dropbox-app-key"
+                          placeholder="App Key..."
+                          value={dropboxConfigs.appKey}
+                          onChange={(e) => setDropboxConfigs(prev => ({ ...prev, appKey: e.target.value }))}
+                          className="h-11 text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-400 rounded-xl px-4"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dropbox-app-secret" className="text-[13px] font-bold text-foreground/80">Dropbox App Secret</Label>
+                        <Input 
+                          id="dropbox-app-secret"
+                          type="password"
+                          placeholder="App Secret..."
+                          value={dropboxConfigs.appSecret}
+                          onChange={(e) => setDropboxConfigs(prev => ({ ...prev, appSecret: e.target.value }))}
+                          className="h-11 text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-400 rounded-xl px-4"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="dropbox-refresh-token" className="text-[13px] font-bold text-foreground/80">Dropbox Refresh Token (Vĩnh viễn)</Label>
+                      <Input 
+                        id="dropbox-refresh-token"
+                        type="password"
+                        placeholder="Dán Refresh Token nhận được từ script get_dropbox_token.js..."
+                        value={dropboxConfigs.refreshToken}
+                        onChange={(e) => setDropboxConfigs(prev => ({ ...prev, refreshToken: e.target.value }))}
+                        className="h-11 text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-400 rounded-xl px-4"
+                      />
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      <Label htmlFor="dropbox-folder-path" className="text-[13px] font-bold text-foreground/80">Đường dẫn thư mục ảnh/video</Label>
+                      <Input 
+                        id="dropbox-folder-path"
+                        placeholder="Ví dụ: /kho_anh_video"
+                        value={dropboxConfigs.folderPath}
+                        onChange={(e) => setDropboxConfigs(prev => ({ ...prev, folderPath: e.target.value }))}
+                        className="h-11 text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-400 rounded-xl px-4"
+                      />
+                      <p className="text-[11px] text-muted-foreground ml-1">
+                        Thư mục chứa ảnh và video trên Dropbox của bạn để Zalo Bot quét gửi hàng ngày.
                       </p>
                     </div>
                   </div>
