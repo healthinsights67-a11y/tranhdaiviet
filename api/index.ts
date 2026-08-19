@@ -14,6 +14,7 @@ import {
   getDocs, 
   addDoc, 
   updateDoc, 
+  setDoc,
   query, 
   where, 
   onSnapshot 
@@ -192,11 +193,13 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   async function getPersistentWebhookLogs() {
     try {
       const clientDb = await getAuthenticatedClientDb();
-      const snap = await getDocs(query(collection(clientDb, 'webhook_logs')));
-      const logs: any[] = [];
-      snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
-      logs.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
-      return logs.length > 0 ? logs.slice(0, 20) : (recentWebhooks.length > 0 ? recentWebhooks : [{ info: "Chưa có webhook nào được gửi từ Zalo hoặc CSDL rỗng" }]);
+      const docRef = doc(clientDb, 'configs', 'webhook_logs');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return data.logs || [];
+      }
+      return recentWebhooks.length > 0 ? recentWebhooks : [{ info: "Chưa có webhook nào được gửi từ Zalo hoặc CSDL rỗng" }];
     } catch (err: any) {
       console.error("Error fetching persistent webhook logs:", err);
       return [{ error: err.message || String(err), memoryLogs: recentWebhooks }];
@@ -585,9 +588,18 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
 
     try {
       const clientDb = await getAuthenticatedClientDb();
-      await addDoc(collection(clientDb, 'webhook_logs'), logItem);
+      const docRef = doc(clientDb, 'configs', 'webhook_logs');
+      const docSnap = await getDoc(docRef);
+      let logs = [];
+      if (docSnap.exists()) {
+        logs = docSnap.data().logs || [];
+      }
+      logs.unshift(logItem);
+      logs = logs.slice(0, 20);
+      await setDoc(docRef, { logs, updatedAt: new Date().toISOString() });
+      console.log("Successfully persisted webhook log to configs/webhook_logs");
     } catch (saveErr) {
-      console.error("Failed to persist webhook log to Firestore:", saveErr);
+      console.error("Failed to persist webhook log to configs:", saveErr);
     }
 
     // We should ideally use a secret token from env or database
