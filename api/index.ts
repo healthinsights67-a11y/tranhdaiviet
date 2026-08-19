@@ -602,11 +602,11 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
             const configData = docSnap.data();
             const botToken = configData?.zalo?.botToken;
             
-            const targetChatId = message?.chat_id || message?.chat?.id || body.chat_id || body.recipient?.id || senderId;
+            const targetChatId = body.recipient?.id || message?.chat_id || message?.chat?.id || body.chat_id || senderId;
 
             if (botToken && targetChatId) {
-              const replyText = targetChatId !== senderId
-                ? `🆔 THÔNG TIN ID ZALO\n\n📌 Mã Group Chat ID (Nhóm):\n${targetChatId}\n\n👤 Mã User ID (Người gửi):\n${senderId}\n\nHãy sao chép mã Group ID trên để cấu hình nhận thông báo nhóm.`
+              const replyText = (targetChatId && targetChatId !== senderId)
+                ? `🆔 THÔNG TIN ID ZALO\n\n📌 Mã Recipient/Group ID:\n${targetChatId}\n\n👤 Mã User ID (Người gửi):\n${senderId}\n\nHãy sao chép mã ID trên để cấu hình nhận thông báo.`
                 : `🆔 THÔNG TIN ID ZALO\n\n👤 Mã User ID của bạn là:\n${senderId}\n\nHãy sao chép mã này và điền vào thông tin thành viên trên phần mềm.`;
 
               await fetch(`https://bot-api.zaloplatforms.com/bot${botToken.trim()}/sendMessage`, {

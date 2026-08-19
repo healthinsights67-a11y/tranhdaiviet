@@ -13,7 +13,8 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         workbox: {
-          importScripts: ['/firebase-messaging-sw.js']
+          importScripts: ['/firebase-messaging-sw.js'],
+          navigateFallbackDenylist: [/^\/api/, /^\/webhooks/]
         },
         manifest: {
           name: 'Tủ 3 Miền',
