@@ -49,7 +49,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
   const [configs, setConfigs] = React.useState({
     imgbbKey: '',
     googleMapsKey: '',
-    systemName: 'Tủ 3 Miền',
+    systemName: 'I Nội Thất',
     systemDescription: 'Quản lý sản xuất & thiết kế chuyên nghiệp',
     contactSupport: '',
     enableAutoBackup: true
@@ -66,7 +66,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             setConfigs({
               imgbbKey: data.imgbbKey || '',
               googleMapsKey: data.googleMapsKey || '',
-              systemName: data.systemName || 'Tủ 3 Miền',
+              systemName: data.systemName || 'I Nội Thất',
               systemDescription: data.systemDescription || 'Quản lý sản xuất & thiết kế chuyên nghiệp',
               contactSupport: data.contactSupport || '',
               enableAutoBackup: data.enableAutoBackup ?? true
@@ -113,7 +113,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             <div className="space-y-1">
               <DialogTitle className="text-2xl font-black tracking-tight text-foreground">Cấu hình hệ thống</DialogTitle>
               <DialogDescription className="text-sm font-medium text-muted-foreground">
-                Quản trị và tùy chỉnh các thông số vận hành toàn cục của hệ thống Tủ 3 Miền.
+                Quản trị và tùy chỉnh các thông số vận hành toàn cục của hệ thống I Nội Thất.
               </DialogDescription>
             </div>
           </div>
@@ -166,7 +166,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                         id="sys-name"
                         value={configs.systemName}
                         onChange={(e) => setConfigs(prev => ({ ...prev, systemName: e.target.value }))}
-                        placeholder="Ví dụ: Tủ 3 Miền ERP"
+                        placeholder="Ví dụ: I Nội Thất ERP"
                         className="h-11 text-sm bg-card text-card-foreground border border-gray-200 focus:border-blue-300 rounded-xl px-4"
                       />
                     </div>

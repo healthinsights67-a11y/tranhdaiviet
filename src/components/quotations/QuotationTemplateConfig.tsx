@@ -35,7 +35,7 @@ export interface QuotationTemplate {
 }
 
 export const defaultTemplate: QuotationTemplate = {
-  companyName: 'CÔNG TY CỔ PHẦN QUỐC TẾ TỦ 3 MIỀN',
+  companyName: 'CÔNG TY CỔ PHẦN QUỐC TẾ I NỘI THẤT',
   companyAddress: 'Số 70 Phố Đồng Xung, Xã Chương Dương, TP Hà Nội, Việt Nam',
   companyPhone: '0985.328.832',
   companyEmail: 'cskh@tu3mien.com',
@@ -503,7 +503,7 @@ export const QuotationTemplateConfig = ({ trigger, currentUser }: { trigger?: Re
         <DialogFooter className="px-4 md:px-6 py-4 border-t border-border bg-card flex flex-col-reverse sm:flex-row justify-between items-center w-full gap-3">
           <Button type="button" variant="secondary" onClick={() => setConfig(defaultTemplate)} className="rounded-xl gap-2 w-full sm:w-auto text-xs md:text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200">
             <RefreshCw className="w-4 h-4" />
-            Điền nhanh thông tin Tủ 3 Miền
+            Điền nhanh thông tin I Nội Thất
           </Button>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl flex-1 sm:flex-none">Hủy</Button>

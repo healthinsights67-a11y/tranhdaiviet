@@ -44,7 +44,7 @@ export async function updateBotNotificationConfig(config: Partial<BotNotificatio
 /**
  * Send a test message via Telegram API
  */
-export async function sendTelegramTestMessage(botToken: string, chatId: string, message: string = "Đây là tin nhắn test từ hệ thống Tủ 3 Miền."): Promise<boolean> {
+export async function sendTelegramTestMessage(botToken: string, chatId: string, message: string = "Đây là tin nhắn test từ hệ thống I Nội Thất."): Promise<boolean> {
   if (!botToken || !chatId) {
     throw new Error('Thiếu Bot Token hoặc Chat ID');
   }
@@ -77,7 +77,7 @@ export async function sendTelegramTestMessage(botToken: string, chatId: string, 
 /**
  * Send a test message via Zalo Bot Platform API
  */
-export async function sendZaloTestMessage(botToken: string, userId: string, message: string = "Đây là tin nhắn test từ hệ thống Tủ 3 Miền."): Promise<boolean> {
+export async function sendZaloTestMessage(botToken: string, userId: string, message: string = "Đây là tin nhắn test từ hệ thống I Nội Thất."): Promise<boolean> {
   if (!botToken || !userId) {
     throw new Error('Thiếu Zalo Bot Token hoặc User ID');
   }

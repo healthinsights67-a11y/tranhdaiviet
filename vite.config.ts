@@ -17,9 +17,9 @@ export default defineConfig(({mode}) => {
           navigateFallbackDenylist: [/^\/api/, /^\/webhooks/]
         },
         manifest: {
-          name: 'Tủ 3 Miền',
-          short_name: 'Tủ 3 Miền',
-          description: 'Hệ thống quản lý Tủ 3 Miền',
+          name: 'I Nội Thất',
+          short_name: 'I Nội Thất',
+          description: 'Hệ thống quản lý I Nội Thất',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
