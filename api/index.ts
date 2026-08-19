@@ -602,22 +602,18 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
             const configData = docSnap.data();
             const botToken = configData?.zalo?.botToken;
             
-            const targetChatId = body.recipient?.id || message?.chat_id || message?.chat?.id || body.chat_id || senderId;
-
-            if (botToken && targetChatId) {
-              const replyText = (targetChatId && targetChatId !== senderId)
-                ? `🆔 THÔNG TIN ID ZALO\n\n📌 Mã Recipient/Group ID:\n${targetChatId}\n\n👤 Mã User ID (Người gửi):\n${senderId}\n\nHãy sao chép mã ID trên để cấu hình nhận thông báo.`
-                : `🆔 THÔNG TIN ID ZALO\n\n👤 Mã User ID của bạn là:\n${senderId}\n\nHãy sao chép mã này và điền vào thông tin thành viên trên phần mềm.`;
+            if (botToken && senderId) {
+              const replyText = `🆔 THÔNG TIN ZALO BOT\n\n👤 Mã Zalo User ID của bạn:\n${senderId}\n\n👉 Hãy sao chép mã User ID ở trên và dán vào ô "Chat ID" trong phần Cấu hình Bot Thông Báo.`;
 
               await fetch(`https://bot-api.zaloplatforms.com/bot${botToken.trim()}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                  chat_id: targetChatId, 
+                  chat_id: senderId, 
                   text: replyText 
                 })
               });
-              console.log(`Replied with ID to chat ${targetChatId} successfully`);
+              console.log(`Replied with ID to user ${senderId} successfully`);
             }
           } catch (replyErr) {
             console.error("Failed to auto-reply Zalo ID:", replyErr);
