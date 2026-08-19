@@ -198,6 +198,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       logs.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
       return logs.slice(0, 20);
     } catch (err: any) {
+      console.error("Error fetching persistent webhook logs:", err);
       return recentWebhooks;
     }
   }

@@ -193,6 +193,10 @@ service cloud.firestore {
       // Only admin or backend can write. Since the service account lacks access to the named database, we use the Client SDK and allow unauthenticated writes.
       allow write: if true;
     }
+
+    match /webhook_logs/{logId} {
+      allow read, write: if true;
+    }
     
     match /measurement_schedules/{scheduleId} {
       allow read: if isAuthenticated();
