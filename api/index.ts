@@ -189,6 +189,20 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Store recent webhooks in memory for debugging
   const recentWebhooks: any[] = [];
   
+  // Robust middleware for Vercel Serverless Function rewrites
+  app.use((req, res, next) => {
+    const rawUrl = req.originalUrl || req.url || '';
+    if (rawUrl.includes('webhook-logs') || rawUrl.includes('webhook_logs')) {
+      return res.json(recentWebhooks);
+    }
+    if (rawUrl.includes('webhooks/zalo') || rawUrl.includes('/zalo')) {
+      if (req.method === 'GET') {
+        return res.status(200).send("OK");
+      }
+    }
+    next();
+  });
+
   app.get(["/api/webhook-logs", "/api/webhook_logs", "/webhook-logs", "/webhook_logs"], (req, res) => {
     res.json(recentWebhooks);
   });
