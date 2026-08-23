@@ -295,34 +295,40 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
   const [selectedOrderDetails, setSelectedOrderDetails] = React.useState<any>(null);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-blue-50/50 border-blue-100">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <CheckCircle2 className="h-8 w-8 text-blue-500 mb-2" />
-            <p className="text-sm text-blue-600/80 font-medium">Khách hàng chốt cọc</p>
-            <h3 className="text-3xl font-bold text-blue-700">{filteredProfitData.length}</h3>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <Card className="bg-blue-50/50 border-blue-100 rounded-xl shadow-xs">
+          <CardContent className="p-3 sm:p-5 flex flex-col items-center justify-center text-center">
+            <CheckCircle2 className="h-5 w-5 sm:h-7 sm:w-7 text-blue-500 mb-1" />
+            <p className="text-[10px] sm:text-xs text-blue-600 font-semibold leading-tight">Khách chốt cọc</p>
+            <h3 className="text-lg sm:text-2xl font-black text-blue-700 mt-0.5">{filteredProfitData.length}</h3>
           </CardContent>
         </Card>
-        <Card className="bg-emerald-50/50 border-emerald-100">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <BadgeDollarSign className="h-8 w-8 text-emerald-500 mb-2" />
-            <p className="text-sm text-emerald-600/80 font-medium">Tổng doanh thu</p>
-            <h3 className="text-2xl font-bold text-emerald-700">{totalRevenue.toLocaleString('vi-VN')}</h3>
+        <Card className="bg-emerald-50/50 border-emerald-100 rounded-xl shadow-xs">
+          <CardContent className="p-3 sm:p-5 flex flex-col items-center justify-center text-center">
+            <BadgeDollarSign className="h-5 w-5 sm:h-7 sm:w-7 text-emerald-500 mb-1" />
+            <p className="text-[10px] sm:text-xs text-emerald-600 font-semibold leading-tight">Tổng doanh thu</p>
+            <h3 className="text-sm sm:text-xl font-black text-emerald-700 mt-0.5 truncate w-full" title={`${totalRevenue.toLocaleString('vi-VN')} ₫`}>
+              {totalRevenue.toLocaleString('vi-VN')} ₫
+            </h3>
           </CardContent>
         </Card>
-        <Card className="bg-amber-50/50 border-amber-100">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <Package className="h-8 w-8 text-amber-500 mb-2" />
-            <p className="text-sm text-amber-600/80 font-medium">Tổng chi phí vật tư</p>
-            <h3 className="text-2xl font-bold text-amber-700">{totalCost.toLocaleString('vi-VN')}</h3>
+        <Card className="bg-amber-50/50 border-amber-100 rounded-xl shadow-xs">
+          <CardContent className="p-3 sm:p-5 flex flex-col items-center justify-center text-center">
+            <Package className="h-5 w-5 sm:h-7 sm:w-7 text-amber-500 mb-1" />
+            <p className="text-[10px] sm:text-xs text-amber-600 font-semibold leading-tight">Chi phí vật tư</p>
+            <h3 className="text-sm sm:text-xl font-black text-amber-700 mt-0.5 truncate w-full" title={`${totalCost.toLocaleString('vi-VN')} ₫`}>
+              {totalCost.toLocaleString('vi-VN')} ₫
+            </h3>
           </CardContent>
         </Card>
-        <Card className="bg-purple-50/50 border-purple-100">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            {totalProfit >= 0 ? <TrendingUp className="h-8 w-8 text-purple-500 mb-2" /> : <TrendingDown className="h-8 w-8 text-red-500 mb-2" />}
-            <p className="text-sm text-purple-600/80 font-medium">Lãi thực (Biên lợi nhuận {profitMargin.toFixed(1)}%)</p>
-            <h3 className="text-2xl font-bold text-purple-700">{totalProfit.toLocaleString('vi-VN')}</h3>
+        <Card className="bg-purple-50/50 border-purple-100 rounded-xl shadow-xs">
+          <CardContent className="p-3 sm:p-5 flex flex-col items-center justify-center text-center">
+            {totalProfit >= 0 ? <TrendingUp className="h-5 w-5 sm:h-7 sm:w-7 text-purple-500 mb-1" /> : <TrendingDown className="h-5 w-5 sm:h-7 sm:w-7 text-red-500 mb-1" />}
+            <p className="text-[10px] sm:text-xs text-purple-600 font-semibold leading-tight">Lãi thực ({profitMargin.toFixed(1)}%)</p>
+            <h3 className="text-sm sm:text-xl font-black text-purple-700 mt-0.5 truncate w-full" title={`${totalProfit.toLocaleString('vi-VN')} ₫`}>
+              {totalProfit.toLocaleString('vi-VN')} ₫
+            </h3>
           </CardContent>
         </Card>
       </div>

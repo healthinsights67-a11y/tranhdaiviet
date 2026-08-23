@@ -1097,23 +1097,25 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   );
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-3 sm:p-4 md:p-6 h-full flex flex-col space-y-4 sm:space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Quản lý Vật tư & Lợi nhuận</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">Quản lý Vật tư & Lợi nhuận</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             Cấu hình giá thành nguyên vật liệu và phân tích lãi thực tế của các đơn hàng.
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="profit" className="flex-1 flex flex-col min-h-0">
-        <TabsList className="w-full md:w-auto self-start bg-secondary/50 p-1 rounded-xl">
-          <TabsTrigger value="profit" className="rounded-lg">Phân tích Lãi Thực</TabsTrigger>
-          <TabsTrigger value="config" className="rounded-lg">Giá Vật Tư Nhựa</TabsTrigger>
-          <TabsTrigger value="accessory" className="rounded-lg">Giá Phụ Kiện</TabsTrigger>
-          <TabsTrigger value="inventory" className="rounded-lg">Quản lý Kho</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto no-scrollbar pb-1">
+          <TabsList className="inline-flex w-max md:w-auto bg-secondary/50 p-1 rounded-xl h-10 gap-1">
+            <TabsTrigger value="profit" className="rounded-lg text-xs font-bold px-3">Phân tích Lãi Thực</TabsTrigger>
+            <TabsTrigger value="config" className="rounded-lg text-xs font-bold px-3">Giá Vật Tư Nhựa</TabsTrigger>
+            <TabsTrigger value="accessory" className="rounded-lg text-xs font-bold px-3">Giá Phụ Kiện</TabsTrigger>
+            <TabsTrigger value="inventory" className="rounded-lg text-xs font-bold px-3">Quản lý Kho</TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="config" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
           <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
@@ -1489,29 +1491,29 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
 
         <TabsContent value="inventory" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4 animate-in fade-in-50 duration-200">
           {/* Subview selectors and filter dashboard */}
-          <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border shadow-sm">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-3 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
               <div className="flex bg-secondary/30 p-1 rounded-xl gap-1 shrink-0">
                 <Button 
                   variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('status')}
-                  className="gap-2 rounded-lg"
+                  className="gap-1.5 rounded-lg text-xs font-bold h-8 flex-1 md:flex-initial"
                 >
-                  <Package className="h-4 w-4" /> Trạng thái tồn kho
+                  <Package className="h-3.5 w-3.5" /> Trạng thái tồn kho
                 </Button>
                 <Button 
                   variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('history')}
-                  className="gap-2 rounded-lg"
+                  className="gap-1.5 rounded-lg text-xs font-bold h-8 flex-1 md:flex-initial"
                 >
-                  <History className="h-4 w-4" /> Lịch sử Nhập/Xuất
+                  <History className="h-3.5 w-3.5" /> Lịch sử Nhập/Xuất
                 </Button>
               </div>
 
               {inventorySubView === 'status' && (
-                <div className="flex gap-2 items-center w-full md:w-auto flex-wrap">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                   <Button 
                     size="sm" 
                     onClick={() => {
@@ -1532,21 +1534,21 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                       });
                       setIsDialogOpen(true);
                     }}
-                    className="gap-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                    className="gap-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shrink-0 h-8 px-2.5"
                   >
                     <Plus className="h-3.5 w-3.5" /> Thêm vật tư nhựa
                   </Button>
                   <Button 
                     size="sm" 
                     onClick={() => handleOpenAccessoryDialog()}
-                    className="gap-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white"
+                    className="gap-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white shrink-0 h-8 px-2.5"
                   >
                     <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="gap-1.5 rounded-lg text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    className="gap-1.5 rounded-xl text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 shrink-0 h-8 px-2.5"
                     onClick={() => document.getElementById('invoice-scanner-input')?.click()}
                   >
                     <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" /> Quét phiếu AI
@@ -1563,21 +1565,21 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             </div>
 
             {inventorySubView === 'status' && (
-              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center pt-3 border-t border-gray-100 flex-wrap">
-                <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center pt-2 border-t border-border/50">
+                <div className="relative flex-1 min-w-[150px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input 
                     placeholder="Tìm mã hoặc tên..." 
-                    className="pl-9 h-9"
+                    className="pl-8 h-8 md:h-9 text-xs rounded-xl"
                     value={inventorySearchTerm}
                     onChange={(e) => setInventorySearchTerm(e.target.value)}
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <select
                     value={inventoryFilter}
                     onChange={(e) => setInventoryFilter(e.target.value as any)}
-                    className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none flex-1"
+                    className="h-8 md:h-9 rounded-xl border border-border bg-card px-2 text-xs font-semibold focus:outline-none flex-1 text-foreground"
                   >
                     <option value="all">Tất cả loại</option>
                     <option value="material">Vật tư nhựa</option>
@@ -1586,12 +1588,12 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   <select
                     value={inventoryStatusFilter}
                     onChange={(e) => setInventoryStatusFilter(e.target.value as any)}
-                    className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none flex-1"
+                    className="h-8 md:h-9 rounded-xl border border-border bg-card px-2 text-xs font-semibold focus:outline-none flex-1 text-foreground"
                   >
                     <option value="all">Tất cả trạng thái</option>
                     <option value="inStock">Còn hàng</option>
                     <option value="outOfStock">Hết hàng</option>
-                    <option value="lowStock">Cảnh báo tồn kho</option>
+                    <option value="lowStock">Cảnh báo thiếu</option>
                   </select>
                 </div>
               </div>
@@ -1602,28 +1604,28 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           {inventorySubView === 'status' ? (
             <div className="flex-1 min-h-0 bg-card border rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Summary stat cards */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 border-b bg-gray-50/50">
-                <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Tổng số mặt hàng</p>
-                  <p className="text-xl font-extrabold text-foreground mt-1">{inventoryItems.length}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 p-2.5 sm:p-4 border-b bg-gray-50/50 dark:bg-zinc-900/50">
+                <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase leading-tight">Tổng mặt hàng</p>
+                  <p className="text-base sm:text-xl font-black text-foreground mt-0.5">{inventoryItems.length}</p>
                 </div>
-                <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-indigo-600 uppercase">Giá trị tồn kho tổng</p>
-                  <p className="text-lg font-extrabold text-indigo-700 mt-1 truncate" title={`${totalInventoryValue.toLocaleString('vi-VN')} ₫`}>
+                <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-indigo-600 uppercase leading-tight">Vốn tồn kho tổng</p>
+                  <p className="text-xs sm:text-base font-black text-indigo-700 mt-0.5 truncate" title={`${totalInventoryValue.toLocaleString('vi-VN')} ₫`}>
                     {totalInventoryValue.toLocaleString('vi-VN')} ₫
                   </p>
                 </div>
-                <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Hết hàng</p>
-                  <p className="text-xl font-extrabold text-red-600 mt-1">{inventoryItems.filter(i => (i.stock || 0) === 0).length}</p>
+                <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-red-600 uppercase leading-tight">Hết hàng</p>
+                  <p className="text-base sm:text-xl font-black text-red-600 mt-0.5">{inventoryItems.filter(i => (i.stock || 0) === 0).length}</p>
                 </div>
-                <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Cảnh báo thiếu hụt</p>
-                  <p className="text-xl font-extrabold text-amber-500 mt-1">{inventoryItems.filter(i => (i.stock || 0) <= (i.minStock || 0)).length}</p>
+                <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase leading-tight">Cảnh báo thiếu</p>
+                  <p className="text-base sm:text-xl font-black text-amber-500 mt-0.5">{inventoryItems.filter(i => (i.stock || 0) <= (i.minStock || 0)).length}</p>
                 </div>
-                <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-blue-600 uppercase">Giá trị đã lọc</p>
-                  <p className="text-lg font-extrabold text-blue-700 mt-1 truncate" title={`${totalFilteredValue.toLocaleString('vi-VN')} ₫`}>
+                <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs col-span-2 sm:col-span-1">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase leading-tight">Giá trị đã lọc</p>
+                  <p className="text-xs sm:text-base font-black text-blue-700 mt-0.5 truncate" title={`${totalFilteredValue.toLocaleString('vi-VN')} ₫`}>
                     {totalFilteredValue.toLocaleString('vi-VN')} ₫
                   </p>
                 </div>
