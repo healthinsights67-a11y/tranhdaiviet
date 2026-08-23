@@ -2070,53 +2070,53 @@ export function EcoplastLearningPage() {
   };
 
   return (
-    <div className="space-y-6 pb-20 max-w-[1400px] mx-auto px-4">
+    <div className="space-y-4 sm:space-y-6 pb-20 max-w-[1400px] mx-auto px-2 sm:px-4">
       {/* Header and Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 text-white p-6 md:p-8 shadow-lg border border-blue-600/30">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 text-white p-4 sm:p-6 md:p-8 shadow-lg border border-blue-600/30">
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <Badge className="bg-blue-500/20 text-blue-200 border border-blue-400/30 font-bold uppercase tracking-widest text-[9px] px-3 py-1">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+          <div className="space-y-1.5 sm:space-y-2 max-w-2xl">
+            <Badge className="bg-blue-500/20 text-blue-200 border border-blue-400/30 font-bold uppercase tracking-widest text-[9px] px-2.5 py-0.5 sm:px-3 sm:py-1">
               Học viện Sales I-Nội-thất
             </Badge>
-            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight">
+            <h1 className="text-xl sm:text-2xl md:text-4xl font-black tracking-tight text-white leading-tight">
               Đào tạo Chuyên sâu Nhựa rỗng Ecoplast
             </h1>
-            <p className="text-blue-100/90 text-sm md:text-base font-medium">
+            <p className="text-blue-100/90 text-xs sm:text-sm md:text-base font-medium leading-relaxed">
               Chuyên đề học tập lý thuyết cấu trúc nhựa, ưu thế vật liệu vượt trội và thực hành bộ đề thi sát hạch 300 câu chốt sales đỉnh cao.
             </p>
           </div>
-          <div className="flex gap-3 shrink-0">
-            <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white min-w-[120px] p-4 text-center">
-              <p className="text-[10px] font-black uppercase text-blue-200">Đã thi</p>
-              <p className="text-2xl font-black mt-1">{stats.totalTests} lần</p>
+          <div className="flex gap-2 sm:gap-3 shrink-0">
+            <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white flex-1 sm:min-w-[120px] p-2.5 sm:p-4 text-center rounded-xl">
+              <p className="text-[9px] sm:text-[10px] font-black uppercase text-blue-200">Đã thi</p>
+              <p className="text-lg sm:text-2xl font-black mt-0.5 sm:mt-1">{stats.totalTests} lần</p>
             </Card>
-            <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white min-w-[120px] p-4 text-center relative overflow-hidden">
-              <Award className="absolute -bottom-2 -right-2 h-10 w-10 text-white/5" />
-              <p className="text-[10px] font-black uppercase text-blue-200">Điểm cao nhất</p>
-              <p className="text-2xl font-black mt-1 text-yellow-300">{stats.bestScore}/30</p>
+            <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white flex-1 sm:min-w-[120px] p-2.5 sm:p-4 text-center relative overflow-hidden rounded-xl">
+              <Award className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 text-white/5" />
+              <p className="text-[9px] sm:text-[10px] font-black uppercase text-blue-200">Điểm cao nhất</p>
+              <p className="text-lg sm:text-2xl font-black mt-0.5 sm:mt-1 text-yellow-300">{stats.bestScore}/30</p>
             </Card>
           </div>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
         <TabsList className={cn(
-          "grid w-full rounded-xl h-12 p-1.5 bg-gray-100 dark:bg-zinc-800 border border-border/50",
+          "grid w-full rounded-xl h-11 sm:h-12 p-1 bg-gray-100 dark:bg-zinc-800 border border-border/50 gap-1",
           isAdmin || isManager ? "grid-cols-3" : "grid-cols-2"
         )}>
-          <TabsTrigger value="theory" className="rounded-lg font-bold text-sm flex items-center gap-2">
-            <BookOpen className="h-4.5 w-4.5" />
-            Lý thuyết Sản phẩm
+          <TabsTrigger value="theory" className="rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 px-1 text-center truncate">
+            <BookOpen className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0" />
+            <span>Lý thuyết<span className="hidden sm:inline"> Sản phẩm</span></span>
           </TabsTrigger>
-          <TabsTrigger value="quiz" className="rounded-lg font-bold text-sm flex items-center gap-2">
-            <HelpCircle className="h-4.5 w-4.5" />
-            Thi Luyện tập (Đề 30 câu)
+          <TabsTrigger value="quiz" className="rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 px-1 text-center truncate">
+            <HelpCircle className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0" />
+            <span>Luyện tập<span className="hidden sm:inline"> (30 câu)</span></span>
           </TabsTrigger>
           {(isAdmin || isManager) && (
-            <TabsTrigger value="sales-progress" className="rounded-lg font-bold text-sm flex items-center gap-2">
-              <Users className="h-4.5 w-4.5" />
-              Tiến độ Thành viên
+            <TabsTrigger value="sales-progress" className="rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 px-1 text-center truncate">
+              <Users className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0" />
+              <span>Tiến độ<span className="hidden sm:inline"> Thành viên</span></span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -2124,28 +2124,28 @@ export function EcoplastLearningPage() {
         {/* Tab 1: Theory */}
         <TabsContent value="theory" className="outline-none">
           {/* Interactive Learning Roadmap */}
-          <div className="mb-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-blue-600" />
+          <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <h2 className="text-sm sm:text-base font-extrabold text-foreground flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   Lộ trình đào tạo chuyên sâu Ecoplast
                 </h2>
-                <p className="text-xs text-muted-foreground">Chọn từng giai đoạn học tập dưới đây để tự động lọc danh sách bài giảng tương ứng.</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground">Chọn giai đoạn dưới đây để lọc bài giảng tương ứng.</p>
               </div>
               {selectedPhaseId !== 'all' && (
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => setSelectedPhaseId('all')}
-                  className="font-bold text-xs h-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  className="font-bold text-xs h-7 sm:h-8 border-blue-200 text-blue-600 hover:bg-blue-50 self-start sm:self-auto rounded-lg"
                 >
                   Hiển thị tất cả bài học
                 </Button>
               )}
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
               {ROADMAP_PHASES.map((phase) => {
                 const PhaseIcon = ICON_MAP[phase.iconName] || BookOpen;
                 const isActive = selectedPhaseId === phase.id;
@@ -2154,31 +2154,31 @@ export function EcoplastLearningPage() {
                     key={phase.id}
                     onClick={() => setSelectedPhaseId(isActive ? 'all' : phase.id)}
                     className={cn(
-                      "cursor-pointer transition-all duration-300 border shadow-sm flex flex-col justify-between overflow-hidden relative group h-full",
+                      "cursor-pointer transition-all duration-300 border shadow-xs flex flex-col justify-between overflow-hidden relative group h-full rounded-xl",
                       isActive 
                         ? "border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/15 dark:bg-blue-950/10" 
                         : "border-border/60 hover:border-blue-400 hover:shadow-md bg-card"
                     )}
                   >
-                    <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="p-2.5 sm:p-4 space-y-2 flex-1 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
                         <div className={cn(
-                          "p-2 rounded-lg transition-colors",
+                          "p-1.5 sm:p-2 rounded-lg transition-colors",
                           isActive ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground group-hover:bg-blue-50 group-hover:text-blue-600"
                         )}>
-                          <PhaseIcon className="h-4.5 w-4.5" />
+                          <PhaseIcon className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
                         </div>
-                        <Badge variant="outline" className="text-[10px] font-bold border-none bg-muted px-2 py-0.5">
+                        <Badge variant="outline" className="text-[9px] sm:text-[10px] font-bold border-none bg-muted px-1.5 py-0.5">
                           {phase.lessonsRange}
                         </Badge>
                       </div>
-                      <div className="space-y-1 mt-2">
-                        <h3 className="font-extrabold text-sm text-foreground leading-tight">{phase.title}</h3>
-                        <p className="text-[11px] leading-snug text-muted-foreground line-clamp-3">{phase.description}</p>
+                      <div className="space-y-0.5 mt-1 sm:mt-2">
+                        <h3 className="font-extrabold text-xs sm:text-sm text-foreground leading-tight">{phase.title}</h3>
+                        <p className="text-[10px] sm:text-[11px] leading-snug text-muted-foreground line-clamp-2">{phase.description}</p>
                       </div>
                     </div>
                     <div className={cn(
-                      "h-1.5 w-full mt-auto transition-all",
+                      "h-1 sm:h-1.5 w-full mt-auto transition-all",
                       isActive ? "bg-blue-600" : "bg-transparent group-hover:bg-blue-400/40"
                     )} />
                   </Card>
