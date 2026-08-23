@@ -365,6 +365,8 @@ export const MaterialConfigSchema = z.object({
   discountPercent: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  stock: z.number().optional().default(0),
+  minStock: z.number().optional().default(0),
 });
 
 export const AccessoryConfigSchema = z.object({
@@ -379,5 +381,20 @@ export const AccessoryConfigSchema = z.object({
   discountPercent: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  stock: z.number().optional().default(0),
+  minStock: z.number().optional().default(0),
+});
+
+export const InventoryTransactionSchema = z.object({
+  id: z.string(),
+  itemId: z.string().min(1, "Thiếu ID vật tư"),
+  itemType: z.enum(['material', 'accessory']),
+  itemCode: z.string().min(1, "Thiếu mã vật tư"),
+  itemName: z.string().min(1, "Thiếu tên vật tư"),
+  type: z.enum(['import', 'export']),
+  quantity: z.number().min(1, "Số lượng phải lớn hơn 0"),
+  note: z.string().optional(),
+  createdBy: z.string().min(1, "Thiếu người tạo"),
+  createdAt: z.string(),
 });
 

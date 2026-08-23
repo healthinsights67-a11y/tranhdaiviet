@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { MaterialConfig, Task, Quotation, AccessoryConfig } from '@/src/types';
-import { MaterialConfigSchema, AccessoryConfigSchema } from '@/src/schemas';
-import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles } from 'lucide-react';
+import { db, handleFirestoreError, OperationType, auth } from '@/src/lib/firebase';
+import { MaterialConfig, Task, Quotation, AccessoryConfig, InventoryTransaction } from '@/src/types';
+import { MaterialConfigSchema, AccessoryConfigSchema, InventoryTransactionSchema } from '@/src/schemas';
+import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles, ArrowDownLeft, ArrowUpRight, History, Settings, AlertTriangle, FileText, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -73,6 +73,142 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [tempAccessoryDiscounts, setTempAccessoryDiscounts] = useState<Record<string, string>>({});
   const [quickApplyAccName, setQuickApplyAccName] = useState('');
   const [quickApplyAccPercent, setQuickApplyAccPercent] = useState('');
+
+  // Inventory state hooks
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+  const [inventoryFilter, setInventoryFilter] = useState<'all' | 'material' | 'accessory'>('all');
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState<'all' | 'inStock' | 'outOfStock' | 'lowStock'>('all');
+  const [inventorySubView, setInventorySubView] = useState<'status' | 'history'>('status');
+
+  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [isMinStockDialogOpen, setIsMinStockDialogOpen] = useState(false);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<any>(null);
+  
+  const [transactionForm, setTransactionForm] = useState({
+    type: 'import' as 'import' | 'export',
+    quantity: 1,
+    note: ''
+  });
+  
+  const [minStockForm, setMinStockForm] = useState({
+    minStock: 0,
+    stock: 0
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleOpenTransactionDialog = (item: any) => {
+    setSelectedInventoryItem(item);
+    setTransactionForm({
+      type: 'import',
+      quantity: 1,
+      note: ''
+    });
+    setIsTransactionDialogOpen(true);
+  };
+
+  const handleSaveTransaction = async () => {
+    if (!selectedInventoryItem) return;
+    if (transactionForm.quantity <= 0) {
+      toast.error('Số lượng phải lớn hơn 0');
+      return;
+    }
+    
+    const userEmail = auth.currentUser?.email || 'Hệ thống';
+    const currentStock = selectedInventoryItem.stock || 0;
+    
+    if (transactionForm.type === 'export' && transactionForm.quantity > currentStock) {
+      toast.error(`Số lượng xuất kho (${transactionForm.quantity}) lớn hơn số lượng tồn kho (${currentStock})`);
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. Create transaction document
+      const txRef = doc(collection(db, 'inventoryTransactions'));
+      const txData = {
+        id: txRef.id,
+        itemId: selectedInventoryItem.id,
+        itemType: selectedInventoryItem.type,
+        itemCode: selectedInventoryItem.code,
+        itemName: selectedInventoryItem.name,
+        type: transactionForm.type,
+        quantity: transactionForm.quantity,
+        note: transactionForm.note,
+        createdBy: userEmail,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Validate schema
+      InventoryTransactionSchema.parse(txData);
+      
+      batch.set(txRef, txData);
+      
+      // 2. Update stock in item
+      const itemRef = doc(
+        db, 
+        selectedInventoryItem.type === 'material' ? 'materialConfigs' : 'accessoryConfigs', 
+        selectedInventoryItem.id
+      );
+      
+      const newStock = transactionForm.type === 'import' 
+        ? currentStock + transactionForm.quantity 
+        : currentStock - transactionForm.quantity;
+        
+      batch.update(itemRef, {
+        stock: newStock,
+        updatedAt: new Date().toISOString()
+      });
+      
+      await batch.commit();
+      toast.success(`${transactionForm.type === 'import' ? 'Nhập kho' : 'Xuất kho'} thành công mã ${selectedInventoryItem.code}`);
+      setIsTransactionDialogOpen(false);
+    } catch (error: any) {
+      console.error("Save transaction error:", error);
+      toast.error('Lỗi khi thực hiện giao dịch: ' + (error?.message || ''));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenMinStockDialog = (item: any) => {
+    setSelectedInventoryItem(item);
+    setMinStockForm({
+      minStock: item.minStock || 0,
+      stock: item.stock || 0
+    });
+    setIsMinStockDialogOpen(true);
+  };
+
+  const handleSaveMinStock = async () => {
+    if (!selectedInventoryItem) return;
+    
+    setIsLoading(true);
+    try {
+      const itemRef = doc(
+        db, 
+        selectedInventoryItem.type === 'material' ? 'materialConfigs' : 'accessoryConfigs', 
+        selectedInventoryItem.id
+      );
+      
+      await updateDoc(itemRef, {
+        minStock: Number(minStockForm.minStock),
+        stock: Number(minStockForm.stock),
+        updatedAt: new Date().toISOString()
+      });
+      
+      toast.success(`Đã cập nhật tồn kho & hạn mức mã ${selectedInventoryItem.code}`);
+      setIsMinStockDialogOpen(false);
+    } catch (error: any) {
+      console.error("Save min stock error:", error);
+      toast.error('Lỗi khi cập nhật hạn mức: ' + (error?.message || ''));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const parsePrice = (val: string | number | undefined | null): number => {
     if (val === undefined || val === null) return 0;
@@ -420,6 +556,60 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'inventoryTransactions'), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as InventoryTransaction);
+      data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      setTransactions(data);
+    }, (error) => {
+      // Avoid failing application if collection doesn't exist yet
+      console.warn("Failed to load inventoryTransactions, might not exist yet:", error);
+    });
+    return () => unsub();
+  }, []);
+
+  const inventoryItems = useMemo(() => {
+    const mats = materials.map(m => ({
+      ...m,
+      name: m.name || `Tấm nhựa mã ${m.code}`,
+      type: 'material' as const,
+      category: m.category || 'Vật tư nhựa'
+    }));
+    const accs = accessories.map(a => ({
+      ...a,
+      type: 'accessory' as const,
+      category: 'Phụ kiện'
+    }));
+    return [...mats, ...accs];
+  }, [materials, accessories]);
+
+  const filteredInventory = useMemo(() => {
+    return inventoryItems.filter(item => {
+      const matchesSearch = 
+        item.code.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+        item.name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+        (item.category || '').toLowerCase().includes(inventorySearchTerm.toLowerCase());
+      
+      const matchesType = 
+        inventoryFilter === 'all' || 
+        item.type === inventoryFilter;
+        
+      const stockVal = item.stock || 0;
+      const minStockVal = item.minStock || 0;
+      
+      let matchesStatus = true;
+      if (inventoryStatusFilter === 'inStock') {
+        matchesStatus = stockVal > 0;
+      } else if (inventoryStatusFilter === 'outOfStock') {
+        matchesStatus = stockVal === 0;
+      } else if (inventoryStatusFilter === 'lowStock') {
+        matchesStatus = stockVal <= minStockVal;
+      }
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [inventoryItems, inventorySearchTerm, inventoryFilter, inventoryStatusFilter]);
+
   const handleOpenAccessoryDialog = (item?: AccessoryConfig) => {
     if (item) {
       setEditingAccessory(item);
@@ -637,6 +827,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           <TabsTrigger value="profit" className="rounded-lg">Phân tích Lãi Thực</TabsTrigger>
           <TabsTrigger value="config" className="rounded-lg">Giá Vật Tư Nhựa</TabsTrigger>
           <TabsTrigger value="accessory" className="rounded-lg">Giá Phụ Kiện</TabsTrigger>
+          <TabsTrigger value="inventory" className="rounded-lg">Quản lý Kho</TabsTrigger>
         </TabsList>
         
         <TabsContent value="config" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
@@ -997,7 +1188,387 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         <TabsContent value="profit" className="flex-1 mt-4 data-[state=active]:block">
           <ProfitAnalysis tasks={tasks} quotations={quotations} />
         </TabsContent>
+
+        <TabsContent value="inventory" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4 animate-in fade-in-50 duration-200">
+          {/* Subview selectors and filter dashboard */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
+            <div className="flex bg-secondary/30 p-1 rounded-xl gap-1 shrink-0">
+              <Button 
+                variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
+                size="sm" 
+                onClick={() => setInventorySubView('status')}
+                className="gap-2 rounded-lg"
+              >
+                <Package className="h-4 w-4" /> Trạng thái tồn kho
+              </Button>
+              <Button 
+                variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
+                size="sm" 
+                onClick={() => setInventorySubView('history')}
+                className="gap-2 rounded-lg"
+              >
+                <History className="h-4 w-4" /> Lịch sử Nhập/Xuất
+              </Button>
+            </div>
+
+            {inventorySubView === 'status' && (
+              <div className="flex gap-2 items-center flex-wrap w-full sm:w-auto">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Tìm mã hoặc tên..." 
+                    className="pl-9 h-9"
+                    value={inventorySearchTerm}
+                    onChange={(e) => setInventorySearchTerm(e.target.value)}
+                  />
+                </div>
+                <select
+                  value={inventoryFilter}
+                  onChange={(e) => setInventoryFilter(e.target.value as any)}
+                  className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none"
+                >
+                  <option value="all">Tất cả loại</option>
+                  <option value="material">Vật tư nhựa</option>
+                  <option value="accessory">Phụ kiện</option>
+                </select>
+                <select
+                  value={inventoryStatusFilter}
+                  onChange={(e) => setInventoryStatusFilter(e.target.value as any)}
+                  className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="inStock">Còn hàng</option>
+                  <option value="outOfStock">Hết hàng</option>
+                  <option value="lowStock">Cảnh báo tồn kho</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Core Inventory Views */}
+          {inventorySubView === 'status' ? (
+            <div className="flex-1 min-h-0 bg-card border rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              {/* Summary stat cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b bg-gray-50/50">
+                <div className="p-3 bg-white border rounded-xl shadow-xs">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Tổng số mặt hàng</p>
+                  <p className="text-xl font-extrabold text-foreground mt-1">{inventoryItems.length}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-xl shadow-xs">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Hết hàng</p>
+                  <p className="text-xl font-extrabold text-red-600 mt-1">{inventoryItems.filter(i => (i.stock || 0) === 0).length}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-xl shadow-xs">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Cảnh báo thiếu hụt</p>
+                  <p className="text-xl font-extrabold text-amber-500 mt-1">{inventoryItems.filter(i => (i.stock || 0) <= (i.minStock || 0)).length}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-xl shadow-xs">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Đã lọc hiển thị</p>
+                  <p className="text-xl font-extrabold text-blue-600 mt-1">{filteredInventory.length}</p>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
+                  <thead>
+                    <tr className="border-b bg-muted/30 text-xs font-bold text-muted-foreground select-none">
+                      <th className="p-3 w-[12%]">Mã hàng</th>
+                      <th className="p-3 w-[25%]">Tên / Phân loại</th>
+                      <th className="p-3 w-[23%]">Hạng mục</th>
+                      <th className="p-3 w-[10%] text-center">ĐVT</th>
+                      <th className="p-3 w-[15%] text-center">Tồn kho / Tối thiểu</th>
+                      <th className="p-3 w-[15%] text-right pr-6">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y text-sm">
+                    {filteredInventory.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
+                          Không tìm thấy mặt hàng nào trong kho.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredInventory.map(item => {
+                        const stockVal = item.stock || 0;
+                        const minStockVal = item.minStock || 0;
+                        const isLow = stockVal <= minStockVal;
+                        
+                        let statusColor = "bg-emerald-50 text-emerald-700 border-emerald-100";
+                        let statusLabel = "Còn hàng";
+                        if (stockVal === 0) {
+                          statusColor = "bg-red-50 text-red-700 border-red-100";
+                          statusLabel = "Hết hàng";
+                        } else if (isLow) {
+                          statusColor = "bg-amber-50 text-amber-700 border-amber-100";
+                          statusLabel = "Sắp hết";
+                        }
+
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-3 font-mono font-bold text-slate-700">{item.code}</td>
+                            <td className="p-3">
+                              <p className="font-semibold text-foreground truncate">{item.name}</p>
+                              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold border border-slate-200 mt-1 inline-block uppercase">
+                                {item.type === 'material' ? 'Nhựa' : 'Phụ kiện'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-muted-foreground text-xs font-medium truncate">{item.category}</td>
+                            <td className="p-3 text-center font-medium text-slate-500">{item.unit}</td>
+                            <td className="p-3">
+                              <div className="flex flex-col items-center">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-base font-extrabold ${stockVal === 0 ? 'text-red-600' : isLow ? 'text-amber-500' : 'text-slate-800'}`}>
+                                    {stockVal}
+                                  </span>
+                                  <span className="text-muted-foreground text-[10px]">/</span>
+                                  <span className="text-muted-foreground text-xs font-semibold">{minStockVal}</span>
+                                </div>
+                                <span className={`text-[10px] font-bold border px-1.5 py-0.5 rounded-md mt-1 ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right pr-6">
+                              <div className="flex justify-end gap-1.5">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-8 text-xs font-bold gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  onClick={() => handleOpenTransactionDialog(item)}
+                                >
+                                  Nhập/Xuất
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleOpenMinStockDialog(item)}
+                                  title="Cài đặt tồn kho & Hạn mức"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Historical Logs View */
+            <div className="flex-1 min-h-0 bg-card border rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              <div className="p-4 border-b bg-gray-50/50 flex justify-between items-center">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <History className="h-4 w-4 text-blue-600" />
+                  Nhật ký giao dịch nhập xuất kho nguyên vật liệu
+                </h3>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Tổng cộng: {transactions.length} lượt giao dịch
+                </span>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
+                  <thead>
+                    <tr className="border-b bg-muted/30 text-xs font-bold text-muted-foreground select-none">
+                      <th className="p-3 w-[18%]">Thời gian</th>
+                      <th className="p-3 w-[12%]">Mã vật tư</th>
+                      <th className="p-3 w-[25%]">Tên vật tư / phụ kiện</th>
+                      <th className="p-3 w-[12%] text-center">Giao dịch</th>
+                      <th className="p-3 w-[10%] text-center">Số lượng</th>
+                      <th className="p-3 w-[13%]">Người thực hiện</th>
+                      <th className="p-3 w-[10%]">Ghi chú</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y text-xs font-medium">
+                    {transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-muted-foreground font-medium">
+                          Chưa có lịch sử giao dịch kho nào được ghi lại.
+                        </td>
+                      </tr>
+                    ) : (
+                      transactions.map(tx => (
+                        <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-3 text-muted-foreground font-mono">
+                            {new Date(tx.createdAt).toLocaleString('vi-VN')}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{tx.itemCode}</td>
+                          <td className="p-3 truncate">
+                            <p className="font-semibold text-foreground truncate">{tx.itemName}</p>
+                            <span className="text-[9px] text-slate-400 capitalize">
+                              {tx.itemType === 'material' ? 'Vật tư nhựa' : 'Phụ kiện'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            {tx.type === 'import' ? (
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full font-bold font-semibold">
+                                <ArrowDownLeft className="h-3 w-3" /> Nhập kho
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full font-bold font-semibold">
+                                <ArrowUpRight className="h-3 w-3" /> Xuất kho
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-extrabold text-slate-800 text-sm">
+                            {tx.quantity}
+                          </td>
+                          <td className="p-3 text-slate-600 truncate" title={tx.createdBy}>{tx.createdBy.split('@')[0]}</td>
+                          <td className="p-3 text-muted-foreground italic truncate" title={tx.note}>{tx.note || '-'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Dialog: Nhập/Xuất kho */}
+      <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
+        <DialogContent className="max-w-[450px] w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {transactionForm.type === 'import' ? (
+                <ArrowDownLeft className="h-5 w-5 text-emerald-600 bg-emerald-50 rounded-md p-0.5" />
+              ) : (
+                <ArrowUpRight className="h-5 w-5 text-amber-600 bg-amber-50 rounded-md p-0.5" />
+              )}
+              {transactionForm.type === 'import' ? 'Nhập kho vật tư' : 'Xuất kho vật tư'}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Mã hàng: <strong className="text-foreground">{selectedInventoryItem?.code}</strong> - Tên: <strong className="text-foreground">{selectedInventoryItem?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-muted-foreground">Loại giao dịch</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  type="button"
+                  variant={transactionForm.type === 'import' ? 'default' : 'outline'}
+                  className="rounded-xl h-10 font-bold"
+                  onClick={() => setTransactionForm({ ...transactionForm, type: 'import' })}
+                >
+                  Nhập kho (+)
+                </Button>
+                <Button 
+                  type="button"
+                  variant={transactionForm.type === 'export' ? 'default' : 'outline'}
+                  className="rounded-xl h-10 font-bold"
+                  onClick={() => setTransactionForm({ ...transactionForm, type: 'export' })}
+                >
+                  Xuất kho (-)
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tx-qty" className="text-xs font-bold text-muted-foreground">Số lượng ({selectedInventoryItem?.unit})</Label>
+              <Input 
+                id="tx-qty"
+                type="number"
+                min="1"
+                value={transactionForm.quantity}
+                onChange={(e) => setTransactionForm({ ...transactionForm, quantity: Math.max(1, parseInt(e.target.value) || 0) })}
+                className="h-11 rounded-xl text-sm focus:border-blue-400"
+              />
+              {transactionForm.type === 'export' && (
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Tồn kho hiện tại: <span className="font-bold text-foreground">{selectedInventoryItem?.stock || 0}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tx-note" className="text-xs font-bold text-muted-foreground">Ghi chú giao dịch</Label>
+              <Input 
+                id="tx-note"
+                placeholder="VD: Nhập thêm lô hàng nhựa mới, Xuất kho lắp tủ bếp..."
+                value={transactionForm.note}
+                onChange={(e) => setTransactionForm({ ...transactionForm, note: e.target.value })}
+                className="h-11 rounded-xl text-sm focus:border-blue-400"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsTransactionDialogOpen(false)} className="rounded-xl flex-1 sm:flex-none">
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleSaveTransaction} 
+              disabled={isLoading}
+              className={`rounded-xl flex-1 sm:flex-none ${transactionForm.type === 'import' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600'}`}
+            >
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Hạn mức & Tồn kho */}
+      <Dialog open={isMinStockDialogOpen} onOpenChange={setIsMinStockDialogOpen}>
+        <DialogContent className="max-w-[400px] w-[95vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-600 bg-blue-50 rounded-md p-0.5" />
+              Thiết lập kho & Hạn mức
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Mã hàng: <strong className="text-foreground">{selectedInventoryItem?.code}</strong> - Tên: <strong className="text-foreground">{selectedInventoryItem?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label htmlFor="inv-stock" className="text-xs font-bold text-muted-foreground">Điều chỉnh số lượng tồn kho thực tế</Label>
+              <Input 
+                id="inv-stock"
+                type="number"
+                min="0"
+                value={minStockForm.stock}
+                onChange={(e) => setMinStockForm({ ...minStockForm, stock: Math.max(0, parseInt(e.target.value) || 0) })}
+                className="h-11 rounded-xl text-sm focus:border-blue-400 font-bold text-slate-800"
+              />
+              <p className="text-[10px] text-muted-foreground italic">
+                * Lưu ý: Đây là số tồn kho thực tế của xưởng hiện tại.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="inv-min-stock" className="text-xs font-bold text-muted-foreground">Hạn mức báo động tối thiểu</Label>
+              <Input 
+                id="inv-min-stock"
+                type="number"
+                min="0"
+                value={minStockForm.minStock}
+                onChange={(e) => setMinStockForm({ ...minStockForm, minStock: Math.max(0, parseInt(e.target.value) || 0) })}
+                className="h-11 rounded-xl text-sm focus:border-blue-400 font-bold text-slate-800"
+              />
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                * Khi tồn kho thực tế chạm hoặc thấp hơn mức này, hệ thống sẽ hiện cảnh báo thiếu hàng để bạn kịp thời đặt nhập kho thêm.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsMinStockDialogOpen(false)} className="rounded-xl flex-1 sm:flex-none">
+              Hủy
+            </Button>
+            <Button onClick={handleSaveMinStock} disabled={isLoading} className="rounded-xl flex-1 sm:flex-none">
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-[800px] h-[90vh] md:h-auto overflow-y-auto">

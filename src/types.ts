@@ -343,6 +343,10 @@ export interface MaterialConfig {
   unitPrice?: number;
   discountPercent?: number;
   finalPrice?: number;
+
+  // Inventory fields
+  stock?: number;
+  minStock?: number;
 }
 
 export interface ProfitAnalysis {
@@ -387,4 +391,21 @@ export interface AccessoryConfig {
   discountPercent?: number;
   createdAt?: string;
   updatedAt?: string;
+
+  // Inventory fields
+  stock?: number;
+  minStock?: number;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  itemId: string;
+  itemType: 'material' | 'accessory';
+  itemCode: string;
+  itemName: string;
+  type: 'import' | 'export';
+  quantity: number;
+  note?: string;
+  createdBy: string;
+  createdAt: string;
 }
