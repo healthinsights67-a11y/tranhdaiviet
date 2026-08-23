@@ -769,12 +769,14 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
           </div>
 
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="shrink-0 h-9 w-9 sm:w-auto sm:px-3.5 p-0 rounded-xl font-bold gap-1.5 shadow-xs">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Thêm</span>
-              </Button>
-            </DialogTrigger>
+            <DialogTrigger 
+              render={
+                <Button className="shrink-0 h-9 w-9 sm:w-auto sm:px-3.5 p-0 rounded-xl font-bold gap-1.5 shadow-xs">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Thêm</span>
+                </Button>
+              }
+            />
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Tạo nhiệm vụ</DialogTitle>
