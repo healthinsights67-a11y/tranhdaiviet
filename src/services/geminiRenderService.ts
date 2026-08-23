@@ -392,3 +392,67 @@ export async function renderCameraAngle(
     throw error;
   }
 }
+
+export interface ScannedInvoiceItem {
+  code: string;
+  name: string;
+  unit: string;
+  quantity: number;
+}
+
+export async function scanInvoice(
+  apiKey: string,
+  imageBase64: string
+): Promise<ScannedInvoiceItem[]> {
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const systemPrompt = `
+    BẠN LÀ TRỢ LÝ AI CHUYÊN SÂU VỀ XỬ LÝ ẢNH HOÁ ĐƠN, PHIẾU XUẤT KHO.
+    
+    NHIỆM VỤ: Trích xuất toàn bộ danh sách các mặt hàng từ bảng hàng hoá trong hình ảnh phiếu xuất kho hoặc hoá đơn.
+    
+    YÊU CẦU:
+    1. Xác định bảng chứa thông tin hàng hoá.
+    2. Trích xuất chính xác các cột: "Mã hàng", "Tên hàng", "Đơn vị" (Đơn vị tính), "Số lượng".
+    3. Định dạng kết quả trả về dưới dạng JSON Array hợp lệ.
+    4. KHÔNG tự bịa mã hàng, nếu cột "Mã hàng" trống hãy bỏ qua hoặc trả về chuỗi rỗng.
+    5. Cột số lượng phải là một số (number). Nếu số lượng là "1,00" hãy chuyển thành 1.
+    
+    Định dạng đầu ra JSON bắt buộc:
+    [
+      {
+        "code": "Mã hàng hoá (ví dụ: AT_4024)",
+        "name": "Tên hàng hoá (ví dụ: Ecoplast_ Màu Trắng ( 400 * 15 * 2400 ))",
+        "unit": "Đơn vị tính (ví dụ: Hộp)",
+        "quantity": Số lượng (ví dụ: 1)
+      }
+    ]
+  `;
+
+  const prompt = "Hãy trích xuất danh sách mặt hàng từ bảng hoá đơn này theo định dạng JSON yêu cầu.";
+
+  const imagePart = {
+    inlineData: {
+      data: imageBase64.startsWith('data:') ? imageBase64.split(',')[1] : imageBase64,
+      mimeType: "image/jpeg",
+    },
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [imagePart, { text: prompt }],
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json"
+      }
+    });
+
+    const responseText = response.text || "[]";
+    const items = JSON.parse(responseText) as ScannedInvoiceItem[];
+    return items;
+  } catch (error) {
+    console.error("Scan Invoice Error:", error);
+    throw error;
+  }
+}

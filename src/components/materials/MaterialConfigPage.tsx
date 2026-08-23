@@ -4,6 +4,7 @@ import { db, handleFirestoreError, OperationType, auth } from '@/src/lib/firebas
 import { MaterialConfig, Task, Quotation, AccessoryConfig, InventoryTransaction } from '@/src/types';
 import { MaterialConfigSchema, AccessoryConfigSchema, InventoryTransactionSchema } from '@/src/schemas';
 import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles, ArrowDownLeft, ArrowUpRight, History, Settings, AlertTriangle, FileText, Package } from 'lucide-react';
+import { scanInvoice, ScannedInvoiceItem } from '@/src/services/geminiRenderService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -98,6 +99,12 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  // Invoice scan state hooks
+  const [scannedItems, setScannedItems] = useState<ScannedInvoiceItem[]>([]);
+  const [isScanConfirmDialogOpen, setIsScanConfirmDialogOpen] = useState(false);
+  const [selectedScanItems, setSelectedScanItems] = useState<Record<string, boolean>>({});
+  const [scannedQuantities, setScannedQuantities] = useState<Record<string, string>>({});
 
   const handleOpenTransactionDialog = (item: any) => {
     setSelectedInventoryItem(item);
@@ -224,6 +231,189 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     } catch (error: any) {
       console.error("Save min stock error:", error);
       toast.error('Lỗi khi cập nhật hạn mức: ' + (error?.message || ''));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
+    if (!apiKey) {
+      toast.error("Vui lòng cấu hình Gemini API Key trước (tại tab Thiết kế AI hoặc Cài đặt hệ thống) để sử dụng chức năng quét AI.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const toastId = toast.loading("AI đang đọc và trích xuất dữ liệu phiếu xuất kho...");
+      
+      try {
+        const items = await scanInvoice(apiKey, base64);
+        if (items.length === 0) {
+          toast.error("Không trích xuất được mặt hàng nào từ ảnh. Vui lòng kiểm tra lại ảnh chụp.", { id: toastId });
+          return;
+        }
+
+        // Initialize state
+        setScannedItems(items);
+        
+        const initialSelected: Record<string, boolean> = {};
+        const initialQuantities: Record<string, string> = {};
+        items.forEach((item, index) => {
+          const key = item.code || `item_${index}`;
+          initialSelected[key] = true;
+          initialQuantities[key] = String(item.quantity);
+        });
+
+        setSelectedScanItems(initialSelected);
+        setScannedQuantities(initialQuantities);
+        setIsScanConfirmDialogOpen(true);
+        toast.success(`Đã trích xuất thành công ${items.length} mặt hàng từ phiếu!`, { id: toastId });
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Lỗi khi quét phiếu: " + (err.message || "Vui lòng thử lại."), { id: toastId });
+      }
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset file input so same file can be uploaded again
+    e.target.value = '';
+  };
+
+  const handleSaveScannedInvoice = async () => {
+    const activeScanItems = scannedItems.filter((item, index) => {
+      const key = item.code || `item_${index}`;
+      return selectedScanItems[key];
+    });
+
+    if (activeScanItems.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một mặt hàng để nhập kho");
+      return;
+    }
+
+    setIsLoading(true);
+    const userEmail = auth.currentUser?.email || 'Hệ thống (Quét AI)';
+    
+    try {
+      const batch = writeBatch(db);
+      
+      for (let i = 0; i < scannedItems.length; i++) {
+        const item = scannedItems[i];
+        const key = item.code || `item_${i}`;
+        if (!selectedScanItems[key]) continue;
+        
+        const quantity = parseFloat(scannedQuantities[key]) || 0;
+        if (quantity <= 0) continue;
+        
+        // Find existing match
+        const matchedMaterial = materials.find(m => m.code === item.code);
+        const matchedAccessory = accessories.find(a => a.code === item.code);
+        
+        let itemId = '';
+        let itemType: 'material' | 'accessory' = 'material';
+        let finalItemName = item.name;
+        let itemsPerBox = 1;
+        let currentStock = 0;
+        
+        if (matchedMaterial) {
+          itemId = matchedMaterial.id;
+          itemType = 'material';
+          finalItemName = matchedMaterial.name || `Tấm nhựa mã ${matchedMaterial.code}`;
+          itemsPerBox = parseFloat(matchedMaterial.itemsPerBox) || 1;
+          currentStock = matchedMaterial.stock || 0;
+        } else if (matchedAccessory) {
+          itemId = matchedAccessory.id;
+          itemType = 'accessory';
+          finalItemName = matchedAccessory.name;
+          currentStock = matchedAccessory.stock || 0;
+        } else {
+          // New item - auto create
+          const isAccessory = item.unit.toLowerCase() === 'cái' || item.unit.toLowerCase() === 'bộ' || item.unit.toLowerCase() === 'chiếc';
+          itemType = isAccessory ? 'accessory' : 'material';
+          
+          const newDocRef = doc(collection(db, itemType === 'material' ? 'materialConfigs' : 'accessoryConfigs'));
+          itemId = newDocRef.id;
+          
+          if (itemType === 'material') {
+            const newMaterialData = {
+              id: itemId,
+              code: item.code,
+              category: 'VẬT TƯ NHỰA MỚI (QUÉT AI)',
+              unit: item.unit,
+              itemsPerBox: '6',
+              stock: 0,
+              minStock: 5,
+              createdAt: new Date().toISOString()
+            };
+            MaterialConfigSchema.parse(newMaterialData);
+            batch.set(newDocRef, newMaterialData);
+          } else {
+            const newAccessoryData = {
+              id: itemId,
+              code: item.code,
+              name: item.name,
+              unit: item.unit,
+              stock: 0,
+              minStock: 10,
+              createdAt: new Date().toISOString()
+            };
+            AccessoryConfigSchema.parse(newAccessoryData);
+            batch.set(newDocRef, newAccessoryData);
+          }
+        }
+        
+        // Calculate stock increment
+        let qtyInMainUnit = quantity;
+        const isSheetUnit = itemType === 'material' && item.unit === 'Tấm';
+        if (isSheetUnit) {
+          qtyInMainUnit = quantity / itemsPerBox;
+        }
+        
+        // Create transaction log
+        const txRef = doc(collection(db, 'inventoryTransactions'));
+        const txData = {
+          id: txRef.id,
+          itemId: itemId,
+          itemType: itemType,
+          itemCode: item.code,
+          itemName: finalItemName,
+          type: 'import' as const,
+          quantity: quantity,
+          unit: item.unit,
+          note: 'Nhập kho tự động quét từ ảnh phiếu xuất kho',
+          createdBy: userEmail,
+          createdAt: new Date().toISOString()
+        };
+        
+        InventoryTransactionSchema.parse(txData);
+        batch.set(txRef, txData);
+        
+        // Update stock
+        const itemDocRef = doc(
+          db, 
+          itemType === 'material' ? 'materialConfigs' : 'accessoryConfigs', 
+          itemId
+        );
+        
+        let newStock = currentStock + qtyInMainUnit;
+        newStock = Math.round(newStock * 1000) / 1000;
+        
+        batch.update(itemDocRef, {
+          stock: newStock,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      
+      await batch.commit();
+      toast.success(`Đã lưu thành công ${activeScanItems.length} mặt hàng vào kho!`);
+      setIsScanConfirmDialogOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Lỗi khi lưu dữ liệu quét: " + (err.message || "Vui lòng kiểm tra lại."));
     } finally {
       setIsLoading(false);
     }
@@ -1264,6 +1454,21 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   >
                     <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
                   </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="gap-1.5 rounded-lg text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => document.getElementById('invoice-scanner-input')?.click()}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" /> Quét phiếu AI
+                  </Button>
+                  <input 
+                    id="invoice-scanner-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleInvoiceUpload}
+                  />
                 </div>
               )}
             </div>
@@ -1696,6 +1901,127 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             </Button>
             <Button onClick={handleSaveMinStock} disabled={isLoading} className="rounded-xl flex-1 sm:flex-none">
               Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Xác nhận quét phiếu nhập kho */}
+      <Dialog open={isScanConfirmDialogOpen} onOpenChange={setIsScanConfirmDialogOpen}>
+        <DialogContent className="max-w-[750px] w-[95vw] rounded-2xl h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 flex-none">
+            <DialogTitle className="flex items-center gap-2 text-indigo-700">
+              <Sparkles className="h-5 w-5 text-indigo-600 bg-indigo-50 rounded-md p-0.5" />
+              Kết quả phân tích phiếu nhập kho (AI)
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Gemini đã trích xuất danh sách mặt hàng dưới đây. Hãy kiểm tra lại số lượng và đánh dấu các mặt hàng bạn muốn nhập vào kho.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/50 font-bold text-muted-foreground select-none">
+                    <th className="p-3 w-[8%] text-center">Chọn</th>
+                    <th className="p-3 w-[18%]">Mã hàng</th>
+                    <th className="p-3 w-[32%]">Tên trích xuất</th>
+                    <th className="p-3 w-[12%] text-center">Đơn vị</th>
+                    <th className="p-3 w-[15%] text-center">Số lượng</th>
+                    <th className="p-3 w-[15%] text-center">Đối chiếu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y font-medium">
+                  {scannedItems.map((item, index) => {
+                    const key = item.code || `item_${index}`;
+                    const isSelected = selectedScanItems[key] || false;
+                    const quantity = scannedQuantities[key] || '0';
+                    
+                    // Match with database
+                    const matchedMaterial = materials.find(m => m.code === item.code);
+                    const matchedAccessory = accessories.find(a => a.code === item.code);
+                    const isMatched = !!matchedMaterial || !!matchedAccessory;
+
+                    return (
+                      <tr 
+                        key={key} 
+                        className={`transition-colors ${isSelected ? 'bg-indigo-50/10' : 'bg-slate-50/30 text-slate-400'}`}
+                      >
+                        <td className="p-3 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={(e) => setSelectedScanItems({
+                              ...selectedScanItems,
+                              [key]: e.target.checked
+                            })}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
+                        <td className="p-3 font-mono font-bold text-slate-800">{item.code || 'N/A'}</td>
+                        <td className="p-3">
+                          <p className="font-semibold text-slate-800 truncate" title={item.name}>{item.name}</p>
+                        </td>
+                        <td className="p-3 text-center text-slate-600 font-semibold">{item.unit}</td>
+                        <td className="p-3 text-center">
+                          <Input 
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={quantity}
+                            disabled={!isSelected}
+                            onChange={(e) => setScannedQuantities({
+                              ...scannedQuantities,
+                              [key]: e.target.value
+                            })}
+                            className="h-8 w-20 text-center font-bold text-slate-800 focus:border-indigo-400 mx-auto"
+                          />
+                        </td>
+                        <td className="p-3 text-center">
+                          {isMatched ? (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                              Khớp hàng
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full text-[10px] font-bold" title="Hệ thống sẽ tự động tạo mặt hàng mới này">
+                              Mặt hàng mới
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-slate-50 border rounded-xl p-3.5 space-y-1.5">
+              <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                Lưu ý quan trọng
+              </h4>
+              <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-1">
+                <li>Các mặt hàng có trạng thái <strong className="text-emerald-700">Khớp hàng</strong> sẽ trực tiếp cộng dồn số lượng vào tồn kho hiện tại.</li>
+                <li>Các mặt hàng có trạng thái <strong className="text-amber-700">Mặt hàng mới</strong> sẽ tự động được khai báo tạo mới trong mục cấu hình (hạng mục mặc định sẽ là VẬT TƯ NHỰA MỚI) và nhập kho với số lượng trích xuất.</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 border-t bg-slate-50/50 flex gap-2 flex-none">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsScanConfirmDialogOpen(false)} 
+              className="rounded-xl flex-1 sm:flex-none"
+            >
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleSaveScannedInvoice} 
+              disabled={isLoading}
+              className="rounded-xl flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-bold"
+            >
+              <Check className="h-4 w-4" /> Lưu tất cả vào kho
             </Button>
           </DialogFooter>
         </DialogContent>
