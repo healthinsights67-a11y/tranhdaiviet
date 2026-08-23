@@ -1,6 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high';
 export type Status = 'todo' | 'in-progress' | 'review' | 'done' | 'waiting_install' | 'archived';
-export type CustomerStage = 'consulting' | 'surveying' | 'contracted' | 'production' | 'installation' | 'completed' | 'lost';
+export type CustomerStage = 'consulting' | 'surveying' | 'contracted' | 'production' | 'production_completed' | 'installation' | 'completed' | 'lost';
 
 
 export interface MemberPermissions {

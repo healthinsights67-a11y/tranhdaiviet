@@ -19,7 +19,7 @@ export function SmartInsights({ tasks, customers, quotations }: InsightProps) {
   // 3. Phân tích doanh thu
   const actualRevenue = customers.reduce((sum, c) => {
     if (c.stage === 'completed') return sum + (c.orderValue || 0);
-    if (['contracted', 'production', 'installation'].includes(c.stage)) {
+    if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
       const q = quotations.find(q => q.customerId === c.id);
       return sum + (q?.depositAmount || 0);
     }
@@ -27,7 +27,7 @@ export function SmartInsights({ tasks, customers, quotations }: InsightProps) {
   }, 0);
   
   const expectedRevenue = customers.reduce((sum, c) => {
-    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+    if (['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage)) {
       return sum + (c.orderValue || 0);
     }
     return sum;

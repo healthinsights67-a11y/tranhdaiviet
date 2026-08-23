@@ -61,7 +61,7 @@ export function InstallerDashboard({ tasks, customers = [], currentUser }: Insta
 
       // Kiểm tra trạng thái của khách hàng liên quan
       const customer = customers.find(c => c.id === t.customerId);
-      const isCustomerActive = customer && (customer.stage === 'production' || customer.stage === 'installation');
+      const isCustomerActive = customer && (customer.stage === 'production' || customer.stage === 'production_completed' || customer.stage === 'installation');
       
       const isAssignedToMe = t.assigneeId === currentUser?.id;
       

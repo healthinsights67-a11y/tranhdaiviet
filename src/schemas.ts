@@ -24,7 +24,7 @@ const timestampSchema = z.any().transform((val) => {
 
 export const PrioritySchema = z.enum(['low', 'medium', 'high']);
 export const StatusSchema = z.enum(['todo', 'in-progress', 'review', 'done', 'waiting_install', 'archived']);
-export const CustomerStageSchema = z.enum(['consulting', 'surveying', 'contracted', 'production', 'installation', 'completed', 'lost']);
+export const CustomerStageSchema = z.enum(['consulting', 'surveying', 'contracted', 'production', 'production_completed', 'installation', 'completed', 'lost']);
 
 export const MemberPermissionsSchema = z.object({
   viewPrice: z.boolean().optional().catch(true),

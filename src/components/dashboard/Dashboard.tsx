@@ -180,7 +180,7 @@ export function Dashboard({
     topSalePerformers
   } = React.useMemo(() => {
     const fCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
-    const activeProjects = customers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
+    const activeProjects = customers.filter(c => ['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage));
     const fProjects = activeProjects.filter(o => !selectedMonth || (o.createdAt && matchesTime(o.createdAt)));
     const fQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)));
     const fTasks = tasks.filter(t => {
@@ -195,7 +195,7 @@ export function Dashboard({
     fCustomers.forEach(c => {
       if (c.stage === 'completed') {
         totalRev += (c.orderValue || 0);
-      } else if (['contracted', 'production', 'installation'].includes(c.stage)) {
+      } else if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
         const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
         const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
         totalRev += deposit;
@@ -213,7 +213,7 @@ export function Dashboard({
     });
 
     // Conversion rate
-    const contractedCount = fCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+    const contractedCount = fCustomers.filter(c => ['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage)).length;
     const convRate = fCustomers.length > 0 ? Math.round((contractedCount / fCustomers.length) * 1000) / 10 : 0;
 
     // Member KPI stats
@@ -223,7 +223,7 @@ export function Dashboard({
         const memberCustomers = fCustomers.filter(c => c.assignedSaleId === member.id);
         const revenue = memberCustomers.reduce((sum, c) => {
           if (c.stage === 'completed') return sum + (c.orderValue || 0);
-          if (['contracted', 'production', 'installation'].includes(c.stage)) {
+          if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
             const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
             return sum + ((q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0);
           }
@@ -270,7 +270,7 @@ export function Dashboard({
     // Revenue by day chart
     const daysMap: Record<number, number> = {};
     fCustomers.forEach(c => {
-      if (c.createdAt && ['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+      if (c.createdAt && ['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage)) {
         const d = new Date(c.createdAt).getDate();
         daysMap[d] = (daysMap[d] || 0) + (c.orderValue || 0);
       }
@@ -287,6 +287,7 @@ export function Dashboard({
       { name: 'Đo đạc', count: fCustomers.filter(c => c.stage === 'surveying').length },
       { name: 'Chốt cọc', count: fCustomers.filter(c => c.stage === 'contracted').length },
       { name: 'Sản xuất', count: fCustomers.filter(c => c.stage === 'production').length },
+      { name: 'HT sản xuất', count: fCustomers.filter(c => c.stage === 'production_completed').length },
       { name: 'Lắp đặt', count: fCustomers.filter(c => c.stage === 'installation').length },
       { name: 'Hoàn thành', count: fCustomers.filter(c => c.stage === 'completed').length },
     ];
@@ -931,11 +932,13 @@ export function Dashboard({
                         </p>
                       </div>
                       <Badge className={
-                        project.stage === 'production' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        project.stage === 'production' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        project.stage === 'production_completed' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                         project.stage === 'installation' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                        'bg-blue-50 text-blue-700 border-blue-200'
+                        'bg-emerald-50 text-emerald-700 border-emerald-200'
                       }>
                         {project.stage === 'production' ? 'Đang Sản Xuất' :
+                         project.stage === 'production_completed' ? 'HT Sản Xuất' :
                          project.stage === 'installation' ? 'Đang Lắp Đặt' : 'Hoàn Thành'}
                       </Badge>
                     </div>

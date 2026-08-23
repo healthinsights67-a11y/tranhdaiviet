@@ -137,7 +137,7 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
           if (c.stage === 'completed') {
             return sum + (c.orderValue || 0);
           }
-          if (['contracted', 'production', 'installation'].includes(c.stage)) {
+          if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
             const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
             const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
             return sum + deposit;
@@ -242,7 +242,7 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
       if (c.stage === 'completed') {
         return sum + (c.orderValue || 0);
       }
-      if (['contracted', 'production', 'installation'].includes(c.stage)) {
+      if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
         const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
         const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
         return sum + deposit;
@@ -251,7 +251,7 @@ export function ReportPage({ tasks, members, customers, quotations = [] }: Repor
     }, 0);
 
     const tExpectedRevenue = fCustomers.reduce((sum, c) => {
-      if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+      if (['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage)) {
         return sum + (c.orderValue || 0);
       }
       return sum;

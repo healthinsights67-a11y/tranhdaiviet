@@ -103,6 +103,7 @@ const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: 
   surveying: { label: 'Đã đo đạc', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: MapPin },
   contracted: { label: 'Chốt Cọc', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: ArrowRight },
   production: { label: 'Sản xuất', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Factory },
+  production_completed: { label: 'Hoàn tất sản xuất', color: 'bg-indigo-50 text-indigo-600 border-indigo-200', icon: CheckCircle2 },
   installation: { label: 'Lắp đặt', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: Package },
   completed: { label: 'Hoàn thành', color: 'bg-green-50 text-green-600 border-green-200', icon: CheckCircle2 },
   lost: { label: 'Tạm dừng', color: 'bg-red-50 text-red-600 border-red-200', icon: X },
@@ -113,6 +114,7 @@ const STAGE_MARKER_COLORS: Record<CustomerStage, string> = {
   surveying: 'bg-purple-600',
   contracted: 'bg-emerald-600',
   production: 'bg-blue-600',
+  production_completed: 'bg-indigo-600',
   installation: 'bg-orange-500',
   completed: 'bg-green-600',
   lost: 'bg-rose-600',
@@ -136,7 +138,7 @@ export function CustomerPage({
   const getTargetModule = (stage: string) => {
     if (stage === 'surveying') return 'measurements';
     if (stage === 'contracted') return 'design';
-    if (stage === 'production' || stage === 'installation') return 'production';
+    if (stage === 'production' || stage === 'production_completed' || stage === 'installation') return 'production';
     return 'customers';
   };
 
@@ -194,6 +196,7 @@ export function CustomerPage({
           let stage: CustomerStage = 'consulting';
           if (stageStr.toLowerCase().includes('khảo sát')) stage = 'surveying';
           else if (stageStr.toLowerCase().includes('chốt cọc')) stage = 'contracted';
+          else if (stageStr.toLowerCase().includes('hoàn tất sản xuất')) stage = 'production_completed';
           else if (stageStr.toLowerCase().includes('sản xuất')) stage = 'production';
           else if (stageStr.toLowerCase().includes('lắp đặt')) stage = 'installation';
           else if (stageStr.toLowerCase().includes('hoàn thành')) stage = 'completed';
@@ -208,7 +211,7 @@ export function CustomerPage({
           else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
 
            const newCode = `${prefix}${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-           const needsStageUpdateAfterCreate = ['production', 'installation', 'completed'].includes(stage);
+           const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
            const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
 
            const docRef = await addDoc(collection(db, 'customers'), {
@@ -792,7 +795,7 @@ export function CustomerPage({
       finalNextContactDate = tomorrow.toISOString().split('T')[0];
     }
 
-    const needsStageUpdateAfterCreate = ['production', 'installation', 'completed'].includes(newCustomer.stage);
+    const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(newCustomer.stage);
     const initialStage = needsStageUpdateAfterCreate ? 'consulting' : newCustomer.stage;
 
     const customerData = {
@@ -2787,7 +2790,7 @@ export function CustomerPage({
                       {(() => {
                         const customerQuotations = quotations.filter(q => q.customerId === selectedCustomer.id || (q.customerName === selectedCustomer.name && q.phone === selectedCustomer.phone));
                         let purchaseCount = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit').length;
-                        if (purchaseCount === 0 && ['contracted', 'production', 'installation', 'completed'].includes(selectedCustomer.stage)) {
+                        if (purchaseCount === 0 && ['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(selectedCustomer.stage)) {
                           purchaseCount = 1;
                         }
                         if (purchaseCount > 0) {
@@ -2869,7 +2872,7 @@ export function CustomerPage({
                   if (!showPrice) return null;
 
                   if (sortedPurchases.length === 0) {
-                    if (['contracted', 'production', 'installation', 'completed'].includes(selectedCustomer.stage)) {
+                    if (['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(selectedCustomer.stage)) {
                       const orderVal = selectedCustomer.orderValue || 0;
                       return (
                         <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 space-y-2.5">

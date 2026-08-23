@@ -99,7 +99,7 @@ export function InstallationPage({ schedules, members, customers, tasks, setTask
   }));
 
   const unscheduledCustomersList = customers.filter(c => 
-    (['contracted', 'production'].includes(c.stage)) && 
+    (['contracted', 'production', 'production_completed'].includes(c.stage)) && 
     !schedules.some(s => {
       if (s.status === 'cancelled') return false;
       if (s.customerId === c.id) return true;

@@ -658,7 +658,7 @@ function AppContent() {
             (t.phone && c.phone?.trim()?.replace(/\D/g, '') === t.phone?.trim()?.replace(/\D/g, ''))
           );
           
-          const hasPostDepositStage = cust && ['contracted', 'production', 'installation', 'completed'].includes(cust.stage);
+          const hasPostDepositStage = cust && ['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(cust.stage);
           
           const matchingQuotations = quotations.filter(q => {
             if (t.customerId && q.customerId === t.customerId) return true;
