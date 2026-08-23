@@ -405,6 +405,7 @@ export interface InventoryTransaction {
   itemName: string;
   type: 'import' | 'export';
   quantity: number;
+  unit: string;
   note?: string;
   createdBy: string;
   createdAt: string;

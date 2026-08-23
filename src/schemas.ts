@@ -393,6 +393,7 @@ export const InventoryTransactionSchema = z.object({
   itemName: z.string().min(1, "Thiếu tên vật tư"),
   type: z.enum(['import', 'export']),
   quantity: z.number().min(1, "Số lượng phải lớn hơn 0"),
+  unit: z.string().min(1, "Thiếu đơn vị tính"),
   note: z.string().optional(),
   createdBy: z.string().min(1, "Thiếu người tạo"),
   createdAt: z.string(),

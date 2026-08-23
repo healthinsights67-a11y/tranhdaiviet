@@ -88,6 +88,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [transactionForm, setTransactionForm] = useState({
     type: 'import' as 'import' | 'export',
     quantity: 1,
+    unit: 'Hộp',
     note: ''
   });
   
@@ -103,6 +104,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     setTransactionForm({
       type: 'import',
       quantity: 1,
+      unit: item.type === 'material' ? 'Tấm' : (item.unit || 'Cái'),
       note: ''
     });
     setIsTransactionDialogOpen(true);
@@ -118,8 +120,22 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     const userEmail = auth.currentUser?.email || 'Hệ thống';
     const currentStock = selectedInventoryItem.stock || 0;
     
-    if (transactionForm.type === 'export' && transactionForm.quantity > currentStock) {
-      toast.error(`Số lượng xuất kho (${transactionForm.quantity}) lớn hơn số lượng tồn kho (${currentStock})`);
+    // Calculate quantity in main unit (e.g. Hộp)
+    let qtyInMainUnit = transactionForm.quantity;
+    const isSheetUnit = selectedInventoryItem.type === 'material' && transactionForm.unit === 'Tấm';
+    const itemsPerBox = parseFloat(selectedInventoryItem.itemsPerBox) || 1;
+    
+    if (isSheetUnit) {
+      qtyInMainUnit = transactionForm.quantity / itemsPerBox;
+    }
+    
+    if (transactionForm.type === 'export' && qtyInMainUnit > currentStock) {
+      if (isSheetUnit) {
+        const currentStockInSheets = Math.round(currentStock * itemsPerBox * 10) / 10;
+        toast.error(`Số lượng xuất kho (${transactionForm.quantity} Tấm) lớn hơn số lượng tồn kho hiện tại (${currentStockInSheets} Tấm / ${currentStock} Hộp)`);
+      } else {
+        toast.error(`Số lượng xuất kho (${transactionForm.quantity} ${transactionForm.unit}) lớn hơn số lượng tồn kho hiện tại (${currentStock} ${selectedInventoryItem.unit})`);
+      }
       return;
     }
     
@@ -137,6 +153,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         itemName: selectedInventoryItem.name,
         type: transactionForm.type,
         quantity: transactionForm.quantity,
+        unit: transactionForm.unit,
         note: transactionForm.note,
         createdBy: userEmail,
         createdAt: new Date().toISOString()
@@ -154,9 +171,11 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         selectedInventoryItem.id
       );
       
-      const newStock = transactionForm.type === 'import' 
-        ? currentStock + transactionForm.quantity 
-        : currentStock - transactionForm.quantity;
+      let newStock = transactionForm.type === 'import' 
+        ? currentStock + qtyInMainUnit 
+        : currentStock - qtyInMainUnit;
+        
+      newStock = Math.round(newStock * 1000) / 1000;
         
       batch.update(itemRef, {
         stock: newStock,
@@ -1493,7 +1512,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                             )}
                           </td>
                           <td className="p-3 text-center font-extrabold text-slate-800 text-sm">
-                            {tx.quantity}
+                            {tx.quantity} {tx.unit}
                           </td>
                           <td className="p-3 text-slate-600 truncate" title={tx.createdBy}>{tx.createdBy.split('@')[0]}</td>
                           <td className="p-3 text-muted-foreground italic truncate" title={tx.note}>{tx.note || '-'}</td>
@@ -1548,21 +1567,55 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
               </div>
             </div>
 
+            {selectedInventoryItem?.type === 'material' && (
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-muted-foreground">Đơn vị tính giao dịch</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    type="button"
+                    variant={transactionForm.unit === 'Tấm' ? 'default' : 'outline'}
+                    className="rounded-xl h-9 text-xs font-bold"
+                    onClick={() => setTransactionForm({ ...transactionForm, unit: 'Tấm' })}
+                  >
+                    Tấm (Lẻ)
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant={transactionForm.unit === 'Hộp' ? 'default' : 'outline'}
+                    className="rounded-xl h-9 text-xs font-bold"
+                    onClick={() => setTransactionForm({ ...transactionForm, unit: 'Hộp' })}
+                  >
+                    Hộp (Nguyên)
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/80 mt-1">
+                  * Quy đổi: 1 Hộp = {selectedInventoryItem.itemsPerBox || 1} Tấm.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="tx-qty" className="text-xs font-bold text-muted-foreground">Số lượng ({selectedInventoryItem?.unit})</Label>
+              <Label htmlFor="tx-qty" className="text-xs font-bold text-muted-foreground">Số lượng ({transactionForm.unit})</Label>
               <Input 
                 id="tx-qty"
                 type="number"
                 min="1"
                 value={transactionForm.quantity}
                 onChange={(e) => setTransactionForm({ ...transactionForm, quantity: Math.max(1, parseInt(e.target.value) || 0) })}
-                className="h-11 rounded-xl text-sm focus:border-blue-400"
+                className="h-11 rounded-xl text-sm focus:border-blue-400 font-bold"
               />
-              {transactionForm.type === 'export' && (
-                <p className="text-[10px] text-muted-foreground font-medium">
-                  Tồn kho hiện tại: <span className="font-bold text-foreground">{selectedInventoryItem?.stock || 0}</span>
+              <div className="text-[11px] text-muted-foreground font-medium flex flex-col gap-0.5 mt-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <p>
+                  Tồn kho hiện tại: <span className="font-bold text-foreground">{selectedInventoryItem?.stock || 0} Hộp</span>
                 </p>
-              )}
+                {selectedInventoryItem?.type === 'material' && (
+                  <p>
+                    Quy đổi: <span className="font-bold text-foreground">
+                      {Math.round((selectedInventoryItem?.stock || 0) * (parseFloat(selectedInventoryItem?.itemsPerBox) || 1) * 10) / 10} Tấm
+                    </span>
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
