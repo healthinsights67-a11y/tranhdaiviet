@@ -168,23 +168,23 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
       </AnimatePresence>
 
       <div className={cn(
-        "h-screen border-r border-border bg-card transition-all duration-300 ease-in-out flex flex-col fixed md:relative z-[60]",
-        isCollapsed ? "w-[80px]" : "w-[280px]",
+        "h-[100dvh] max-h-[100dvh] border-r border-border bg-card transition-all duration-300 ease-in-out flex flex-col fixed top-0 bottom-0 left-0 md:relative z-[60] shadow-2xl md:shadow-none overflow-hidden",
+        isCollapsed ? "w-[80px]" : "w-[280px] sm:w-[300px]",
         !isOpen && "translate-x-[-100%] md:translate-x-0",
         isOpen && "translate-x-0"
       )}>
-        {/* ... existing header ... */}
-        <div className="p-4 md:p-6 mb-2 flex items-center justify-between">
+        {/* Header */}
+        <div className="p-3 sm:p-4 md:p-6 flex items-center justify-between shrink-0 border-b border-border/40">
           {(!isCollapsed || isOpen) && (
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2.5 font-bold text-lg tracking-tight text-primary"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20 shrink-0">
                 <Briefcase className="h-4 w-4" />
               </div>
-              <span className="text-primary">I NỘI THẤT</span>
+              <span className="text-primary font-black uppercase">I NỘI THẤT</span>
             </motion.div>
           )}
           <Button 
@@ -192,7 +192,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
             size="icon" 
             onClick={() => isOpen ? onClose?.() : setIsCollapsed(!isCollapsed)}
             className={cn(
-              "h-8 w-8 rounded-lg hover:bg-secondary transition-all",
+              "h-8 w-8 rounded-lg hover:bg-secondary transition-all shrink-0",
               isCollapsed && !isOpen ? "mx-auto" : "ml-auto"
             )}
           >
@@ -200,8 +200,8 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 px-3">
-          <nav className="space-y-3 py-2">
+        <ScrollArea className="flex-1 min-h-0 px-3">
+          <nav className="space-y-2 py-2 pb-6">
             {navGroups.map((group, idx) => {
               const groupItems = group.items.filter(filterItem);
               if (groupItems.length === 0) return null;
@@ -226,16 +226,16 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
                   )}
                   <div className={cn(
                     "space-y-0.5 overflow-hidden transition-all duration-200",
-                    isExpanded ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0 pointer-events-none"
+                    isExpanded ? "max-h-[600px] opacity-100 mt-0.5" : "max-h-0 opacity-0 pointer-events-none"
                   )}>
                     {groupItems.map((item) => (
                       <Button
                         key={item.id}
                         variant="ghost"
                         className={cn(
-                          "w-full justify-start gap-3 h-10 rounded-xl transition-all duration-200 group",
+                          "w-full justify-start gap-2.5 h-9 rounded-xl transition-all duration-200 group text-xs",
                           activeTab === item.id 
-                            ? "bg-primary/10 text-primary font-semibold shadow-sm shadow-primary/5" 
+                            ? "bg-primary/10 text-primary font-bold shadow-xs shadow-primary/5" 
                             : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
                           isCollapsed && !isOpen && "justify-center px-0"
                         )}
@@ -247,10 +247,10 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
                         }}
                       >
                         <item.icon className={cn(
-                          "h-4.5 w-4.5 shrink-0 transition-transform group-hover:scale-110",
+                          "h-4 w-4 shrink-0 transition-transform group-hover:scale-110",
                           activeTab === item.id ? "text-primary" : "text-muted-foreground/70"
                         )} />
-                        {(!isCollapsed || isOpen) && <span className="text-sm tracking-tight">{item.label}</span>}
+                        {(!isCollapsed || isOpen) && <span className="tracking-tight">{item.label}</span>}
                       </Button>
                     ))}
                   </div>
@@ -260,47 +260,47 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
           </nav>
         </ScrollArea>
 
-      <div className="p-4 mt-auto border-t border-border bg-secondary/30 space-y-1">
-        {isAdmin && (
-          <>
-            <Button
-              variant="ghost"
-              className={cn(
-                "w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:bg-secondary",
-                isCollapsed && "justify-center px-0"
-              )}
-              onClick={() => setIsSettingsOpen(true)}
-            >
-              <Settings className="h-4.5 w-4.5" />
-              {!isCollapsed && <span className="text-sm">Cấu hình API</span>}
-            </Button>
-            <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
-          </>
-        )}
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-10 rounded-xl text-muted-foreground hover:bg-secondary",
-            isCollapsed && "justify-center px-0"
+        <div className="p-3 shrink-0 border-t border-border bg-secondary/30 space-y-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          {isAdmin && (
+            <>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2.5 h-9 rounded-xl text-muted-foreground hover:bg-secondary text-xs",
+                  isCollapsed && "justify-center px-0"
+                )}
+                onClick={() => setIsSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Cấu hình API</span>}
+              </Button>
+              <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+            </>
           )}
-          onClick={toggleDarkMode}
-        >
-          {isDarkMode ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
-          {!isCollapsed && <span className="text-sm">{isDarkMode ? 'Giao diện Sáng' : 'Giao diện Tối'}</span>}
-        </Button>
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-10 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10",
-            isCollapsed && "justify-center px-0"
-          )}
-          onClick={authService.logout}
-        >
-          <LogOut className="h-4.5 w-4.5" />
-          {!isCollapsed && <span className="text-sm">Đăng xuất</span>}
-        </Button>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start gap-2.5 h-9 rounded-xl text-muted-foreground hover:bg-secondary text-xs",
+              isCollapsed && "justify-center px-0"
+            )}
+            onClick={toggleDarkMode}
+          >
+            {isDarkMode ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+            {!isCollapsed && <span>{isDarkMode ? 'Giao diện Sáng' : 'Giao diện Tối'}</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start gap-2.5 h-9 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 text-xs",
+              isCollapsed && "justify-center px-0"
+            )}
+            onClick={authService.logout}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span>Đăng xuất</span>}
+          </Button>
+        </div>
       </div>
-    </div>
     </>
   );
 }
