@@ -1108,35 +1108,38 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       </div>
 
       <Tabs defaultValue="profit" className="flex-1 flex flex-col min-h-0">
-        <div className="w-full overflow-x-auto no-scrollbar pb-1">
-          <TabsList className="inline-flex w-max md:w-auto bg-secondary/50 p-1 rounded-xl h-10 gap-1">
-            <TabsTrigger value="profit" className="rounded-lg text-xs font-bold px-3">Phân tích Lãi Thực</TabsTrigger>
-            <TabsTrigger value="config" className="rounded-lg text-xs font-bold px-3">Giá Vật Tư Nhựa</TabsTrigger>
-            <TabsTrigger value="accessory" className="rounded-lg text-xs font-bold px-3">Giá Phụ Kiện</TabsTrigger>
-            <TabsTrigger value="inventory" className="rounded-lg text-xs font-bold px-3">Quản lý Kho</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="grid grid-cols-4 w-full bg-secondary/50 p-1 rounded-xl h-11 gap-1">
+          <TabsTrigger value="profit" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
+            <span className="hidden sm:inline">Phân tích </span>Lãi Thực
+          </TabsTrigger>
+          <TabsTrigger value="config" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
+            <span className="hidden sm:inline">Giá </span>Vật Tư Nhựa
+          </TabsTrigger>
+          <TabsTrigger value="accessory" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
+            <span className="hidden sm:inline">Giá </span>Phụ Kiện
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
+            <span className="hidden sm:inline">Quản lý </span>Kho Hàng
+          </TabsTrigger>
+        </TabsList>
         
         <TabsContent value="config" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
-          <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
-            <div className="relative flex-1 min-w-[250px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
+            <div className="relative flex-1 min-w-[150px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
-                placeholder="Tìm kiếm theo mã hoặc tên vật tư..." 
-                className="pl-9"
+                placeholder="Tìm mã hoặc tên vật tư..." 
+                className="pl-8 h-9 text-xs rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="text-sm font-medium text-muted-foreground hidden sm:block">
-                Tổng số: <span className="text-foreground">{filteredMaterials.length}</span> vật tư
-              </div>
-              <Button onClick={() => setIsBulkDialogOpen(true)} variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
-                <FileSpreadsheet className="h-4 w-4" /> Nhập nhanh / Hàng loạt
+            <div className="grid grid-cols-2 sm:flex items-center gap-1.5">
+              <Button onClick={() => setIsBulkDialogOpen(true)} variant="outline" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5 h-9 text-xs font-bold rounded-xl justify-center">
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Nhập Excel
               </Button>
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" /> Thêm vật tư
+              <Button onClick={() => handleOpenDialog()} className="gap-1.5 h-9 text-xs font-bold rounded-xl justify-center">
+                <Plus className="h-3.5 w-3.5" /> Thêm vật tư
               </Button>
             </div>
           </div>
@@ -1311,28 +1314,19 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         </TabsContent>
 
         <TabsContent value="accessory" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4">
-          <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
-            <div className="relative flex-1 min-w-[250px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
+            <div className="relative flex-1 min-w-[150px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
-                placeholder="Tìm kiếm phụ kiện theo mã hoặc tên..." 
-                className="pl-9"
+                placeholder="Tìm kiếm theo mã hoặc tên phụ kiện..." 
+                className="pl-8 h-9 text-xs rounded-xl"
                 value={accessorySearchTerm}
                 onChange={(e) => setAccessorySearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="text-sm font-medium text-muted-foreground hidden sm:block">
-                Tổng số: <span className="text-foreground">{
-                  accessories.filter(a => 
-                    a.name.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
-                    a.code.toLowerCase().includes(accessorySearchTerm.toLowerCase()) ||
-                    (a.option || '').toLowerCase().includes(accessorySearchTerm.toLowerCase())
-                  ).length
-                }</span> phụ kiện
-              </div>
-              <Button onClick={() => handleOpenAccessoryDialog()} className="gap-2">
-                <Plus className="h-4 w-4" /> Thêm phụ kiện
+            <div className="flex items-center gap-1.5">
+              <Button onClick={() => handleOpenAccessoryDialog()} className="gap-1.5 h-9 text-xs font-bold rounded-xl w-full sm:w-auto justify-center">
+                <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
               </Button>
             </div>
           </div>
@@ -1493,12 +1487,12 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           {/* Subview selectors and filter dashboard */}
           <div className="flex flex-col gap-3 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
-              <div className="flex bg-secondary/30 p-1 rounded-xl gap-1 shrink-0">
+              <div className="grid grid-cols-2 bg-secondary/30 p-1 rounded-xl gap-1 w-full md:w-auto shrink-0">
                 <Button 
                   variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('status')}
-                  className="gap-1.5 rounded-lg text-xs font-bold h-8 flex-1 md:flex-initial"
+                  className="gap-1.5 rounded-lg text-xs font-bold h-8 justify-center"
                 >
                   <Package className="h-3.5 w-3.5" /> Trạng thái tồn kho
                 </Button>
@@ -1506,14 +1500,14 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('history')}
-                  className="gap-1.5 rounded-lg text-xs font-bold h-8 flex-1 md:flex-initial"
+                  className="gap-1.5 rounded-lg text-xs font-bold h-8 justify-center"
                 >
                   <History className="h-3.5 w-3.5" /> Lịch sử Nhập/Xuất
                 </Button>
               </div>
 
               {inventorySubView === 'status' && (
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                <div className="grid grid-cols-3 gap-1.5 w-full md:w-auto md:flex md:items-center">
                   <Button 
                     size="sm" 
                     onClick={() => {
@@ -1534,24 +1528,27 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                       });
                       setIsDialogOpen(true);
                     }}
-                    className="gap-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shrink-0 h-8 px-2.5"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white h-8 px-1 sm:px-2.5 justify-center"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Thêm vật tư nhựa
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span>+ Nhựa<span className="hidden sm:inline"> (Vật tư)</span></span>
                   </Button>
                   <Button 
                     size="sm" 
                     onClick={() => handleOpenAccessoryDialog()}
-                    className="gap-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white shrink-0 h-8 px-2.5"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white h-8 px-1 sm:px-2.5 justify-center"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span>+ Phụ kiện</span>
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="gap-1.5 rounded-xl text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 shrink-0 h-8 px-2.5"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 bg-indigo-50/50 h-8 px-1 sm:px-2.5 justify-center"
                     onClick={() => document.getElementById('invoice-scanner-input')?.click()}
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" /> Quét phiếu AI
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse shrink-0" />
+                    <span>Quét AI</span>
                   </Button>
                   <input 
                     id="invoice-scanner-input"
