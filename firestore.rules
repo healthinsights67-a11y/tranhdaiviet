@@ -239,6 +239,10 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /inventoryTransactions/{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /productTemplates/{document=**} {
       allow read, write: if isAuthenticated();
     }
