@@ -1191,28 +1191,66 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
 
         <TabsContent value="inventory" className="flex-1 flex flex-col mt-4 min-h-0 data-[state=active]:flex space-y-4 animate-in fade-in-50 duration-200">
           {/* Subview selectors and filter dashboard */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 rounded-xl border shadow-sm flex-wrap">
-            <div className="flex bg-secondary/30 p-1 rounded-xl gap-1 shrink-0">
-              <Button 
-                variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
-                size="sm" 
-                onClick={() => setInventorySubView('status')}
-                className="gap-2 rounded-lg"
-              >
-                <Package className="h-4 w-4" /> Trạng thái tồn kho
-              </Button>
-              <Button 
-                variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
-                size="sm" 
-                onClick={() => setInventorySubView('history')}
-                className="gap-2 rounded-lg"
-              >
-                <History className="h-4 w-4" /> Lịch sử Nhập/Xuất
-              </Button>
+          <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-wrap">
+              <div className="flex bg-secondary/30 p-1 rounded-xl gap-1 shrink-0">
+                <Button 
+                  variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setInventorySubView('status')}
+                  className="gap-2 rounded-lg"
+                >
+                  <Package className="h-4 w-4" /> Trạng thái tồn kho
+                </Button>
+                <Button 
+                  variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setInventorySubView('history')}
+                  className="gap-2 rounded-lg"
+                >
+                  <History className="h-4 w-4" /> Lịch sử Nhập/Xuất
+                </Button>
+              </div>
+
+              {inventorySubView === 'status' && (
+                <div className="flex gap-2 items-center w-full md:w-auto flex-wrap">
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      setEditingItem(null);
+                      setFormData({
+                        code: '',
+                        width: '',
+                        thickness: '',
+                        length: '',
+                        itemsPerBox: '',
+                        unit: 'Hộp',
+                        preTaxMeterPrice: 0,
+                        preTaxBoxPrice: 0,
+                        listedMeterPrice: 0,
+                        listedBoxPrice: 0,
+                        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+                        discountPercent: 0
+                      });
+                      setIsDialogOpen(true);
+                    }}
+                    className="gap-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Thêm vật tư nhựa
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleOpenAccessoryDialog()}
+                    className="gap-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
+                  </Button>
+                </div>
+              )}
             </div>
 
             {inventorySubView === 'status' && (
-              <div className="flex gap-2 items-center flex-wrap w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center pt-3 border-t border-gray-100 flex-wrap">
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -1222,25 +1260,27 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                     onChange={(e) => setInventorySearchTerm(e.target.value)}
                   />
                 </div>
-                <select
-                  value={inventoryFilter}
-                  onChange={(e) => setInventoryFilter(e.target.value as any)}
-                  className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none"
-                >
-                  <option value="all">Tất cả loại</option>
-                  <option value="material">Vật tư nhựa</option>
-                  <option value="accessory">Phụ kiện</option>
-                </select>
-                <select
-                  value={inventoryStatusFilter}
-                  onChange={(e) => setInventoryStatusFilter(e.target.value as any)}
-                  className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none"
-                >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="inStock">Còn hàng</option>
-                  <option value="outOfStock">Hết hàng</option>
-                  <option value="lowStock">Cảnh báo tồn kho</option>
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={inventoryFilter}
+                    onChange={(e) => setInventoryFilter(e.target.value as any)}
+                    className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none flex-1"
+                  >
+                    <option value="all">Tất cả loại</option>
+                    <option value="material">Vật tư nhựa</option>
+                    <option value="accessory">Phụ kiện</option>
+                  </select>
+                  <select
+                    value={inventoryStatusFilter}
+                    onChange={(e) => setInventoryStatusFilter(e.target.value as any)}
+                    className="h-9 rounded-lg border border-gray-200 bg-background px-3 text-xs font-semibold focus:border-blue-300 focus:outline-none flex-1"
+                  >
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="inStock">Còn hàng</option>
+                    <option value="outOfStock">Hết hàng</option>
+                    <option value="lowStock">Cảnh báo tồn kho</option>
+                  </select>
+                </div>
               </div>
             )}
           </div>
@@ -1284,8 +1324,46 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   <tbody className="divide-y text-sm">
                     {filteredInventory.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground font-medium">
-                          Không tìm thấy mặt hàng nào trong kho.
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          <p className="font-semibold text-sm">Không tìm thấy mặt hàng nào trong kho.</p>
+                          <p className="text-xs text-muted-foreground/80 mt-1 mb-4">
+                            Hãy thêm mới vật tư nhựa hoặc phụ kiện để quản lý và theo dõi tồn kho.
+                          </p>
+                          <div className="flex justify-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => {
+                                setEditingItem(null);
+                                setFormData({
+                                  code: '',
+                                  width: '',
+                                  thickness: '',
+                                  length: '',
+                                  itemsPerBox: '',
+                                  unit: 'Hộp',
+                                  preTaxMeterPrice: 0,
+                                  preTaxBoxPrice: 0,
+                                  listedMeterPrice: 0,
+                                  listedBoxPrice: 0,
+                                  category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+                                  discountPercent: 0
+                                });
+                                setIsDialogOpen(true);
+                              }}
+                              className="text-xs font-bold gap-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Thêm vật tư nhựa
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleOpenAccessoryDialog()}
+                              className="text-xs font-bold gap-1 border-slate-300 text-slate-700 hover:bg-slate-50"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
