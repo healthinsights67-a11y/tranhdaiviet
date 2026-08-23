@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Bell, Search, User, Menu } from 'lucide-react';
+import { Bell, Search, User, Menu, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -227,8 +227,16 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser, setA
 
   return (
     <header className="h-12 md:h-16 border-b border-border bg-card sticky top-0 z-30 w-full shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="h-full px-2.5 md:px-6 flex items-center justify-between">
+      <div className="h-full px-3 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* Brand Logo & Name on Mobile Header */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/20 shrink-0">
+              <Briefcase className="h-3.5 w-3.5" />
+            </div>
+            <span className="font-black text-sm tracking-tight text-primary uppercase">I NỘI THẤT</span>
+          </div>
+
           <div className="flex-1 max-w-md hidden md:block">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
