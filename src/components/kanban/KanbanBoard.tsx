@@ -719,18 +719,18 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
 
   return (
     <div className="h-full flex flex-col space-y-3">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-        <div className="space-y-0 text-center md:text-left">
-          <h1 className="text-lg md:text-2xl font-bold tracking-tight">Công việc</h1>
-          <p className="text-muted-foreground text-[8px] md:text-sm">Theo dõi tiến độ.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div className="space-y-0 hidden md:block">
+          <h1 className="text-xl font-bold tracking-tight">Công việc</h1>
+          <p className="text-muted-foreground text-xs">Theo dõi tiến độ.</p>
         </div>
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 w-full md:w-auto">
+        <div className="flex items-center gap-1.5 w-full md:w-auto flex-wrap sm:flex-nowrap">
           <Select 
             value={getNormalizedWorkshopId(selectedWorkshop)} 
             onValueChange={setSelectedWorkshop}
             disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
           >
-            <SelectTrigger className="h-8 w-[100px] md:w-[140px] rounded-lg border-border bg-card text-card-foreground text-[10px] md:text-[11px] shrink-0">
+            <SelectTrigger className="h-9 w-[90px] sm:w-[130px] rounded-xl border-border bg-card text-card-foreground text-xs font-semibold shrink-0">
               <SelectValue placeholder="Cơ sở" />
             </SelectTrigger>
             <SelectContent>
@@ -739,43 +739,42 @@ export function KanbanBoard({ tasks, setTasks, members, customers, type = 'produ
               ))}
             </SelectContent>
           </Select>
-          <div className="relative flex-1 min-w-[130px] md:w-64">
+
+          <div className="relative flex-1 min-w-[110px] sm:w-64">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               placeholder="Tìm nhiệm vụ..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8 md:h-10 text-[10px] md:text-sm" 
+              className="pl-8 h-9 text-xs rounded-xl" 
             />
           </div>
           
-          <div className="flex items-center gap-1 bg-gray-100 rounded-xl px-1 py-0.5 border border-border shrink-0">
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.preventDefault(); changeMonth(-1); }}>
+          <div className="flex items-center gap-0.5 bg-card rounded-xl px-1 py-0.5 border border-border shadow-xs shrink-0 h-9">
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.preventDefault(); changeMonth(-1); }}>
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <button
               onClick={() => setShowMonthPicker(!showMonthPicker)}
-              className="text-[9px] md:text-xs font-bold tabular-nums cursor-pointer hover:text-primary transition-colors px-0.5 whitespace-nowrap"
+              className="text-xs font-bold tabular-nums cursor-pointer hover:text-primary transition-colors px-1 whitespace-nowrap text-foreground"
             >
               {(() => {
                 const [year, month] = selectedMonth.split('-');
                 return `Thg ${month}, ${year}`;
               })()}
             </button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.preventDefault(); changeMonth(1); }}>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.preventDefault(); changeMonth(1); }}>
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
 
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger 
-              render={
-                <Button className="shrink-0 h-8 w-8 md:h-10 md:w-auto md:px-4 p-0 rounded-lg">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden md:block">Thêm</span>
-                </Button>
-              }
-            />
+            <DialogTrigger asChild>
+              <Button className="shrink-0 h-9 w-9 sm:w-auto sm:px-3.5 p-0 rounded-xl font-bold gap-1.5 shadow-xs">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Thêm</span>
+              </Button>
+            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Tạo nhiệm vụ</DialogTitle>

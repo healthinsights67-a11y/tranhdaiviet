@@ -90,6 +90,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const [viewMode, setViewMode] = React.useState<'1d' | '7d' | '30d'>('30d');
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
   const [rightTab, setRightTab] = React.useState<'production' | 'installation'>('production');
+  const [activeMainTab, setActiveMainTab] = React.useState<'calendar' | 'progress'>('calendar');
 
   const isTopManager = !!currentUser?.permissions?.menuProduction || 
     !!currentUser?.role?.toLowerCase()?.includes('quản lý tổng') ||
@@ -732,22 +733,22 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   return (
     <div className="space-y-3 max-w-[1600px] mx-auto px-2">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 px-2 pb-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-2 pb-1">
         <div className="flex flex-col space-y-0.5">
-          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">
             Lịch Sản Xuất & Thi Công
           </h1>
           <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ đo đạc, sản xuất & lắp đặt thực tế.</p>
         </div>
-        <div className="flex items-center gap-2.5 bg-card border px-3 py-1.5 rounded-xl shadow-xs text-[10px] font-bold">
-          <span className="text-muted-foreground uppercase tracking-wider mr-1">Chú giải:</span>
-          <span className="flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">
-            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> Đo đạc
+        <div className="flex flex-wrap items-center gap-1.5 bg-card/80 border p-1.5 rounded-xl shadow-xs text-[10px] font-bold">
+          <span className="text-muted-foreground uppercase tracking-wider text-[9px] mr-0.5">Chú giải:</span>
+          <span className="flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md border border-purple-200">
+            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span> Đo đạc
           </span>
-          <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100">
+          <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Sản xuất
           </span>
-          <span className="flex items-center gap-1 bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">
+          <span className="flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-200">
             <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span> Lắp đặt
           </span>
         </div>
@@ -815,41 +816,47 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
         </Card>
       </div>
 
-      <Tabs defaultValue="calendar" className="w-full flex-grow flex flex-col mt-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 mb-2">
-          <TabsList className="bg-gray-100 p-0.5 rounded-lg w-full sm:w-auto h-9 dark:bg-zinc-800">
-            <TabsTrigger value="calendar" className="rounded-md gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm w-full sm:w-auto text-xs h-8">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Lịch
+      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full flex-grow flex flex-col mt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 mb-2">
+          <TabsList className="bg-secondary/40 p-1 rounded-xl w-full sm:w-auto h-10">
+            <TabsTrigger value="calendar" className="rounded-lg gap-2 font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-xs h-8 flex-1 sm:flex-initial">
+              <CalendarDays className="h-4 w-4" />
+              Lịch biểu
             </TabsTrigger>
-            <TabsTrigger value="progress" className="rounded-md gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm w-full sm:w-auto text-xs h-8">
-              <LayoutGrid className="h-3.5 w-3.5" />
+            <TabsTrigger value="progress" className="rounded-lg gap-2 font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-xs h-8 flex-1 sm:flex-initial">
+              <LayoutGrid className="h-4 w-4" />
               Tiến độ
             </TabsTrigger>
           </TabsList>
           
-          <div className="flex items-center gap-1 bg-card text-card-foreground p-0.5 rounded-lg border border-border shadow-sm h-8">
-            <Select value={viewMode} onValueChange={(v: '1d' | '7d' | '30d') => setViewMode(v)}>
-              <SelectTrigger className="h-7 w-[70px] text-[10px] border-none px-1">
-                <SelectValue placeholder="Chế độ" />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-card text-card-foreground border shadow-xl rounded-xl">
-                <SelectItem value="1d">1 Ngày</SelectItem>
-                <SelectItem value="7d">7 Ngày</SelectItem>
-                <SelectItem value="30d">30 Ngày</SelectItem>
-              </SelectContent>
-            </Select>
+          {activeMainTab === 'calendar' && (
+            <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
+              <div className="flex items-center gap-1 bg-card text-card-foreground p-1 rounded-xl border border-border shadow-xs h-10">
+                <Select value={viewMode} onValueChange={(v: '1d' | '7d' | '30d') => setViewMode(v)}>
+                  <SelectTrigger className="h-8 w-[72px] text-xs font-bold border-none px-1.5 shadow-none focus:ring-0">
+                    <SelectValue placeholder="Chế độ" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-card text-card-foreground border shadow-xl rounded-xl">
+                    <SelectItem value="1d">1 Ngày</SelectItem>
+                    <SelectItem value="7d">7 Ngày</SelectItem>
+                    <SelectItem value="30d">30 Ngày</SelectItem>
+                  </SelectContent>
+                </Select>
 
-            <Button type="button" variant="ghost" size="icon" onClick={prevInterval} className="rounded-md h-7 w-7 shrink-0">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Button>
-            <div className="font-bold text-[10px] min-w-[70px] text-center capitalize shrink-0">
-              {format(currentDate, 'MMM yyyy', { locale: vi })}
+                <div className="h-4 w-[1px] bg-border mx-0.5" />
+
+                <Button type="button" variant="ghost" size="icon" onClick={prevInterval} className="rounded-lg h-8 w-8 shrink-0">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="font-black text-xs min-w-[80px] text-center capitalize shrink-0 text-foreground">
+                  {format(currentDate, 'MMM yyyy', { locale: vi })}
+                </div>
+                <Button type="button" variant="ghost" size="icon" onClick={nextInterval} className="rounded-lg h-8 w-8 shrink-0">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={nextInterval} className="rounded-md h-7 w-7 shrink-0">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          )}
         </div>
 
         <TabsContent value="calendar" className="flex-grow flex flex-col outline-none mt-0">
