@@ -456,14 +456,12 @@ export function Dashboard({
 
           {/* Time Picker */}
           <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-1.5 bg-background">
-                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                {selectedMonth === 'today' ? 'Hôm nay' :
-                 selectedMonth === 'week' ? 'Tuần này' :
-                 selectedMonth === 'all' ? 'Tất cả' :
-                 selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : 'Tất cả'}
-              </Button>
+            <PopoverTrigger className="h-9 px-3 border rounded-xl text-xs font-bold inline-flex items-center gap-1.5 bg-background hover:bg-accent text-foreground shadow-xs">
+              <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              {selectedMonth === 'today' ? 'Hôm nay' :
+               selectedMonth === 'week' ? 'Tuần này' :
+               selectedMonth === 'all' ? 'Tất cả' :
+               selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : 'Tất cả'}
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3 rounded-2xl" align="end">
               <div className="space-y-2 text-xs">
@@ -664,7 +662,7 @@ export function Dashboard({
       )}
 
       {/* AI Smart Insights */}
-      <SmartInsights tasks={tasks} members={members} customers={customers} />
+      <SmartInsights tasks={tasks} customers={customers} quotations={quotations} />
 
       {/* Navigation Sub-Tabs by Functional Areas */}
       <Tabs value={activeSubTab} onValueChange={(val: any) => setActiveSubTab(val)} className="space-y-4">
