@@ -870,23 +870,25 @@ export function QuotationPage({
                       </Badge>
                   </CardTitle>
 
-                  <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+                  <div className="flex flex-col lg:flex-row items-center gap-2.5 w-full lg:w-auto">
                     <div className="relative group w-full lg:w-80">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
                         placeholder="Tìm khách, số báo giá..." 
-                        className="pl-10 w-full bg-card text-card-foreground border-border h-10 md:h-11 rounded-xl focus:ring-primary focus:border-primary transition-all shadow-sm text-sm"
+                        className="pl-9 w-full bg-card text-card-foreground border-border h-9 md:h-11 rounded-xl focus:ring-primary focus:border-primary transition-all shadow-xs text-xs md:text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto scrollbar-none pb-1 md:pb-0">
+                    <div className="grid grid-cols-3 gap-1.5 w-full lg:w-auto lg:flex lg:items-center">
                       <Select value={workshopFilter} onValueChange={setWorkshopFilter}>
-                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
-                           <Building className="h-4 w-4 text-muted-foreground" />
-                           <SelectValue>
-                             {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(workshopFilter))?.name || 'Tất cả cơ sở'}
-                           </SelectValue>
+                        <SelectTrigger className="h-9 md:h-11 w-full lg:min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-1 text-[11px] md:text-xs px-2 justify-between">
+                           <div className="flex items-center gap-1 min-w-0">
+                             <Building className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                             <span className="truncate">
+                               {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(workshopFilter))?.name || 'Cơ sở'}
+                             </span>
+                           </div>
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10">
                           {WORKSHOPS.map(w => (
@@ -894,10 +896,19 @@ export function QuotationPage({
                           ))}
                         </SelectContent>
                       </Select>
+
                       <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FilterStatus)}>
-                        <SelectTrigger className="h-10 md:h-11 min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-2 text-xs">
-                           <Filter className="h-4 w-4 text-muted-foreground" />
-                           <SelectValue placeholder="Trạng thái" />
+                        <SelectTrigger className="h-9 md:h-11 w-full lg:min-w-[120px] rounded-xl bg-card text-card-foreground border-border gap-1 text-[11px] md:text-xs px-2 justify-between">
+                           <div className="flex items-center gap-1 min-w-0">
+                             <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                             <span className="truncate">
+                               {statusFilter === 'all' ? 'Tất cả' :
+                                statusFilter === 'draft' ? 'Bản nháp' :
+                                statusFilter === 'sent' ? 'Đã gửi' :
+                                statusFilter === 'accepted' ? 'Chốt BG' :
+                                statusFilter === 'deposit' ? 'Đã cọc' : 'Từ chối'}
+                             </span>
+                           </div>
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10">
                           <SelectItem value="all">Tất cả trạng thái</SelectItem>
@@ -910,10 +921,12 @@ export function QuotationPage({
                       </Select>
 
                       <Popover>
-                        <PopoverTrigger className="inline-flex items-center justify-between min-w-[120px] h-10 md:h-11 text-xs font-medium border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground px-3 py-2 rounded-xl ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                           <div className="flex items-center gap-2">
-                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                             {selectedMonth === 'today' ? "Hôm nay" : selectedMonth === 'week' ? "Tuần này" : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Thời gian"}
+                        <PopoverTrigger className="inline-flex items-center justify-between w-full lg:min-w-[120px] h-9 md:h-11 text-[11px] md:text-xs font-medium border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded-xl ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                           <div className="flex items-center gap-1 min-w-0">
+                             <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                             <span className="truncate">
+                               {selectedMonth === 'today' ? "Hôm nay" : selectedMonth === 'week' ? "Tuần này" : selectedMonth ? `T${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : "Thời gian"}
+                             </span>
                            </div>
                         </PopoverTrigger>
                         <PopoverContent className="w-[280px] p-2" align="start">
@@ -946,7 +959,7 @@ export function QuotationPage({
                           <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
                             <div className="grid grid-cols-2 gap-2">
                                <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                               <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                                <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
                             </div>
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
@@ -959,25 +972,25 @@ export function QuotationPage({
                   </div>
                 </div>
                 
-                {/* Fast Filters - Scrollable on mobile */}
-                <div className="overflow-x-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none">
-                  <div className="flex items-center gap-1.5 p-1 bg-secondary/20 rounded-xl w-max">
+                {/* Fast Filters - Full width grid on mobile */}
+                <div className="w-full">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 p-1 bg-secondary/30 rounded-xl w-full">
                      {(['all', 'draft', 'sent', 'accepted', 'deposit', 'rejected'] as FilterStatus[]).map((status) => (
                         <button
                          key={status}
                          type="button"
                          onClick={() => setStatusFilter(status)}
                          className={cn(
-                            "px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap",
+                            "px-1.5 py-1.5 md:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer text-center truncate justify-center",
                             statusFilter === status 
-                             ? "bg-card text-card-foreground text-primary shadow-sm" 
-                             : "text-muted-foreground hover:text-foreground hover:bg-card text-card-foreground"
+                             ? "bg-card text-primary shadow-xs font-black" 
+                             : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                          )}
                         >
-                         {status === 'all' ? 'Tất cả hồ sơ' : 
+                         {status === 'all' ? 'Tất cả' : 
                           status === 'draft' ? 'Bản nháp' :
-                          status === 'sent' ? 'Đã gửi khách' :
-                          status === 'accepted' ? 'Chốt Báo Giá' : 
+                          status === 'sent' ? 'Đã gửi' :
+                          status === 'accepted' ? 'Chốt BG' : 
                           status === 'deposit' ? 'Đã cọc' : 'Từ chối'}
                         </button>
                      ))}
