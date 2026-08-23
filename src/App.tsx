@@ -771,11 +771,8 @@ function AppContent() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'reports':
-        return redirect(perms.menuReports)
-          ? <Dashboard tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <ReportPage tasks={filteredTasks} members={activeMembers}  customers={filteredCustomers} quotations={filteredQuotations} />;
+        return <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'production':
         return redirect(perms.menuProduction)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />

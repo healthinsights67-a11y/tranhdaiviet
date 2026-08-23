@@ -1,7 +1,7 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { BarChart, 
+import * as React from 'react';
+import * as XLSX from 'xlsx';
+import { 
+  BarChart, 
   Bar, 
   XAxis, 
   YAxis, 
@@ -11,21 +11,49 @@ import { BarChart,
   PieChart, 
   Pie, 
   Cell,
-  Legend
+  Legend,
+  AreaChart,
+  Area
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MOCK_TASKS, MOCK_MEMBERS } from '../../lib/mockData';
-import { CheckCircle2, Clock, AlertCircle, Users, Mail, Calendar, FileText, ChevronRight, Archive, ChevronLeft, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
-import { cn, getCurrentVNMonth, getCurrentVNYear, formatVNTime, getVNMonth } from '@/src/lib/utils';
+import { 
+  Users, 
+  DollarSign, 
+  Target, 
+  TrendingUp, 
+  Calendar as CalendarIcon,
+  ChevronLeft, 
+  ChevronRight, 
+  CheckCircle2, 
+  Package, 
+  AlertCircle, 
+  BarChart3, 
+  Filter, 
+  Crown, 
+  Award,
+  CalendarDays,
+  Hammer,
+  Wrench,
+  FileSpreadsheet,
+  Megaphone,
+  LayoutDashboard,
+  Boxes
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from 'date-fns';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -33,39 +61,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-
-const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981'];
-
-import { CreditCard, DollarSign, Package, Bell, Megaphone } from 'lucide-react';
-import { notifyCurrentUser, handleRequestNotification, notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
-import { clearAllAppData } from '@/src/services/dataService';
-import { db, collection, addDoc } from '@/src/lib/firebase';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn, getCurrentVNMonth, getCurrentVNYear, getVNMonth, formatCurrency, calculateKPIScore } from '@/src/lib/utils';
 import { SmartInsights } from './SmartInsights';
-export function Dashboard({ tasks, members, customers, quotations, currentUser, schedules, installations, setActiveTab }: { tasks: any[], members: any[], customers?: any[], quotations?: any[], currentUser?: any, schedules?: any[], installations?: any[], setActiveTab?: (tab: string) => void }) {
-  const activeTasks = (tasks && tasks.length > 0) ? tasks : MOCK_TASKS;
-  const activeMembers = (members && members.length > 0) ? members : MOCK_MEMBERS;
-  const activeCustomers = customers || [];
-  const [selectedMonth, setSelectedMonth] = React.useState<string>(''); // Default to all time
+import { notifyCustomMembers, TargetGroup } from '@/src/services/notificationService';
+import { db, collection, onSnapshot } from '@/src/lib/firebase';
+import { MaterialConfig, AccessoryConfig } from '@/src/types';
+import { toast } from 'sonner';
+
+const COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981', '#f43f5e', '#64748b'];
+
+interface DashboardProps {
+  tasks: any[];
+  members: any[];
+  customers?: any[];
+  quotations?: any[];
+  currentUser?: any;
+  schedules?: any[];
+  installations?: any[];
+  setActiveTab?: (tab: string) => void;
+}
+
+type DepartmentFilter = 'all' | 'SALE' | 'Thiết kế' | 'Sản xuất' | 'Kỹ thuật' | 'Marketing';
+
+export function Dashboard({ 
+  tasks = [], 
+  members = [], 
+  customers = [], 
+  quotations = [], 
+  currentUser, 
+  schedules = [], 
+  installations = [], 
+  setActiveTab 
+}: DashboardProps) {
+  const [selectedMonth, setSelectedMonth] = React.useState<string>(() => getCurrentVNMonth());
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
+  const [deptFilter, setDeptFilter] = React.useState<DepartmentFilter>('all');
+  const [activeSubTab, setActiveSubTab] = React.useState<'overview' | 'sales' | 'production' | 'inventory' | 'hr'>('overview');
+  const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
+
+  // Announcement modal states
   const [announcementText, setAnnouncementText] = React.useState('');
   const [announcementTarget, setAnnouncementTarget] = React.useState<TargetGroup>('all');
   const [isSendingAnnouncement, setIsSendingAnnouncement] = React.useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = React.useState(false);
-  const [hasShownAlerts, setHasShownAlerts] = React.useState(false);
+
+  // Inventory realtime states
+  const [materials, setMaterials] = React.useState<MaterialConfig[]>([]);
+  const [accessories, setAccessories] = React.useState<AccessoryConfig[]>([]);
+
+  React.useEffect(() => {
+    const unsubMats = onSnapshot(collection(db, 'materialConfigs'), snap => {
+      setMaterials(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MaterialConfig));
+    }, () => {});
+    const unsubAccs = onSnapshot(collection(db, 'accessoryConfigs'), snap => {
+      setAccessories(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AccessoryConfig));
+    }, () => {});
+    return () => { unsubMats(); unsubAccs(); };
+  }, []);
 
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
   const isManager = isAdmin || !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu'].some(r => currentUser.role.toLowerCase().includes(r)));
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
-  const canViewPrice = isManager || currentUser?.permissions?.viewPrice !== false;
 
-  const matchesTime = (dateStr?: string) => {
+  const matchesTime = React.useCallback((dateStr?: string) => {
     if (!selectedMonth || selectedMonth === 'all') return true;
     if (!dateStr) return false;
     const date = new Date(dateStr);
@@ -84,836 +146,1019 @@ export function Dashboard({ tasks, members, customers, quotations, currentUser, 
       return date >= firstDay && date <= lastDay;
     }
     return getVNMonth(dateStr) === selectedMonth;
-  };
+  }, [selectedMonth]);
 
-  const filteredTasks = activeTasks.filter(t => !selectedMonth || (t.createdAt && matchesTime(t.createdAt)) || (t.updatedAt && matchesTime(t.updatedAt)) || (t.completedAt && matchesTime(t.completedAt)) || !t.createdAt);
-  const filteredCustomers = activeCustomers
-    .filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || !c.createdAt)
-    .sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
+  // Inventory calculations
+  const totalInventoryValue = React.useMemo(() => {
+    const matVal = materials.reduce((sum, m) => sum + ((m.stock || 0) * (m.finalPrice || m.preTaxBoxPrice || 0)), 0);
+    const accVal = accessories.reduce((sum, a) => sum + ((a.stock || 0) * (a.finalPrice || a.preTaxPrice || 0)), 0);
+    return matVal + accVal;
+  }, [materials, accessories]);
+
+  const lowStockCount = React.useMemo(() => {
+    const lowMats = materials.filter(m => (m.stock || 0) <= (m.minStock || 0)).length;
+    const lowAccs = accessories.filter(a => (a.stock || 0) <= (a.minStock || 0)).length;
+    return lowMats + lowAccs;
+  }, [materials, accessories]);
+
+  // Core metrics calculation
+  const {
+    filteredCustomers,
+    filteredProjects,
+    filteredTasks,
+    filteredQuotations,
+    memberStats,
+    totalRevenue,
+    totalExpectedRevenue,
+    conversionRate,
+    overdueTasksList,
+    revenueByDayData,
+    customerFunnelData,
+    sourceDistributionData,
+    departmentWorkloadData,
+    statusDistributionData,
+    topSalePerformers
+  } = React.useMemo(() => {
+    const fCustomers = customers.filter(c => !selectedMonth || (c.createdAt && matchesTime(c.createdAt)));
+    const activeProjects = customers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
+    const fProjects = activeProjects.filter(o => !selectedMonth || (o.createdAt && matchesTime(o.createdAt)));
+    const fQuotations = quotations.filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)));
+    const fTasks = tasks.filter(t => {
+      if (deptFilter !== 'all' && t.type !== deptFilter && t.department !== deptFilter) return false;
+      if (!selectedMonth || selectedMonth === 'all') return true;
+      return (t.createdAt && matchesTime(t.createdAt)) || (t.completedAt && matchesTime(t.completedAt)) || (t.dueDate && matchesTime(t.dueDate));
     });
-  const activeProjects = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage));
-  const filteredQuotations = (quotations || []).filter(q => !selectedMonth || (q.createdAt && matchesTime(q.createdAt)) || !q.createdAt);
 
-  const statusData = [
-    { name: 'Cần làm', value: filteredTasks.filter(t => t.status === 'todo').length },
-    { name: 'Đang làm', value: filteredTasks.filter(t => t.status === 'in-progress').length },
-    { name: 'Đánh giá', value: filteredTasks.filter(t => t.status === 'review').length },
-    { name: 'Hoàn thành', value: filteredTasks.filter(t => t.status === 'done').length },
-  ];
+    // Revenue calculations
+    let totalRev = 0;
+    let totalExpRev = 0;
+    fCustomers.forEach(c => {
+      if (c.stage === 'completed') {
+        totalRev += (c.orderValue || 0);
+      } else if (['contracted', 'production', 'installation'].includes(c.stage)) {
+        const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
+        totalRev += deposit;
+        totalExpRev += (c.orderValue || q?.totalAmount || 0);
+      } else {
+        totalExpRev += (c.orderValue || 0);
+      }
+    });
 
-  const workloadData = activeMembers.map(member => ({
-    name: member.name.split(' ').pop(),
-    tasks: filteredTasks.filter(t => t.assigneeId === member.id).length
-  }));
+    // Overdue tasks
+    const nowTime = new Date().getTime();
+    const overdueList = tasks.filter(t => {
+      if (t.status === 'done' || t.status === 'archived' || !t.dueDate) return false;
+      return new Date(t.dueDate).getTime() < nowTime;
+    });
 
-  // Statistics for completed tasks
-  const completedTasks = activeTasks.filter(t => t.status === 'done' && t.completedAt);
-  
-  // Group by month
-  const tasksByMonth = completedTasks.reduce((acc: any, task) => {
-    const month = getVNMonth(task.completedAt) || task.completedAt.substring(0, 7);
-    if (!acc[month]) acc[month] = [];
-    acc[month].push(task);
-    return acc;
-  }, {});
+    // Conversion rate
+    const contractedCount = fCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+    const convRate = fCustomers.length > 0 ? Math.round((contractedCount / fCustomers.length) * 1000) / 10 : 0;
 
-  const availableMonths = Object.keys(tasksByMonth).sort((a, b) => b.localeCompare(a));
-  const currentMonthTasks = tasksByMonth[selectedMonth] || [];
+    // Member KPI stats
+    const mStats = members
+      .filter(m => deptFilter === 'all' || m.role === deptFilter)
+      .map(member => {
+        const memberCustomers = fCustomers.filter(c => c.assignedSaleId === member.id);
+        const revenue = memberCustomers.reduce((sum, c) => {
+          if (c.stage === 'completed') return sum + (c.orderValue || 0);
+          if (['contracted', 'production', 'installation'].includes(c.stage)) {
+            const q = quotations.find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+            return sum + ((q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0);
+          }
+          return sum;
+        }, 0);
 
-  // Assignee stats for selected month
-  const assigneeStats = activeMembers.map(member => {
-    const memberCompletedTasks = currentMonthTasks.filter((t: any) => t.assigneeId === member.id);
-    return {
-      name: member.name,
-      avatar: member.avatar,
-      role: member.role,
-      count: memberCompletedTasks.length,
-      tasks: memberCompletedTasks
+        const memberTasks = fTasks.filter(t => t.assigneeId === member.id);
+        const completedTasks = memberTasks.filter(t => t.status === 'done');
+        
+        let totalKPI = 0;
+        let onTimeCount = 0;
+        const itemsHistory: any[] = [];
+
+        completedTasks.forEach(t => {
+          const metrics = calculateKPIScore(t.dueDate, t.completedAt);
+          totalKPI += metrics.score;
+          if (metrics.status === 'early' || metrics.status === 'on-time') onTimeCount++;
+          itemsHistory.push({
+            id: t.id,
+            title: t.title,
+            customer: t.customerName || 'N/A',
+            timestamp: t.completedAt,
+            status: metrics.status,
+            points: metrics.score
+          });
+        });
+
+        const onTimeRate = completedTasks.length > 0 ? Math.round((onTimeCount / completedTasks.length) * 100) : 100;
+
+        return {
+          id: member.id,
+          name: member.name,
+          role: member.role,
+          avatar: member.avatar,
+          totalTasks: memberTasks.length,
+          completedTasks: completedTasks.length,
+          revenue,
+          kpiScore: totalKPI,
+          onTimeRate,
+          itemsHistory
+        };
+      }).sort((a, b) => b.kpiScore - a.kpiScore);
+
+    // Revenue by day chart
+    const daysMap: Record<number, number> = {};
+    fCustomers.forEach(c => {
+      if (c.createdAt && ['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+        const d = new Date(c.createdAt).getDate();
+        daysMap[d] = (daysMap[d] || 0) + (c.orderValue || 0);
+      }
+    });
+    const revDayData = Object.keys(daysMap).map(day => ({
+      day: `Ngày ${day}`,
+      revenue: daysMap[Number(day)]
+    })).slice(0, 31);
+
+    // Customer Funnel
+    const funnelStages = [
+      { name: 'Khách mới', count: fCustomers.filter(c => c.stage === 'lead' || !c.stage).length },
+      { name: 'Tư vấn', count: fCustomers.filter(c => c.stage === 'consulting').length },
+      { name: 'Đo đạc', count: fCustomers.filter(c => c.stage === 'surveying').length },
+      { name: 'Chốt cọc', count: fCustomers.filter(c => c.stage === 'contracted').length },
+      { name: 'Sản xuất', count: fCustomers.filter(c => c.stage === 'production').length },
+      { name: 'Lắp đặt', count: fCustomers.filter(c => c.stage === 'installation').length },
+      { name: 'Hoàn thành', count: fCustomers.filter(c => c.stage === 'completed').length },
+    ];
+
+    // Source distribution
+    const sourceMap: Record<string, number> = {};
+    fCustomers.forEach(c => {
+      const src = c.source || 'Tự nhiên / Trực tiếp';
+      sourceMap[src] = (sourceMap[src] || 0) + 1;
+    });
+    const srcData = Object.entries(sourceMap).map(([name, value]) => ({ name, value }));
+
+    // Department Workload
+    const deptMap: Record<string, number> = {};
+    fTasks.forEach(t => {
+      const d = t.type === 'sale' ? 'Sale' : t.type === 'design' ? 'Thiết kế' : t.type === 'production' ? 'Sản xuất' : t.type === 'marketing' ? 'Marketing' : 'Khác';
+      deptMap[d] = (deptMap[d] || 0) + 1;
+    });
+    const deptData = Object.entries(deptMap).map(([name, count]) => ({ name, count }));
+
+    // Status distribution
+    const statusMap: Record<string, number> = {
+      'Đang thực hiện': fTasks.filter(t => t.status === 'in-progress' || t.status === 'todo').length,
+      'Hoàn thành': fTasks.filter(t => t.status === 'done').length,
+      'Trễ hạn': overdueList.length,
+      'Chờ cọc / Duyệt': fTasks.filter(t => t.status === 'review' || t.status === 'waiting_install').length
     };
-  }).sort((a, b) => b.count - a.count);
+    const statusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
 
-  const actualRevenue = filteredCustomers.reduce((sum, c) => {
-    if (c.stage === 'completed') {
-      return sum + (c.orderValue || 0);
+    // Top sale performers
+    const salePerformers = mStats.filter(m => m.revenue > 0).slice(0, 5);
+
+    return {
+      filteredCustomers: fCustomers,
+      filteredProjects: fProjects,
+      filteredTasks: fTasks,
+      filteredQuotations: fQuotations,
+      memberStats: mStats,
+      totalRevenue: totalRev,
+      totalExpectedRevenue: totalExpRev,
+      conversionRate: convRate,
+      overdueTasksList: overdueList,
+      revenueByDayData: revDayData,
+      customerFunnelData: funnelStages,
+      sourceDistributionData: srcData,
+      departmentWorkloadData: deptData,
+      statusDistributionData: statusData,
+      topSalePerformers: salePerformers
+    };
+  }, [customers, tasks, quotations, members, selectedMonth, matchesTime, deptFilter]);
+
+  // Export Excel handler
+  const handleExportExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Tổng quan
+      const summaryData = [
+        ['CHỈ SỐ TỔNG QUAN', 'GIÁ TRỊ'],
+        ['Kỳ báo cáo', selectedMonth || 'Tất cả'],
+        ['Doanh thu thực tế', totalRevenue],
+        ['Doanh thu dự kiến', totalExpectedRevenue],
+        ['Tổng khách hàng', filteredCustomers.length],
+        ['Dự án triển khai', filteredProjects.length],
+        ['Tỉ lệ chốt cọc', `${conversionRate}%`],
+        ['Tổng công việc', filteredTasks.length],
+        ['Nhiệm vụ trễ hạn', overdueTasksList.length],
+        ['Giá trị tồn kho', totalInventoryValue],
+        ['Mặt hàng thiếu hụt', lowStockCount]
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Tong_Quan');
+
+      // Sheet 2: Khách hàng
+      const custData = filteredCustomers.map(c => ({
+        'Mã KH': c.code || '',
+        'Tên khách hàng': c.name,
+        'Số điện thoại': c.phone || '',
+        'Địa chỉ': c.address || '',
+        'Giai đoạn': c.stage,
+        'Nguồn': c.source || '',
+        'Giá trị đơn hàng': c.orderValue || 0,
+        'Ngày tạo': c.createdAt ? new Date(c.createdAt).toLocaleDateString('vi-VN') : ''
+      }));
+      const wsCust = XLSX.utils.json_to_sheet(custData);
+      XLSX.utils.book_append_sheet(wb, wsCust, 'Khach_Hang');
+
+      // Sheet 3: Hiệu suất Nhân viên
+      const empData = memberStats.map(m => ({
+        'Nhân viên': m.name,
+        'Phòng ban': m.role,
+        'Tổng việc': m.totalTasks,
+        'Hoàn thành': m.completedTasks,
+        'Doanh số (VNĐ)': m.revenue,
+        'Điểm KPI': m.kpiScore,
+        'Tỉ lệ đúng hạn': `${m.onTimeRate}%`
+      }));
+      const wsEmp = XLSX.utils.json_to_sheet(empData);
+      XLSX.utils.book_append_sheet(wb, wsEmp, 'KPI_Nhan_Vien');
+
+      XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_INoiThat_${selectedMonth || 'All'}.xlsx`);
+      toast.success('Đã xuất báo cáo Excel thành công!');
+    } catch (e: any) {
+      toast.error('Lỗi khi xuất file Excel: ' + (e.message || ''));
     }
-    if (['contracted', 'production', 'installation'].includes(c.stage)) {
-      const q = (quotations || []).find(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-      const deposit = (q?.status === 'deposit' || q?.depositAmount) ? (q.depositAmount || 0) : 0;
-      return sum + deposit;
-    }
-    return sum;
-  }, 0);
-
-  const expectedRevenue = filteredCustomers.reduce((sum, c) => {
-    if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
-      return sum + (c.orderValue || 0);
-    }
-    return sum;
-  }, 0);
-
-  const stats = [
-    { label: 'Tổng nhiệm vụ', value: filteredTasks.length, icon: CheckCircle2, color: 'text-blue-500' },
-    { label: 'Đang thực hiện', value: filteredTasks.filter(t => t.status === 'in-progress').length, icon: Clock, color: 'text-amber-500' },
-    { label: 'Đã hoàn thành', value: filteredTasks.filter(t => t.status === 'done').length, icon: CheckCircle2, color: 'text-green-500' },
-    { label: 'Thành viên', value: activeMembers.length, icon: Users, color: 'text-purple-500' },
-  ];
-
-  const financialStats = [
-    { label: 'Doanh thu thực tế', value: canViewRevenue ? `${(actualRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: DollarSign, color: 'text-emerald-600' },
-    { label: 'Doanh thu dự kiến', value: canViewRevenue ? `${(expectedRevenue / 1000000).toFixed(1)}M` : '*** ₫', icon: CreditCard, color: 'text-yellow-600' },
-    { label: 'Dự án triển khai', value: activeProjects.length, icon: Package, color: 'text-indigo-500' },
-    { label: 'Khách hàng', value: filteredCustomers.length, icon: Users, color: 'text-blue-500' },
-  ];
-
-  const todayDate = new Date();
-  todayDate.setHours(0,0,0,0);
-  const isToday = (dateStr?: string) => {
-    if (!dateStr) return false;
-    const d = new Date(dateStr);
-    d.setHours(0,0,0,0);
-    return d.getTime() === todayDate.getTime();
   };
 
-  const todaySchedules = (schedules || []).filter(s => isToday(s.date) || isToday(s.dateStr));
-  const todayInstallations = (installations || []).filter(i => isToday(i.date) || isToday(i.dateStr));
-  const todayTasks = filteredTasks.filter(t => t.dueDate && isToday(t.dueDate) && t.status !== 'done');
-  const overdueTasks = filteredTasks.filter(t => t.dueDate && new Date(t.dueDate).getTime() < todayDate.getTime() && t.status !== 'done');
-  
-  // Tìm các khách hàng chưa được lên lịch đo đạc (phục vụ cảnh báo bỏ sót)
-  const unscheduledMeasurements = React.useMemo(() => {
-    const isManager = ['quản lý', 'giám đốc', 'chủ sở hữu', 'admin'].some(role => 
-      currentUser?.role?.toLowerCase()?.includes(role)
-    ) || !!currentUser?.permissions?.menuMeasurement;
-
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    return activeCustomers.filter(c => {
-      // Chỉ kiểm tra khách hàng ở trạng thái 'consulting' (Đang tư vấn) hoặc 'contracted' (Chốt cọc)
-      const matchesStage = c.stage === 'consulting' || c.stage === 'contracted';
-      if (!matchesStage) return false;
-
-      // Chỉ hiển thị những khách hàng trong vòng 1 tuần từ khi tạo khách hàng
-      if (!c.createdAt) return false;
-      const isWithinOneWeek = new Date(c.createdAt).getTime() >= oneWeekAgo.getTime();
-      if (!isWithinOneWeek) return false;
-
-      // Phân quyền: Sale chỉ xem của mình, Quản lý xem toàn bộ
-      const isOwner = isManager || c.assignedSaleId === currentUser?.id;
-      if (!isOwner) return false;
-
-      // Kiểm tra xem đã có lịch đo đạc nào chưa (bỏ qua lịch đã bị hủy)
-      const hasSchedule = (schedules || []).some(s => {
-        if (s.status === 'cancelled') return false;
-        if (s.customerId === c.id) return true;
-        if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
-        return false;
-      });
-
-      return !hasSchedule;
-    });
-  }, [activeCustomers, schedules, currentUser]);
-
-  const hasTodayItems = todaySchedules.length > 0 || todayInstallations.length > 0 || todayTasks.length > 0;
-
-  React.useEffect(() => {
-    setHasShownAlerts(true);
-  }, []);
+  // Send announcement handler
+  const handleSendAnnouncement = async () => {
+    if (!announcementText.trim()) {
+      toast.error('Vui lòng nhập nội dung thông báo');
+      return;
+    }
+    setIsSendingAnnouncement(true);
+    try {
+      await notifyCustomMembers(
+        '📢 Thông báo từ Ban Giám Đốc',
+        announcementText,
+        announcementTarget
+      );
+      toast.success('Đã gửi thông báo thành công');
+      setAnnouncementText('');
+      setIsAnnouncementOpen(false);
+    } catch (e: any) {
+      toast.error('Lỗi khi gửi thông báo: ' + (e?.message || ''));
+    } finally {
+      setIsSendingAnnouncement(false);
+    }
+  };
 
   return (
-    <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-16 px-0.5">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-2.5">
-        <div className="space-y-0 text-center md:text-left flex items-center gap-4">
-          <div>
-            <h1 className="text-lg md:text-3xl lg:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
-              {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : 'Tổng quan'}
-            </h1>
-            <p className="text-muted-foreground text-[8px] md:text-sm font-medium">Hiệu suất vận hành.</p>
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-12 px-2 sm:px-4">
+      {/* Header Toolbar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card p-4 sm:p-5 rounded-2xl border shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+              <LayoutDashboard className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
+                Tổng quan & Báo cáo
+              </h1>
+              <p className="text-xs text-muted-foreground font-medium">
+                Báo cáo điều hành tự động và phân tích chỉ số toàn diện theo các phân hệ ứng dụng.
+              </p>
+            </div>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Department Filter */}
+          <Select value={deptFilter} onValueChange={(val: DepartmentFilter) => setDeptFilter(val)}>
+            <SelectTrigger className="h-9 rounded-xl text-xs font-bold w-[140px] bg-background">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Phòng ban" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả phòng ban</SelectItem>
+              <SelectItem value="SALE">Kinh doanh (Sale)</SelectItem>
+              <SelectItem value="Thiết kế">Thiết kế</SelectItem>
+              <SelectItem value="Sản xuất">Sản xuất</SelectItem>
+              <SelectItem value="Kỹ thuật">Thi công</SelectItem>
+              <SelectItem value="Marketing">Marketing</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Time Picker */}
           <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-between w-[180px] h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-              <Calendar className="mr-2 h-4 w-4 opacity-50" />
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-1.5 bg-background">
+                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                {selectedMonth === 'today' ? 'Hôm nay' :
+                 selectedMonth === 'week' ? 'Tuần này' :
+                 selectedMonth === 'all' ? 'Tất cả' :
+                 selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : 'Tất cả'}
+              </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-2" align="start">
-              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const m = String(i + 1).padStart(2, '0');
-                  const val = `${pickerYear}-${m}`;
-                  const isSelected = selectedMonth === val;
-                  return (
-                    <Button
-                      key={m}
-                      variant={isSelected ? "default" : "ghost"}
-                      className={cn("h-9 w-full text-xs", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
-                      onClick={() => setSelectedMonth(val)}
-                    >
-                      Thg{i + 1}
-                    </Button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
-                <div className="grid grid-cols-2 gap-2">
-                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+            <PopoverContent className="w-64 p-3 rounded-2xl" align="end">
+              <div className="space-y-2 text-xs">
+                <p className="font-bold text-muted-foreground uppercase text-[10px]">Chọn nhanh</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Button size="sm" variant={selectedMonth === 'today' ? 'default' : 'outline'} className="h-7 text-xs rounded-lg font-semibold" onClick={() => setSelectedMonth('today')}>
+                    Hôm nay
+                  </Button>
+                  <Button size="sm" variant={selectedMonth === 'week' ? 'default' : 'outline'} className="h-7 text-xs rounded-lg font-semibold" onClick={() => setSelectedMonth('week')}>
+                    Tuần này
+                  </Button>
+                  <Button size="sm" variant={selectedMonth === getCurrentVNMonth() ? 'default' : 'outline'} className="h-7 text-xs rounded-lg font-semibold" onClick={() => setSelectedMonth(getCurrentVNMonth())}>
+                    Tháng này
+                  </Button>
+                  <Button size="sm" variant={selectedMonth === 'all' ? 'default' : 'outline'} className="h-7 text-xs rounded-lg font-semibold" onClick={() => setSelectedMonth('all')}>
+                    Tất cả
+                  </Button>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => { setSelectedMonth(getCurrentVNMonth()); setPickerYear(getCurrentVNYear()); }}>Tháng này</Button>
-                  <Button variant="outline" size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-bold text-[10px] uppercase text-muted-foreground">Theo tháng ({pickerYear})</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setPickerYear(y => y - 1)}>
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setPickerYear(y => y + 1)}>
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const mStr = `${pickerYear}-${String(i + 1).padStart(2, '0')}`;
+                      return (
+                        <Button
+                          key={mStr}
+                          size="sm"
+                          variant={selectedMonth === mStr ? 'default' : 'ghost'}
+                          className="h-6 text-[11px] font-bold p-0 rounded-md"
+                          onClick={() => setSelectedMonth(mStr)}
+                        >
+                          T{i + 1}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
+
+          {/* Export Excel Button */}
           <Button 
-            variant="outline" 
             size="sm" 
-            className="rounded-full h-8 px-4 text-[10px] font-bold border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hidden md:flex items-center gap-1.5"
-            onClick={async () => {
-              await handleRequestNotification();
-              if (Notification.permission === 'granted') {
-                 notifyCurrentUser('Thông báo kiểm tra', 'Chúc mừng! Hệ thống thông báo của bạn đã hoạt động tốt.');
-              }
-            }}
+            variant="outline" 
+            onClick={handleExportExcel}
+            className="h-9 rounded-xl text-xs font-bold gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
           >
-            <Bell className="w-3 h-3" />
-            Bật & Kiểm tra thông báo
+            <FileSpreadsheet className="h-3.5 w-3.5" /> Xuất Excel
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden bg-blue-50 text-blue-600 h-8 w-8 rounded-full border border-blue-100"
-            onClick={async () => {
-              await handleRequestNotification();
-              if (Notification.permission === 'granted') {
-                 notifyCurrentUser('Thông báo kiểm tra', 'Chúc mừng! Hệ thống thông báo của bạn đã hoạt động tốt.');
-              }
-            }}
-          >
-            <Bell className="w-4 h-4" />
-          </Button>
-          <Tabs defaultValue="overview" className="w-full md:w-[240px]">
-             <TabsList className="grid w-full grid-cols-2 rounded-full h-8 p-1 bg-gray-200">
-               <TabsTrigger value="overview" className="rounded-full text-[9px] font-bold">Hiện tại</TabsTrigger>
-               <TabsTrigger value="archive" className="rounded-full text-[9px] font-bold">Lịch sử</TabsTrigger>
-             </TabsList>
-          </Tabs>
+
+          {/* Announcement Button */}
+          {isManager && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsAnnouncementOpen(true)}
+              className="h-9 rounded-xl text-xs font-bold gap-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200"
+            >
+              <Megaphone className="h-3.5 w-3.5" /> Gửi thông báo
+            </Button>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="hidden">
-           <TabsTrigger value="overview">Overview</TabsTrigger>
-           <TabsTrigger value="archive">Archive</TabsTrigger>
-        </TabsList>
+      {/* Top Comprehensive Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* Card 1: Doanh thu */}
+        <Card className="rounded-2xl border shadow-xs hover:shadow-md transition-all">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider">Doanh thu thực tế</span>
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-emerald-600">
+              {canViewRevenue ? formatCurrency(totalRevenue) : '****** ₫'}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Dự kiến: <span className="font-bold">{canViewRevenue ? formatCurrency(totalExpectedRevenue) : '***'}</span>
+            </p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="overview" className="space-y-4 mt-0">
-          <div className="grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4">
-            {[...financialStats, ...stats].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card className="relative overflow-hidden group border border-border shadow-sm bg-card text-card-foreground">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0.5 pt-2 px-2.5">
-                    <CardTitle className="text-[8px] md:text-xs font-black uppercase tracking-widest text-muted-foreground/60">{stat.label}</CardTitle>
-                    <stat.icon className={cn("h-3 w-3 opacity-50", stat.color)} />
-                  </CardHeader>
-                  <CardContent className="py-1 pb-2 px-2.5">
-                    <div className="text-xl md:text-3xl font-black tracking-tighter tabular-nums leading-none">{stat.value}</div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+        {/* Card 2: Khách hàng & Tỉ lệ chốt */}
+        <Card className="rounded-2xl border shadow-xs hover:shadow-md transition-all">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider">Khách hàng / Tỉ lệ</span>
+              <Users className="h-4 w-4 text-blue-600" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-blue-600">
+              {filteredCustomers.length} <span className="text-xs font-bold text-muted-foreground">khách</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Tỉ lệ chốt: <span className="font-bold text-blue-700">{conversionRate}%</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Dự án triển khai */}
+        <Card className="rounded-2xl border shadow-xs hover:shadow-md transition-all">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider">Dự án triển khai</span>
+              <Target className="h-4 w-4 text-purple-600" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-purple-600">
+              {filteredProjects.length} <span className="text-xs font-bold text-muted-foreground">công trình</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Báo giá gửi: <span className="font-bold">{filteredQuotations.length}</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 4: Vật tư & Kho */}
+        <Card className="rounded-2xl border shadow-xs hover:shadow-md transition-all">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider">Vốn hàng tồn kho</span>
+              <Boxes className="h-4 w-4 text-amber-600" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-amber-600 truncate" title={`${totalInventoryValue.toLocaleString('vi-VN')} ₫`}>
+              {formatCurrency(totalInventoryValue)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Cảnh báo thiếu: <span className={`font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{lowStockCount} mã</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 5: Hiệu suất & Trễ hạn */}
+        <Card className="rounded-2xl border shadow-xs hover:shadow-md transition-all">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider">Nhiệm vụ / Trễ hạn</span>
+              <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-indigo-600">
+              {filteredTasks.length} <span className="text-xs font-bold text-muted-foreground">việc</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Quá hạn: <span className={`font-bold ${overdueTasksList.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{overdueTasksList.length} việc</span>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Urgent Overdue Alert Banner */}
+      {overdueTasksList.length > 0 && (
+        <div className="p-4 bg-red-50/80 border border-red-200 rounded-2xl shadow-xs">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5 flex-none" />
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider">
+                  Cảnh báo: Có {overdueTasksList.length} nhiệm vụ đang trễ hạn
+                </h4>
+                <p className="text-[11px] text-red-600 font-medium mt-0.5">
+                  Vui lòng kiểm tra và xử lý gấp để tránh chậm tiến độ sản xuất và lắp đặt của khách hàng.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+            {overdueTasksList.slice(0, 3).map(task => (
+              <div key={task.id} className="p-2.5 bg-white border border-red-100 rounded-xl flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <p className="font-bold text-xs text-slate-800 truncate">{task.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    Hạn: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
+                  </p>
+                </div>
+                {setActiveTab && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-7 text-[10px] px-2 rounded-lg text-red-700 border-red-200 hover:bg-red-50 font-bold"
+                    onClick={() => setActiveTab(task.type === 'production' ? 'production' : 'sale')}
+                  >
+                    Xử lý ngay
+                  </Button>
+                )}
+              </div>
             ))}
           </div>
+        </div>
+      )}
 
-          {unscheduledMeasurements.length > 0 && (
-            <Card className="border border-destructive/30 bg-destructive/5 text-destructive-foreground shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center gap-2 text-destructive">
-                <AlertCircle className="h-5 w-5 animate-pulse shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-sm font-bold tracking-tight">Cảnh báo bỏ sót lịch đo đạc</CardTitle>
-                  <CardDescription className="text-[10px] text-destructive/80 mt-0.5">
-                    {currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.role?.toLowerCase()?.includes('giám đốc') || currentUser?.role?.toLowerCase()?.includes('chủ sở hữu') || currentUser?.role?.toLowerCase() === 'admin'
-                      ? `Phát hiện ${unscheduledMeasurements.length} khách hàng của Sales đang ở trạng thái tư vấn/chốt cọc nhưng chưa được xếp lịch đo đạc.`
-                      : `Bạn đang có ${unscheduledMeasurements.length} khách hàng chưa được lên lịch đo đạc. Hãy liên hệ khách hàng để xếp lịch ngay.`}
-                  </CardDescription>
-                </div>
+      {/* AI Smart Insights */}
+      <SmartInsights tasks={tasks} members={members} customers={customers} />
+
+      {/* Navigation Sub-Tabs by Functional Areas */}
+      <Tabs value={activeSubTab} onValueChange={(val: any) => setActiveSubTab(val)} className="space-y-4">
+        <TabsList className="bg-card border p-1 rounded-2xl shadow-xs flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="overview" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LayoutDashboard className="h-3.5 w-3.5" /> Tổng quan điều hành
+          </TabsTrigger>
+          <TabsTrigger value="sales" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <DollarSign className="h-3.5 w-3.5" /> Kinh doanh & Báo giá
+          </TabsTrigger>
+          <TabsTrigger value="production" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Hammer className="h-3.5 w-3.5" /> Sản xuất & Thi công
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Boxes className="h-3.5 w-3.5" /> Vật tư & Kho
+          </TabsTrigger>
+          <TabsTrigger value="hr" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Award className="h-3.5 w-3.5" /> Nhân sự & KPI
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: TỔNG QUAN ĐIỀU HÀNH */}
+        <TabsContent value="overview" className="space-y-4 m-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Revenue Trend Chart */}
+            <Card className="lg:col-span-2 rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <TrendingUp className="h-4 w-4 text-primary" /> Tăng trưởng doanh thu
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Biểu đồ giá trị hợp đồng theo ngày phát sinh trong tháng.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="px-4 pb-4 pt-1">
-                <div className="grid gap-2 md:grid-cols-2 max-h-[220px] overflow-y-auto pr-1">
-                  {unscheduledMeasurements.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between p-2.5 bg-card border border-destructive/10 rounded-lg group shadow-sm">
-                      <div className="min-w-0 pr-2">
-                        <p className="text-xs font-bold text-foreground truncate">
-                          {c.code 
-                            ? (c.code.toLowerCase().includes(c.name.toLowerCase()) 
-                                ? c.code 
-                                : `${c.code}_${c.name}`)
-                            : c.name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          SĐT: {c.phone} | Trạng thái: {c.stage === 'consulting' ? 'Đang tư vấn' : 'Chốt cọc'}
-                        </p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        className="h-7 text-[10px] px-3 font-semibold rounded-md shadow-sm shrink-0"
-                        onClick={() => setActiveTab && setActiveTab('measurements')}
-                      >
-                        Xếp lịch đo
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {overdueTasks.length > 0 && (
-            <Card className="border border-destructive/30 bg-destructive/5 text-destructive-foreground shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center gap-2 text-destructive">
-                <AlertCircle className="h-5 w-5 animate-pulse shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-sm font-bold tracking-tight">Cảnh báo nhiệm vụ trễ hạn</CardTitle>
-                  <CardDescription className="text-[10px] text-destructive/80 mt-0.5">
-                    Phát hiện {overdueTasks.length} nhiệm vụ đã quá hạn hoàn thành. Vui lòng kiểm tra và xử lý ngay.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 pt-1">
-                <div className="grid gap-2 md:grid-cols-2 max-h-[220px] overflow-y-auto pr-1">
-                  {overdueTasks.map((t: any) => (
-                    <div key={t.id} className="flex items-center justify-between p-2.5 bg-card border border-destructive/10 rounded-lg group shadow-sm">
-                      <div className="min-w-0 pr-2">
-                        <p className="text-xs font-bold text-foreground truncate">{t.title}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          Khách hàng: {t.customerName || 'Không xác định'} | Hạn chót: {t.dueDate ? format(new Date(t.dueDate), 'dd/MM/yyyy') : 'Chưa rõ'}
-                        </p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        className="h-7 text-[10px] px-3 font-semibold rounded-md shadow-sm shrink-0"
-                        onClick={() => {
-                          if (t.type === 'design') setActiveTab?.('design');
-                          else if (t.type === 'production') setActiveTab?.('production');
-                          else if (t.type === 'sale') setActiveTab?.('sale');
-                          else if (t.type === 'marketing') setActiveTab?.('marketing');
-                          else setActiveTab?.('dashboard');
-                        }}
-                      >
-                        Xử lý ngay
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {hasTodayItems && (
-            <div className="mb-4">
-              <Card className="border-l-4 border-l-blue-500 bg-blue-50/50 shadow-sm border-y border-r border-border overflow-hidden">
-                <CardHeader className="py-3 px-4 pb-0 bg-transparent flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-blue-900">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    Việc cần làm hôm nay
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="py-3 px-4 flex flex-col gap-2">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {todaySchedules.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Lịch đo đạc / Khảo sát</p>
-                        {todaySchedules.map((s, i) => (
-                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
-                            <MapPin className="w-3.5 h-3.5 text-orange-500 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="text-xs font-bold text-gray-900">{s.customerName}</p>
-                              <p className="text-[10px] text-gray-500 line-clamp-1">{s.address || s.addressStr}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {todayInstallations.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Lịch lắp đặt</p>
-                        {todayInstallations.map((inst, i) => (
-                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
-                            <Package className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="text-xs font-bold text-gray-900">{inst.customerName}</p>
-                              <p className="text-[10px] text-gray-500 line-clamp-1">{inst.address || inst.addressStr}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {todayTasks.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Nhiệm vụ đến hạn</p>
-                        {todayTasks.map((t, i) => (
-                          <div key={i} className="bg-white rounded-md p-2 shadow-sm border border-blue-100 flex items-start gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="text-xs font-bold text-gray-900">{t.title}</p>
-                              <p className="text-[10px] text-gray-500">{t.customerName}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <div className="grid gap-3 md:gap-6 md:grid-cols-1 lg:grid-cols-12">
-            <div className="lg:col-span-3">
-              <SmartInsights tasks={filteredTasks} customers={filteredCustomers} quotations={quotations || []} />
-            </div>
-            <Card className="lg:col-span-5 border border-border shadow-sm bg-card text-card-foreground">
-              <CardHeader className="p-3 pb-0">
-                <CardTitle className="text-xs md:text-lg font-bold">Phân bổ việc</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-0 pb-1 w-full min-w-0">
-                <div className="h-[300px] mt-1">
+              <CardContent className="p-4 pt-0">
+                <div className="h-[260px] w-full mt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={workloadData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                      <XAxis 
-                        dataKey="name" 
-                        fontSize={9} 
-                        tickLine={false} 
-                        axisLine={false} 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
-                      />
-                      <YAxis 
-                        fontSize={9} 
-                        tickLine={false} 
-                        axisLine={false} 
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
-                      />
-                      <Tooltip 
-                        cursor={{ fill: 'hsl(var(--secondary))', opacity: 0.3 }}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          borderColor: 'hsl(var(--border))', 
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 10px -2px rgb(0 0 0 / 0.1)',
-                          fontSize: '9px'
-                        }}
-                      />
-                      <Bar dataKey="tasks" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={24} />
+                    <AreaChart data={revenueByDayData}>
+                      <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={val => `${val / 1000000}M`} />
+                      <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                      <Area type="monotone" dataKey="revenue" stroke="#0ea5e9" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRev)" name="Doanh thu" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Customer Funnel */}
+            <Card className="rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <Target className="h-4 w-4 text-purple-600" /> Phễu khách hàng
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Tỉ lệ chuyển đổi qua từng giai đoạn dự án.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-2">
+                <div className="space-y-2">
+                  {customerFunnelData.map((stage) => (
+                    <div key={stage.name} className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">{stage.name}</span>
+                        <span className="font-bold text-foreground">{stage.count} khách</span>
+                      </div>
+                      <div className="h-2 bg-secondary/50 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-indigo-500 rounded-full transition-all"
+                          style={{ width: `${Math.max(5, (stage.count / Math.max(1, filteredCustomers.length)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Workload by Department */}
+            <Card className="rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <BarChart3 className="h-4 w-4 text-blue-600" /> Phân bổ việc theo phòng ban
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="h-[220px] w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={departmentWorkloadData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Số lượng việc" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="lg:col-span-4 border border-border shadow-sm bg-card text-card-foreground">
-              <CardHeader className="p-4 pb-0">
-                <CardTitle className="text-sm md:text-lg font-bold tracking-tight">Trạng thái công việc</CardTitle>
-                <CardDescription className="text-[10px]">Phân bổ nhiệm vụ qua các giai đoạn.</CardDescription>
+            {/* Task Status Breakdown */}
+            <Card className="rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Trạng thái công việc
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-2 pt-0 h-full w-full min-w-0">
-                <div className="h-[300px] flex flex-col items-center justify-center">
+              <CardContent className="p-4 pt-0">
+                <div className="h-[220px] w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={statusData}
+                        data={statusDistributionData}
                         cx="50%"
                         cy="50%"
                         innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={6}
+                        outerRadius={75}
+                        paddingAngle={4}
                         dataKey="value"
-                        stroke="none"
                       >
-                        {statusData.map((entry, index) => (
+                        {statusDistributionData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          borderColor: 'hsl(var(--border))', 
-                          borderRadius: '8px',
-                          fontSize: '9px'
-                        }}
-                      />
+                      <Tooltip />
+                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '11px' }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-0">
-                    {statusData.map((entry, i) => (
-                      <div key={entry.name} className="flex items-center gap-1.5 text-center">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                        <span className="text-[9px] font-semibold text-muted-foreground">{entry.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-3 md:gap-6 md:grid-cols-2">
-            <Card className="border border-border shadow-sm bg-card text-card-foreground">
-              <CardHeader className="p-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-bold">Dự án đang triển khai</CardTitle>
-                    <CardDescription className="text-[10px]">5 dự án gần nhất.</CardDescription>
-                  </div>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="px-2 pb-4">
-                <div className="space-y-2">
-                  {activeProjects.slice(0, 5).map((project: any) => (
-                    <div key={project.id} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors border-b border-border last:border-0 cursor-pointer bg-card text-card-foreground">
-                       <div>
-                         <p className="text-xs font-bold">{project.code || 'KH - [Không xác định]'} - {project.name}</p>
-                         <p className="text-[10px] text-muted-foreground mt-0.5">{project.furnitureCategory || 'Sản phẩm'}</p>
-                         <p className="text-[10px] font-semibold text-primary mt-0.5">
-                           Giá trị: {canViewPrice ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(project.orderValue || 0) : '*** ₫'}
-                         </p>
-                       </div>
-                       <div className="text-right">
-                         <Badge variant={project.stage === 'completed' ? 'default' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
-                           {project.stage === 'completed' ? 'Hoàn thành' : 
-                            project.stage === 'installation' ? 'Lắp đặt' : 
-                            project.stage === 'production' ? 'Sản xuất' : 'Chốt Cọc'}
-                         </Badge>
-                         <p className="text-[10px] font-mono mt-1 font-semibold">{formatVNTime(project.createdAt)}</p>
-                       </div>
-                    </div>
-                  ))}
-                  {activeProjects.length === 0 && (
-                     <div className="text-center py-6 text-muted-foreground text-xs italic">
-                       Chưa có dự án nào
-                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border shadow-sm bg-card text-card-foreground">
-              <CardHeader className="p-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-bold">Khách hàng mới</CardTitle>
-                    <CardDescription className="text-[10px]">Danh sách khách hàng gần đây.</CardDescription>
-                  </div>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="px-2 pb-4">
-                <div className="space-y-2">
-                  {filteredCustomers.slice(0, 5).map((customer: any) => (
-                    <div key={customer.id} className="flex items-center justify-between p-3 hover:bg-muted rounded-lg transition-colors border-b border-border last:border-0 cursor-pointer bg-card text-card-foreground">
-                       <div className="flex items-center gap-3 w-full">
-                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                           {customer.name.charAt(0)}
-                         </div>
-                         <div className="flex-1 min-w-0">
-                           <div className="flex items-center justify-between">
-                             <p className="text-xs font-bold">{customer.name}</p>
-                             <Badge variant="outline" className={cn(
-                               "text-[8px] uppercase font-bold px-1.5 h-4 border-none",
-                               customer.stage === 'consulting' ? 'bg-yellow-500/10 text-yellow-500' :
-                               customer.stage === 'surveying' ? 'bg-purple-500/10 text-purple-500' :
-                               customer.stage === 'contracted' ? 'bg-green-500/10 text-green-500' :
-                               'bg-red-500/10 text-red-500'
-                             )}>
-                               {customer.stage === 'consulting' ? 'Đã tư vấn' :
-                                customer.stage === 'surveying' ? 'Đã đo đạc' :
-                                customer.stage === 'contracted' ? 'Chốt Cọc' : 'Tạm dừng'}
-                             </Badge>
-                           </div>
-                           <div className="flex items-center gap-2 mt-0.5">
-                             <p className="text-[10px] text-muted-foreground line-clamp-1">{customer.phone}</p>
-                             {customer.createdAt && (
-                               <>
-                                 <span className="text-muted-foreground/30">•</span>
-                                 <p className="text-[10px] text-muted-foreground font-mono">
-                                   {new Date(customer.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                                 </p>
-                               </>
-                             )}
-                             {customer.furnitureCategory && (
-                               <>
-                                 <span className="text-muted-foreground/30">•</span>
-                                 <p className="text-[10px] text-primary font-medium truncate italic">{customer.furnitureCategory}</p>
-                               </>
-                             )}
-                           </div>
-                         </div>
-                       </div>
-                    </div>
-                  ))}
-                  {filteredCustomers.length === 0 && (
-                     <div className="text-center py-6 text-muted-foreground text-xs italic">
-                       Chưa có khách hàng nào
-                     </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="archive" className="space-y-8 mt-0">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="md:w-64 space-y-4">
-               <h3 className="text-sm font-bold flex items-center gap-2">
-                 <Archive className="h-4 w-4 text-primary" />
-                 Lịch sử tháng
-               </h3>
-               <div className="space-y-1">
-                 {availableMonths.length > 0 ? (
-                   availableMonths.map(month => (
-                     <Button
-                       key={month}
-                       variant={selectedMonth === month ? "secondary" : "ghost"}
-                       className={cn("w-full justify-between rounded-xl h-12 text-xs font-medium px-4", 
-                         selectedMonth === month ? "bg-primary/10 text-primary hover:bg-primary/20" : "")}
-                       onClick={() => setSelectedMonth(month)}
-                     >
-                       <span>Tháng {month.split('-')[1]}, {month.split('-')[0]}</span>
-                       <Badge variant="outline" className="text-[9px] px-1.5">{tasksByMonth[month]?.length || 0}</Badge>
-                     </Button>
-                   ))
-                 ) : (
-                   <div className="p-4 text-center border border-dashed rounded-2xl text-[10px] text-muted-foreground italic">
-                     Chưa có lịch sử hoàn thành.
-                   </div>
-                 )}
-               </div>
-            </div>
-
-            <div className="flex-1 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                 <Card className="border border-border shadow-sm bg-card text-card-foreground">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-bold">Thống kê theo người phụ trách</CardTitle>
-                      <CardDescription className="text-[10px]">Hiệu suất hoàn thành trong tháng được chọn.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {assigneeStats.map(stat => (
-                        <div key={stat.name} className="flex items-center gap-3 p-3 rounded-xl bg-muted border border-border hover:bg-card text-card-foreground hover:shadow-sm transition-all group/stat">
-                           <Avatar className="h-8 w-8">
-                             <AvatarImage src={stat.avatar} />
-                             <AvatarFallback>{stat.name.charAt(0)}</AvatarFallback>
-                           </Avatar>
-                           <div className="flex-1 min-w-0">
-                             <p className="text-xs font-bold truncate">{stat.name}</p>
-                             <p className="text-[9px] text-muted-foreground truncate">{stat.role}</p>
-                           </div>
-                           <div className="text-right">
-                             <div className="text-sm font-black text-primary tabular-nums">{stat.count}</div>
-                             <div className="text-[8px] uppercase font-bold text-muted-foreground">Xong</div>
-                           </div>
+        {/* TAB 2: KINH DOANH & BÁO GIÁ */}
+        <TabsContent value="sales" className="space-y-4 m-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Top Sales Leaderboard */}
+            <Card className="lg:col-span-2 rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <Crown className="h-4 w-4 text-amber-500" /> Thành tích chốt đơn Sale
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Bảng xếp hạng doanh số và số hợp đồng theo nhân sự kinh doanh.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-2">
+                <div className="space-y-3">
+                  {topSalePerformers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic py-4 text-center">Chưa có dữ liệu chốt đơn trong kỳ này.</p>
+                  ) : (
+                    topSalePerformers.map((sp, idx) => (
+                      <div key={sp.id} className="p-3 bg-secondary/10 border rounded-xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : idx === 1 ? 'bg-slate-200 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">{sp.name}</p>
+                            <p className="text-[10px] text-muted-foreground">Hoàn thành: {sp.completedTasks} việc | Đúng hạn: {sp.onTimeRate}%</p>
+                          </div>
                         </div>
-                      ))}
-                      {assigneeStats.length === 0 && (
-                        <div className="text-center py-10 text-muted-foreground text-xs italic">
-                           Không có dữ liệu hoàn thành cho tháng này.
+                        <div className="text-right">
+                          <p className="font-black text-sm text-emerald-600">{formatCurrency(sp.revenue)}</p>
+                          <span className="text-[10px] font-bold text-muted-foreground">Điểm KPI: {sp.kpiScore}</span>
                         </div>
-                      )}
-                    </CardContent>
-                 </Card>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-                 <Card className="border border-border shadow-sm bg-card text-card-foreground overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-bold">Danh sách công việc đã xong</CardTitle>
-                      <CardDescription className="text-[10px]">Chi tiết các nhiệm vụ đã hoàn thành.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                       <ScrollArea className="h-[400px]">
-                         <div className="px-6 pb-6 space-y-4">
-                           {currentMonthTasks.map((task: any, i: number) => (
-                             <div key={task.id} className="group relative pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors py-1">
-                               <div className="flex items-center justify-between gap-4">
-                                 <h4 className="text-xs font-bold leading-tight group-hover:text-primary transition-colors">{task.title}</h4>
-                                 <Badge variant="outline" className="text-[8px] uppercase px-1 h-4 font-mono">{task.type}</Badge>
-                               </div>
-                               <p className="text-[10px] text-muted-foreground line-clamp-1 mt-1">{task.description}</p>
-                               <div className="flex items-center gap-2 mt-2">
-                                  <Calendar className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-[10px] font-medium text-muted-foreground">
-                                    Xong ngày: {formatVNTime(task.completedAt)}
-                                  </span>
-                               </div>
-                             </div>
-                           ))}
-                           {currentMonthTasks.length === 0 && (
-                             <div className="text-center py-20 text-muted-foreground text-xs italic">
-                               Chưa có dữ liệu.
-                             </div>
-                           )}
-                         </div>
-                       </ScrollArea>
-                    </CardContent>
-                 </Card>
-              </div>
-            </div>
+            {/* Customer Source Distribution */}
+            <Card className="rounded-2xl border shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                  <Filter className="h-4 w-4 text-blue-600" /> Nguồn khách hàng
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="h-[240px] w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={sourceDistributionData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={70}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {sourceDistributionData.map((_, index) => (
+                          <Cell key={`cell-src-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        </TabsContent>
+
+        {/* TAB 3: SẢN XUẤT, ĐO ĐẠC & THI CÔNG */}
+        <TabsContent value="production" className="space-y-4 m-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="rounded-2xl border p-4 bg-purple-50/40 border-purple-200">
+              <div className="flex items-center gap-2 text-purple-700 font-bold text-xs uppercase">
+                <CalendarDays className="h-4 w-4" /> Lịch Đo Đạc
+              </div>
+              <p className="text-2xl font-black text-purple-700 mt-2">{schedules.length}</p>
+              <p className="text-[11px] text-purple-600 mt-0.5">
+                Đã đo: {schedules.filter((s: any) => s.status === 'completed').length} | Chờ đo: {schedules.filter((s: any) => s.status !== 'completed').length}
+              </p>
+            </Card>
+
+            <Card className="rounded-2xl border p-4 bg-emerald-50/40 border-emerald-200">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase">
+                <Package className="h-4 w-4" /> Xưởng Sản Xuất
+              </div>
+              <p className="text-2xl font-black text-emerald-700 mt-2">
+                {customers.filter(c => c.stage === 'production').length}
+              </p>
+              <p className="text-[11px] text-emerald-600 mt-0.5">Dự án đang tại xưởng gia công</p>
+            </Card>
+
+            <Card className="rounded-2xl border p-4 bg-orange-50/40 border-orange-200">
+              <div className="flex items-center gap-2 text-orange-700 font-bold text-xs uppercase">
+                <Wrench className="h-4 w-4" /> Lắp Đặt & Thi Công
+              </div>
+              <p className="text-2xl font-black text-orange-700 mt-2">{installations.length}</p>
+              <p className="text-[11px] text-orange-600 mt-0.5">Lịch thi công công trình thực tế</p>
+            </Card>
+          </div>
+
+          <Card className="rounded-2xl border shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                <Hammer className="h-4 w-4 text-primary" /> Dự án đang triển khai thực tế
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="divide-y text-xs font-medium">
+                {filteredProjects.length === 0 ? (
+                  <p className="py-6 text-center text-muted-foreground italic">Không có dự án nào trong giai đoạn này.</p>
+                ) : (
+                  filteredProjects.slice(0, 6).map(project => (
+                    <div key={project.id} className="py-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{project.name}</p>
+                        <p className="text-muted-foreground text-[10px]">
+                          Địa chỉ: {project.address || 'Chưa rõ'} | SĐT: {project.phone || 'Chưa rõ'}
+                        </p>
+                      </div>
+                      <Badge className={
+                        project.stage === 'production' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        project.stage === 'installation' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        'bg-blue-50 text-blue-700 border-blue-200'
+                      }>
+                        {project.stage === 'production' ? 'Đang Sản Xuất' :
+                         project.stage === 'installation' ? 'Đang Lắp Đặt' : 'Hoàn Thành'}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 4: VẬT TƯ & KHO */}
+        <TabsContent value="inventory" className="space-y-4 m-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="rounded-2xl border p-4 bg-amber-50/40 border-amber-200">
+              <span className="text-xs font-extrabold text-amber-700 uppercase">Tổng giá trị tồn kho</span>
+              <p className="text-2xl font-black text-amber-700 mt-1">{formatCurrency(totalInventoryValue)}</p>
+              <p className="text-[10px] text-amber-600 mt-0.5">Quy đổi toàn bộ vật tư & phụ kiện</p>
+            </Card>
+            <Card className="rounded-2xl border p-4 bg-blue-50/40 border-blue-200">
+              <span className="text-xs font-extrabold text-blue-700 uppercase">Tổng số mặt hàng</span>
+              <p className="text-2xl font-black text-blue-700 mt-1">{materials.length + accessories.length} mã</p>
+              <p className="text-[10px] text-blue-600 mt-0.5">Nhựa: {materials.length} | Phụ kiện: {accessories.length}</p>
+            </Card>
+            <Card className="rounded-2xl border p-4 bg-red-50/40 border-red-200">
+              <span className="text-xs font-extrabold text-red-700 uppercase">Cảnh báo thiếu hụt</span>
+              <p className="text-2xl font-black text-red-700 mt-1">{lowStockCount} mã</p>
+              <p className="text-[10px] text-red-600 mt-0.5">Chạm hoặc dưới hạn mức tối thiểu</p>
+            </Card>
+          </div>
+
+          <Card className="rounded-2xl border shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-red-600" /> Mặt hàng cần nhập kho gấp
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="divide-y text-xs">
+                {materials.filter(m => (m.stock || 0) <= (m.minStock || 0)).slice(0, 5).map(item => (
+                  <div key={item.id} className="py-2.5 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-foreground">{item.name || `Tấm nhựa mã ${item.code}`}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">Mã: {item.code} | ĐVT: {item.unit || 'Hộp'}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-red-600 text-sm">{item.stock || 0}</span>
+                      <span className="text-[10px] text-muted-foreground"> / Tối thiểu {item.minStock || 5}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 5: NHÂN SỰ & KPI */}
+        <TabsContent value="hr" className="space-y-4 m-0">
+          <Card className="rounded-2xl border shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-1.5">
+                <Award className="h-4 w-4 text-primary" /> Bảng xếp hạng nhân viên xuất sắc
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Đánh giá toàn diện dựa trên số lượng công việc, tỷ lệ đúng hạn và điểm tích lũy KPI.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              <div className="divide-y text-xs font-medium">
+                {memberStats.map((member, idx) => (
+                  <div 
+                    key={member.id} 
+                    className="py-3 flex items-center justify-between hover:bg-secondary/10 px-2 rounded-xl cursor-pointer transition-all"
+                    onClick={() => setSelectedMemberId(member.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${idx === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                        {idx + 1}
+                      </span>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={member.avatar} />
+                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{member.name}</p>
+                        <span className="text-[10px] text-muted-foreground font-semibold">{member.role}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 text-right">
+                      <div>
+                        <p className="font-bold text-foreground">{member.completedTasks}/{member.totalTasks}</p>
+                        <p className="text-[10px] text-muted-foreground">Việc xong</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-emerald-600">{member.onTimeRate}%</p>
+                        <p className="text-[10px] text-muted-foreground">Đúng hạn</p>
+                      </div>
+                      <div>
+                        <p className="font-black text-primary text-sm">{member.kpiScore}</p>
+                        <p className="text-[10px] text-muted-foreground">Điểm KPI</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
-      
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="lg:col-span-2 border border-border shadow-sm bg-card text-card-foreground">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-bold tracking-tight">Đội ngũ của bạn</CardTitle>
-                <CardDescription className="text-xs">Thành viên đang tích cực xử lý công việc.</CardDescription>
-              </div>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-3 p-4 rounded-[12px] bg-card text-card-foreground border border-border hover:bg-muted transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
-                  <Avatar className="h-10 w-10 border border-primary/10">
+
+      {/* Member Details Modal */}
+      {selectedMemberId && (() => {
+        const member = memberStats.find(m => m.id === selectedMemberId);
+        if (!member) return null;
+        return (
+          <Dialog open={!!selectedMemberId} onOpenChange={() => setSelectedMemberId(null)}>
+            <DialogContent className="max-w-[600px] rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
                     <AvatarImage src={member.avatar} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                      {member.name.charAt(0)}
-                    </AvatarFallback>
+                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate">{member.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{member.role}</p>
+                  {member.name} ({member.role})
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Chi tiết đóng góp và lịch sử hoàn thành nhiệm vụ tích lũy điểm KPI.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2.5 bg-secondary/20 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase">Hoàn thành</span>
+                    <p className="text-lg font-black text-foreground">{member.completedTasks}</p>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-primary">{activeTasks.filter(t => t.assigneeId === member.id).length}</span>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold">Nhiệm vụ</span>
+                  <div className="p-2.5 bg-secondary/20 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase">Tỉ lệ đúng hạn</span>
+                    <p className="text-lg font-black text-emerald-600">{member.onTimeRate}%</p>
+                  </div>
+                  <div className="p-2.5 bg-secondary/20 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase">Điểm KPI</span>
+                    <p className="text-lg font-black text-primary">{member.kpiScore}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border border-border shadow-md bg-primary text-primary-foreground">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold tracking-tight">Hỗ trợ nhanh</CardTitle>
-            <CardTitle className="text-lg font-bold tracking-tight">Thông báo nhanh</CardTitle>
-            <CardDescription className="text-xs text-primary-foreground/70">Gửi thông báo tới toàn bộ nhân sự.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-2xl bg-primary-foreground/10 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                  <Megaphone className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold">Thông báo nội bộ</p>
-                  <p className="text-[10px] opacity-70 italic">Gửi tới tất cả nhân sự</p>
+
+                <div className="border rounded-xl p-3 max-h-[300px] overflow-y-auto space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase">Nhật ký nhiệm vụ gần nhất</p>
+                  {member.itemsHistory.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic py-3 text-center">Chưa có nhiệm vụ hoàn thành trong kỳ này.</p>
+                  ) : (
+                    member.itemsHistory.map((item: any) => (
+                      <div key={item.id} className="p-2 bg-card border rounded-lg flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-semibold text-foreground">{item.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.customer} | {item.timestamp ? new Date(item.timestamp).toLocaleDateString('vi-VN') : ''}</p>
+                        </div>
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          +{item.points}đ
+                        </Badge>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-              <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
-                <DialogTrigger 
-                  render={
-                    <Button 
-                      variant="secondary" 
-                      className="w-full rounded-xl h-10 font-bold text-xs bg-card text-card-foreground text-primary hover:bg-gray-50"
-                    >
-                      Gửi thông báo nội bộ
-                    </Button>
-                  }
-                />
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Tạo thông báo nội bộ</DialogTitle>
-                    <DialogDescription>
-                      Tin nhắn này sẽ được đẩy dưới dạng thông báo (Push Notification) tới tất cả điện thoại và máy tính của các nhân sự đã cho phép thông báo.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label>Đối tượng nhận thông báo</Label>
-                      <Select value={announcementTarget} onValueChange={(val: any) => setAnnouncementTarget(val)}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Chọn người nhận" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tất cả mọi người</SelectItem>
-                          <SelectItem value="managers">Quản lý / Giám đốc</SelectItem>
-                          <SelectItem value="designers">Bộ phận Thiết kế</SelectItem>
-                          <SelectItem value="installers">Bộ phận Kỹ thuật / Thi công</SelectItem>
-                          <SelectItem value="sales">Bộ phận Kinh doanh</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="message">Nội dung thông báo</Label>
-                      <Textarea
-                        id="message"
-                        value={announcementText}
-                        onChange={(e) => setAnnouncementText(e.target.value)}
-                        placeholder="Nhập nội dung thông báo..."
-                        className="min-h-[120px] resize-none"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter className="flex gap-2 sm:justify-end">
-                    <DialogClose 
-                      render={<Button variant="outline">Hủy</Button>}
-                    />
-                    <Button 
-                      onClick={async () => {
-                        if (!announcementText.trim()) {
-                          toast.error("Vui lòng nhập nội dung thông báo");
-                          return;
-                        }
-                        try {
-                          setIsSendingAnnouncement(true);
-                          await notifyCustomMembers("📢 Thông báo từ Quản lý", announcementText.trim(), announcementTarget);
-                          toast.success("Thông báo nội bộ đã được gửi thành công!");
-                          setAnnouncementText(''); // Clear on success
-                          setIsAnnouncementOpen(false); // Close dialog
-                        } catch (error) {
-                          toast.error("Có lỗi khi gửi thông báo.");
-                        } finally {
-                          setIsSendingAnnouncement(false);
-                        }
-                      }}
-                      className="bg-primary hover:bg-primary/90 text-white"
-                      disabled={isSendingAnnouncement}
-                    >
-                      {isSendingAnnouncement ? "Đang gửi..." : "Gửi thông báo"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* Announcement Dialog */}
+      <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
+        <DialogContent className="max-w-[500px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-blue-600" />
+              Gửi Thông Báo Toàn Công Ty
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Thông báo sẽ được gửi qua popup & thông báo đẩy đến tất cả nhân viên.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Đối tượng nhận *</Label>
+              <Select value={announcementTarget} onValueChange={(val: any) => setAnnouncementTarget(val)}>
+                <SelectTrigger className="h-10 rounded-xl text-xs font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toàn bộ nhân sự công ty</SelectItem>
+                  <SelectItem value="sale">Phòng Kinh Doanh (Sale)</SelectItem>
+                  <SelectItem value="design">Phòng Thiết Kế</SelectItem>
+                  <SelectItem value="production">Xưởng Sản Xuất</SelectItem>
+                  <SelectItem value="installation">Đội Thi Công</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Nội dung thông báo *</Label>
+              <Textarea 
+                placeholder="Nhập thông điệp cần truyền đạt..."
+                rows={4}
+                value={announcementText}
+                onChange={e => setAnnouncementText(e.target.value)}
+                className="rounded-xl text-xs"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsAnnouncementOpen(false)} className="rounded-xl">
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleSendAnnouncement} 
+              disabled={isSendingAnnouncement}
+              className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              Gửi ngay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

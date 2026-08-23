@@ -56,8 +56,7 @@ const navGroups = [
   {
     title: 'Chung',
     items: [
-      { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-      { id: 'reports', label: 'Báo cáo', icon: BarChart3, permission: 'menuReports' },
+      { id: 'dashboard', label: 'Tổng quan & Báo cáo', icon: LayoutDashboard },
     ]
   },
   {
