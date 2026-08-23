@@ -818,7 +818,25 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [inventoryItems, inventorySearchTerm, inventoryFilter, inventoryStatusFilter]);
+  const totalInventoryValue = useMemo(() => {
+    return inventoryItems.reduce((sum, item) => {
+      const stock = item.stock || 0;
+      const price = item.type === 'material' 
+        ? (item.finalPrice || item.preTaxBoxPrice || 0) 
+        : (item.finalPrice || item.preTaxPrice || 0);
+      return sum + (stock * price);
+    }, 0);
+  }, [inventoryItems]);
 
+  const totalFilteredValue = useMemo(() => {
+    return filteredInventory.reduce((sum, item) => {
+      const stock = item.stock || 0;
+      const price = item.type === 'material' 
+        ? (item.finalPrice || item.preTaxBoxPrice || 0) 
+        : (item.finalPrice || item.preTaxPrice || 0);
+      return sum + (stock * price);
+    }, 0);
+  }, [filteredInventory]);
   const handleOpenAccessoryDialog = (item?: AccessoryConfig) => {
     if (item) {
       setEditingAccessory(item);
@@ -1513,10 +1531,16 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           {inventorySubView === 'status' ? (
             <div className="flex-1 min-h-0 bg-card border rounded-2xl shadow-sm overflow-hidden flex flex-col">
               {/* Summary stat cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b bg-gray-50/50">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 border-b bg-gray-50/50">
                 <div className="p-3 bg-white border rounded-xl shadow-xs">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase">Tổng số mặt hàng</p>
                   <p className="text-xl font-extrabold text-foreground mt-1">{inventoryItems.length}</p>
+                </div>
+                <div className="p-3 bg-white border rounded-xl shadow-xs">
+                  <p className="text-[11px] font-bold text-indigo-600 uppercase">Giá trị tồn kho tổng</p>
+                  <p className="text-lg font-extrabold text-indigo-700 mt-1 truncate" title={`${totalInventoryValue.toLocaleString('vi-VN')} ₫`}>
+                    {totalInventoryValue.toLocaleString('vi-VN')} ₫
+                  </p>
                 </div>
                 <div className="p-3 bg-white border rounded-xl shadow-xs">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase">Hết hàng</p>
@@ -1527,28 +1551,32 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   <p className="text-xl font-extrabold text-amber-500 mt-1">{inventoryItems.filter(i => (i.stock || 0) <= (i.minStock || 0)).length}</p>
                 </div>
                 <div className="p-3 bg-white border rounded-xl shadow-xs">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase">Đã lọc hiển thị</p>
-                  <p className="text-xl font-extrabold text-blue-600 mt-1">{filteredInventory.length}</p>
+                  <p className="text-[11px] font-bold text-blue-600 uppercase">Giá trị đã lọc</p>
+                  <p className="text-lg font-extrabold text-blue-700 mt-1 truncate" title={`${totalFilteredValue.toLocaleString('vi-VN')} ₫`}>
+                    {totalFilteredValue.toLocaleString('vi-VN')} ₫
+                  </p>
                 </div>
               </div>
 
               {/* Table */}
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-left border-collapse min-w-[700px] table-fixed">
+                <table className="w-full text-left border-collapse min-w-[850px] table-fixed">
                   <thead>
                     <tr className="border-b bg-muted/30 text-xs font-bold text-muted-foreground select-none">
-                      <th className="p-3 w-[12%]">Mã hàng</th>
-                      <th className="p-3 w-[25%]">Tên / Phân loại</th>
-                      <th className="p-3 w-[23%]">Hạng mục</th>
-                      <th className="p-3 w-[10%] text-center">ĐVT</th>
-                      <th className="p-3 w-[15%] text-center">Tồn kho / Tối thiểu</th>
-                      <th className="p-3 w-[15%] text-right pr-6">Thao tác</th>
+                      <th className="p-3 w-[10%]">Mã hàng</th>
+                      <th className="p-3 w-[22%]">Tên / Phân loại</th>
+                      <th className="p-3 w-[18%]">Hạng mục</th>
+                      <th className="p-3 w-[6%] text-center">ĐVT</th>
+                      <th className="p-3 w-[12%] text-center">Tồn kho / Tối thiểu</th>
+                      <th className="p-3 w-[10%] text-right">Đơn giá</th>
+                      <th className="p-3 w-[12%] text-right">Giá trị tồn</th>
+                      <th className="p-3 w-[10%] text-right pr-4">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y text-sm">
                     {filteredInventory.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={8} className="p-8 text-center text-muted-foreground">
                           <p className="font-semibold text-sm">Không tìm thấy mặt hàng nào trong kho.</p>
                           <p className="text-xs text-muted-foreground/80 mt-1 mb-4">
                             Hãy thêm mới vật tư nhựa hoặc phụ kiện để quản lý và theo dõi tồn kho.
@@ -1595,6 +1623,14 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                         const stockVal = item.stock || 0;
                         const minStockVal = item.minStock || 0;
                         const isLow = stockVal <= minStockVal;
+
+                        let unitPrice = 0;
+                        if (item.type === 'material') {
+                          unitPrice = item.finalPrice || item.preTaxBoxPrice || 0;
+                        } else {
+                          unitPrice = item.finalPrice || item.preTaxPrice || 0;
+                        }
+                        const itemTotalValue = stockVal * unitPrice;
                         
                         let statusColor = "bg-emerald-50 text-emerald-700 border-emerald-100";
                         let statusLabel = "Còn hàng";
@@ -1631,7 +1667,13 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                                 </span>
                               </div>
                             </td>
-                            <td className="p-3 text-right pr-6">
+                            <td className="p-3 text-right font-semibold text-slate-600">
+                              {unitPrice.toLocaleString('vi-VN')} ₫
+                            </td>
+                            <td className="p-3 text-right font-extrabold text-slate-800">
+                              {itemTotalValue.toLocaleString('vi-VN')} ₫
+                            </td>
+                            <td className="p-3 text-right pr-4">
                               <div className="flex justify-end gap-1.5">
                                 <Button 
                                   variant="outline" 
