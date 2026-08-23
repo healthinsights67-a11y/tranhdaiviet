@@ -779,7 +779,7 @@ function AppContent() {
       case 'production':
         return redirect(perms.menuProduction)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
-          : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} />;
+          : <ProductionCalendar tasks={filteredTasks} setTasks={setTasks} members={activeMembers} user={user} customers={filteredCustomers} currentUser={currentMember} schedules={filteredSchedulesData} />;
       case 'sale':
         return redirect(perms.menuSale)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />

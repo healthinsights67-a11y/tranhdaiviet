@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Task, Member, Customer, InstallationSchedule } from '@/src/types';
+import { Task, Member, Customer, InstallationSchedule, MeasurementSchedule } from '@/src/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,7 @@ interface ProductionCalendarProps {
   customers: Customer[];
   user?: any;
   currentUser?: any;
+  schedules?: MeasurementSchedule[];
 }
 
 const STATUS_ICONS: Record<string, any> = {
@@ -84,7 +85,7 @@ const STATUS_LABELS: Record<string, string> = {
   lost: 'Tạm dừng',
 };
 
-export function ProductionCalendar({  tasks, setTasks, members, customers, user, currentUser }: ProductionCalendarProps) {
+export function ProductionCalendar({  tasks, setTasks, members, customers, user, currentUser, schedules = [] }: ProductionCalendarProps) {
   const [currentDate, setCurrentDate] = React.useState(() => getCurrentVNDate());
   const [viewMode, setViewMode] = React.useState<'1d' | '7d' | '30d'>('30d');
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
@@ -239,6 +240,13 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   const getInstallSchedulesForDay = (day: Date) => {
     return filteredInstallationSchedules.filter((s: any) => 
+      s.date && 
+      isSameDay(parseISO(s.date), day)
+    );
+  };
+
+  const getMeasurementSchedulesForDay = (day: Date) => {
+    return schedules.filter((s: any) => 
       s.date && 
       isSameDay(parseISO(s.date), day)
     );
@@ -724,11 +732,25 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
 
   return (
     <div className="space-y-3 max-w-[1600px] mx-auto px-2">
-      <div className="flex flex-col space-y-0.5 px-2">
-        <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">
-          Quản lý Sản Xuất & Lắp Đặt
-        </h1>
-        <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ thi công sản xuất & lắp đặt thực tế.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 px-2 pb-1">
+        <div className="flex flex-col space-y-0.5">
+          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">
+            Lịch Sản Xuất & Thi Công
+          </h1>
+          <p className="text-muted-foreground text-xs font-medium">Lập kế hoạch và theo dõi tiến độ đo đạc, sản xuất & lắp đặt thực tế.</p>
+        </div>
+        <div className="flex items-center gap-2.5 bg-card border px-3 py-1.5 rounded-xl shadow-xs text-[10px] font-bold">
+          <span className="text-muted-foreground uppercase tracking-wider mr-1">Chú giải:</span>
+          <span className="flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">
+            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> Đo đạc
+          </span>
+          <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Sản xuất
+          </span>
+          <span className="flex items-center gap-1 bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">
+            <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span> Lắp đặt
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 px-2">
@@ -848,8 +870,10 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                       {calendarDays.map((day, i) => {
                         const dayTasks = getTasksForDay(day);
                         const dayInstalls = getInstallSchedulesForDay(day);
+                        const dayMeasurements = getMeasurementSchedulesForDay(day);
 
                         const combinedItems = [
+                          ...dayMeasurements.map(m => ({ ...m, displayType: 'measurement' as const, sortTime: m.date })),
                           ...dayTasks.map(t => ({ ...t, displayType: 'production' as const, sortTime: t.dueDate })),
                           ...dayInstalls.map(s => ({ ...s, displayType: 'installation' as const, sortTime: s.date }))
                         ].sort((a, b) => {
@@ -881,26 +905,30 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                             
                             <div className="flex-1 overflow-hidden flex flex-col space-y-1">
                               {combinedItems.slice(0, 3).map((item) => {
-                                if (item.displayType === 'production') {
+                                if (item.displayType === 'measurement') {
+                                  const schedule = item as any;
+                                  return (
+                                    <div 
+                                      key={schedule.id}
+                                      className="text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border font-semibold flex items-center gap-0.5 sm:gap-1 shadow-sm text-purple-700 border-purple-200 bg-purple-50 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-800"
+                                      title={`[Đo đạc] ${schedule.customerName} - ${schedule.address || ''}`}
+                                    >
+                                      <CalendarDays className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-purple-600 dark:text-purple-400 animate-pulse" />
+                                      <span className="font-bold opacity-75 hidden xs:inline">{format(parseISO(schedule.date), 'HH:mm')}</span>
+                                      <span className="truncate">{schedule.customerName}</span>
+                                    </div>
+                                  );
+                                } else if (item.displayType === 'production') {
                                   const task = item as any;
                                   const customer = customers.find(c => c.id === task.customerId || c.name.toLowerCase() === (task.customerName || '').toLowerCase());
-                                  const stage = customer?.stage || 'production';
-                                  const StatusIcon = STATUS_ICONS[stage] || Package;
                                   return (
                                     <div 
                                       key={task.id}
-                                      className={cn(
-                                        "text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border shadow-sm",
-                                        STATUS_COLORS[stage]
-                                      )}
+                                      className="text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border font-semibold flex items-center gap-0.5 sm:gap-1 shadow-sm text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800"
                                       title={`[Sản xuất] ${task.customerName || task.title} - ${task.address || ''}`}
                                     >
-                                      <div className="flex items-center gap-0.5 sm:gap-1">
-                                        <StatusIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                                        <span className="font-bold uppercase tracking-tighter truncate">
-                                          {customer?.name || task.customerName || customer?.code || task.title}
-                                        </span>
-                                      </div>
+                                      <Package className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                      <span className="truncate">{customer?.name || task.customerName || customer?.code || task.title}</span>
                                     </div>
                                   );
                                 } else {
@@ -908,15 +936,10 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                   return (
                                     <div 
                                       key={schedule.id}
-                                      className={cn(
-                                        "text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border font-semibold flex items-center gap-0.5 sm:gap-1 shadow-sm",
-                                        schedule.status === 'completed' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900' :
-                                        schedule.status === 'cancelled' ? 'text-red-700 border-red-200 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900' :
-                                        'text-purple-700 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900'
-                                      )}
-                                      title={`[Lắp đặt] ${schedule.customerName} - ${schedule.address}`}
+                                      className="text-[9px] sm:text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate border font-semibold flex items-center gap-0.5 sm:gap-1 shadow-sm text-orange-700 border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-800"
+                                      title={`[Lắp đặt] ${schedule.customerName} - ${schedule.address || ''}`}
                                     >
-                                      <Hammer className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-purple-600 dark:text-purple-400" />
+                                      <Wrench className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 text-orange-600 dark:text-orange-400" />
                                       <span className="font-bold opacity-75 hidden xs:inline">{format(parseISO(schedule.date), 'HH:mm')}</span>
                                       <span className="truncate">{schedule.customerName}</span>
                                     </div>
@@ -1248,6 +1271,38 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                               >
                                 Đổi lịch
                               </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 border-t pt-4 dark:border-zinc-800">
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4 text-purple-500" />
+                    Lịch Đo Đạc ({getMeasurementSchedulesForDay(selectedDay).length})
+                  </h4>
+                  {getMeasurementSchedulesForDay(selectedDay).length === 0 ? (
+                    <p className="text-muted-foreground text-xs italic pl-6">Không có lịch đo đạc nào.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {getMeasurementSchedulesForDay(selectedDay).map(schedule => {
+                        const assignee = members.find(m => m.id === schedule.assigneeId);
+                        return (
+                          <div key={schedule.id} className="p-3 border rounded-xl flex items-center justify-between hover:bg-secondary/10 dark:border-zinc-800">
+                            <div>
+                              <p className="font-bold text-sm">{schedule.customerName}</p>
+                              {schedule.address && <p className="text-xs text-muted-foreground mt-0.5">Địa chỉ: {schedule.address}</p>}
+                              {schedule.phone && <p className="text-xs text-muted-foreground">SĐT: {schedule.phone}</p>}
+                              {assignee && <p className="text-xs text-muted-foreground">Người đo: {assignee.name}</p>}
+                              {schedule.notes && <p className="text-xs text-muted-foreground italic mt-1">Ghi chú: {schedule.notes}</p>}
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0 pl-2">
+                              <Badge className="bg-purple-500/10 text-purple-600 border border-purple-200 shadow-none">
+                                {schedule.status === 'completed' ? 'Đã đo' : 'Chưa đo'}
+                              </Badge>
                             </div>
                           </div>
                         );

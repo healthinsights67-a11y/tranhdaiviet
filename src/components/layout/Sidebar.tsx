@@ -72,8 +72,7 @@ const navGroups = [
   {
     title: 'Sản xuất & Thi công',
     items: [
-      { id: 'measurements', label: 'Lịch Đo Đạc', icon: CalendarDays, permission: 'menuMeasurement' },
-      { id: 'production', label: 'Lịch Sản Xuất', icon: CalendarDays, permission: 'menuProduction' },
+      { id: 'production', label: 'Lịch Sản Xuất & Thi Công', icon: CalendarDays, permission: 'menuProduction' },
       { id: 'installations', label: 'Báo cáo Thi công', icon: Wrench, permission: 'menuInstallations' },
     ]
   },
