@@ -777,8 +777,66 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     return () => unsub();
   }, []);
 
+  const processedMaterials = useMemo(() => {
+    // 1. Find templates (items with preTaxBoxPrice > 0 or listedBoxPrice > 0)
+    const templates: Record<string, MaterialConfig> = {};
+    materials.forEach(m => {
+      const baseCode = m.code.split('_').pop() || '';
+      const hasPrice = (m.preTaxBoxPrice || 0) > 0 || (m.listedBoxPrice || 0) > 0;
+      if (hasPrice && baseCode) {
+        if (!templates[baseCode] || m.code === baseCode || m.code.startsWith('AT_') || m.code.startsWith('HN_')) {
+          templates[baseCode] = m;
+        }
+      }
+    });
+
+    // 2. Map and inherit properties
+    return materials.map(m => {
+      const baseCode = m.code.split('_').pop() || '';
+      const hasPrice = (m.preTaxBoxPrice || 0) > 0 || (m.listedBoxPrice || 0) > 0;
+      
+      if (hasPrice) {
+        const discount = m.discountPercent !== undefined ? m.discountPercent : 38;
+        const finalPrice = Math.round((m.preTaxBoxPrice || 0) * (1 - discount / 100));
+        return {
+          ...m,
+          discountPercent: discount,
+          finalPrice,
+          isBaseTemplate: true
+        };
+      }
+
+      const template = templates[baseCode];
+      if (template) {
+        const discount = m.discountPercent !== undefined ? m.discountPercent : (template.discountPercent !== undefined ? template.discountPercent : 38);
+        const finalPrice = Math.round((template.preTaxBoxPrice || 0) * (1 - discount / 100));
+        return {
+          ...m,
+          width: m.width || template.width,
+          thickness: m.thickness || template.thickness,
+          length: m.length || template.length,
+          itemsPerBox: m.itemsPerBox || template.itemsPerBox,
+          preTaxMeterPrice: template.preTaxMeterPrice,
+          preTaxBoxPrice: template.preTaxBoxPrice,
+          listedMeterPrice: template.listedMeterPrice,
+          listedBoxPrice: template.listedBoxPrice,
+          discountPercent: discount,
+          finalPrice,
+          isInherited: true,
+          inheritedFrom: template.code
+        };
+      }
+
+      return {
+        ...m,
+        discountPercent: m.discountPercent !== undefined ? m.discountPercent : 38,
+        finalPrice: 0
+      };
+    });
+  }, [materials]);
+
   const inventoryItems = useMemo(() => {
-    const mats = materials.map(m => ({
+    const mats = processedMaterials.map(m => ({
       ...m,
       name: m.name || `Tấm nhựa mã ${m.code}`,
       type: 'material' as const,
@@ -1033,7 +1091,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     }
   };
 
-  const filteredMaterials = materials.filter(m => 
+  const filteredMaterials = processedMaterials.filter(m => 
     m.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (m.width || '').toLowerCase().includes(searchTerm.toLowerCase()) || (m.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -1120,6 +1178,14 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             </div>
           </div>
 
+          {/* Info Alert: Quy ước kế thừa đơn giá */}
+          <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3.5 rounded-xl flex items-start gap-2.5 text-xs font-semibold shadow-xs">
+            <AlertCircle className="h-4 w-4 text-indigo-600 mt-0.5 flex-none animate-pulse" />
+            <div>
+              <span className="font-bold text-indigo-800">Quy ước giá tự động theo Mã gốc:</span> Các biến thể màu phụ (ví dụ: <code className="font-mono bg-white px-1 py-0.5 rounded border border-indigo-200">A12_4024</code>, <code className="font-mono bg-white px-1 py-0.5 rounded border border-indigo-200">AH_4024</code>, <code className="font-mono bg-white px-1 py-0.5 rounded border border-indigo-200">LUX_01_4024</code>) sẽ tự động thừa hưởng kích thước và đơn giá gốc từ mã gốc (kết thúc bằng <code className="font-mono bg-white px-1 py-0.5 rounded border border-indigo-200">4024</code>). Bạn chỉ cần thiết lập giá cho mã gốc (ví dụ: <code className="font-mono bg-white px-1 py-0.5 rounded border border-indigo-200">AT_4024</code>) và hệ thống sẽ tự động cập nhật đồng bộ.
+            </div>
+          </div>
+
           <div className="border rounded-xl bg-card flex-1 overflow-hidden flex flex-col shadow-sm">
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-sm text-left">
@@ -1164,6 +1230,11 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                           <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs font-mono">
                             {item.code}
                           </span>
+                          {(item as any).isInherited && (
+                            <div className="text-[9px] text-indigo-500 font-bold mt-1 uppercase" title={`Thừa hưởng đơn giá & kích thước từ mã gốc ${(item as any).inheritedFrom}`}>
+                              Kế thừa: {(item as any).inheritedFrom}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center font-medium border-l">{item.itemsPerBox || '-'}</td>
                         <td className="px-4 py-3 text-center font-medium border-l">{item.unit || '-'}</td>

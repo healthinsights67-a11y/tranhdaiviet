@@ -52,6 +52,46 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
   const [selectedMonth, setSelectedMonth] = React.useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = React.useState<number>(new Date().getFullYear());
 
+  const processedMaterialConfigs = React.useMemo(() => {
+    const templates: Record<string, MaterialConfig> = {};
+    materialConfigs.forEach(m => {
+      const baseCode = m.code.split('_').pop() || '';
+      const hasPrice = (m.preTaxBoxPrice || 0) > 0 || (m.listedBoxPrice || 0) > 0;
+      if (hasPrice && baseCode) {
+        if (!templates[baseCode] || m.code === baseCode || m.code.startsWith('AT_') || m.code.startsWith('HN_')) {
+          templates[baseCode] = m;
+        }
+      }
+    });
+
+    return materialConfigs.map(m => {
+      const baseCode = m.code.split('_').pop() || '';
+      const hasPrice = (m.preTaxBoxPrice || 0) > 0 || (m.listedBoxPrice || 0) > 0;
+      
+      if (hasPrice) {
+        return m;
+      }
+
+      const template = templates[baseCode];
+      if (template) {
+        return {
+          ...m,
+          width: m.width || template.width,
+          thickness: m.thickness || template.thickness,
+          length: m.length || template.length,
+          itemsPerBox: m.itemsPerBox || template.itemsPerBox,
+          preTaxMeterPrice: template.preTaxMeterPrice,
+          preTaxBoxPrice: template.preTaxBoxPrice,
+          listedMeterPrice: template.listedMeterPrice,
+          listedBoxPrice: template.listedBoxPrice,
+          discountPercent: m.discountPercent !== undefined ? m.discountPercent : (template.discountPercent !== undefined ? template.discountPercent : 38)
+        };
+      }
+
+      return m;
+    });
+  }, [materialConfigs]);
+
   const profitData = useMemo(() => {
     // 1. Get all quotations that are accepted or deposited
     const contractedQuotes = quotations.filter(q => 
@@ -98,7 +138,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
 
           // 1. Try exact match by code or name from item.type (searchStr)
           if (searchStr) {
-            matchedConfig = materialConfigs.find(m => {
+            matchedConfig = processedMaterialConfigs.find(m => {
               const codeLower = (m.code || '').toLowerCase();
               return (codeLower && searchStr.includes(codeLower)) || ((m.name || '').toLowerCase() === searchStr);
             });
@@ -128,7 +168,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
 
           // 3. Try partial match by item.name in materialConfigs
           if (!matchedConfig) {
-            matchedConfig = materialConfigs.find(m => {
+            matchedConfig = processedMaterialConfigs.find(m => {
               const nameLower = (m.name || '').toLowerCase();
               return nameLower ? itemNameLower.includes(nameLower) || nameLower.includes(itemNameLower) : false;
             });
@@ -198,7 +238,7 @@ export const ProfitAnalysis: React.FC<ProfitAnalysisProps> = ({ tasks = [], quot
       item.profit = item.quotationValue - item.materialCost;
       return item;
     });
-  }, [quotations, tasks, materialConfigs, accessoryConfigs, customers]);
+  }, [quotations, tasks, processedMaterialConfigs, accessoryConfigs, customers]);
 
   const filteredProfitData = useMemo(() => {
     const now = new Date();
