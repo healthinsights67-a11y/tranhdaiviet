@@ -614,6 +614,31 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
     }
   };
 
+  const handleCancelUnscheduledItem = async (item: any) => {
+    const isCustomer = item.type === 'customer' || !item.rawTask;
+    const itemName = item.name;
+    const confirmCancel = window.confirm(`Bạn có chắc muốn bỏ qua / hủy lịch cho "${itemName}" không?`);
+    if (!confirmCancel) return;
+
+    try {
+      if (isCustomer) {
+        const customerRef = doc(db, 'customers', item.id);
+        await updateDoc(customerRef, { stage: 'lost' });
+        toast.success(`Đã chuyển trạng thái khách hàng "${itemName}" thành Thất bại (Bỏ qua)`);
+      } else {
+        const taskRef = doc(db, 'tasks', item.id);
+        await updateDoc(taskRef, { status: 'archived' });
+        toast.success(`Đã lưu trữ công việc sản xuất của "${itemName}" (Bỏ qua)`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (err: any) {
+      console.error("Lỗi khi bỏ qua mục:", err);
+      toast.error("Không thể thực hiện hành động: " + err.message);
+    }
+  };
+
   const handleEditInstallClick = (schedule: InstallationSchedule) => {
     setEditingInstallId(schedule.id);
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -1142,25 +1167,35 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-[9px] text-muted-foreground">Cần khảo sát hiện trạng</span>
                               </div>
-                              <Button 
-                                onClick={() => {
-                                  setMeasureFormData({
-                                    id: '',
-                                    customerId: item.id,
-                                    customerName: item.name,
-                                    phone: item.phone,
-                                    address: item.address,
-                                    date: new Date().toISOString().slice(0, 16),
-                                    assigneeId: '',
-                                    notes: '',
-                                  });
-                                  setIsMeasureOpen(true);
-                                }}
-                                size="sm" 
-                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
-                              >
-                                Xếp lịch
-                              </Button>
+                              <div className="flex gap-1.5 shrink-0">
+                                <Button 
+                                  onClick={() => handleCancelUnscheduledItem(item)}
+                                  variant="outline"
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 font-bold cursor-pointer"
+                                >
+                                  Bỏ qua
+                                </Button>
+                                <Button 
+                                  onClick={() => {
+                                    setMeasureFormData({
+                                      id: '',
+                                      customerId: item.id,
+                                      customerName: item.name,
+                                      phone: item.phone,
+                                      address: item.address,
+                                      date: new Date().toISOString().slice(0, 16),
+                                      assigneeId: '',
+                                      notes: '',
+                                    });
+                                    setIsMeasureOpen(true);
+                                  }}
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white cursor-pointer"
+                                >
+                                  Xếp lịch
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
@@ -1224,42 +1259,52 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                                   return null;
                                 })()}
                               </div>
-                              <Button 
-                                onClick={() => {
-                                  if (item.type === 'task') {
-                                    const task = item.rawTask!;
-                                    setFormData({
-                                      id: task.id,
-                                      customerId: task.customerId || '',
-                                      customerName: task.customerName || task.title,
-                                      phone: task.phone || '',
-                                      address: task.address || '',
-                                      date: new Date().toISOString().slice(0, 16),
-                                      assigneeId: task.assigneeId || '',
-                                      notes: task.description || '',
-                                      workshop: task.workshop || ''
-                                    });
-                                  } else {
-                                    const customer = item.rawCustomer!;
-                                    setFormData({
-                                      id: '',
-                                      customerId: customer.id,
-                                      customerName: customer.name,
-                                      phone: customer.phone || '',
-                                      address: customer.address || '',
-                                      date: new Date().toISOString().slice(0, 16),
-                                      assigneeId: '',
-                                      notes: '',
-                                      workshop: customer.workshop || ''
-                                    });
-                                  }
-                                  setIsOpen(true);
-                                }}
-                                size="sm" 
-                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
-                              >
-                                Xếp lịch
-                              </Button>
+                              <div className="flex gap-1.5 shrink-0">
+                                <Button 
+                                  onClick={() => handleCancelUnscheduledItem(item)}
+                                  variant="outline"
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 font-bold cursor-pointer"
+                                >
+                                  Bỏ qua
+                                </Button>
+                                <Button 
+                                  onClick={() => {
+                                    if (item.type === 'task') {
+                                      const task = item.rawTask!;
+                                      setFormData({
+                                        id: task.id,
+                                        customerId: task.customerId || '',
+                                        customerName: task.customerName || task.title,
+                                        phone: task.phone || '',
+                                        address: task.address || '',
+                                        date: new Date().toISOString().slice(0, 16),
+                                        assigneeId: task.assigneeId || '',
+                                        notes: task.description || '',
+                                        workshop: task.workshop || ''
+                                      });
+                                    } else {
+                                      const customer = item.rawCustomer!;
+                                      setFormData({
+                                        id: '',
+                                        customerId: customer.id,
+                                        customerName: customer.name,
+                                        phone: customer.phone || '',
+                                        address: customer.address || '',
+                                        date: new Date().toISOString().slice(0, 16),
+                                        assigneeId: '',
+                                        notes: '',
+                                        workshop: customer.workshop || ''
+                                      });
+                                    }
+                                    setIsOpen(true);
+                                  }}
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white cursor-pointer"
+                                >
+                                  Xếp lịch
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
@@ -1303,42 +1348,52 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                             
                             <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
                               <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
-                              <Button 
-                                onClick={() => {
-                                  if (item.type === 'task') {
-                                    const task = item.rawTask!;
-                                    const customer = task.customerId 
-                                      ? customers.find(c => c.id === task.customerId) 
-                                      : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
+                              <div className="flex gap-1.5 shrink-0">
+                                <Button 
+                                  onClick={() => handleCancelUnscheduledItem(item)}
+                                  variant="outline"
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 font-bold cursor-pointer"
+                                >
+                                  Bỏ qua
+                                </Button>
+                                <Button 
+                                  onClick={() => {
+                                    if (item.type === 'task') {
+                                      const task = item.rawTask!;
+                                      const customer = task.customerId 
+                                        ? customers.find(c => c.id === task.customerId) 
+                                        : customers.find(c => c.name.toLowerCase() === (task.customerName || '').toLowerCase());
 
-                                    setInstallFormData((prev: any) => ({
-                                      ...prev,
-                                      taskId: task.id,
-                                      customerId: customer?.id || task.customerId || '',
-                                      customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
-                                      phone: customer?.phone || task.phone || '',
-                                      address: customer?.address || task.address || '',
-                                      date: new Date().toISOString().slice(0, 16)
-                                    }));
-                                  } else {
-                                    const customer = item.rawCustomer!;
-                                    setInstallFormData((prev: any) => ({
-                                      ...prev,
-                                      taskId: '',
-                                      customerId: customer.id,
-                                      customerName: customer.name,
-                                      phone: customer.phone || '',
-                                      address: customer.address || '',
-                                      date: new Date().toISOString().slice(0, 16)
-                                    }));
-                                  }
-                                  setIsInstallOpen(true);
-                                }}
-                                size="sm" 
-                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
-                              >
-                                Xếp lịch lắp
-                              </Button>
+                                      setInstallFormData((prev: any) => ({
+                                        ...prev,
+                                        taskId: task.id,
+                                        customerId: customer?.id || task.customerId || '',
+                                        customerName: customer?.name || task.customerName || task.title.replace(/sản xuất:\s*/i, '').trim(),
+                                        phone: customer?.phone || task.phone || '',
+                                        address: customer?.address || task.address || '',
+                                        date: new Date().toISOString().slice(0, 16)
+                                      }));
+                                    } else {
+                                      const customer = item.rawCustomer!;
+                                      setInstallFormData((prev: any) => ({
+                                        ...prev,
+                                        taskId: '',
+                                        customerId: customer.id,
+                                        customerName: customer.name,
+                                        phone: customer.phone || '',
+                                        address: customer.address || '',
+                                        date: new Date().toISOString().slice(0, 16)
+                                      }));
+                                    }
+                                    setIsInstallOpen(true);
+                                  }}
+                                  size="sm" 
+                                  className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white cursor-pointer"
+                                >
+                                  Xếp lịch lắp
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
