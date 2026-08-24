@@ -1757,12 +1757,25 @@ export function CustomerPage({
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
-        <div className="space-y-0 text-center md:text-left flex flex-col sm:flex-row sm:items-center gap-4">
-          <div>
-            <h1 className="text-xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
-              Khách hàng
-            </h1>
-            <p className="text-muted-foreground text-[8px] md:text-xs font-medium">Hành trình khách hàng.</p>
+        <div className="space-y-3 sm:space-y-0 text-left flex flex-col sm:flex-row sm:items-center gap-4 w-full lg:w-auto">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <div className="space-y-0.5 text-left">
+              <h1 className="text-xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
+                Khách hàng
+              </h1>
+              <p className="text-muted-foreground text-[8px] md:text-xs font-medium">Hành trình khách hàng.</p>
+            </div>
+            
+            {/* Thêm khách hàng cho giao diện di động */}
+            <div className="sm:hidden">
+              <Button 
+                className="h-8 rounded-xl gap-1 px-3 shadow-xs text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer"
+                onClick={() => setIsAddDialogOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Thêm</span>
+              </Button>
+            </div>
           </div>
 
           {/* Phân loại Khách hàng */}
@@ -1815,7 +1828,7 @@ export function CustomerPage({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 w-full lg:w-auto">
+        <div className="flex items-center gap-1.5 w-full lg:w-auto">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -1826,7 +1839,7 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100 font-bold cursor-pointer"
+            className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100 font-bold cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3.5 w-3.5" />
@@ -1835,7 +1848,7 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
+            className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
             onClick={handleExportExcel}
           >
             <Download className="h-3.5 w-3.5" />
@@ -1845,7 +1858,7 @@ export function CustomerPage({
           {!!(currentUser?.role && ['giám đốc', 'tổng quản lý', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r))) && (
             <Button 
               variant="outline"
-              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 font-bold cursor-pointer"
+              className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 font-bold cursor-pointer"
               onClick={runMigration}
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -1853,15 +1866,18 @@ export function CustomerPage({
             </Button>
           )}
 
+          {/* Thêm khách hàng cho giao diện máy tính */}
+          <div className="hidden sm:inline-block">
+            <Button 
+              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer"
+              onClick={() => setIsAddDialogOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Thêm</span>
+            </Button>
+          </div>
+
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger 
-              render={
-                <Button className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Thêm</span>
-                </Button>
-              }
-            />
             <DialogContent className="sm:max-w-[800px] rounded-2xl">
               <DialogHeader>
                 <DialogTitle>Thêm khách hàng mới</DialogTitle>
@@ -2079,91 +2095,97 @@ export function CustomerPage({
       </div>
 
       {/* Row 2: Filters */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 dark:bg-zinc-900/30 p-2.5 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-50/50 dark:bg-zinc-900/30 p-2.5 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
         {/* Date Selector Popover */}
-        <Popover>
-          <PopoverTrigger className="inline-flex items-center justify-between w-full sm:w-auto min-w-[180px] whitespace-nowrap h-9 text-xs font-bold border border-input bg-card hover:bg-accent px-4 py-2 rounded-xl shadow-xs cursor-pointer text-card-foreground">
-            {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-            <Calendar className="ml-2 h-4 w-4 opacity-50" />
-          </PopoverTrigger>
-          <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground z-[60] rounded-2xl border shadow-xl" align="start">
-            <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2 dark:bg-zinc-800">
-              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-semibold">{pickerYear}</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: 12 }).map((_, i) => {
-                const m = String(i + 1).padStart(2, '0');
-                const val = `${pickerYear}-${m}`;
-                const isSelected = selectedMonth === val;
-                return (
-                  <Button
-                    key={m}
-                    variant={isSelected ? "default" : "ghost"}
-                    className={cn("h-9 w-full text-xs cursor-pointer", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
-                    onClick={() => setSelectedMonth(val)}
-                  >
-                    Thg{i + 1}
-                  </Button>
-                );
-              })}
-            </div>
-            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
-              <div className="grid grid-cols-2 gap-2">
-                 <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                 <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+        <div className="col-span-2 md:col-span-1">
+          <Popover>
+            <PopoverTrigger className="inline-flex items-center justify-between w-full whitespace-nowrap h-9 text-xs font-bold border border-input bg-card hover:bg-accent px-4 py-2 rounded-xl shadow-xs cursor-pointer text-card-foreground">
+              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
+              <Calendar className="ml-2 h-4 w-4 opacity-50" />
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground z-[60] rounded-2xl border shadow-xl" align="start">
+              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2 dark:bg-zinc-800">
+                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-semibold">{pickerYear}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="flex gap-2">
-                <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
-                <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const m = String(i + 1).padStart(2, '0');
+                  const val = `${pickerYear}-${m}`;
+                  const isSelected = selectedMonth === val;
+                  return (
+                    <Button
+                      key={m}
+                      variant={isSelected ? "default" : "ghost"}
+                      className={cn("h-9 w-full text-xs cursor-pointer", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
+                      onClick={() => setSelectedMonth(val)}
+                    >
+                      Thg{i + 1}
+                    </Button>
+                  );
+                })}
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
+                <div className="grid grid-cols-2 gap-2">
+                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
+                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Workshop Select */}
-        <Select 
-          value={getNormalizedWorkshopId(selectedWorkshop)} 
-          onValueChange={setSelectedWorkshop}
-          disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
-        >
-          <SelectTrigger className="h-9 w-full sm:w-[150px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
-            <SelectValue>
-              {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
-            {WORKSHOPS.map(w => (
-              <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer">{w.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="col-span-1">
+          <Select 
+            value={getNormalizedWorkshopId(selectedWorkshop)} 
+            onValueChange={setSelectedWorkshop}
+            disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
+          >
+            <SelectTrigger className="h-9 w-full rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+              <SelectValue>
+                {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+              {WORKSHOPS.map(w => (
+                <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer">{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Sale Select */}
-        <Select 
-          value={selectedSaleId} 
-          onValueChange={setSelectedSaleId}
-        >
-          <SelectTrigger className="h-9 w-full sm:w-[150px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
-            <SelectValue>
-              {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
-            <SelectItem value="all" className="text-xs font-bold text-primary cursor-pointer">Tất cả Sale</SelectItem>
-            {members.map(m => (
-              <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">{m.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="col-span-1">
+          <Select 
+            value={selectedSaleId} 
+            onValueChange={setSelectedSaleId}
+          >
+            <SelectTrigger className="h-9 w-full rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+              <SelectValue>
+                {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+              <SelectItem value="all" className="text-xs font-bold text-primary cursor-pointer">Tất cả Sale</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Search input */}
-        <div className="relative flex-1 min-w-[200px] w-full">
+        <div className="relative col-span-2 md:col-span-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
             placeholder="Tìm tên hoặc SĐT..." 
