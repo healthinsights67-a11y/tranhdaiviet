@@ -2379,14 +2379,14 @@ export function CustomerPage({
                     <div className="flex flex-col gap-0.5 md:gap-1">
                       <DropdownMenu>
                         <DropdownMenuTrigger render={
-                          <Badge variant="outline" className={cn(
-                            "text-[7px] md:text-[10px] uppercase font-black px-1 md:px-2 py-0.5 md:py-1 rounded-sm md:rounded-lg border-none scale-90 md:scale-100 -ml-1 md:ml-0 cursor-pointer flex items-center gap-0.5 select-none hover:opacity-80 transition-opacity",
+                          <button className={cn(
+                            "text-[7px] md:text-[10px] uppercase font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm md:rounded-lg border-none scale-90 md:scale-100 -ml-1 md:ml-0 cursor-pointer flex items-center gap-0.5 select-none hover:opacity-80 transition-opacity focus:outline-none",
                             stage.color
                           )}>
                             <stage.icon className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 inline" />
                             {stage.label}
                             <span className="text-[5px] md:text-[7px] ml-0.5 opacity-60">▼</span>
-                          </Badge>
+                          </button>
                         } />
                         <DropdownMenuContent align="start" className="rounded-xl p-1 min-w-[160px]">
                           {Object.entries(STAGE_CONFIG).map(([key, config]) => {
