@@ -91,8 +91,20 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const [currentDate, setCurrentDate] = React.useState(() => getCurrentVNDate());
   const [viewMode, setViewMode] = React.useState<'1d' | '7d' | '30d'>('30d');
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
-  const [rightTab, setRightTab] = React.useState<'production' | 'installation'>('production');
+  const [rightTab, setRightTab] = React.useState<'measurement' | 'production' | 'installation'>('measurement');
   const [activeMainTab, setActiveMainTab] = React.useState<'calendar' | 'progress'>('calendar');
+  const [isMeasureOpen, setIsMeasureOpen] = React.useState(false);
+  const [isMeasureSaving, setIsMeasureSaving] = React.useState(false);
+  const [measureFormData, setMeasureFormData] = React.useState({
+    id: '',
+    customerId: '',
+    customerName: '',
+    phone: '',
+    address: '',
+    date: new Date().toISOString().slice(0, 16),
+    assigneeId: '',
+    notes: '',
+  });
 
   const isTopManager = !!currentUser?.permissions?.menuProduction || 
     !!currentUser?.role?.toLowerCase()?.includes('quản lý tổng') ||
@@ -294,6 +306,27 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
   const unscheduledProduction = React.useMemo(() => {
     return [...unscheduledTasksList, ...unscheduledCustomersList];
   }, [unscheduledTasksList, unscheduledCustomersList]);
+
+  const unscheduledMeasurements = React.useMemo(() => {
+    const list = schedules || [];
+    return customers.filter(c => 
+      (c.stage === 'consulting' || c.stage === 'contracted' || c.stage === 'surveying') && 
+      !list.some(s => {
+        if (s.status === 'cancelled') return false;
+        if (s.customerId === c.id) return true;
+        if (s.customerName && s.customerName.toLowerCase() === c.name.toLowerCase()) return true;
+        return false;
+      })
+    ).map(c => ({
+      id: c.id,
+      type: 'customer' as const,
+      name: c.name,
+      workshop: c.workshop,
+      address: c.address || '',
+      phone: c.phone || '',
+      rawCustomer: c
+    }));
+  }, [customers, schedules]);
 
   const unscheduledInstallTasksList = React.useMemo(() => {
     return tasks.filter(t => 
@@ -529,6 +562,55 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       }
     } finally {
       setIsSavingNewInstall(false);
+    }
+  };
+
+  const handleSaveMeasurement = async () => {
+    if (!measureFormData.customerName || !measureFormData.phone || !measureFormData.date || !measureFormData.assigneeId) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc (*)");
+      return;
+    }
+    
+    setIsMeasureSaving(true);
+    try {
+      const scheduleId = measureFormData.id || 'MS' + Date.now();
+      const schedule = {
+        id: scheduleId,
+        customerId: measureFormData.customerId || '',
+        customerName: measureFormData.customerName,
+        phone: measureFormData.phone,
+        address: measureFormData.address || '',
+        date: new Date(measureFormData.date).toISOString(),
+        status: 'pending' as const,
+        assigneeId: measureFormData.assigneeId,
+        createdAt: new Date().toISOString(),
+        imageUrls: [],
+      };
+      
+      await setDoc(doc(db, 'measurement_schedules', scheduleId), schedule);
+      
+      if (measureFormData.customerId) {
+        await updateDoc(doc(db, 'customers', measureFormData.customerId), {
+          stage: 'surveying'
+        });
+      }
+      
+      toast.success(measureFormData.id ? "Cập nhật lịch đo đạc thành công" : "Tạo lịch đo đạc thành công");
+      setIsMeasureOpen(false);
+      
+      queryClient.invalidateQueries({ queryKey: ['measurement_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      
+      const assigneeName = members.find(m => m.id === measureFormData.assigneeId)?.name || 'nhân sự';
+      notifyManagers(
+        'Lịch đo đạc mới',
+        `Đã xếp lịch đo đạc cho khách hàng ${measureFormData.customerName} ngày ${new Date(measureFormData.date).toLocaleDateString('vi-VN')}. Người phụ trách: ${assigneeName}`
+      );
+    } catch (err: any) {
+      console.error("Lỗi khi xếp lịch đo đạc:", err);
+      toast.error("Lỗi khi lưu lịch đo đạc: " + err.message);
+    } finally {
+      setIsMeasureSaving(false);
     }
   };
 
@@ -978,11 +1060,27 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                     Chờ xếp lịch
                   </CardTitle>
                 </div>
-                <div className="flex mt-2 bg-gray-100 p-0.5 rounded-lg dark:bg-zinc-800">
+                <div className="flex mt-2 bg-gray-100 p-0.5 rounded-lg dark:bg-zinc-800 w-full overflow-x-auto">
                   <button 
+                    type="button"
+                    onClick={() => setRightTab('measurement')}
+                    className={cn(
+                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 min-w-[70px] cursor-pointer",
+                      rightTab === 'measurement' ? "bg-white text-primary shadow-sm dark:bg-zinc-700" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Đo đạc
+                    {unscheduledMeasurements.length > 0 && (
+                      <span className="bg-destructive text-destructive-foreground text-[8px] px-1 rounded-full scale-90">
+                        {unscheduledMeasurements.length}
+                      </span>
+                    )}
+                  </button>
+                  <button 
+                    type="button"
                     onClick={() => setRightTab('production')}
                     className={cn(
-                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1",
+                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 min-w-[70px] cursor-pointer",
                       rightTab === 'production' ? "bg-white text-primary shadow-sm dark:bg-zinc-700" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -994,9 +1092,10 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                     )}
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setRightTab('installation')}
                     className={cn(
-                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1",
+                      "flex-1 text-center py-1.5 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1 min-w-[70px] cursor-pointer",
                       rightTab === 'installation' ? "bg-white text-primary shadow-sm dark:bg-zinc-700" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -1010,7 +1109,65 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                 </div>
               </CardHeader>
               <CardContent className="p-3 flex-1 overflow-y-auto">
-                {rightTab === 'production' ? (
+                {rightTab === 'measurement' ? (
+                  unscheduledMeasurements.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                      <MapPin className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs font-semibold">Tất cả việc đã xếp lịch</p>
+                      <p className="text-[10px] text-muted-foreground/75 max-w-[200px] mt-1">Không có khách hàng nào đang chờ xếp lịch đo đạc.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {unscheduledMeasurements.map((item) => (
+                        <Card key={item.id} className="p-3 bg-secondary/20 hover:bg-secondary/40 border transition-all duration-200 rounded-xl relative group">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold text-primary truncate max-w-[150px]">
+                                {item.name}
+                              </span>
+                              <Badge className="text-[8px] scale-90 px-1 py-0 bg-purple-500/10 text-purple-600 border border-purple-200 shadow-none">
+                                Chờ Đo
+                              </Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{item.address || 'Chưa cập nhật địa chỉ'}</span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{item.phone || 'Chưa cập nhật SĐT'}</span>
+                            </p>
+                            
+                            <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-[9px] text-muted-foreground">Cần khảo sát hiện trạng</span>
+                              </div>
+                              <Button 
+                                onClick={() => {
+                                  setMeasureFormData({
+                                    id: '',
+                                    customerId: item.id,
+                                    customerName: item.name,
+                                    phone: item.phone,
+                                    address: item.address,
+                                    date: new Date().toISOString().slice(0, 16),
+                                    assigneeId: '',
+                                    notes: '',
+                                  });
+                                  setIsMeasureOpen(true);
+                                }}
+                                size="sm" 
+                                className="h-6 text-[10px] px-2 rounded-lg bg-primary hover:bg-primary/90 font-semibold text-white"
+                              >
+                                Xếp lịch
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )
+                ) : rightTab === 'production' ? (
                   unscheduledProduction.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
                       <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
@@ -1043,7 +1200,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-[9px] text-muted-foreground">Cần xếp lịch sớm</span>
                                 {(() => {
-                                  const installSchedule = filteredInstallationSchedules.find(s => {
+                                  const installSchedule = filteredInstallationSchedules.find((s: any) => {
                                     if (s.status === 'cancelled') return false;
                                     if (item.type === 'task' && item.rawTask) {
                                       return s.taskId === item.rawTask.id || 
@@ -1839,6 +1996,98 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
             <Button variant="outline" onClick={() => setIsInstallOpen(false)} className="rounded-xl">Hủy</Button>
             <Button onClick={handleSaveInstall} disabled={isSavingNewInstall} className="rounded-xl bg-primary text-white hover:bg-primary/90">
               {isSavingNewInstall ? 'Đang lưu...' : 'Lưu thông tin'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMeasureOpen} onOpenChange={setIsMeasureOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              {measureFormData.id ? 'Cập Nhật Lịch Đo Đạc' : 'Xếp Lịch Đo Đạc'}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Vui lòng điền thông tin ngày đo đạc và phân công nhân viên khảo sát hiện trạng.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-3 text-sm">
+            <div className="space-y-1">
+              <Label htmlFor="measureCustomerName" className="text-xs font-semibold">Tên Khách Hàng / Công Trình *</Label>
+              <Input
+                id="measureCustomerName"
+                value={measureFormData.customerName}
+                onChange={e => setMeasureFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                placeholder="Nhập tên khách hàng"
+                className="h-9 rounded-lg"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="measurePhone" className="text-xs font-semibold">Số Điện Thoại *</Label>
+                <Input
+                  id="measurePhone"
+                  value={measureFormData.phone}
+                  onChange={e => setMeasureFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Số điện thoại"
+                  className="h-9 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="measureDate" className="text-xs font-semibold">Thời Gian Hẹn *</Label>
+                <Input
+                  id="measureDate"
+                  type="datetime-local"
+                  value={measureFormData.date}
+                  onChange={e => setMeasureFormData(prev => ({ ...prev, date: e.target.value }))}
+                  className="h-9 rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="measureAddress" className="text-xs font-semibold">Địa Chỉ Công Trình *</Label>
+              <Input
+                id="measureAddress"
+                value={measureFormData.address}
+                onChange={e => setMeasureFormData(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Địa chỉ đo đạc"
+                className="h-9 rounded-lg"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Nhân Sự Khảo Sát *</Label>
+              <Select 
+                value={measureFormData.assigneeId || undefined} 
+                onValueChange={(v) => setMeasureFormData(prev => ({ ...prev, assigneeId: v }))}
+              >
+                <SelectTrigger className="h-9 rounded-lg border bg-card w-full">
+                  <SelectValue placeholder="Chọn nhân sự đi đo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name} ({m.role || 'Nhân sự'})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="measureNotes" className="text-xs font-semibold">Ghi Chú</Label>
+              <Input
+                id="measureNotes"
+                value={measureFormData.notes}
+                onChange={e => setMeasureFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Nhập ghi chú (nếu có)"
+                className="h-9 rounded-lg"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsMeasureOpen(false)} className="h-9 rounded-lg" disabled={isMeasureSaving}>
+              Hủy
+            </Button>
+            <Button onClick={handleSaveMeasurement} className="h-9 rounded-lg text-white bg-primary" disabled={isMeasureSaving}>
+              {isMeasureSaving ? 'Đang lưu...' : 'Xác Nhận'}
             </Button>
           </DialogFooter>
         </DialogContent>
