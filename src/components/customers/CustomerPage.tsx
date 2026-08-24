@@ -1756,7 +1756,7 @@ export function CustomerPage({
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
         <div className="space-y-0 text-center md:text-left flex flex-col sm:flex-row sm:items-center gap-4">
           <div>
             <h1 className="text-xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
@@ -1813,138 +1813,9 @@ export function CustomerPage({
               Dự án
             </button>
           </div>
-          <Popover>
-            <PopoverTrigger className="hidden lg:inline-flex items-center justify-between w-auto min-w-[180px] whitespace-nowrap h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-              <Calendar className="ml-2 h-4 w-4 opacity-50" />
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground" align="start">
-              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const m = String(i + 1).padStart(2, '0');
-                  const val = `${pickerYear}-${m}`;
-                  const isSelected = selectedMonth === val;
-                  return (
-                    <Button
-                      key={m}
-                      variant={isSelected ? "default" : "ghost"}
-                      className={cn("h-9 w-full text-xs", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
-                      onClick={() => setSelectedMonth(val)}
-                    >
-                      Thg{i + 1}
-                    </Button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
-                <div className="grid grid-cols-2 gap-2">
-                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
-                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 w-full lg:w-auto">
-          <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-between w-[140px] h-8 md:h-11 text-[10px] md:text-xs font-medium border border-border bg-card text-card-foreground hover:bg-muted px-4 py-2 rounded-xl transition-colors lg:hidden shadow-sm">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Thg ${selectedMonth.split('-')[1]}, ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-              <Calendar className="mr-2 h-3.5 w-3.5 opacity-50" />
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground" align="start">
-              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPickerYear(y => y + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const m = String(i + 1).padStart(2, '0');
-                  const val = `${pickerYear}-${m}`;
-                  const isSelected = selectedMonth === val;
-                  return (
-                    <Button
-                      key={m}
-                      variant={isSelected ? "default" : "ghost"}
-                      className={cn("h-9 w-full text-xs", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
-                      onClick={() => setSelectedMonth(val)}
-                    >
-                      Thg{i + 1}
-                    </Button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
-                <div className="grid grid-cols-2 gap-2">
-                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
-                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold" onClick={() => setSelectedMonth('')}>Tất cả</Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Select 
-            value={getNormalizedWorkshopId(selectedWorkshop)} 
-            onValueChange={setSelectedWorkshop}
-            disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
-          >
-            <SelectTrigger className="h-8 md:h-11 flex-1 md:flex-none md:w-[140px] rounded-xl border border-border bg-card text-card-foreground text-[10px] md:text-xs shadow-sm">
-              <SelectValue>
-                {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {WORKSHOPS.map(w => (
-                <SelectItem key={w.id} value={w.id} className="text-xs">{w.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select 
-            value={selectedSaleId} 
-            onValueChange={setSelectedSaleId}
-          >
-            <SelectTrigger className="h-8 md:h-11 flex-1 md:flex-none md:w-[140px] rounded-xl border border-border bg-card text-card-foreground text-[10px] md:text-xs shadow-sm">
-              <SelectValue>
-                {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs font-bold text-primary">Tất cả Sale</SelectItem>
-              {members.map(m => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="relative flex-1 min-w-[160px] md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Tìm tên hoặc SĐT..." 
-              className="pl-9 h-8 md:h-11 rounded-xl bg-card text-card-foreground border border-border text-[10px] md:text-xs shadow-sm" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
 
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 w-full lg:w-auto">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -1955,39 +1826,39 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100"
+            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100 font-bold cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Nhập Excel</span>
+            <span>Nhập Excel</span>
           </Button>
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+            className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
             onClick={handleExportExcel}
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Xuất Excel</span>
+            <span>Xuất Excel</span>
           </Button>
 
           {!!(currentUser?.role && ['giám đốc', 'tổng quản lý', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r))) && (
             <Button 
               variant="outline"
-              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100"
+              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 font-bold cursor-pointer"
               onClick={runMigration}
             >
-              <RefreshCw className="h-3.5 w-3.5 animate-spin-slow" />
-              <span className="hidden md:inline">Đồng bộ mã & cơ sở</span>
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Đồng bộ</span>
             </Button>
           )}
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger 
               render={
-                <Button className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none">
+                <Button className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 md:flex-none text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer">
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Thêm</span>
+                  <span>Thêm</span>
                 </Button>
               }
             />
@@ -2204,6 +2075,102 @@ export function CustomerPage({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+      </div>
+
+      {/* Row 2: Filters */}
+      <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 dark:bg-zinc-900/30 p-2.5 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
+        {/* Date Selector Popover */}
+        <Popover>
+          <PopoverTrigger className="inline-flex items-center justify-between w-full sm:w-auto min-w-[180px] whitespace-nowrap h-9 text-xs font-bold border border-input bg-card hover:bg-accent px-4 py-2 rounded-xl shadow-xs cursor-pointer text-card-foreground">
+            {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
+            <Calendar className="ml-2 h-4 w-4 opacity-50" />
+          </PopoverTrigger>
+          <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground z-[60] rounded-2xl border shadow-xl" align="start">
+            <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2 dark:bg-zinc-800">
+              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-semibold">{pickerYear}</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 12 }).map((_, i) => {
+                const m = String(i + 1).padStart(2, '0');
+                const val = `${pickerYear}-${m}`;
+                const isSelected = selectedMonth === val;
+                return (
+                  <Button
+                    key={m}
+                    variant={isSelected ? "default" : "ghost"}
+                    className={cn("h-9 w-full text-xs cursor-pointer", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
+                    onClick={() => setSelectedMonth(val)}
+                  >
+                    Thg{i + 1}
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
+              <div className="grid grid-cols-2 gap-2">
+                 <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                 <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+              </div>
+              <div className="flex gap-2">
+                <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
+                <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Workshop Select */}
+        <Select 
+          value={getNormalizedWorkshopId(selectedWorkshop)} 
+          onValueChange={setSelectedWorkshop}
+          disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
+        >
+          <SelectTrigger className="h-9 w-full sm:w-[150px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+            <SelectValue>
+              {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+            {WORKSHOPS.map(w => (
+              <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer">{w.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Sale Select */}
+        <Select 
+          value={selectedSaleId} 
+          onValueChange={setSelectedSaleId}
+        >
+          <SelectTrigger className="h-9 w-full sm:w-[150px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+            <SelectValue>
+              {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+            <SelectItem value="all" className="text-xs font-bold text-primary cursor-pointer">Tất cả Sale</SelectItem>
+            {members.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">{m.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Search input */}
+        <div className="relative flex-1 min-w-[200px] w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input 
+            placeholder="Tìm tên hoặc SĐT..." 
+            className="pl-9 h-9 rounded-xl bg-card text-card-foreground border border-border text-xs shadow-xs w-full" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
