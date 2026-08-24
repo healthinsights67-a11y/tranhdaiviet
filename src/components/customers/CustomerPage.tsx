@@ -1755,63 +1755,63 @@ export function CustomerPage({
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
-      {/* Phân loại Khách hàng */}
-      <div className="flex border border-border bg-card p-1 rounded-2xl gap-1 shadow-xs max-w-sm">
-        <button
-          type="button"
-          className={cn(
-            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
-            activeCustomerType === 'retail' 
-              ? "bg-primary text-primary-foreground shadow-xs" 
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-          onClick={() => {
-            setActiveCustomerType('retail');
-            setSelectedStage('all');
-          }}
-        >
-          Khách lẻ
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
-            activeCustomerType === 'agency' 
-              ? "bg-primary text-primary-foreground shadow-xs" 
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-          onClick={() => {
-            setActiveCustomerType('agency');
-            setSelectedStage('all');
-          }}
-        >
-          Đại lý
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
-            activeCustomerType === 'project' 
-              ? "bg-primary text-primary-foreground shadow-xs" 
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-          onClick={() => {
-            setActiveCustomerType('project');
-            setSelectedStage('all');
-          }}
-        >
-          Dự án
-        </button>
-      </div>
-
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-        <div className="space-y-0 text-center md:text-left flex items-center gap-4">
+        <div className="space-y-0 text-center md:text-left flex flex-col sm:flex-row sm:items-center gap-4">
           <div>
-            <h1 className="text-lg md:text-3xl lg:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
+            <h1 className="text-xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
               Khách hàng
             </h1>
-            <p className="text-muted-foreground text-[8px] md:text-sm font-medium">Hành trình khách hàng.</p>
+            <p className="text-muted-foreground text-[8px] md:text-xs font-medium">Hành trình khách hàng.</p>
+          </div>
+
+          {/* Phân loại Khách hàng */}
+          <div className="flex border border-border bg-card p-0.5 rounded-xl gap-0.5 shadow-xs w-full sm:w-auto text-[11px] shrink-0">
+            <button
+              type="button"
+              className={cn(
+                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
+                activeCustomerType === 'retail' 
+                  ? "bg-primary text-primary-foreground shadow-xs" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              onClick={() => {
+                setActiveCustomerType('retail');
+                setSelectedStage('all');
+              }}
+            >
+              Khách lẻ
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
+                activeCustomerType === 'agency' 
+                  ? "bg-primary text-primary-foreground shadow-xs" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              onClick={() => {
+                setActiveCustomerType('agency');
+                setSelectedStage('all');
+              }}
+            >
+              Đại lý
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
+                activeCustomerType === 'project' 
+                  ? "bg-primary text-primary-foreground shadow-xs" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              onClick={() => {
+                setActiveCustomerType('project');
+                setSelectedStage('all');
+              }}
+            >
+              Dự án
+            </button>
           </div>
           <Popover>
             <PopoverTrigger className="hidden lg:inline-flex items-center justify-between w-auto min-w-[180px] whitespace-nowrap h-9 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
