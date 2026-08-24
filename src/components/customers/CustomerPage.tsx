@@ -2079,7 +2079,7 @@ export function CustomerPage({
         )}
         
         {/* Stages Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-1.5 md:gap-3">
+        <div className="grid grid-cols-4 gap-1.5 md:gap-3">
           {cardData.map((card) => {
             const Icon = card.icon;
             const isSelected = selectedStage === card.id;
