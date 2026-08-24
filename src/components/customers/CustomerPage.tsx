@@ -1096,6 +1096,93 @@ export function CustomerPage({
     }
   };
 
+  const handleQuickStageUpdate = async (customerId: string, newStage: CustomerStage) => {
+    try {
+      const existingCustomer = customers.find(c => c.id === customerId);
+      if (!existingCustomer || existingCustomer.stage === newStage) return;
+
+      const oldStage = existingCustomer.stage;
+      const nowStr = new Date().toISOString();
+      const todayYMD = nowStr.slice(0, 10);
+      const nextYearDate = new Date();
+      nextYearDate.setFullYear(nextYearDate.getFullYear() + 1);
+      const nextYearYMD = nextYearDate.toISOString().slice(0, 10);
+
+      const updateData: any = { stage: newStage };
+
+      // Date adjustments (similar to dialog logic)
+      if ((newStage === 'contracted' || newStage === 'completed') && 
+          oldStage !== 'contracted' && oldStage !== 'completed') {
+        updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
+        updateData.createdAt = nowStr;
+      }
+
+      if (newStage === 'completed' && oldStage !== 'completed') {
+        updateData.warrantyStartDate = existingCustomer.warrantyStartDate || todayYMD;
+        updateData.warrantyEndDate = existingCustomer.warrantyEndDate || nextYearYMD;
+      }
+
+      await updateDoc(doc(db, 'customers', customerId), updateData);
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+
+      // Stage name mapping for notification
+      const stageNames: Record<string, string> = {
+        'consulting': 'Đã tư vấn',
+        'surveying': 'Đã đo đạc',
+        'contracted': 'Chốt cọc',
+        'production': 'Sản xuất',
+        'production_completed': 'Hoàn tất sản xuất',
+        'installation': 'Lắp đặt',
+        'completed': 'Hoàn thành',
+        'lost': 'Tạm dừng',
+      };
+
+      const oldStageName = stageNames[oldStage] || oldStage;
+      const newStageName = stageNames[newStage] || newStage;
+      const codeText = existingCustomer.code ? `\n🔢 Mã đơn: ${existingCustomer.code}` : '';
+      const priceText = existingCustomer.orderValue ? `\n💰 Giá trị: ${formatCurrency(existingCustomer.orderValue)}` : '';
+
+      sendSystemNotification(
+        `🔄 Cập nhật tiến độ đơn hàng!\n\n` +
+        `👤 Khách hàng: ${existingCustomer.name}${codeText}${priceText}\n` +
+        `🏷 Tiến độ: ${oldStageName} ➡️ ${newStageName}\n` +
+        `Được cập nhật bởi: ${currentUser?.name || 'Hệ thống'}`,
+        getTargetModule(newStage),
+        existingCustomer.workshop
+      );
+
+      // Automated Workflow: Quotation Sync
+      if (['contracted', 'completed', 'lost'].includes(newStage)) {
+        try {
+          const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', customerId));
+          const quotationSnap = await getDocs(quotationQ);
+          
+          let newQuotationStatus = '';
+          if (newStage === 'contracted') newQuotationStatus = 'deposit';
+          else if (newStage === 'completed') newQuotationStatus = 'accepted';
+          else if (newStage === 'lost') newQuotationStatus = 'rejected';
+
+          if (newQuotationStatus) {
+            for (const qDoc of quotationSnap.docs) {
+              const qData = qDoc.data();
+              if (qData.status !== 'accepted' && qData.status !== 'rejected' && qData.status !== newQuotationStatus) {
+                await updateDoc(doc(db, 'quotations', qDoc.id), { status: newQuotationStatus });
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ['quotations'] });
+          }
+        } catch (err) {
+          console.error("Error syncing customer stage to quotations:", err);
+        }
+      }
+
+      toast.success(`Đã cập nhật trạng thái đơn hàng sang "${newStageName}"`);
+    } catch (err) {
+      console.error("Error in quick stage update:", err);
+      toast.error("Không thể cập nhật trạng thái đơn hàng");
+    }
+  };
+
   const handleUpdateCustomer = async () => {
     if (isSavingRef.current) return;
     if (!selectedCustomer) return;
@@ -2290,13 +2377,40 @@ export function CustomerPage({
                 <CardHeader className="p-2.5 md:p-4 pb-1 md:pb-2 space-y-1 md:space-y-2">
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col gap-0.5 md:gap-1">
-                      <Badge variant="outline" className={cn(
-                        "text-[7px] md:text-[10px] uppercase font-black px-1 md:px-2 py-0 md:py-1 rounded-sm md:rounded-lg border-none scale-90 md:scale-100 -ml-1 md:ml-0",
-                        stage.color
-                      )}>
-                        <stage.icon className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 inline" />
-                        {stage.label}
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Badge variant="outline" className={cn(
+                            "text-[7px] md:text-[10px] uppercase font-black px-1 md:px-2 py-0.5 md:py-1 rounded-sm md:rounded-lg border-none scale-90 md:scale-100 -ml-1 md:ml-0 cursor-pointer flex items-center gap-0.5 select-none hover:opacity-80 transition-opacity",
+                            stage.color
+                          )}>
+                            <stage.icon className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 inline" />
+                            {stage.label}
+                            <span className="text-[5px] md:text-[7px] ml-0.5 opacity-60">▼</span>
+                          </Badge>
+                        } />
+                        <DropdownMenuContent align="start" className="rounded-xl p-1 min-w-[160px]">
+                          {Object.entries(STAGE_CONFIG).map(([key, config]) => {
+                            const ItemIcon = config.icon;
+                            const isCurrent = customer.stage === key;
+                            return (
+                              <DropdownMenuItem
+                                key={key}
+                                onClick={() => handleQuickStageUpdate(customer.id, key as CustomerStage)}
+                                className={cn(
+                                  "text-[10px] md:text-xs flex items-center justify-between font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors",
+                                  isCurrent ? "bg-accent/40 text-primary" : "hover:bg-muted"
+                                )}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <ItemIcon className="h-3.5 w-3.5" />
+                                  {config.label}
+                                </span>
+                                {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <div className="flex flex-col gap-0.5 text-[7px] md:text-[9px] text-muted-foreground/60 font-semibold pl-0.5">
                         <div className="flex items-center gap-1">
                           <Clock className="h-2 w-2 md:h-2.5 md:w-2.5 opacity-60" />
