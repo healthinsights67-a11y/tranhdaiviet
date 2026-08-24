@@ -1819,7 +1819,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       </AnimatePresence>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+        <DialogContent className="w-[95vw] max-w-[500px] rounded-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-card-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Hammer className="h-5 w-5 text-primary" />
@@ -1830,6 +1830,49 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-3">
+            {!formData.id && (
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Chọn Khách Hàng Từ Hệ Thống</Label>
+                <Select 
+                  value={formData.customerId || 'manual'} 
+                  onValueChange={(custId) => {
+                    if (custId === 'manual') {
+                      setFormData(prev => ({
+                        ...prev,
+                        customerId: '',
+                        customerName: '',
+                        phone: '',
+                        address: '',
+                      }));
+                    } else {
+                      const customer = customers.find(c => c.id === custId);
+                      if (customer) {
+                        setFormData(prev => ({
+                          ...prev,
+                          customerId: customer.id,
+                          customerName: customer.name,
+                          phone: customer.phone || '',
+                          address: customer.address || '',
+                        }));
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 rounded-lg border bg-card w-full text-xs">
+                    <SelectValue placeholder="-- Chọn khách hàng --" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px] z-[60] bg-card text-card-foreground border rounded-xl shadow-xl">
+                    <SelectItem value="manual">-- Nhập tay (Khách hàng mới) --</SelectItem>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.name} {c.phone ? `(${c.phone})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label htmlFor="customerName" className="text-xs font-semibold">Tên Khách Hàng / Công Trình</Label>
               <Input
@@ -1841,7 +1884,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="phone" className="text-xs font-semibold">Số Điện Thoại</Label>
                 <Input
@@ -1918,7 +1961,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       </Dialog>
 
       <Dialog open={isInstallOpen} onOpenChange={setIsInstallOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+        <DialogContent className="w-[95vw] max-w-[500px] rounded-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-card-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-1.5 font-bold">
               <Hammer className="h-5 w-5 text-primary" />
@@ -2080,7 +2123,7 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
       </Dialog>
 
       <Dialog open={isMeasureOpen} onOpenChange={setIsMeasureOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+        <DialogContent className="w-[95vw] max-w-[500px] rounded-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-card-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-primary" />
@@ -2091,6 +2134,49 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-3 text-sm">
+            {!measureFormData.id && (
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Chọn Khách Hàng Từ Hệ Thống</Label>
+                <Select 
+                  value={measureFormData.customerId || 'manual'} 
+                  onValueChange={(custId) => {
+                    if (custId === 'manual') {
+                      setMeasureFormData(prev => ({
+                        ...prev,
+                        customerId: '',
+                        customerName: '',
+                        phone: '',
+                        address: '',
+                      }));
+                    } else {
+                      const customer = customers.find(c => c.id === custId);
+                      if (customer) {
+                        setMeasureFormData(prev => ({
+                          ...prev,
+                          customerId: customer.id,
+                          customerName: customer.name,
+                          phone: customer.phone || '',
+                          address: customer.address || '',
+                        }));
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 rounded-lg border bg-card w-full text-xs">
+                    <SelectValue placeholder="-- Chọn khách hàng --" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px] z-[60] bg-card text-card-foreground border rounded-xl shadow-xl">
+                    <SelectItem value="manual">-- Nhập tay (Khách hàng mới) --</SelectItem>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.name} {c.phone ? `(${c.phone})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label htmlFor="measureCustomerName" className="text-xs font-semibold">Tên Khách Hàng / Công Trình *</Label>
               <Input
@@ -2101,7 +2187,8 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                 className="h-9 rounded-lg"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="measurePhone" className="text-xs font-semibold">Số Điện Thoại *</Label>
                 <Input
