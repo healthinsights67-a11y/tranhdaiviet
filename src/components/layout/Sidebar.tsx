@@ -64,7 +64,6 @@ const navGroups = [
     items: [
       { id: 'sale', label: 'SALE', icon: BadgeDollarSign, permission: 'menuSale' },
       { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
-      { id: 'measurements', label: 'Lịch Đo Đạc', icon: MapPin, permission: 'menuMeasurement' },
       { id: 'quotations', label: 'Báo Giá', icon: FileText, permission: 'menuQuotations' },
       { id: 'customer-care', label: 'Bảo hành & CSKH', icon: HeartHandshake, permission: 'menuCustomers' },
     ]
