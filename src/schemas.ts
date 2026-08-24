@@ -67,9 +67,12 @@ export const SalesRouteSchema = z.object({
   address: z.string().optional(),
 });
 
+export const CustomerTypeSchema = z.enum(['retail', 'agency', 'project']);
+
 export const CustomerSchema = z.object({
   id: z.string(),
   code: z.string().optional(),
+  customerType: CustomerTypeSchema.catch('retail').default('retail'),
   name: z.string().catch('Khách hàng không tên').default('Khách hàng không tên'),
   phone: z.string().catch('').default(''),
   address: z.string().catch('').default(''),

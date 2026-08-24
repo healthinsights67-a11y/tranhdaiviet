@@ -54,9 +54,12 @@ export interface CustomerNote {
   createdAt: string;
 }
 
+export type CustomerType = 'retail' | 'agency' | 'project';
+
 export interface Customer {
   id: string;
   code?: string;
+  customerType?: CustomerType;
   name: string;
   phone: string;
   address: string;

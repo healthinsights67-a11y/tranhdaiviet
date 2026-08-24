@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
-import { Task, Customer, CustomerStage, Member, WORKSHOPS, getWorkshopName, getNormalizedWorkshopId, updateCodePrefix, Quotation, MeasurementSchedule } from '@/src/types';
+import { Task, Customer, CustomerStage, CustomerType, Member, WORKSHOPS, getWorkshopName, getNormalizedWorkshopId, updateCodePrefix, Quotation, MeasurementSchedule } from '@/src/types';
 import { sendSystemNotification, getBotNotificationConfig, sendZaloTestMessage } from '@/src/services/botNotificationService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,7 @@ import {
   ChevronRight,
   Calendar,
   Palette, 
-  Factory, Package, 
+  Factory, Package, AlertTriangle,
   UserCheck, Users, Target, Map, LayoutGrid, Upload, Download, RefreshCw
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
@@ -538,6 +538,7 @@ export function CustomerPage({
   };
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all' | 'quoted' | 'unquoted'>('all');
+  const [activeCustomerType, setActiveCustomerType] = React.useState<CustomerType>('retail');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
   );
@@ -570,6 +571,7 @@ export function CustomerPage({
     notes: '',
     assignedSaleId: currentUser?.id || '',
     stage: 'consulting' as CustomerStage,
+    customerType: 'retail' as CustomerType,
     orderValue: 0,
     oneDriveLink: '',
     furnitureCategory: '',
@@ -910,6 +912,7 @@ export function CustomerPage({
         notes: '',
         assignedSaleId: currentUser?.id || '',
         stage: 'consulting',
+        customerType: 'retail' as CustomerType,
         orderValue: 0,
         oneDriveLink: '',
         furnitureCategory: '',
@@ -1652,9 +1655,12 @@ export function CustomerPage({
       // Bỏ qua lọc theo tháng nếu người dùng đang gõ tìm kiếm (tìm trên toàn hệ thống)
       const matchTime = search !== '' || !selectedMonth || !c.createdAt || matchesTime(c.createdAt);
 
-      return matchWorkshop && matchSale && matchTime && matchSearch;
+      const type = c.customerType || 'retail';
+      const matchType = type === activeCustomerType;
+
+      return matchWorkshop && matchSale && matchTime && matchSearch && matchType;
     });
-  }, [customers, selectedWorkshop, selectedSaleId, selectedMonth, searchTerm, matchesTime]);
+  }, [customers, selectedWorkshop, selectedSaleId, selectedMonth, searchTerm, matchesTime, activeCustomerType]);
 
   const filteredCustomers = React.useMemo(() => {
     return filteredCustomersForKPIs.filter(c => {
@@ -1749,6 +1755,55 @@ export function CustomerPage({
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
+      {/* Phân loại Khách hàng */}
+      <div className="flex border border-border bg-card p-1 rounded-2xl gap-1 shadow-xs max-w-sm">
+        <button
+          type="button"
+          className={cn(
+            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
+            activeCustomerType === 'retail' 
+              ? "bg-primary text-primary-foreground shadow-xs" 
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setActiveCustomerType('retail');
+            setSelectedStage('all');
+          }}
+        >
+          Khách lẻ
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
+            activeCustomerType === 'agency' 
+              ? "bg-primary text-primary-foreground shadow-xs" 
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setActiveCustomerType('agency');
+            setSelectedStage('all');
+          }}
+        >
+          Đại lý
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "flex-1 py-1.5 text-xs font-black rounded-xl transition-all text-center cursor-pointer",
+            activeCustomerType === 'project' 
+              ? "bg-primary text-primary-foreground shadow-xs" 
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setActiveCustomerType('project');
+            setSelectedStage('all');
+          }}
+        >
+          Dự án
+        </button>
+      </div>
+
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
         <div className="space-y-0 text-center md:text-left flex items-center gap-4">
@@ -2044,6 +2099,22 @@ export function CustomerPage({
                           {Object.entries(STAGE_CONFIG).map(([key, config]) => (
                             <SelectItem key={key} value={key}>{config.label}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Loại khách hàng</Label>
+                      <Select 
+                        value={newCustomer.customerType || 'retail'} 
+                        onValueChange={(v: CustomerType) => setNewCustomer({ ...newCustomer, customerType: v })}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl">
+                          <SelectValue placeholder="Chọn loại khách hàng" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="retail">Khách lẻ</SelectItem>
+                          <SelectItem value="agency">Đại lý</SelectItem>
+                          <SelectItem value="project">Dự án</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2366,6 +2437,14 @@ export function CustomerPage({
             purchaseCount = 1;
           }
           
+          let totalDebt = customerQuotations
+            .filter(q => q.status === 'accepted' || q.status === 'deposit')
+            .reduce((sum, q) => sum + Math.max(0, (q.totalAmount || 0) - (q.depositAmount || 0)), 0);
+          
+          if (totalDebt === 0 && purchaseCount > 0 && customer.orderValue) {
+            totalDebt = customer.orderValue;
+          }
+          
           return (
             <motion.div
               key={customer.id}
@@ -2531,6 +2610,12 @@ export function CustomerPage({
                         <span>Mua {purchaseCount} lần</span>
                       </div>
                     )}
+                    {totalDebt > 0 && (
+                      <div className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-red-50 text-red-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-red-100/80 ml-1.5">
+                        <AlertTriangle className="h-2.5 w-2.5 mr-0.5 text-red-500" />
+                        <span>Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-dashed border-border/60 space-y-2">
@@ -2591,6 +2676,14 @@ export function CustomerPage({
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
                               </span>
                             </div>
+                            {totalDebt > 0 && (
+                              <div className="flex justify-between items-center text-red-700 font-extrabold text-[8px] md:text-[10px] mt-1 pt-1 border-t border-dotted border-red-200">
+                                <span>Công nợ:</span>
+                                <span>
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         );
                       }
@@ -2607,6 +2700,11 @@ export function CustomerPage({
                             {totalDepositSum > 0 && (
                               <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
                                 Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
+                              </span>
+                            )}
+                            {totalDebt > 0 && (
+                              <span className="text-[7px] md:text-[10px] text-red-700 font-extrabold mt-0.5 bg-red-50 border border-red-200/50 px-1 rounded-sm">
+                                Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
                               </span>
                             )}
                           </div>
@@ -2796,6 +2894,22 @@ export function CustomerPage({
                           {Object.entries(STAGE_CONFIG).map(([key, config]) => (
                             <SelectItem key={key} value={key}>{config.label}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Loại khách hàng</Label>
+                      <Select 
+                        value={selectedCustomer.customerType || 'retail'} 
+                        onValueChange={(v: CustomerType) => setSelectedCustomer({ ...selectedCustomer, customerType: v })}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl">
+                          <SelectValue placeholder="Chọn loại khách hàng" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="retail">Khách lẻ</SelectItem>
+                          <SelectItem value="agency">Đại lý</SelectItem>
+                          <SelectItem value="project">Dự án</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
