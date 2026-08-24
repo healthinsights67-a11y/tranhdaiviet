@@ -621,49 +621,13 @@ export function Dashboard({
         </Card>
       </div>
 
-      {/* Urgent Overdue Alert Banner */}
-      {overdueTasksList.length > 0 && (
-        <div className="p-4 bg-red-50/80 border border-red-200 rounded-2xl shadow-xs">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2 text-red-700">
-              <AlertCircle className="h-5 w-5 flex-none" />
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider">
-                  Cảnh báo: Có {overdueTasksList.length} nhiệm vụ đang trễ hạn
-                </h4>
-                <p className="text-[11px] text-red-600 font-medium mt-0.5">
-                  Vui lòng kiểm tra và xử lý gấp để tránh chậm tiến độ sản xuất và lắp đặt của khách hàng.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
-            {overdueTasksList.slice(0, 3).map(task => (
-              <div key={task.id} className="p-2.5 bg-white border border-red-100 rounded-xl flex items-center justify-between">
-                <div className="min-w-0 pr-2">
-                  <p className="font-bold text-xs text-slate-800 truncate">{task.title}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    Hạn: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
-                  </p>
-                </div>
-                {setActiveTab && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-7 text-[10px] px-2 rounded-lg text-red-700 border-red-200 hover:bg-red-50 font-bold"
-                    onClick={() => setActiveTab(task.type === 'production' ? 'production' : 'sale')}
-                  >
-                    Xử lý ngay
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* AI Smart Insights */}
-      <SmartInsights tasks={tasks} customers={customers} quotations={quotations} />
+      <SmartInsights 
+        tasks={tasks} 
+        customers={customers} 
+        quotations={quotations} 
+        setActiveTab={setActiveTab}
+      />
 
       {/* Navigation Sub-Tabs by Functional Areas */}
       <Tabs value={activeSubTab} onValueChange={(val: any) => setActiveSubTab(val)} className="space-y-4">

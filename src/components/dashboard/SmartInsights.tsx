@@ -1,14 +1,16 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Lightbulb, AlertTriangle, TrendingDown, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface InsightProps {
   tasks: any[];
   customers: any[];
   quotations: any[];
+  setActiveTab?: (tab: string) => void;
 }
 
-export function SmartInsights({ tasks, customers, quotations }: InsightProps) {
+export function SmartInsights({ tasks, customers, quotations, setActiveTab }: InsightProps) {
   // 1. Phân tích công việc (Tasks)
   const lateTasks = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date());
   
@@ -49,14 +51,41 @@ export function SmartInsights({ tasks, customers, quotations }: InsightProps) {
         {lateTasks.length > 0 ? (
           <div className="bg-red-50 p-3 rounded-xl border border-red-100">
             <h4 className="font-semibold text-red-800 flex items-center gap-1 text-sm mb-1">
-              <AlertTriangle className="w-4 h-4" /> Có {lateTasks.length} công việc đang trễ hạn
+              <AlertTriangle className="w-4 h-4 text-red-600" /> Có {lateTasks.length} công việc đang trễ hạn
             </h4>
             <div className="text-xs text-red-600 mb-2">
               <span className="font-medium text-red-700">Vì sao:</span> Nhân sự có thể đang quá tải hoặc các khâu trước bị chậm trễ.
             </div>
+
+            {/* List of late tasks with quick fix buttons */}
+            <div className="grid grid-cols-1 gap-1.5 my-2.5">
+              {lateTasks.slice(0, 3).map(task => (
+                <div key={task.id} className="p-2 bg-white border border-red-100 rounded-xl flex items-center justify-between shadow-2xs">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-bold text-xs text-slate-800 truncate">{task.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      Hạn: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
+                    </p>
+                  </div>
+                  {setActiveTab && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-6 text-[9px] px-2 rounded-md text-red-700 border-red-200 hover:bg-red-50 font-bold shrink-0"
+                      onClick={() => setActiveTab(task.type === 'production' ? 'production' : 'sale')}
+                    >
+                      Xử lý ngay
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <div className="text-xs bg-white/60 p-2 rounded-lg flex gap-2 items-start border border-red-100">
               <ArrowRight className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
-              <span className="text-gray-700"><span className="font-semibold text-red-600">Hành động:</span> Yêu cầu cập nhật tiến độ ngay các nhiệm vụ: <span className="font-medium">{lateTasks.slice(0, 2).map(t => t.title).join(', ')}{lateTasks.length > 2 ? '...' : ''}</span>.</span>
+              <span className="text-gray-700">
+                <span className="font-semibold text-red-600">Hành động:</span> Yêu cầu cập nhật tiến độ ngay các nhiệm vụ hoặc nhấp <span className="font-semibold text-red-700">"Xử lý ngay"</span>.
+              </span>
             </div>
           </div>
         ) : (
