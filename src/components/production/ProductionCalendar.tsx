@@ -1390,10 +1390,36 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
               </div>
               <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
                 <div className="space-y-2">
-                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Package className="h-4 w-4 text-blue-500" />
-                    Lịch Sản Xuất ({getTasksForDay(selectedDay).length})
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Package className="h-4 w-4 text-blue-500" />
+                      Lịch Sản Xuất ({getTasksForDay(selectedDay).length})
+                    </h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs text-primary font-bold hover:bg-primary/10 flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        const localDateString = selectedDay ? new Date(selectedDay.getTime() - (selectedDay.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
+                        setFormData({
+                          id: '',
+                          customerId: '',
+                          customerName: '',
+                          phone: '',
+                          address: '',
+                          date: localDateString,
+                          assigneeId: '',
+                          notes: '',
+                          workshop: ''
+                        });
+                        setIsOpen(true);
+                        setSelectedDay(null);
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm lịch
+                    </Button>
+                  </div>
                   {getTasksForDay(selectedDay).length === 0 ? (
                     <p className="text-muted-foreground text-xs italic pl-6">Không có lịch sản xuất nào.</p>
                   ) : (
@@ -1446,10 +1472,35 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                 </div>
 
                 <div className="space-y-2 border-t pt-4 dark:border-zinc-800">
-                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <CalendarDays className="h-4 w-4 text-purple-500" />
-                    Lịch Đo Đạc ({getMeasurementSchedulesForDay(selectedDay).length})
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <CalendarDays className="h-4 w-4 text-purple-500" />
+                      Lịch Đo Đạc ({getMeasurementSchedulesForDay(selectedDay).length})
+                    </h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs text-primary font-bold hover:bg-primary/10 flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        const localDateString = selectedDay ? new Date(selectedDay.getTime() - (selectedDay.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
+                        setMeasureFormData({
+                          id: '',
+                          customerId: '',
+                          customerName: '',
+                          phone: '',
+                          address: '',
+                          date: localDateString,
+                          assigneeId: '',
+                          notes: '',
+                        });
+                        setIsMeasureOpen(true);
+                        setSelectedDay(null);
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm lịch
+                    </Button>
+                  </div>
                   {getMeasurementSchedulesForDay(selectedDay).length === 0 ? (
                     <p className="text-muted-foreground text-xs italic pl-6">Không có lịch đo đạc nào.</p>
                   ) : (
@@ -1478,10 +1529,37 @@ export function ProductionCalendar({  tasks, setTasks, members, customers, user,
                 </div>
 
                 <div className="space-y-2 border-t pt-4 dark:border-zinc-800">
-                  <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Hammer className="h-4 w-4 text-purple-500" />
-                    Lịch Lắp Đặt ({getInstallSchedulesForDay(selectedDay).length})
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Hammer className="h-4 w-4 text-purple-500" />
+                      Lịch Lắp Đặt ({getInstallSchedulesForDay(selectedDay).length})
+                    </h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs text-primary font-bold hover:bg-primary/10 flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        const localDateString = selectedDay ? new Date(selectedDay.getTime() - (selectedDay.getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16);
+                        setInstallFormData({
+                          taskId: '',
+                          customerId: '',
+                          customerName: '',
+                          phone: '',
+                          address: '',
+                          date: localDateString,
+                          assigneeId: '',
+                          assigneeIds: [],
+                          status: 'pending',
+                          notes: ''
+                        });
+                        setIsInstallOpen(true);
+                        setSelectedDay(null);
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm lịch
+                    </Button>
+                  </div>
                   {getInstallSchedulesForDay(selectedDay).length === 0 ? (
                     <p className="text-muted-foreground text-xs italic pl-6">Không có lịch lắp đặt nào.</p>
                   ) : (
