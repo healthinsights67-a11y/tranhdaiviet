@@ -537,7 +537,7 @@ export function CustomerPage({
     }
   };
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all'>('all');
+  const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all' | 'quoted' | 'unquoted'>('all');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
   );
@@ -1550,10 +1550,9 @@ export function CustomerPage({
     return getVNMonth(dateStr) === selectedMonth;
   }, [selectedMonth]);
 
-  const filteredCustomers = React.useMemo(() => {
+  const filteredCustomersForKPIs = React.useMemo(() => {
     return customers.filter(c => {
       const matchWorkshop = selectedWorkshop === 'all' || (c.workshop || 'Hà Nội') === selectedWorkshop;
-      const matchStage = selectedStage === 'all' || c.stage === selectedStage;
       const matchSale = selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId;
       
       const search = searchTerm.trim().toLowerCase();
@@ -1566,19 +1565,31 @@ export function CustomerPage({
       // Bỏ qua lọc theo tháng nếu người dùng đang gõ tìm kiếm (tìm trên toàn hệ thống)
       const matchTime = search !== '' || !selectedMonth || !c.createdAt || matchesTime(c.createdAt);
 
-      return matchWorkshop && matchStage && matchSale && matchTime && matchSearch;
+      return matchWorkshop && matchSale && matchTime && matchSearch;
+    });
+  }, [customers, selectedWorkshop, selectedSaleId, selectedMonth, searchTerm, matchesTime]);
+
+  const filteredCustomers = React.useMemo(() => {
+    return filteredCustomersForKPIs.filter(c => {
+      const hasQuotes = quotations.some(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+      const matchStage = 
+        selectedStage === 'all' ? true :
+        selectedStage === 'quoted' ? hasQuotes :
+        selectedStage === 'unquoted' ? !hasQuotes :
+        c.stage === selectedStage;
+      return matchStage;
     }).sort((a, b) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [customers, selectedWorkshop, selectedStage, selectedSaleId, selectedMonth, searchTerm, matchesTime]);
+  }, [filteredCustomersForKPIs, selectedStage, quotations]);
 
   const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
 
   const { actualRevenue, expectedRevenue, totalCustomers, wonCustomers, winRate } = React.useMemo(() => {
-    const actual = filteredCustomers.reduce((sum, c) => {
+    const actual = filteredCustomersForKPIs.reduce((sum, c) => {
       const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
       const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
 
@@ -1598,7 +1609,7 @@ export function CustomerPage({
       return sum;
     }, 0);
 
-    const expected = filteredCustomers.reduce((sum, c) => {
+    const expected = filteredCustomersForKPIs.reduce((sum, c) => {
       if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
         const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
         const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
@@ -1608,12 +1619,46 @@ export function CustomerPage({
       return sum;
     }, 0);
 
-    const total = filteredCustomers.length;
-    const won = filteredCustomers.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
+    const total = filteredCustomersForKPIs.length;
+    const won = filteredCustomersForKPIs.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
     const rate = total > 0 ? Math.round((won / total) * 100) : 0;
 
     return { actualRevenue: actual, expectedRevenue: expected, totalCustomers: total, wonCustomers: won, winRate: rate };
-  }, [filteredCustomers, quotations]);
+  }, [filteredCustomersForKPIs, quotations]);
+
+  const cardData = React.useMemo(() => {
+    const total = filteredCustomersForKPIs.length;
+    const consulting = filteredCustomersForKPIs.filter(c => c.stage === 'consulting').length;
+    const surveying = filteredCustomersForKPIs.filter(c => c.stage === 'surveying').length;
+    
+    // Quoted / Unquoted calculations
+    const quoted = filteredCustomersForKPIs.filter(c => 
+      quotations.some(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone))
+    ).length;
+    const unquoted = total - quoted;
+    
+    const contracted = filteredCustomersForKPIs.filter(c => c.stage === 'contracted').length;
+    const production = filteredCustomersForKPIs.filter(c => c.stage === 'production').length;
+    const productionCompleted = filteredCustomersForKPIs.filter(c => c.stage === 'production_completed').length;
+    const installation = filteredCustomersForKPIs.filter(c => c.stage === 'installation').length;
+    const completed = filteredCustomersForKPIs.filter(c => c.stage === 'completed').length;
+    const lost = filteredCustomersForKPIs.filter(c => c.stage === 'lost').length;
+
+    return [
+      { id: 'all', label: 'Tổng KH', value: total, color: 'text-blue-600', icon: Users, clickable: true },
+      { id: 'consulting', label: STAGE_CONFIG.consulting.label, value: consulting, color: 'text-yellow-600', icon: MessageSquare, clickable: true },
+      { id: 'surveying', label: STAGE_CONFIG.surveying.label, value: surveying, color: 'text-purple-600', icon: MapPin, clickable: true },
+      { id: 'quoted', label: 'Đã báo giá', value: quoted, color: 'text-blue-600', icon: FileText, clickable: true },
+      { id: 'unquoted', label: 'Chưa báo giá', value: unquoted, color: 'text-slate-500', icon: FileText, clickable: true },
+      { id: 'contracted', label: STAGE_CONFIG.contracted.label, value: contracted, color: 'text-emerald-600', icon: ArrowRight, clickable: true },
+      { id: 'production', label: STAGE_CONFIG.production.label, value: production, color: 'text-blue-600', icon: Factory, clickable: true },
+      { id: 'production_completed', label: STAGE_CONFIG.production_completed.label, value: productionCompleted, color: 'text-indigo-600', icon: CheckCircle2, clickable: true },
+      { id: 'installation', label: STAGE_CONFIG.installation.label, value: installation, color: 'text-orange-600', icon: Package, clickable: true },
+      { id: 'completed', label: STAGE_CONFIG.completed.label, value: completed, color: 'text-green-600', icon: CheckCircle2, clickable: true },
+      { id: 'lost', label: STAGE_CONFIG.lost.label, value: lost, color: 'text-red-600', icon: X, clickable: true },
+      { id: 'win_rate', label: 'Tỉ lệ chốt', value: `${winRate}%`, color: 'text-pink-500', icon: Target, clickable: false },
+    ];
+  }, [filteredCustomersForKPIs, quotations, winRate]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
@@ -2034,56 +2079,34 @@ export function CustomerPage({
         )}
         
         {/* Stages Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-1.5 md:gap-3">
-          <Card 
-            className={cn("border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group cursor-pointer transition-all hover:border-primary/50", selectedStage === 'all' && "ring-2 ring-primary border-primary")}
-            onClick={() => setSelectedStage('all')}
-          >
-             <div className="absolute top-0 right-0 p-1 text-primary">
-                <Users className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
-             </div>
-             <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
-                <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">Tổng KH</p>
-                <h3 className="text-base md:text-xl font-black tabular-nums text-primary">{totalCustomers}</h3>
-             </CardContent>
-          </Card>
-          
-          {Object.entries(STAGE_CONFIG).map(([key, config]) => {
-            const count = customers.filter(c => 
-              c.stage === key && 
-              (selectedWorkshop === 'all' || c.workshop === selectedWorkshop) &&
-              (!selectedMonth || (c.createdAt && matchesTime(c.createdAt)) || (!c.createdAt)) &&
-              (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              c.phone.includes(searchTerm) ||
-              (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              (c.furnitureCategory && c.furnitureCategory.toLowerCase().includes(searchTerm.toLowerCase())))
-            ).length;
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-1.5 md:gap-3">
+          {cardData.map((card) => {
+            const Icon = card.icon;
+            const isSelected = selectedStage === card.id;
             return (
               <Card 
-                key={key} 
-                className={cn("border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group cursor-pointer transition-all hover:border-primary/50", selectedStage === key && "ring-2 ring-primary border-primary")}
-                onClick={() => setSelectedStage(key as CustomerStage)}
+                key={card.id} 
+                className={cn(
+                  "border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group transition-all",
+                  card.clickable && "cursor-pointer hover:border-primary/50",
+                  isSelected && "ring-2 ring-primary border-primary"
+                )}
+                onClick={() => {
+                  if (card.clickable) {
+                    setSelectedStage(card.id as any);
+                  }
+                }}
               >
-                 <div className={cn("absolute top-0 right-0 p-1", config.color.split(' ')[1])}>
-                    <config.icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
+                 <div className={cn("absolute top-0 right-0 p-1", card.color)}>
+                    <Icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
                  </div>
                  <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
-                    <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{config.label}</p>
-                    <h3 className={cn("text-base md:text-xl font-black tabular-nums", config.color.split(' ')[1])}>{count}</h3>
+                    <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{card.label}</p>
+                    <h3 className={cn("text-base md:text-xl font-black tabular-nums", card.color)}>{card.value}</h3>
                  </CardContent>
               </Card>
             );
           })}
-
-          <Card className="border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group">
-             <div className="absolute top-0 right-0 p-1 text-pink-500">
-                <Target className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
-             </div>
-             <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
-                <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">Tỉ lệ chốt</p>
-                <h3 className="text-base md:text-xl font-black tabular-nums text-pink-500">{winRate}%</h3>
-             </CardContent>
-          </Card>
         </div>
       </div>
 
