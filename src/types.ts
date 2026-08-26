@@ -128,6 +128,9 @@ export interface Task {
     receiver?: string;
     department?: string;
     items?: any[];
+    status?: 'pending' | 'exported' | 'rejected' | null;
+    updatedAt?: string;
+    updatedBy?: string;
   };
   productionChecklist?: {
     customerName?: string;

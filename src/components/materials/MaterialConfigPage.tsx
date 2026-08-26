@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, auth } from '@/src/lib/firebase';
-import { MaterialConfig, Task, Quotation, AccessoryConfig, InventoryTransaction } from '@/src/types';
+import { MaterialConfig, Task, Quotation, AccessoryConfig, InventoryTransaction, getWorkshopName } from '@/src/types';
 import { MaterialConfigSchema, AccessoryConfigSchema, InventoryTransactionSchema } from '@/src/schemas';
 import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles, ArrowDownLeft, ArrowUpRight, History, Settings, AlertTriangle, FileText, Package } from 'lucide-react';
 import { scanInvoice, ScannedInvoiceItem } from '@/src/services/geminiRenderService';
@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { ProfitAnalysis } from './ProfitAnalysis';
+import { MaterialRequisitionForm } from '../kanban/MaterialRequisitionForm';
 
 interface MaterialConfigPageProps {
   tasks?: Task[];
@@ -79,7 +80,10 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [inventorySearchTerm, setInventorySearchTerm] = useState('');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'material' | 'accessory'>('all');
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState<'all' | 'inStock' | 'outOfStock' | 'lowStock'>('all');
-  const [inventorySubView, setInventorySubView] = useState<'status' | 'history'>('status');
+  const [inventorySubView, setInventorySubView] = useState<'status' | 'requests' | 'history'>('status');
+  const [viewingTaskForRequisition, setViewingTaskForRequisition] = useState<Task | null>(null);
+  const [selectedTaskForExport, setSelectedTaskForExport] = useState<Task | null>(null);
+  const [isExportingRequisition, setIsExportingRequisition] = useState(false);
 
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
@@ -895,6 +899,208 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       return sum + (stock * price);
     }, 0);
   }, [filteredInventory]);
+
+  const pendingRequisitions = useMemo(() => {
+    return tasks.filter(t => {
+      const req = t.materialRequisition;
+      if (!req || !req.items) return false;
+      const hasQty = req.items.some((item: any) => parseFloat(item.quantity) > 0);
+      if (!hasQty) return false;
+      return !req.status || req.status === 'pending';
+    });
+  }, [tasks]);
+
+  const getMatchingConfig = (item: any) => {
+    const searchStr = (item.type || '').toLowerCase();
+    const itemNameLower = (item.name || '').toLowerCase();
+    const optionLower = (item.selectedOption || '').toLowerCase();
+    const combinedName = `${itemNameLower} ${optionLower}`.trim();
+
+    let matchedConfig: any = null;
+
+    // 1. Try exact match by code or name from item.type (searchStr)
+    if (searchStr) {
+      matchedConfig = materials.find(m => {
+        const codeLower = (m.code || '').toLowerCase();
+        return (codeLower && searchStr.includes(codeLower)) || ((m.name || '').toLowerCase() === searchStr);
+      });
+      if (!matchedConfig) {
+        matchedConfig = accessories.find(a => {
+          const codeLower = (a.code || '').toLowerCase();
+          return (codeLower && searchStr.includes(codeLower)) || ((a.name || '').toLowerCase() === searchStr);
+        });
+      }
+    }
+
+    // 2. Try matching accessories by item.name and selectedOption
+    if (!matchedConfig) {
+       matchedConfig = accessories.find(a => {
+         const aName = (a.name || '').toLowerCase();
+         if (!aName) return false;
+         if (aName === combinedName) return true;
+         if (aName === itemNameLower && (!a.option || (a.option || '').toLowerCase() === optionLower)) return true;
+         return false;
+       });
+    }
+
+    // 3. Try partial match by item.name in materials
+    if (!matchedConfig) {
+      matchedConfig = materials.find(m => {
+        const nameLower = (m.name || '').toLowerCase();
+        return nameLower ? itemNameLower.includes(nameLower) || nameLower.includes(itemNameLower) : false;
+      });
+    }
+    
+    // 4. Try partial match by item.name in accessories
+    if (!matchedConfig) {
+      matchedConfig = accessories.find(a => {
+        const aName = (a.name || '').toLowerCase();
+        return aName ? itemNameLower.includes(aName) || aName.includes(itemNameLower) : false;
+      });
+    }
+
+    return matchedConfig;
+  };
+
+  const getAvailableStock = (item: any, matchedConfig: any) => {
+    if (!matchedConfig) return 0;
+    
+    const stockVal = matchedConfig.stock || 0;
+    const configUnit = (matchedConfig.unit || '').trim().toLowerCase();
+    const reqUnit = (item.unit || '').trim().toLowerCase();
+    
+    if (configUnit === 'hộp' && reqUnit !== 'hộp') {
+      const itemsPerBox = parseFloat(String(matchedConfig.itemsPerBox)) || 1;
+      return stockVal * itemsPerBox;
+    }
+    
+    return stockVal;
+  };
+
+  const checkRequisitionStockStatus = (requisition: any) => {
+    const items = requisition.items || [];
+    let hasOutOfStock = false;
+    
+    items.forEach((item: any) => {
+      const qty = parseFloat(item.quantity) || 0;
+      if (qty <= 0) return;
+      
+      const config = getMatchingConfig(item);
+      const availableStock = getAvailableStock(item, config);
+      
+      if (availableStock < qty) {
+        hasOutOfStock = true;
+      }
+    });
+    
+    return hasOutOfStock ? 'low' : 'ok';
+  };
+
+  const handleSaveRequisitionFromWarehouse = async (formData: any) => {
+    if (!viewingTaskForRequisition) return;
+    try {
+      const materialList = (formData.items || [])
+        .filter((item: any) => item.quantity && Number(item.quantity) > 0)
+        .map((item: any) => ({
+          id: String(item.id),
+          name: item.name + (item.selectedOption ? ` (${item.selectedOption})` : ''),
+          quantity: Number(item.quantity),
+          unit: item.unit
+        }));
+
+      const hasItems = (formData.items || []).some((item: any) => item.quantity && Number(item.quantity) > 0);
+      const reqStatus = hasItems ? (viewingTaskForRequisition.materialRequisition?.status || 'pending') : null;
+      const finalRequisition = { ...formData, status: reqStatus };
+
+      await updateDoc(doc(db, 'tasks', viewingTaskForRequisition.id), {
+        materialRequisition: finalRequisition,
+        materialList: materialList
+      });
+      toast.success("Đã cập nhật phiếu lĩnh vật tư");
+      setViewingTaskForRequisition(null);
+    } catch (error) {
+      console.error("Save requisition from warehouse error:", error);
+      toast.error("Không thể lưu phiếu vật tư");
+    }
+  };
+
+  const handleExportRequisition = async (task: Task) => {
+    const req = task.materialRequisition;
+    if (!req || !req.items) return;
+    
+    setIsExportingRequisition(true);
+    try {
+      const userEmail = auth.currentUser?.email || 'Hệ thống';
+      const batch = writeBatch(db);
+      const itemsToDeduct = [];
+
+      for (const item of req.items) {
+        const qty = parseFloat(item.quantity) || 0;
+        if (qty <= 0) continue;
+
+        const config = getMatchingConfig(item);
+        if (!config) continue;
+
+        let qtyInConfigUnit = qty;
+        const configUnit = (config.unit || '').trim().toLowerCase();
+        const reqUnit = (item.unit || '').trim().toLowerCase();
+        const itemsPerBox = parseFloat(String(config.itemsPerBox)) || 1;
+
+        if (configUnit === 'hộp' && reqUnit !== 'hộp') {
+          qtyInConfigUnit = qty / itemsPerBox;
+        }
+
+        const currentStock = config.stock || 0;
+        const newStock = Math.max(0, currentStock - qtyInConfigUnit);
+
+        const collName = config.type === 'material' ? 'materials' : 'accessories';
+        const docRef = doc(db, collName, config.id);
+        batch.update(docRef, { stock: newStock });
+
+        itemsToDeduct.push({
+          config,
+          qtyInConfigUnit,
+          reqQty: qty,
+          reqUnit: item.unit
+        });
+      }
+
+      await batch.commit();
+
+      const promiseLogs = itemsToDeduct.map(item => {
+        const txDoc = doc(collection(db, 'inventoryTransactions'));
+        return setDoc(txDoc, {
+          id: txDoc.id,
+          itemId: item.config.id,
+          itemCode: item.config.code,
+          itemName: item.config.name,
+          itemType: item.config.type || 'material',
+          type: 'export',
+          quantity: item.qtyInConfigUnit,
+          unit: item.config.unit || 'Hộp',
+          createdAt: new Date().toISOString(),
+          createdBy: userEmail,
+          note: `Xuất kho tự động cho yêu cầu của đơn: ${task.title}`
+        });
+      });
+      await Promise.all(promiseLogs);
+
+      await updateDoc(doc(db, 'tasks', task.id), {
+        'materialRequisition.status': 'exported',
+        'materialRequisition.updatedAt': new Date().toISOString(),
+        'materialRequisition.updatedBy': userEmail
+      });
+
+      toast.success(`Đã xuất kho thành công cho yêu cầu thiết kế: ${task.title}`);
+      setSelectedTaskForExport(null);
+    } catch (error) {
+      console.error("Export requisition error:", error);
+      toast.error("Lỗi khi xuất kho. Vui lòng thử lại.");
+    } finally {
+      setIsExportingRequisition(false);
+    }
+  };
+
   const handleOpenAccessoryDialog = (item?: AccessoryConfig) => {
     if (item) {
       setEditingAccessory(item);
@@ -1487,22 +1693,36 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           {/* Subview selectors and filter dashboard */}
           <div className="flex flex-col gap-3 bg-card p-3 sm:p-4 rounded-xl border shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
-              <div className="grid grid-cols-2 bg-secondary/30 p-1 rounded-xl gap-1 w-full md:w-auto shrink-0">
+              <div className="grid grid-cols-3 bg-secondary/30 p-1 rounded-xl gap-1 w-full md:w-auto shrink-0">
                 <Button 
                   variant={inventorySubView === 'status' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('status')}
-                  className="gap-1.5 rounded-lg text-xs font-bold h-8 justify-center"
+                  className="gap-1 rounded-lg text-[10px] sm:text-xs font-bold h-8 justify-center px-1 sm:px-3"
                 >
-                  <Package className="h-3.5 w-3.5" /> Trạng thái tồn kho
+                  <Package className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Tồn Kho</span>
+                </Button>
+                <Button 
+                  variant={inventorySubView === 'requests' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setInventorySubView('requests')}
+                  className="gap-1 rounded-lg text-[10px] sm:text-xs font-bold h-8 justify-center px-1 sm:px-3 relative"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0" /> 
+                  <span className="truncate">Yêu Cầu</span>
+                  {pendingRequisitions.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold text-white bg-red-500 rounded-full leading-none shrink-0">
+                      {pendingRequisitions.length}
+                    </span>
+                  )}
                 </Button>
                 <Button 
                   variant={inventorySubView === 'history' ? 'default' : 'ghost'} 
                   size="sm" 
                   onClick={() => setInventorySubView('history')}
-                  className="gap-1.5 rounded-lg text-xs font-bold h-8 justify-center"
+                  className="gap-1 rounded-lg text-[10px] sm:text-xs font-bold h-8 justify-center px-1 sm:px-3"
                 >
-                  <History className="h-3.5 w-3.5" /> Lịch sử Nhập/Xuất
+                  <History className="h-3.5 w-3.5 shrink-0" /> <span className="truncate text-center">Giao Dịch</span>
                 </Button>
               </div>
 
@@ -1771,6 +1991,119 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : inventorySubView === 'requests' ? (
+            <div className="flex-1 flex flex-col space-y-4">
+              <div className="bg-card p-4 rounded-2xl border shadow-sm">
+                <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  Danh Sách Yêu Cầu Cấp Phát Vật Tư
+                  <span className="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                    {pendingRequisitions.length} phiếu chờ duyệt
+                  </span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Yêu cầu xuất nguyên vật liệu nhựa và phụ kiện từ bộ phận sản xuất/thi công dự án.
+                </p>
+              </div>
+
+              {pendingRequisitions.length === 0 ? (
+                <div className="bg-card border rounded-2xl p-12 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[300px]">
+                  <FileText className="h-12 w-12 opacity-20 mb-3" />
+                  <p className="font-semibold text-sm">Không có phiếu yêu cầu cấp phát nào đang chờ duyệt.</p>
+                  <p className="text-xs text-muted-foreground/80 mt-1">Khi bộ phận sản xuất lập phiếu lĩnh vật tư, yêu cầu sẽ tự động xuất hiện tại đây.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pendingRequisitions.map(task => {
+                    const req = task.materialRequisition;
+                    if (!req || !req.items) return null;
+                    const items = req.items.filter((item: any) => parseFloat(item.quantity) > 0);
+                    const stockStatus = checkRequisitionStockStatus(req);
+                    
+                    return (
+                      <div key={task.id} className="bg-card border rounded-2xl shadow-xs overflow-hidden flex flex-col hover:border-slate-300 transition-colors">
+                        {/* Header */}
+                        <div className="p-4 border-b bg-muted/20 flex justify-between items-center gap-2">
+                          <span className="text-[11px] font-extrabold uppercase bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-300/50">
+                            {getWorkshopName(task.workshop)}
+                          </span>
+                          {stockStatus === 'low' ? (
+                            <span className="text-[10px] font-bold bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-full">
+                              Thiếu hàng tồn
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Đủ hàng tồn
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-4 flex-1 flex flex-col space-y-2 text-xs">
+                          <div>
+                            <h4 className="font-black text-slate-800 text-sm leading-tight">Thiết kế: {task.title}</h4>
+                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                              Hạn/Ngày cần: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : (task.scheduledDate || 'Chưa thiết lập')}
+                            </p>
+                          </div>
+
+                          <div className="border-t border-dashed my-2 pt-2">
+                            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Danh sách vật tư yêu cầu:</p>
+                            <div className="space-y-1.5">
+                              {items.slice(0, 5).map((item: any) => {
+                                const config = getMatchingConfig(item);
+                                const availableStock = getAvailableStock(item, config);
+                                const reqQty = parseFloat(item.quantity) || 0;
+                                const isOut = availableStock < reqQty;
+                                const optionStr = item.selectedOption ? ` (${item.selectedOption})` : '';
+
+                                return (
+                                  <div key={item.id} className="flex justify-between items-center text-slate-600">
+                                    <span className="truncate pr-2 font-medium">
+                                      {item.name}{optionStr}
+                                    </span>
+                                    <span className="font-bold shrink-0">
+                                      <span className="text-slate-800">{reqQty} {item.unit}</span>
+                                      <span className="text-slate-400 text-[10px] font-medium ml-1">
+                                        (tồn: <span className={isOut ? 'text-red-500 font-extrabold' : 'text-slate-500'}>{availableStock}</span>)
+                                      </span>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              {items.length > 5 && (
+                                <p className="text-[10px] text-slate-400 font-bold text-right pt-0.5">
+                                  và {items.length - 5} mặt hàng khác...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="p-3 border-t bg-slate-50/50 flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setViewingTaskForRequisition(task)}
+                            className="flex-1 h-9 font-bold text-xs bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                          >
+                            Xem Chi Tiết
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => setSelectedTaskForExport(task)}
+                            className="flex-1 h-9 font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                          >
+                            Xuất Kho
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : (
             /* Historical Logs View */
@@ -2713,6 +3046,49 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog: Chi tiết & sửa phiếu yêu cầu vật tư */}
+      <Dialog open={!!viewingTaskForRequisition} onOpenChange={(open) => !open && setViewingTaskForRequisition(null)}>
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl h-[85vh] overflow-hidden flex flex-col p-0 rounded-2xl border-none shadow-2xl">
+          <div className="flex-1 overflow-hidden h-full">
+            {viewingTaskForRequisition && (
+              <MaterialRequisitionForm
+                projectTitle={viewingTaskForRequisition.title}
+                data={viewingTaskForRequisition.materialRequisition}
+                onSave={handleSaveRequisitionFromWarehouse}
+                customerInfo={undefined}
+                members={[]}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog: Xác nhận xuất kho vật tư */}
+      <AlertDialog open={!!selectedTaskForExport} onOpenChange={(open) => !open && setSelectedTaskForExport(null)}>
+        <AlertDialogContent className="rounded-2xl border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-blue-600">
+              <AlertCircle className="h-5 w-5 text-blue-600 animate-pulse" />
+              Xác nhận Xuất Kho vật tư
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600">
+              Bạn có chắc chắn muốn xuất kho và trừ số lượng vật tư cho yêu cầu của đơn hàng <strong>{selectedTaskForExport?.title}</strong>? Thao tác này sẽ tự động khấu trừ số lượng tương ứng từ kho hàng và ghi nhận lịch sử giao dịch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isExportingRequisition}>Hủy</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => selectedTaskForExport && handleExportRequisition(selectedTaskForExport)} 
+              disabled={isExportingRequisition}
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-2 font-bold"
+            >
+              {isExportingRequisition && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+              Xác nhận xuất kho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

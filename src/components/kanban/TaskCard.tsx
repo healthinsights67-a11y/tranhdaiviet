@@ -311,17 +311,21 @@ export const TaskCard = React.memo(({ task, assignee, members = [], customers = 
           unit: item.unit
         }));
 
+      const hasItems = (formData.items || []).some((item: any) => item.quantity && Number(item.quantity) > 0);
+      const reqStatus = hasItems ? (task.materialRequisition?.status || 'pending') : null;
+      const finalRequisition = { ...formData, status: reqStatus };
+
       if (task.id.startsWith('virtual-')) {
         const { id, ...taskData } = task;
         await addDoc(collection(db, 'tasks'), {
           ...taskData,
-          materialRequisition: formData,
+          materialRequisition: finalRequisition,
           materialList: materialList
         });
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
       } else {
         await updateDoc(doc(db, 'tasks', task.id), {
-          materialRequisition: formData,
+          materialRequisition: finalRequisition,
           materialList: materialList
         });
       }
