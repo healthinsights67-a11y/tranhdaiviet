@@ -15,6 +15,7 @@ import {
   addDoc, 
   updateDoc, 
   setDoc,
+  deleteDoc,
   query, 
   where, 
   onSnapshot 
@@ -1158,6 +1159,31 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       res.json({ success: true, id: transactionData.id });
     } catch (error: any) {
       console.error("API POST financial-transactions error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/financial-transactions/:id", async (req, res) => {
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      const { id } = req.params;
+      const docRef = doc(clientDb, 'financial_transactions', id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        await addDoc(collection(clientDb, 'trash'), {
+          originalId: id,
+          collection: 'financial_transactions',
+          title: data.title || id,
+          data,
+          deletedAt: new Date().toISOString(),
+          deletedBy: 'Người dùng'
+        });
+        await deleteDoc(docRef);
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("API DELETE financial-transactions error:", error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -45,14 +45,6 @@ const sanitizeData = (obj: any): any => {
   return clean;
 };
 
-// Merge remote items with local items by ID
-const mergeTransactions = (remote: FinancialTransaction[], local: FinancialTransaction[]): FinancialTransaction[] => {
-  const map = new Map<string, FinancialTransaction>();
-  local.forEach(item => map.set(item.id, item));
-  remote.forEach(item => map.set(item.id, item));
-  return Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-};
-
 // Helper to post to Vercel API backend for serverless admin bypass sync
 const syncToApi = async (transactionData: any) => {
   try {
@@ -66,18 +58,27 @@ const syncToApi = async (transactionData: any) => {
   }
 };
 
-export const fetchFinancialTransactions = async (): Promise<FinancialTransaction[]> => {
-  const localItems = getLocalTransactions();
+// Helper to delete via Vercel API backend for serverless admin bypass sync
+const deleteFromApi = async (id: string) => {
+  try {
+    await fetch(`/api/financial-transactions/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (e) {
+    console.warn("API delete error:", e);
+  }
+};
 
+export const fetchFinancialTransactions = async (): Promise<FinancialTransaction[]> => {
   // 1. Try Vercel API backend (Admin SDK bypass)
   try {
     const apiRes = await fetch('/api/financial-transactions').catch(() => null);
     if (apiRes && apiRes.ok) {
       const apiItems: FinancialTransaction[] = await apiRes.json();
       if (Array.isArray(apiItems)) {
-        const merged = mergeTransactions(apiItems, localItems);
-        saveLocalTransactions(merged);
-        return merged;
+        apiItems.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        saveLocalTransactions(apiItems);
+        return apiItems;
       }
     }
   } catch (e) {}
@@ -90,12 +91,12 @@ export const fetchFinancialTransactions = async (): Promise<FinancialTransaction
       const raw = { ...docSnap.data(), id: docSnap.id };
       return FinancialTransactionSchema.parse(raw) as FinancialTransaction;
     });
-    const merged = mergeTransactions(remoteItems, localItems);
-    saveLocalTransactions(merged);
-    return merged;
+    remoteItems.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    saveLocalTransactions(remoteItems);
+    return remoteItems;
   } catch (error) {
     console.warn("Firestore fetch failed for financial transactions (using local fallback):", error);
-    return localItems;
+    return getLocalTransactions();
   }
 };
 
@@ -120,10 +121,9 @@ export const subscribeFinancialTransactions = (
         const raw = { ...docSnap.data(), id: docSnap.id };
         return FinancialTransactionSchema.parse(raw) as FinancialTransaction;
       });
-      const localNow = getLocalTransactions();
-      const merged = mergeTransactions(remoteItems, localNow);
-      saveLocalTransactions(merged);
-      onData(merged);
+      remoteItems.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      saveLocalTransactions(remoteItems);
+      onData(remoteItems);
     },
     (err) => {
       console.warn("Realtime subscription error in financialService (using local & API fallback):", err);
@@ -146,7 +146,7 @@ export const addFinancialTransaction = async (
   const validated = FinancialTransactionSchema.parse(newTransaction);
   const sanitized = sanitizeData(validated);
 
-  // 1. Always save to local storage immediately
+  // 1. Save to local storage immediately
   const currentLocal = getLocalTransactions();
   const updatedLocal = [sanitized, ...currentLocal.filter(x => x.id !== docRef.id)];
   saveLocalTransactions(updatedLocal);
@@ -197,15 +197,19 @@ export const deleteFinancialTransaction = async (
   title?: string,
   deletedBy?: string
 ): Promise<void> => {
-  // Remove from local storage
+  // 1. Remove from local storage immediately
   const currentLocal = getLocalTransactions();
   const updatedLocal = currentLocal.filter(x => x.id !== id);
   saveLocalTransactions(updatedLocal);
 
+  // 2. Sync delete via Vercel Admin API backend
+  deleteFromApi(id);
+
+  // 3. Try moving to trash in Firestore Client SDK
   try {
     await moveToTrash(COLLECTION_NAME, id, title || 'Phiếu thu chi', deletedBy || 'Người dùng');
   } catch (error) {
-    console.warn("Could not move to trash in Firestore, deleting locally:", error);
+    console.warn("Could not move to trash in Firestore Client SDK, deleting via API/local:", error);
     try {
       await deleteDoc(doc(db, COLLECTION_NAME, id));
     } catch {}
