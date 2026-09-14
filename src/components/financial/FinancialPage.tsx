@@ -416,25 +416,28 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
   };
 
   return (
-    <div className="space-y-6 pb-20 p-2 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 pb-20 p-2 sm:p-4 md:p-6 max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-primary/10 via-background to-background p-4 md:p-6 rounded-2xl border border-border shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-primary/10 via-background to-background p-4 sm:p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary shadow-2xs">
               <Receipt className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Sổ Quỹ Thu Chi</h1>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">Sổ Quỹ Thu Chi</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Quản lý dòng tiền thu chi, chứng từ, nộp/nhận tiền mặt & chuyển khoản
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Quản lý dòng tiền thu chi, hóa đơn chứng từ, nộp/nhận tiền mặt và chuyển khoản
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           <Button 
             onClick={() => handleOpenCreateModal('income')} 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-semibold rounded-xl"
           >
             <PlusCircle className="h-4 w-4" />
             <span>Tạo phiếu Thu</span>
@@ -443,7 +446,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
           <Button 
             onClick={() => handleOpenCreateModal('expense')} 
             variant="destructive"
-            className="shadow-sm flex items-center gap-1.5"
+            className="shadow-sm flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-semibold rounded-xl"
           >
             <PlusCircle className="h-4 w-4" />
             <span>Tạo phiếu Chi</span>
@@ -452,7 +455,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
           <Button 
             variant="outline" 
             onClick={handleExportExcel}
-            className="flex items-center gap-1.5"
+            className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-medium rounded-xl border-border hover:bg-muted"
           >
             <Download className="h-4 w-4 text-primary" />
             <span>Xuất Excel</span>
@@ -460,24 +463,24 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards - Responsive Grid 2x2 on Mobile, 4x1 on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Income */}
-        <Card className="border border-emerald-500/20 bg-emerald-500/5 shadow-xs relative overflow-hidden">
-          <CardContent className="p-5">
+        <Card className="border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
+          <CardContent className="p-3.5 sm:p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Tổng Thu
               </span>
-              <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <ArrowDownLeft className="h-5 w-5" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+              <div className="text-base sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">
                 {formatCurrency(totalIncome)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                 Thu trong kỳ (đã lọc)
               </p>
             </div>
@@ -485,21 +488,21 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
         </Card>
 
         {/* Total Expense */}
-        <Card className="border border-rose-500/20 bg-rose-500/5 shadow-xs relative overflow-hidden">
-          <CardContent className="p-5">
+        <Card className="border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
+          <CardContent className="p-3.5 sm:p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
                 Tổng Chi
               </span>
-              <div className="p-2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <ArrowUpRight className="h-5 w-5" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-black text-rose-700 dark:text-rose-400">
+              <div className="text-base sm:text-2xl font-black text-rose-600 dark:text-rose-400 truncate">
                 {formatCurrency(totalExpense)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                 Chi trong kỳ (đã lọc)
               </p>
             </div>
@@ -507,49 +510,49 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
         </Card>
 
         {/* Net Balance */}
-        <Card className={`border shadow-xs relative overflow-hidden ${
+        <Card className={`border shadow-2xs relative overflow-hidden rounded-2xl bg-gradient-to-br ${
           netBalance >= 0 
-            ? 'border-blue-500/20 bg-blue-500/5' 
-            : 'border-amber-500/20 bg-amber-500/5'
+            ? 'border-blue-500/20 from-blue-500/10 via-blue-500/5 to-transparent' 
+            : 'border-amber-500/20 from-amber-500/10 via-amber-500/5 to-transparent'
         }`}>
-          <CardContent className="p-5">
+          <CardContent className="p-3.5 sm:p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
                 Tồn Quỹ / Số Dư
               </span>
-              <div className="p-2 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <Wallet className="h-5 w-5" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-2">
-              <div className={`text-2xl font-black ${
+              <div className={`text-base sm:text-2xl font-black truncate ${
                 netBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'
               }`}>
                 {formatCurrency(netBalance)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Hiệu số = Thu - Chi
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                Dòng tiền = Thu - Chi
               </p>
             </div>
           </CardContent>
         </Card>
 
         {/* Total Records */}
-        <Card className="border border-purple-500/20 bg-purple-500/5 shadow-xs relative overflow-hidden">
-          <CardContent className="p-5">
+        <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
+          <CardContent className="p-3.5 sm:p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
                 Chứng Từ Thu Chi
               </span>
-              <div className="p-2 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                <Receipt className="h-5 w-5" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-black text-purple-700 dark:text-purple-400">
-                {filteredTransactions.length} <span className="text-sm font-normal text-muted-foreground">phiếu</span>
+              <div className="text-base sm:text-2xl font-black text-purple-700 dark:text-purple-400 truncate">
+                {filteredTransactions.length} <span className="text-xs font-normal text-muted-foreground">phiếu</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                 Đã ghi nhận trong kỳ
               </p>
             </div>
@@ -558,24 +561,32 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       </div>
 
       {/* Toolbar & Filters */}
-      <Card className="shadow-xs border-border">
-        <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <Card className="shadow-2xs border-border rounded-2xl">
+        <CardContent className="p-3.5 sm:p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
             {/* Search */}
-            <div className="sm:col-span-2 relative">
+            <div className="sm:col-span-2 lg:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Tìm tên, người nộp/nhận, ghi chú..."
+                placeholder="Tìm kiếm phiếu, người nộp/nhận, ghi chú..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 h-9 text-xs sm:text-sm rounded-xl"
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Type filter */}
             <div>
               <Select value={typeFilter} onValueChange={(val: any) => setTypeFilter(val)}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 text-xs sm:text-sm rounded-xl">
                   <SelectValue>
                     {typeFilter === 'all' ? 'Tất cả loại' : typeFilter === 'income' ? '🟢 Phiếu Thu' : '🔴 Phiếu Chi'}
                   </SelectValue>
@@ -591,7 +602,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             {/* Time filter */}
             <div>
               <Select value={dateRangeFilter} onValueChange={(val: any) => setDateRangeFilter(val)}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 text-xs sm:text-sm rounded-xl">
                   <SelectValue>
                     {dateRangeFilter === 'month' ? 'Tháng này' :
                      dateRangeFilter === 'today' ? 'Hôm nay' :
@@ -614,7 +625,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             {/* Category filter */}
             <div>
               <Select value={categoryFilter} onValueChange={(val: any) => setCategoryFilter(val)}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 text-xs sm:text-sm rounded-xl">
                   <SelectValue>
                     {categoryFilter === 'all' ? 'Tất cả hạng mục' : categoryFilter}
                   </SelectValue>
@@ -627,22 +638,6 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Workshop filter */}
-            <div>
-              <Select value={workshopFilter} onValueChange={(val: any) => setWorkshopFilter(val)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue>
-                    {getWorkshopName(workshopFilter)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {WORKSHOPS.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           {/* Custom Date Range Picker */}
@@ -650,7 +645,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/50 text-sm"
+              className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/50 text-xs sm:text-sm"
             >
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Từ ngày:</span>
@@ -658,7 +653,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="h-8 w-auto"
+                  className="h-8 w-auto text-xs rounded-lg"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -667,7 +662,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="h-8 w-auto"
+                  className="h-8 w-auto text-xs rounded-lg"
                 />
               </div>
               {(customStartDate || customEndDate) && (
@@ -675,9 +670,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   variant="ghost" 
                   size="sm"
                   onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs text-destructive hover:bg-destructive/10"
                 >
-                  Xóa bộ lọc ngày
+                  Xóa lọc ngày
                 </Button>
               )}
             </motion.div>
@@ -685,12 +680,12 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
         </CardContent>
       </Card>
 
-      {/* Main Transactions List / Table */}
-      <Card className="shadow-xs border-border overflow-hidden">
-        <CardHeader className="py-4 px-6 border-b border-border flex flex-row items-center justify-between">
+      {/* Main Transactions List / Table Card */}
+      <Card className="shadow-2xs border-border overflow-hidden rounded-2xl">
+        <CardHeader className="py-3.5 px-4 sm:px-6 border-b border-border flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-semibold">Danh Sách Phiếu Thu Chi</CardTitle>
-            <CardDescription className="text-xs">
+            <CardTitle className="text-sm sm:text-base font-bold">Danh Sách Phiếu Thu Chi</CardTitle>
+            <CardDescription className="text-xs mt-0.5">
               Hiển thị {filteredTransactions.length} chứng từ phù hợp
             </CardDescription>
           </div>
@@ -703,190 +698,307 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-base font-medium text-foreground">Chưa có phiếu thu chi nào</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Không tìm thấy chứng từ thu chi phù hợp với bộ lọc. Hãy bấm nút "Tạo phiếu Thu" hoặc "Tạo phiếu Chi" để ghi nhận.
+            <Receipt className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-base font-semibold text-foreground">Chưa có phiếu thu chi nào</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              Không tìm thấy chứng từ thu chi nào phù hợp với bộ lọc hiện tại. Bấm "Tạo phiếu Thu" hoặc "Tạo phiếu Chi" để bắt đầu ghi nhận.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b border-border">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Loại</th>
-                  <th className="px-4 py-3 font-semibold">Tên khoản / Nội dung</th>
-                  <th className="px-4 py-3 font-semibold text-right">Số tiền (VNĐ)</th>
-                  <th className="px-4 py-3 font-semibold">Ngày C.Từ</th>
-                  <th className="px-4 py-3 font-semibold">Hạng mục</th>
-                  <th className="px-4 py-3 font-semibold">Hình thức</th>
-                  <th className="px-4 py-3 font-semibold">Người nộp/nhận</th>
-                  <th className="px-4 py-3 font-semibold text-center">Ảnh chứng từ</th>
-                  <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredTransactions.map((t) => {
-                  const images = t.imageUrls && t.imageUrls.length > 0 
-                    ? t.imageUrls 
-                    : (t.imageUrl ? [t.imageUrl] : []);
+          <div>
+            {/* MOBILE CARDS VIEW (Displayed on mobile screens under md breakpoint) */}
+            <div className="block md:hidden divide-y divide-border">
+              {filteredTransactions.map((t) => {
+                const images = t.imageUrls && t.imageUrls.length > 0 
+                  ? t.imageUrls 
+                  : (t.imageUrl ? [t.imageUrl] : []);
 
-                  return (
-                    <tr key={t.id} className="hover:bg-muted/30 transition-colors">
-                      {/* Type Badge */}
-                      <td className="px-4 py-3">
+                return (
+                  <div key={t.id} className="p-3.5 space-y-2.5 hover:bg-muted/20 transition-colors">
+                    {/* Header Row: Badge + Date + Quick Actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         {t.type === 'income' ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 font-medium">
-                            🟢 THU
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-bold px-2 py-0.5">
+                            🟢 PHIẾU THU
                           </Badge>
                         ) : (
-                          <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 hover:bg-rose-500/20 font-medium">
-                            🔴 CHI
+                          <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 text-[11px] font-bold px-2 py-0.5">
+                            🔴 PHIẾU CHI
                           </Badge>
                         )}
-                      </td>
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {t.date}
+                        </span>
+                      </div>
 
-                      {/* Title & Notes */}
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground">{t.title}</div>
+                      {/* Action buttons for mobile */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailTransaction(t)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(t)}
+                          className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                          title="Sửa phiếu"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTransaction(t)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                          title="Xóa phiếu"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Content & Category */}
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm leading-snug">{t.title}</h4>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <Badge variant="outline" className="text-[10px] font-normal bg-background px-1.5 py-0">
+                          {t.category}
+                        </Badge>
                         {t.customerName && (
-                          <span className="text-xs text-primary block mt-0.5">
+                          <span className="text-[11px] text-primary font-medium">
                             Khách: {t.customerName}
                           </span>
                         )}
-                        {t.notes && (
-                          <p className="text-xs text-muted-foreground line-clamp-1 italic mt-0.5">
-                            {t.notes}
-                          </p>
-                        )}
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* Amount */}
-                      <td className="px-4 py-3 text-right font-black">
-                        <span className={t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                        </span>
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-medium">
-                        {t.date}
-                      </td>
-
-                      {/* Category */}
-                      <td className="px-4 py-3">
-                        <Badge variant="outline" className="text-xs font-normal bg-background">
-                          {t.category}
-                        </Badge>
-                      </td>
-
-                      {/* Payment Method */}
-                      <td className="px-4 py-3 whitespace-nowrap text-xs">
-                        {t.paymentMethod === 'cash' ? (
-                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                            💵 Tiền mặt
-                          </span>
-                        ) : t.paymentMethod === 'transfer' ? (
-                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
-                            🏦 C.Khoản
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Khác</span>
-                        )}
-                      </td>
-
-                      {/* Payer / Payee & Handler */}
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {t.handlerName && (
-                          <div className="font-semibold text-foreground flex items-center gap-1">
-                            <span>👤 {t.handlerName}</span>
-                          </div>
-                        )}
-                        {t.payerPayee && (
-                          <div className="text-[11px] text-muted-foreground mt-0.5">
-                            {t.type === 'income' ? 'Nộp: ' : 'Nhận: '}{t.payerPayee}
-                          </div>
-                        )}
-                        {!t.handlerName && !t.payerPayee && '—'}
-                      </td>
-
-                      {/* Receipt Image Thumbnail */}
-                      <td className="px-4 py-3 text-center">
-                        {images.length > 0 ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewImage(images[0])}
-                              className="relative group w-10 h-10 rounded-lg overflow-hidden border border-border shadow-2xs hover:ring-2 hover:ring-primary transition-all"
-                            >
-                              <img 
-                                src={images[0]} 
-                                alt="Chứng từ" 
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                                <Eye className="h-3.5 w-3.5" />
-                              </div>
-                            </button>
-                            {images.length > 1 && (
-                              <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
-                                +{images.length - 1}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/50 font-normal">Chưa có</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            title="Xem chi tiết"
-                            onClick={() => setDetailTransaction(t)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                            title="Sửa phiếu"
-                            onClick={() => handleOpenEditModal(t)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Xóa phiếu"
-                            onClick={() => handleDeleteTransaction(t)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                    {/* Amount & Payment Info Row */}
+                    <div className="flex items-end justify-between bg-muted/30 p-2.5 rounded-xl border border-border/60">
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {t.paymentMethod === 'cash' ? '💵 Tiền mặt' : t.paymentMethod === 'transfer' ? '🏦 Chuyển khoản' : 'Ví/Khác'}
+                          {t.payerPayee && ` • ${t.payerPayee}`}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {t.handlerName && (
+                          <div className="text-[11px] text-foreground font-medium mt-0.5">
+                            👤 Thu/Chi: {t.handlerName}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-base font-black ${
+                          t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Proof Images Thumbnail row if present */}
+                    {images.length > 0 && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="text-[11px] text-muted-foreground">Ảnh chứng từ:</span>
+                        <div className="flex items-center gap-1.5">
+                          {images.map((img, idx) => (
+                            <img
+                              key={idx}
+                              src={img}
+                              alt="Ảnh phiếu"
+                              onClick={() => setPreviewImage(img)}
+                              className="w-8 h-8 rounded-lg object-cover border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (Displayed on md screens and above) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs uppercase bg-muted/60 text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Loại</th>
+                    <th className="px-4 py-3 font-semibold">Tên khoản / Nội dung</th>
+                    <th className="px-4 py-3 font-semibold text-right">Số tiền (VNĐ)</th>
+                    <th className="px-4 py-3 font-semibold">Ngày C.Từ</th>
+                    <th className="px-4 py-3 font-semibold">Hạng mục</th>
+                    <th className="px-4 py-3 font-semibold">Hình thức</th>
+                    <th className="px-4 py-3 font-semibold">Người nộp/nhận</th>
+                    <th className="px-4 py-3 font-semibold text-center">Ảnh chứng từ</th>
+                    <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTransactions.map((t) => {
+                    const images = t.imageUrls && t.imageUrls.length > 0 
+                      ? t.imageUrls 
+                      : (t.imageUrl ? [t.imageUrl] : []);
+
+                    return (
+                      <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                        {/* Type Badge */}
+                        <td className="px-4 py-3">
+                          {t.type === 'income' ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-semibold text-xs">
+                              🟢 THU
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 font-semibold text-xs">
+                              🔴 CHI
+                            </Badge>
+                          )}
+                        </td>
+
+                        {/* Title & Notes */}
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-foreground">{t.title}</div>
+                          {t.customerName && (
+                            <span className="text-xs text-primary block mt-0.5 font-medium">
+                              Khách: {t.customerName}
+                            </span>
+                          )}
+                          {t.notes && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 italic mt-0.5">
+                              {t.notes}
+                            </p>
+                          )}
+                        </td>
+
+                        {/* Amount */}
+                        <td className="px-4 py-3 text-right font-black text-base">
+                          <span className={t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                            {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                          </span>
+                        </td>
+
+                        {/* Date */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-medium">
+                          {t.date}
+                        </td>
+
+                        {/* Category */}
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className="text-xs font-normal bg-background">
+                            {t.category}
+                          </Badge>
+                        </td>
+
+                        {/* Payment Method */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          {t.paymentMethod === 'cash' ? (
+                            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
+                              💵 Tiền mặt
+                            </span>
+                          ) : t.paymentMethod === 'transfer' ? (
+                            <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold">
+                              🏦 C.Khoản
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Khác</span>
+                          )}
+                        </td>
+
+                        {/* Payer / Payee & Handler */}
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {t.handlerName && (
+                            <div className="font-semibold text-foreground flex items-center gap-1">
+                              <span>👤 {t.handlerName}</span>
+                            </div>
+                          )}
+                          {t.payerPayee && (
+                            <div className="text-[11px] text-muted-foreground mt-0.5">
+                              {t.type === 'income' ? 'Nộp: ' : 'Nhận: '}{t.payerPayee}
+                            </div>
+                          )}
+                          {!t.handlerName && !t.payerPayee && '—'}
+                        </td>
+
+                        {/* Receipt Image Thumbnail */}
+                        <td className="px-4 py-3 text-center">
+                          {images.length > 0 ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImage(images[0])}
+                                className="relative group w-9 h-9 rounded-lg overflow-hidden border border-border shadow-2xs hover:ring-2 hover:ring-primary transition-all"
+                              >
+                                <img 
+                                  src={images[0]} 
+                                  alt="Chứng từ" 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                  <Eye className="h-3.5 w-3.5" />
+                                </div>
+                              </button>
+                              {images.length > 1 && (
+                                <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
+                                  +{images.length - 1}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40 font-normal">—</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              title="Xem chi tiết"
+                              onClick={() => setDetailTransaction(t)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                              title="Sửa phiếu"
+                              onClick={() => handleOpenEditModal(t)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Xóa phiếu"
+                              onClick={() => handleDeleteTransaction(t)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </Card>
 
       {/* CREATE / EDIT TRANSACTION MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+        <DialogContent className="max-w-2xl w-[94vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <DialogTitle className="text-lg sm:text-xl font-bold flex items-center gap-2">
               <Receipt className="h-5 w-5 text-primary" />
               <span>{editingTransaction ? 'Chỉnh Sửa Phiếu Thu Chi' : 'Tạo Phiếu Thu Chi Mới'}</span>
             </DialogTitle>
@@ -897,7 +1009,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
 
           <form onSubmit={handleSubmitForm} className="space-y-4 mt-2">
             {/* Type selector tabs */}
-            <div className="grid grid-cols-2 gap-3 p-1 bg-muted rounded-xl">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
               <button
                 type="button"
                 onClick={() => {
@@ -906,7 +1018,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                     setFormCategory('Thanh toán hợp đồng');
                   }
                 }}
-                className={`py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-3 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
                   formType === 'income' 
                     ? 'bg-emerald-600 text-white shadow-md' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -924,7 +1036,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                     setFormCategory('Mua vật tư & phụ kiện');
                   }
                 }}
-                className={`py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                className={`py-2.5 px-3 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
                   formType === 'expense' 
                     ? 'bg-rose-600 text-white shadow-md' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -935,7 +1047,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Title / Content */}
               <div className="sm:col-span-2 space-y-1.5">
                 <Label className="font-semibold text-xs">
@@ -946,6 +1058,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   placeholder={formType === 'income' ? 'Ví dụ: Thu tiền cọc đơn hàng tủ bếp KH Anh Nam' : 'Ví dụ: Chi mua bản lề Hafele xưởng 1'}
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
+                  className="rounded-xl"
                 />
               </div>
 
@@ -962,7 +1075,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   placeholder="0"
                   value={formAmount}
                   onChange={(e) => setFormAmount(e.target.value)}
-                  className="font-bold text-base"
+                  className="font-bold text-base rounded-xl"
                 />
                 {formAmount && !isNaN(parseFloat(formAmount)) && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -978,6 +1091,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   type="date"
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
+                  className="rounded-xl"
                 />
               </div>
 
@@ -985,7 +1099,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <div className="space-y-1.5">
                 <Label className="font-semibold text-xs">Hạng mục</Label>
                 <Select value={formCategory} onValueChange={(val) => setFormCategory(val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue>
                       {formCategory || 'Chọn hạng mục'}
                     </SelectValue>
@@ -1001,7 +1115,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                     placeholder="Nhập tên hạng mục khác..."
                     value={customCategoryInput}
                     onChange={(e) => setCustomCategoryInput(e.target.value)}
-                    className="mt-1"
+                    className="mt-1 rounded-xl"
                   />
                 )}
               </div>
@@ -1013,7 +1127,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   value={formPaymentMethod} 
                   onValueChange={(val: any) => setFormPaymentMethod(val)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue>
                       {formPaymentMethod === 'transfer' ? '🏦 Chuyển khoản ngân hàng' :
                        formPaymentMethod === 'cash' ? '💵 Tiền mặt' : 'Ví điện tử / Khác'}
@@ -1030,7 +1144,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               {/* Internal Employee Handler */}
               <div className="space-y-1.5">
                 <Label className="font-semibold text-xs">
-                  {formType === 'income' ? 'Người thu tiền (Nhân viên thu)' : 'Người chi tiền (Nhân viên chi)'}
+                  {formType === 'income' ? 'Người thu tiền (Nhân viên)' : 'Người chi tiền (Nhân viên)'}
                 </Label>
                 <Select 
                   value={formHandlerId} 
@@ -1044,7 +1158,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                     }
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue>
                       {formHandlerId === 'none' 
                         ? '-- Chọn nhân viên --' 
@@ -1071,6 +1185,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   placeholder={formType === 'income' ? 'Tên người nộp' : 'Tên người nhận tiền / Nhà cung cấp'}
                   value={formPayerPayee}
                   onChange={(e) => setFormPayerPayee(e.target.value)}
+                  className="rounded-xl"
                 />
               </div>
 
@@ -1078,7 +1193,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <div className="space-y-1.5">
                 <Label className="font-semibold text-xs">Khách hàng liên quan (nếu có)</Label>
                 <Select value={formCustomerId} onValueChange={(val) => setFormCustomerId(val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue>
                       {formCustomerId === 'none'
                         ? '-- Không chọn --'
@@ -1100,7 +1215,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="font-semibold text-xs">Cơ sở / Xưởng thực hiện</Label>
                 <Select value={formWorkshop} onValueChange={(val) => setFormWorkshop(val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue>
                       {getWorkshopName(formWorkshop)}
                     </SelectValue>
@@ -1120,7 +1235,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                     <Camera className="h-4 w-4 text-primary" />
                     <span>Ảnh Phiếu Chi / Chứng Từ Hóa Đơn</span>
                   </Label>
-                  <span className="text-[11px] text-muted-foreground">Tự động nén & lưu ảnh</span>
+                  <span className="text-[11px] text-muted-foreground">Nén & tải tự động</span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -1134,7 +1249,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                       onChange={(e) => handleFileUpload(e.target.files)}
                       className="hidden"
                     />
-                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-medium text-xs border border-primary/20 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-xs border border-primary/20 transition-colors">
                       <Camera className="h-4 w-4" />
                       <span>Chụp ảnh phiếu</span>
                     </div>
@@ -1150,7 +1265,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                       onChange={(e) => handleFileUpload(e.target.files)}
                       className="hidden"
                     />
-                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground font-medium text-xs border border-border transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-semibold text-xs border border-border transition-colors">
                       <Upload className="h-4 w-4 text-muted-foreground" />
                       <span>Chọn ảnh từ máy</span>
                     </div>
@@ -1159,16 +1274,16 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   {isUploading && (
                     <div className="flex items-center gap-2 text-xs text-primary font-medium">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Đang nén & tải ảnh...</span>
+                      <span>Đang tải ảnh...</span>
                     </div>
                   )}
                 </div>
 
                 {/* Uploaded Photos Thumbnails Preview */}
                 {formImageUrls.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-2.5 pt-2">
                     {formImageUrls.map((url, idx) => (
-                      <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-border shadow-xs">
+                      <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-border shadow-2xs">
                         <img 
                           src={url} 
                           alt={`Ảnh chứng từ ${idx + 1}`} 
@@ -1203,18 +1318,20 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 <Label className="font-semibold text-xs">Ghi chú chi tiết</Label>
                 <Textarea
                   rows={2}
-                  placeholder="Ghi chú diễn giải thêm về khoản thu chi này..."
+                  placeholder="Ghi chú diễn giải thêm..."
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
+                  className="rounded-xl text-xs"
                 />
               </div>
             </div>
 
-            <DialogFooter className="pt-4 border-t border-border flex items-center justify-end gap-2">
+            <DialogFooter className="pt-3 border-t border-border flex items-center justify-end gap-2">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsModalOpen(false)}
+                className="rounded-xl"
               >
                 Hủy bỏ
               </Button>
@@ -1222,7 +1339,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <Button 
                 type="submit" 
                 disabled={isUploading}
-                className={formType === 'income' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}
+                className={`rounded-xl ${formType === 'income' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}`}
               >
                 {editingTransaction ? 'Cập nhật phiếu' : (formType === 'income' ? 'Lưu phiếu Thu' : 'Lưu phiếu Chi')}
               </Button>
@@ -1234,97 +1351,122 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       {/* DETAIL TRANSACTION DIALOG */}
       {detailTransaction && (
         <Dialog open={!!detailTransaction} onOpenChange={() => setDetailTransaction(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg w-[94vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {detailTransaction.type === 'income' ? (
-                  <Badge className="bg-emerald-500/10 text-emerald-600">🟢 PHIẾU THU</Badge>
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs font-extrabold px-2.5 py-1">
+                    🟢 PHIẾU THU TIỀN
+                  </Badge>
                 ) : (
-                  <Badge className="bg-rose-500/10 text-rose-600">🔴 PHIẾU CHI</Badge>
+                  <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 text-xs font-extrabold px-2.5 py-1">
+                    🔴 PHIẾU CHI TIỀN
+                  </Badge>
                 )}
-                <span>Chi tiết chứng từ</span>
-              </DialogTitle>
+                <DialogTitle className="text-base sm:text-lg font-bold">Chi tiết chứng từ</DialogTitle>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-3 text-sm mt-2">
+            <div className="space-y-3.5 text-sm mt-1">
               <div>
-                <span className="text-xs text-muted-foreground block">Tên khoản / Nội dung:</span>
-                <span className="font-bold text-foreground text-base">{detailTransaction.title}</span>
+                <span className="text-[11px] text-muted-foreground block font-medium">Tên khoản / Nội dung:</span>
+                <h3 className="font-bold text-foreground text-base sm:text-lg leading-snug mt-0.5">
+                  {detailTransaction.title}
+                </h3>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
-                <span className="text-xs text-muted-foreground">Số tiền:</span>
-                <span className={`text-xl font-black ${
-                  detailTransaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+              {/* High visibility Hero Amount Box */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-muted/80 to-muted/30 border border-border shadow-2xs">
+                <span className="text-xs font-semibold text-muted-foreground">Số tiền chứng từ:</span>
+                <span className={`text-xl sm:text-2xl font-black ${
+                  detailTransaction.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                 }`}>
-                  {formatCurrency(detailTransaction.amount)}
+                  {detailTransaction.type === 'income' ? '+' : '-'}{formatCurrency(detailTransaction.amount)}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Grid Info Card */}
+              <div className="grid grid-cols-2 gap-2.5 text-xs bg-muted/30 p-3.5 rounded-2xl border border-border">
                 <div>
-                  <span className="text-muted-foreground block">Ngày phát sinh:</span>
-                  <span className="font-semibold">{detailTransaction.date}</span>
+                  <span className="text-muted-foreground block text-[11px]">Ngày phát sinh:</span>
+                  <span className="font-bold text-foreground">{detailTransaction.date}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Hạng mục:</span>
-                  <span className="font-semibold">{detailTransaction.category}</span>
+                  <span className="text-muted-foreground block text-[11px]">Hạng mục:</span>
+                  <span className="font-bold text-foreground">{detailTransaction.category}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Hình thức TT:</span>
-                  <span className="font-semibold">
-                    {detailTransaction.paymentMethod === 'cash' ? 'Tiền mặt' : detailTransaction.paymentMethod === 'transfer' ? 'Chuyển khoản' : 'Khác'}
+                  <span className="text-muted-foreground block text-[11px]">Hình thức TT:</span>
+                  <span className="font-bold text-foreground">
+                    {detailTransaction.paymentMethod === 'cash' ? '💵 Tiền mặt' : detailTransaction.paymentMethod === 'transfer' ? '🏦 Chuyển khoản' : 'Khác'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block">Cơ sở:</span>
-                  <span className="font-semibold">{detailTransaction.workshop || 'Hà Nội'}</span>
+                  <span className="text-muted-foreground block text-[11px]">Cơ sở / Xưởng:</span>
+                  <span className="font-bold text-foreground">{getWorkshopName(detailTransaction.workshop)}</span>
                 </div>
+
+                {detailTransaction.handlerName && (
+                  <div className="col-span-2 pt-1 border-t border-border/50">
+                    <span className="text-muted-foreground block text-[11px]">
+                      {detailTransaction.type === 'income' ? 'Người thu tiền (Nội bộ):' : 'Người chi tiền (Nội bộ):'}
+                    </span>
+                    <span className="font-bold text-foreground">👤 {detailTransaction.handlerName}</span>
+                  </div>
+                )}
+
+                {detailTransaction.payerPayee && (
+                  <div className="col-span-2 pt-1 border-t border-border/50">
+                    <span className="text-muted-foreground block text-[11px]">
+                      {detailTransaction.type === 'income' ? 'Người nộp tiền (Bên ngoài):' : 'Người nhận tiền / Nhà cung cấp:'}
+                    </span>
+                    <span className="font-bold text-foreground">{detailTransaction.payerPayee}</span>
+                  </div>
+                )}
+
+                {detailTransaction.customerName && (
+                  <div className="col-span-2 pt-1 border-t border-border/50">
+                    <span className="text-muted-foreground block text-[11px]">Khách hàng liên quan:</span>
+                    <span className="font-bold text-primary">{detailTransaction.customerName}</span>
+                  </div>
+                )}
               </div>
 
-              {detailTransaction.payerPayee && (
-                <div className="text-xs">
-                  <span className="text-muted-foreground block">Người nộp/nhận:</span>
-                  <span className="font-semibold">{detailTransaction.payerPayee}</span>
-                </div>
-              )}
-
-              {detailTransaction.customerName && (
-                <div className="text-xs">
-                  <span className="text-muted-foreground block">Khách hàng liên quan:</span>
-                  <span className="font-semibold text-primary">{detailTransaction.customerName}</span>
-                </div>
-              )}
-
               {detailTransaction.notes && (
-                <div className="text-xs">
-                  <span className="text-muted-foreground block">Ghi chú:</span>
-                  <p className="p-2 rounded bg-muted/40 text-foreground italic">{detailTransaction.notes}</p>
+                <div className="text-xs space-y-1">
+                  <span className="text-muted-foreground font-semibold block text-[11px]">Ghi chú diễn giải:</span>
+                  <p className="p-2.5 rounded-xl bg-muted/40 text-foreground italic border border-border/60">
+                    {detailTransaction.notes}
+                  </p>
                 </div>
               )}
 
-              {/* Photos */}
+              {/* Photos Gallery */}
               {((detailTransaction.imageUrls && detailTransaction.imageUrls.length > 0) || detailTransaction.imageUrl) && (
-                <div className="space-y-1 pt-2">
-                  <span className="text-xs text-muted-foreground block font-semibold">Ảnh chứng từ phiếu:</span>
+                <div className="space-y-1.5 pt-2">
+                  <span className="text-xs text-muted-foreground block font-semibold">Ảnh chứng từ phiếu chi:</span>
                   <div className="flex flex-wrap gap-2">
                     {(detailTransaction.imageUrls || [detailTransaction.imageUrl]).map((url, idx) => (
                       url ? (
-                        <img
-                          key={idx}
-                          src={url}
-                          alt="Ảnh phiếu chi"
-                          onClick={() => setPreviewImage(url)}
-                          className="w-20 h-20 object-cover rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                        />
+                        <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-border shadow-2xs">
+                          <img
+                            src={url}
+                            alt="Ảnh phiếu chi"
+                            onClick={() => setPreviewImage(url)}
+                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white pointer-events-none transition-opacity">
+                            <Eye className="h-4 w-4" />
+                          </div>
+                        </div>
                       ) : null
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="text-[11px] text-muted-foreground pt-2 border-t border-border flex justify-between">
-                <span>Người lập: {detailTransaction.createdBy || 'Hệ thống'}</span>
+              <div className="text-[11px] text-muted-foreground pt-3 border-t border-border flex items-center justify-between">
+                <span>Người lập: <strong className="text-foreground">{detailTransaction.createdBy || 'Hệ thống'}</strong></span>
                 <span>Tạo lúc: {detailTransaction.createdAt ? new Date(detailTransaction.createdAt).toLocaleDateString('vi-VN') : '—'}</span>
               </div>
             </div>
@@ -1335,12 +1477,12 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       {/* FULLSIZE IMAGE PREVIEW MODAL */}
       {previewImage && (
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-          <DialogContent className="max-w-4xl p-2 bg-black/90 border-none text-white flex flex-col items-center justify-center">
+          <DialogContent className="max-w-4xl w-[95vw] p-2 bg-black/95 border-none text-white flex flex-col items-center justify-center rounded-2xl">
             <div className="relative w-full max-h-[85vh] flex items-center justify-center">
               <img
                 src={previewImage}
                 alt="Xem đầy đủ ảnh phiếu chi chứng từ"
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
               />
             </div>
           </DialogContent>
