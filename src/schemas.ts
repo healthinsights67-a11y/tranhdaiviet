@@ -412,6 +412,8 @@ export const FinancialTransactionSchema = z.object({
   category: z.string().catch('Khác').default('Khác'),
   paymentMethod: z.enum(['cash', 'transfer', 'other']).catch('transfer').default('transfer'),
   payerPayee: z.string().optional().catch(''),
+  handlerId: z.string().optional().catch(''),
+  handlerName: z.string().optional().catch(''),
   customerId: z.string().optional().catch(''),
   customerName: z.string().optional().catch(''),
   workshop: z.string().optional().catch(''),

@@ -429,6 +429,8 @@ export interface FinancialTransaction {
   category: string; // Hạng mục (Tạm ứng, Thanh toán HĐ, Mua vật tư, Chi phí xưởng, Lương/Thưởng, Khác...)
   paymentMethod: 'cash' | 'transfer' | 'other'; // Tiền mặt, Chuyển khoản, Khác
   payerPayee?: string; // Người nộp / Người nhận tiền
+  handlerId?: string; // ID nhân viên thực hiện chi / thu
+  handlerName?: string; // Tên nhân viên thực hiện chi / thu
   customerId?: string; // Khách hàng liên quan (nếu có)
   customerName?: string;
   workshop?: string; // Cơ sở/Xưởng (Hà Nội, Cần Thơ, Đồng Nai)

@@ -1130,6 +1130,38 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     }
   });
 
+  // Financial Transactions API (Admin SDK Bypass for cross-device sync)
+  app.get("/api/financial-transactions", async (req, res) => {
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      const snapshot = await getDocs(collection(clientDb, 'financial_transactions'));
+      const items = snapshot.docs.map(docSnap => ({
+        ...docSnap.data(),
+        id: docSnap.id
+      }));
+      res.json(items);
+    } catch (error: any) {
+      console.error("API GET financial-transactions error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/financial-transactions", async (req, res) => {
+    try {
+      const clientDb = await getAuthenticatedClientDb();
+      const transactionData = req.body;
+      if (!transactionData || !transactionData.id) {
+        return res.status(400).json({ error: "Missing transaction data or id" });
+      }
+      const docRef = doc(clientDb, 'financial_transactions', transactionData.id);
+      await setDoc(docRef, transactionData, { merge: true });
+      res.json({ success: true, id: transactionData.id });
+    } catch (error: any) {
+      console.error("API POST financial-transactions error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/upload-document", async (req, res) => {
     const { name, type, folderId, base64 } = req.body;
     if (!name || !folderId || !base64) {

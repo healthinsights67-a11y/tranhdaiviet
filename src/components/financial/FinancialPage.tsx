@@ -112,6 +112,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
   const [customCategoryInput, setCustomCategoryInput] = React.useState('');
   const [formPaymentMethod, setFormPaymentMethod] = React.useState<'cash' | 'transfer' | 'other'>('transfer');
   const [formPayerPayee, setFormPayerPayee] = React.useState('');
+  const [formHandlerId, setFormHandlerId] = React.useState<string>('none');
+  const [formHandlerName, setFormHandlerName] = React.useState<string>('');
   const [formCustomerId, setFormCustomerId] = React.useState<string>('none');
   const [formWorkshop, setFormWorkshop] = React.useState<string>('Hà Nội');
   const [formImageUrls, setFormImageUrls] = React.useState<string[]>([]);
@@ -213,6 +215,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     setCustomCategoryInput('');
     setFormPaymentMethod('transfer');
     setFormPayerPayee('');
+    setFormHandlerId(currentUser?.id || 'none');
+    setFormHandlerName(currentUser?.name || '');
     setFormCustomerId('none');
     setFormWorkshop(currentUser?.workshop || 'Hà Nội');
     setFormImageUrls([]);
@@ -235,6 +239,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     }
     setFormPaymentMethod(t.paymentMethod || 'transfer');
     setFormPayerPayee(t.payerPayee || '');
+    setFormHandlerId(t.handlerId || 'none');
+    setFormHandlerName(t.handlerName || '');
     setFormCustomerId(t.customerId || 'none');
     setFormWorkshop(t.workshop || 'Hà Nội');
 
@@ -306,6 +312,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       : formCategory;
 
     const selectedCust = customers.find(c => c.id === formCustomerId);
+    const selectedHandler = members.find(m => m.id === formHandlerId);
+    const finalHandlerName = formHandlerName.trim() || (selectedHandler ? selectedHandler.name : '');
 
     const payload: Omit<FinancialTransaction, 'id'> = {
       type: formType,
@@ -315,6 +323,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       category: finalCategory,
       paymentMethod: formPaymentMethod,
       payerPayee: formPayerPayee.trim(),
+      handlerId: formHandlerId !== 'none' ? formHandlerId : '',
+      handlerName: finalHandlerName,
       customerId: formCustomerId !== 'none' ? formCustomerId : '',
       customerName: selectedCust ? selectedCust.name : '',
       workshop: formWorkshop,
@@ -369,6 +379,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       'Số tiền (VNĐ)': t.amount,
       'Hạng mục': t.category,
       'Hình thức TT': t.paymentMethod === 'cash' ? 'Tiền mặt' : t.paymentMethod === 'transfer' ? 'Chuyển khoản' : 'Khác',
+      'Người thu/chi (Nội bộ)': t.handlerName || '',
       'Người nộp / nhận': t.payerPayee || '',
       'Khách hàng': t.customerName || '',
       'Cơ sở': t.workshop || '',
@@ -784,9 +795,19 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                         )}
                       </td>
 
-                      {/* Payer / Payee */}
+                      {/* Payer / Payee & Handler */}
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {t.payerPayee || '—'}
+                        {t.handlerName && (
+                          <div className="font-semibold text-foreground flex items-center gap-1">
+                            <span>👤 {t.handlerName}</span>
+                          </div>
+                        )}
+                        {t.payerPayee && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {t.type === 'income' ? 'Nộp: ' : 'Nhận: '}{t.payerPayee}
+                          </div>
+                        )}
+                        {!t.handlerName && !t.payerPayee && '—'}
                       </td>
 
                       {/* Receipt Image Thumbnail */}
@@ -1006,13 +1027,48 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 </Select>
               </div>
 
+              {/* Internal Employee Handler */}
+              <div className="space-y-1.5">
+                <Label className="font-semibold text-xs">
+                  {formType === 'income' ? 'Người thu tiền (Nhân viên thu)' : 'Người chi tiền (Nhân viên chi)'}
+                </Label>
+                <Select 
+                  value={formHandlerId} 
+                  onValueChange={(val) => {
+                    setFormHandlerId(val);
+                    if (val === 'none') {
+                      setFormHandlerName('');
+                    } else {
+                      const found = members.find(m => m.id === val);
+                      if (found) setFormHandlerName(found.name);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {formHandlerId === 'none' 
+                        ? '-- Chọn nhân viên --' 
+                        : (formHandlerName || 'Nhân viên')}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Chọn nhân viên --</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        👤 {m.name} {m.role ? `(${m.role})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Payer / Payee */}
               <div className="space-y-1.5">
                 <Label className="font-semibold text-xs">
-                  {formType === 'income' ? 'Người nộp tiền' : 'Người nhận tiền / Đơn vị bán'}
+                  {formType === 'income' ? 'Người nộp tiền (Bên ngoài)' : 'Người nhận tiền / Đơn vị bán'}
                 </Label>
                 <Input
-                  placeholder={formType === 'income' ? 'Tên người nộp' : 'Tên người nhận tiền'}
+                  placeholder={formType === 'income' ? 'Tên người nộp' : 'Tên người nhận tiền / Nhà cung cấp'}
                   value={formPayerPayee}
                   onChange={(e) => setFormPayerPayee(e.target.value)}
                 />
