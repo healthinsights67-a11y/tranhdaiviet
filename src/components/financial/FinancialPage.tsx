@@ -298,7 +298,8 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       return;
     }
 
-    const numAmount = parseFloat(formAmount.replace(/[^0-9.]/g, ''));
+    const rawAmountStr = typeof formAmount === 'number' ? String(formAmount) : (formAmount || '0');
+    const numAmount = parseFloat(rawAmountStr.replace(/[^0-9.]/g, ''));
     if (isNaN(numAmount) || numAmount <= 0) {
       toast.error("Vui lòng nhập số tiền hợp lệ lớn hơn 0");
       return;
@@ -318,14 +319,14 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       category: finalCategory,
       paymentMethod: formPaymentMethod,
       payerPayee: formPayerPayee.trim(),
-      customerId: formCustomerId !== 'none' ? formCustomerId : undefined,
-      customerName: selectedCust ? selectedCust.name : undefined,
+      customerId: formCustomerId !== 'none' ? formCustomerId : '',
+      customerName: selectedCust ? selectedCust.name : '',
       workshop: formWorkshop,
       imageUrl: formImageUrls.length > 0 ? formImageUrls[0] : '',
       imageUrls: formImageUrls,
       notes: formNotes.trim(),
       createdBy: currentUser?.name || 'Hệ thống',
-      createdById: currentUser?.id,
+      createdById: currentUser?.id || '',
       createdAt: editingTransaction?.createdAt || new Date().toISOString()
     };
 
@@ -338,9 +339,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
         toast.success(`Tạo phiếu ${formType === 'income' ? 'Thu' : 'Chi'} thành công!`);
       }
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving transaction:", error);
-      toast.error("Lỗi khi lưu phiếu thu chi!");
+      toast.error("Lỗi khi lưu phiếu thu chi: " + (error?.message || "Lỗi không xác định"));
     }
   };
 

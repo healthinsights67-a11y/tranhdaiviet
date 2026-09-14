@@ -18,6 +18,18 @@ import { moveToTrash } from './trashService';
 
 const COLLECTION_NAME = 'financial_transactions';
 
+const sanitizeData = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeData);
+  const clean: Record<string, any> = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      clean[key] = sanitizeData(obj[key]);
+    }
+  });
+  return clean;
+};
+
 export const fetchFinancialTransactions = async (): Promise<FinancialTransaction[]> => {
   try {
     const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
@@ -65,7 +77,8 @@ export const addFinancialTransaction = async (
       updatedAt: new Date().toISOString()
     };
     const validated = FinancialTransactionSchema.parse(newTransaction);
-    await setDoc(docRef, validated);
+    const sanitized = sanitizeData(validated);
+    await setDoc(docRef, sanitized);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, COLLECTION_NAME);
@@ -79,10 +92,10 @@ export const updateFinancialTransaction = async (
 ): Promise<void> => {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
-    const updatedData = {
+    const updatedData = sanitizeData({
       ...data,
       updatedAt: new Date().toISOString()
-    };
+    });
     await setDoc(docRef, updatedData, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
