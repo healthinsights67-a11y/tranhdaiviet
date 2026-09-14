@@ -568,7 +568,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             <div>
               <Select value={typeFilter} onValueChange={(val: any) => setTypeFilter(val)}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Loại phiếu" />
+                  <SelectValue>
+                    {typeFilter === 'all' ? 'Tất cả loại' : typeFilter === 'income' ? '🟢 Phiếu Thu' : '🔴 Phiếu Chi'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả loại (Thu & Chi)</SelectItem>
@@ -582,7 +584,13 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             <div>
               <Select value={dateRangeFilter} onValueChange={(val: any) => setDateRangeFilter(val)}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Thời gian" />
+                  <SelectValue>
+                    {dateRangeFilter === 'month' ? 'Tháng này' :
+                     dateRangeFilter === 'today' ? 'Hôm nay' :
+                     dateRangeFilter === 'week' ? 'Tuần này' :
+                     dateRangeFilter === 'year' ? 'Năm nay' :
+                     dateRangeFilter === 'all' ? 'Tất cả thời gian' : 'Tùy chọn ngày'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="month">Tháng này</SelectItem>
@@ -599,7 +607,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             <div>
               <Select value={categoryFilter} onValueChange={(val: any) => setCategoryFilter(val)}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Hạng mục" />
+                  <SelectValue>
+                    {categoryFilter === 'all' ? 'Tất cả hạng mục' : categoryFilter}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả hạng mục</SelectItem>
@@ -614,7 +624,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             <div>
               <Select value={workshopFilter} onValueChange={(val: any) => setWorkshopFilter(val)}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Cơ sở / Xưởng" />
+                  <SelectValue>
+                    {getWorkshopName(workshopFilter)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {WORKSHOPS.map((w) => (
@@ -956,7 +968,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 <Label className="font-semibold text-xs">Hạng mục</Label>
                 <Select value={formCategory} onValueChange={(val) => setFormCategory(val)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Chọn hạng mục" />
+                    <SelectValue>
+                      {formCategory || 'Chọn hạng mục'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORY_OPTIONS.map((cat) => (
@@ -982,7 +996,10 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                   onValueChange={(val: any) => setFormPaymentMethod(val)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {formPaymentMethod === 'transfer' ? '🏦 Chuyển khoản ngân hàng' :
+                       formPaymentMethod === 'cash' ? '💵 Tiền mặt' : 'Ví điện tử / Khác'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="transfer">🏦 Chuyển khoản ngân hàng</SelectItem>
@@ -1009,7 +1026,11 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 <Label className="font-semibold text-xs">Khách hàng liên quan (nếu có)</Label>
                 <Select value={formCustomerId} onValueChange={(val) => setFormCustomerId(val)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Chọn khách hàng" />
+                    <SelectValue>
+                      {formCustomerId === 'none'
+                        ? '-- Không chọn --'
+                        : (customers.find(c => c.id === formCustomerId)?.name || 'Khách hàng')}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-- Không chọn --</SelectItem>
@@ -1027,7 +1048,9 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
                 <Label className="font-semibold text-xs">Cơ sở / Xưởng thực hiện</Label>
                 <Select value={formWorkshop} onValueChange={(val) => setFormWorkshop(val)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {getWorkshopName(formWorkshop)}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {WORKSHOPS.filter(w => w.id !== 'all').map((w) => (
