@@ -267,6 +267,10 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    match /financial_transactions/{document=**} {
+      allow read, write: if true;
+    }
+
   }
 }
 
