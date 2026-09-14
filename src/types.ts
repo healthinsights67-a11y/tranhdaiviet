@@ -443,3 +443,34 @@ export interface FinancialTransaction {
   updatedAt?: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  category?: string; // Gỗ, Phụ kiện, Mặt bằng, Kính, Sơn, Khác...
+  notes?: string;
+  totalPurchased: number; // Tổng giá trị hàng mua từ trước đến nay
+  totalPaid: number; // Tổng số tiền đã thanh toán
+  remainingDebt: number; // Công nợ còn lại (totalPurchased - totalPaid)
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SupplierTransaction {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  type: 'purchase' | 'payment'; // 'purchase': Phát sinh đơn mua nợ, 'payment': Thanh toán trả tiền NCC
+  amount: number; // Số tiền (VNĐ)
+  date: string; // YYYY-MM-DD
+  invoiceNo?: string; // Số hóa đơn / Mã đơn mua
+  paymentMethod?: 'cash' | 'transfer' | 'other';
+  financialTransactionId?: string; // Mã phiếu chi liên kết bên Sổ Quỹ Thu Chi
+  handlerName?: string; // Tên nhân viên thực hiện
+  imageUrls?: string[]; // Ảnh đính kèm hóa đơn
+  notes?: string; // Ghi chú diễn giải
+  createdBy?: string;
+  createdAt: string;
+}
+
