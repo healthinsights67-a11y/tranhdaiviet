@@ -128,10 +128,6 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     const unsubscribe = subscribeFinancialTransactions((data) => {
       setTransactions(data);
       setLoading(false);
-    }, (err) => {
-      console.error("Firestore subscription error:", err);
-      toast.error("Lỗi tải dữ liệu thu chi từ máy chủ");
-      setLoading(false);
     });
 
     return () => unsubscribe();

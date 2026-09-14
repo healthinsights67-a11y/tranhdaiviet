@@ -6,8 +6,6 @@ import {
   setDoc, 
   deleteDoc, 
   onSnapshot, 
-  query, 
-  orderBy, 
   handleFirestoreError, 
   OperationType 
 } from '../lib/firebase';
@@ -60,8 +58,8 @@ const mergeTransactions = (remote: FinancialTransaction[], local: FinancialTrans
 export const fetchFinancialTransactions = async (): Promise<FinancialTransaction[]> => {
   const localItems = getLocalTransactions();
   try {
-    const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
-    const snapshot = await getDocs(q);
+    const colRef = collection(db, COLLECTION_NAME);
+    const snapshot = await getDocs(colRef);
     const remoteItems = snapshot.docs.map(docSnap => {
       const raw = { ...docSnap.data(), id: docSnap.id };
       return FinancialTransactionSchema.parse(raw) as FinancialTransaction;
@@ -79,7 +77,7 @@ export const subscribeFinancialTransactions = (
   onData: (items: FinancialTransaction[]) => void,
   onError?: (err: any) => void
 ) => {
-  const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
+  const colRef = collection(db, COLLECTION_NAME);
   
   // Emit local items immediately for instant UI response
   const localItems = getLocalTransactions();
@@ -88,7 +86,7 @@ export const subscribeFinancialTransactions = (
   }
 
   return onSnapshot(
-    q,
+    colRef,
     (snapshot) => {
       const remoteItems = snapshot.docs.map(docSnap => {
         const raw = { ...docSnap.data(), id: docSnap.id };
@@ -101,8 +99,9 @@ export const subscribeFinancialTransactions = (
     },
     (err) => {
       console.warn("Realtime subscription error in financialService (using local fallback):", err);
-      onData(getLocalTransactions());
-      if (onError) onError(err);
+      // Fallback to local data without throwing intrusive error UI
+      const currentLocal = getLocalTransactions();
+      onData(currentLocal);
     }
   );
 };
