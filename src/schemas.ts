@@ -42,6 +42,7 @@ export const MemberPermissionsSchema = z.object({
   menuCustomers: z.boolean().optional().catch(true),
   menuInstallations: z.boolean().optional().catch(true),
   menuAi: z.boolean().optional().catch(true),
+  menuFinancial: z.boolean().optional().catch(true),
 });
 
 export const MemberSchema = z.object({
@@ -401,4 +402,26 @@ export const InventoryTransactionSchema = z.object({
   createdBy: z.string().min(1, "Thiếu người tạo"),
   createdAt: z.string(),
 });
+
+export const FinancialTransactionSchema = z.object({
+  id: z.string(),
+  type: z.enum(['income', 'expense']).catch('expense'),
+  title: z.string().catch('').default(''),
+  amount: z.number().catch(0).default(0),
+  date: z.string().catch('').default(() => new Date().toISOString().split('T')[0]),
+  category: z.string().catch('Khác').default('Khác'),
+  paymentMethod: z.enum(['cash', 'transfer', 'other']).catch('transfer').default('transfer'),
+  payerPayee: z.string().optional().catch(''),
+  customerId: z.string().optional().catch(''),
+  customerName: z.string().optional().catch(''),
+  workshop: z.string().optional().catch(''),
+  imageUrl: z.string().optional().catch(''),
+  imageUrls: z.array(z.string()).optional().catch([]),
+  notes: z.string().optional().catch(''),
+  createdBy: z.string().optional().catch(''),
+  createdById: z.string().optional().catch(''),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema.optional(),
+});
+
 

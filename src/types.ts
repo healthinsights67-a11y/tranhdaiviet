@@ -19,6 +19,7 @@ export interface MemberPermissions {
   menuCustomers: boolean;
   menuInstallations: boolean;
   menuAi: boolean;
+  menuFinancial?: boolean;
 }
 
 export interface Member {
@@ -416,3 +417,27 @@ export interface InventoryTransaction {
   createdBy: string;
   createdAt: string;
 }
+
+export type FinancialTransactionType = 'income' | 'expense';
+
+export interface FinancialTransaction {
+  id: string;
+  type: FinancialTransactionType; // 'income' (Thu) hoặc 'expense' (Chi)
+  title: string; // Tên khoản thu/chi (Nội dung)
+  amount: number; // Số tiền (VNĐ)
+  date: string; // Ngày phát sinh chứng từ (YYYY-MM-DD)
+  category: string; // Hạng mục (Tạm ứng, Thanh toán HĐ, Mua vật tư, Chi phí xưởng, Lương/Thưởng, Khác...)
+  paymentMethod: 'cash' | 'transfer' | 'other'; // Tiền mặt, Chuyển khoản, Khác
+  payerPayee?: string; // Người nộp / Người nhận tiền
+  customerId?: string; // Khách hàng liên quan (nếu có)
+  customerName?: string;
+  workshop?: string; // Cơ sở/Xưởng (Hà Nội, Cần Thơ, Đồng Nai)
+  imageUrl?: string; // Ảnh chứng từ/phiếu chi chính
+  imageUrls?: string[]; // Danh sách các ảnh đính kèm khác
+  notes?: string; // Ghi chú chi tiết
+  createdBy?: string; // Người lập phiếu
+  createdById?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+

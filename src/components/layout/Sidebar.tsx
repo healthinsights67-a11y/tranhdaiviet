@@ -29,7 +29,8 @@ import {
   HelpCircle,
   MapPin,
   HeartHandshake,
-  Wrench
+  Wrench,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ const navGroups = [
     title: 'Đơn hàng & Khách',
     items: [
       { id: 'sale', label: 'SALE', icon: BadgeDollarSign, permission: 'menuSale' },
+      { id: 'financial', label: 'Quản lý Thu Chi', icon: Receipt, permission: 'menuFinancial' },
       { id: 'customers', label: 'Khách hàng', icon: Contact, permission: 'menuCustomers' },
       { id: 'quotations', label: 'Báo Giá', icon: FileText, permission: 'menuQuotations' },
       { id: 'customer-care', label: 'Bảo hành & CSKH', icon: HeartHandshake, permission: 'menuCustomers' },

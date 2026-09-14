@@ -28,6 +28,7 @@ const MaterialConfigPage = React.lazy(() => import('./components/materials/Mater
 const SalesRoutePage = React.lazy(() => import('./components/members/SalesRoutePage').then(module => ({ default: module.SalesRoutePage })));
 const CustomerCarePage = React.lazy(() => import('./components/customers/CustomerCarePage').then(module => ({ default: module.CustomerCarePage })));
 const InstallerDashboard = React.lazy(() => import('./components/installations/InstallerDashboard').then(module => ({ default: module.InstallerDashboard })));
+const FinancialPage = React.lazy(() => import('./components/financial/FinancialPage').then(module => ({ default: module.FinancialPage })));
 import { WorkflowGuideWidget } from './components/dashboard/WorkflowGuideWidget';
 import { MOCK_TASKS, MOCK_MEMBERS, MOCK_CUSTOMERS, MOCK_QUOTATIONS } from './lib/mockData';
 import { Toaster } from '@/components/ui/sonner';
@@ -611,7 +612,7 @@ function AppContent() {
     menuQuotations: true, menuSale: true, menuDesign: true,
     menuMarketing: true, menuReports: true, menuMedia: true,
     menuMembers: true, menuCustomers: true, menuAi: true,
-    menuInstallations: true,
+    menuInstallations: true, menuFinancial: true,
   };
   const perms = isManager || !currentMember
     ? DEFAULT_PERMS
@@ -845,6 +846,10 @@ function AppContent() {
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
           : <CustomerCarePage customers={filteredCustomers} members={activeMembers} currentUser={currentMember} />;
+      case 'financial':
+        return redirect(perms.menuFinancial)
+          ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
+          : <FinancialPage customers={filteredCustomers} members={activeMembers} currentUser={currentMember} />;
       case 'customers':
         return redirect(perms.menuCustomers)
           ? <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />
