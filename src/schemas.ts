@@ -426,4 +426,16 @@ export const FinancialTransactionSchema = z.object({
   updatedAt: timestampSchema.optional(),
 });
 
+export const FinancialOpeningBalanceSchema = z.object({
+  cashBalance: z.number().catch(0).default(0),
+  bankBalance: z.number().catch(0).default(0),
+  startDate: z.string().catch(() => new Date().toISOString().split('T')[0]),
+  notes: z.string().optional().catch(''),
+  updatedBy: z.string().optional().catch(''),
+  updatedAt: timestampSchema.optional(),
+  byWorkshop: z.record(z.object({
+    cash: z.number().catch(0).default(0),
+    bank: z.number().catch(0).default(0),
+  })).optional(),
+});
 

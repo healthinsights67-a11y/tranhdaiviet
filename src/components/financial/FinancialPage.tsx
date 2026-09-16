@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { 
   FinancialTransaction, 
   FinancialTransactionType, 
+  FinancialOpeningBalance,
   Customer, 
   Member, 
   WORKSHOPS, 
@@ -14,7 +15,9 @@ import {
   subscribeFinancialTransactions, 
   addFinancialTransaction, 
   updateFinancialTransaction, 
-  deleteFinancialTransaction 
+  deleteFinancialTransaction,
+  subscribeOpeningBalance,
+  saveOpeningBalance
 } from '@/src/services/financialService';
 import {
   subscribeSuppliers,
@@ -80,22 +83,37 @@ import {
   HandCoins,
   History,
   UserPlus,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ShieldCheck,
+  PiggyBank
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CATEGORY_OPTIONS = [
-  'Thanh toán hợp đồng',
-  'Tạm ứng',
-  'Mua vật tư & phụ kiện',
-  'Chi phí xưởng & sản xuất',
-  'Lương & Thưởng',
-  'Chi phí thi công - vận chuyển',
-  'Điện nước & Mặt bằng',
-  'Tiếp khách & Văn phòng',
-  'Marketing & Quảng cáo',
+const INCOME_CATEGORIES = [
+  'Thanh toán hợp đồng khách hàng',
+  'Tạm ứng hợp đồng',
+  'Thu hồi tạm ứng nhân viên',
+  'Thu hoàn tiền nhà cung cấp',
+  'Bổ sung vốn / Vay ngân hàng',
+  'Thu phế liệu / Thanh lý vật tư',
   'Khác'
 ];
+
+const EXPENSE_CATEGORIES = [
+  'Mua vật tư Ecoplast & phụ kiện',
+  'Lương, Thưởng & Phụ cấp thợ xưởng',
+  'Chi phí thi công & lắp đặt',
+  'Chi phí vận chuyển & cước xe',
+  'Mặt bằng xưởng, điện nước & mạng',
+  'Chi mua sắm máy móc & công cụ',
+  'Tiếp khách, văn phòng phẩm & xe cộ',
+  'Marketing & Hoa hồng Sale',
+  'Thanh toán công nợ Nhà cung cấp',
+  'Khác'
+];
+
+const CATEGORY_OPTIONS = Array.from(new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES]));
+
 
 interface FinancialPageProps {
   customers?: Customer[];
@@ -106,6 +124,15 @@ interface FinancialPageProps {
 export function FinancialPage({ customers = [], members = [], currentUser }: FinancialPageProps) {
   const [transactions, setTransactions] = React.useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
+
+  // Opening Balance State
+  const [openingBalance, setOpeningBalance] = React.useState<FinancialOpeningBalance | null>(null);
+  const [isOBModalOpen, setIsOBModalOpen] = React.useState<boolean>(false);
+  const [obCashBalance, setObCashBalance] = React.useState<string>('0');
+  const [obBankBalance, setObBankBalance] = React.useState<string>('0');
+  const [obStartDate, setObStartDate] = React.useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [obNotes, setObNotes] = React.useState<string>('');
+  const [obSaving, setObSaving] = React.useState<boolean>(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -192,6 +219,10 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
       setLoading(false);
     });
 
+    const unsubscribeOB = subscribeOpeningBalance((data) => {
+      setOpeningBalance(data);
+    });
+
     const unsubscribeSuppliers = subscribeSuppliers((data) => {
       setSuppliers(data);
       setSupplierLoading(false);
@@ -203,6 +234,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
 
     return () => {
       unsubscribeTxs();
+      unsubscribeOB();
       unsubscribeSuppliers();
       unsubscribeSupTxs();
     };
@@ -262,20 +294,122 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     });
   }, [transactions, typeFilter, categoryFilter, workshopFilter, searchQuery, dateRangeFilter, customStartDate, customEndDate]);
 
-  // Statistics calculation
-  const totalIncome = React.useMemo(() => {
-    return filteredTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  // Opening Balance breakdown
+  const obCash = openingBalance?.cashBalance || 0;
+  const obBank = openingBalance?.bankBalance || 0;
+  const obTotal = obCash + obBank;
+  const obStartDateVal = openingBalance?.startDate || '';
+
+  // All-time Cashbook Balance calculation (from Opening Balance start date onwards)
+  const cashbookStats = React.useMemo(() => {
+    let totalAllIncomeCash = 0;
+    let totalAllIncomeBank = 0;
+    let totalAllExpenseCash = 0;
+    let totalAllExpenseBank = 0;
+
+    transactions.forEach(t => {
+      if (obStartDateVal && t.date && t.date < obStartDateVal) return;
+      const isCash = t.paymentMethod === 'cash';
+      if (t.type === 'income') {
+        if (isCash) totalAllIncomeCash += t.amount || 0;
+        else totalAllIncomeBank += t.amount || 0;
+      } else if (t.type === 'expense') {
+        if (isCash) totalAllExpenseCash += t.amount || 0;
+        else totalAllExpenseBank += t.amount || 0;
+      }
+    });
+
+    const currentCash = obCash + totalAllIncomeCash - totalAllExpenseCash;
+    const currentBank = obBank + totalAllIncomeBank - totalAllExpenseBank;
+    const currentTotalFund = currentCash + currentBank;
+
+    return {
+      currentCash,
+      currentBank,
+      currentTotalFund,
+      totalAllIncomeCash,
+      totalAllIncomeBank,
+      totalAllExpenseCash,
+      totalAllExpenseBank
+    };
+  }, [transactions, obCash, obBank, obStartDateVal]);
+
+  // Statistics calculation for filtered period
+  const periodStats = React.useMemo(() => {
+    let incomeCash = 0;
+    let incomeBank = 0;
+    let expenseCash = 0;
+    let expenseBank = 0;
+
+    filteredTransactions.forEach(t => {
+      const isCash = t.paymentMethod === 'cash';
+      if (t.type === 'income') {
+        if (isCash) incomeCash += t.amount || 0;
+        else incomeBank += t.amount || 0;
+      } else if (t.type === 'expense') {
+        if (isCash) expenseCash += t.amount || 0;
+        else expenseBank += t.amount || 0;
+      }
+    });
+
+    const totalPeriodIncome = incomeCash + incomeBank;
+    const totalPeriodExpense = expenseCash + expenseBank;
+    const netPeriodCashflow = totalPeriodIncome - totalPeriodExpense;
+
+    return {
+      incomeCash,
+      incomeBank,
+      expenseCash,
+      expenseBank,
+      totalPeriodIncome,
+      totalPeriodExpense,
+      netPeriodCashflow
+    };
   }, [filteredTransactions]);
 
-  const totalExpense = React.useMemo(() => {
-    return filteredTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [filteredTransactions]);
+  const totalIncome = periodStats.totalPeriodIncome;
+  const totalExpense = periodStats.totalPeriodExpense;
+  const netBalance = periodStats.netPeriodCashflow;
 
-  const netBalance = totalIncome - totalExpense;
+  // Opening Balance Modal Handlers
+  const handleOpenOBModal = () => {
+    if (openingBalance) {
+      setObCashBalance(openingBalance.cashBalance.toString());
+      setObBankBalance(openingBalance.bankBalance.toString());
+      setObStartDate(openingBalance.startDate || new Date().toISOString().split('T')[0]);
+      setObNotes(openingBalance.notes || '');
+    } else {
+      setObCashBalance('0');
+      setObBankBalance('0');
+      setObStartDate(new Date().toISOString().split('T')[0]);
+      setObNotes('');
+    }
+    setIsOBModalOpen(true);
+  };
+
+  const handleSaveOpeningBalanceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cash = parseFloat(obCashBalance.replace(/[^0-9.-]/g, '')) || 0;
+    const bank = parseFloat(obBankBalance.replace(/[^0-9.-]/g, '')) || 0;
+
+    setObSaving(true);
+    try {
+      await saveOpeningBalance({
+        cashBalance: cash,
+        bankBalance: bank,
+        startDate: obStartDate,
+        notes: obNotes.trim(),
+        updatedBy: currentUser?.name || 'Kế toán trưởng',
+        updatedAt: new Date().toISOString()
+      });
+      toast.success("Đã cập nhật Quỹ Ban Đầu / Số Dư Đầu Kỳ thành công!");
+      setIsOBModalOpen(false);
+    } catch (err: any) {
+      toast.error("Lỗi khi lưu số dư đầu kỳ: " + (err?.message || 'Lỗi không xác định'));
+    } finally {
+      setObSaving(false);
+    }
+  };
 
   // Open modal for Create
   const handleOpenCreateModal = (type: FinancialTransactionType = 'expense') => {
@@ -284,7 +418,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     setFormTitle('');
     setFormAmount('');
     setFormDate(new Date().toISOString().split('T')[0]);
-    setFormCategory(type === 'income' ? 'Thanh toán hợp đồng' : 'Mua vật tư & phụ kiện');
+    setFormCategory(type === 'income' ? 'Thanh toán hợp đồng khách hàng' : 'Mua vật tư Ecoplast & phụ kiện');
     setCustomCategoryInput('');
     setFormPaymentMethod('transfer');
     setFormPayerPayee('');
@@ -437,55 +571,110 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
     }
   };
 
-  // Export to Excel
+  // Export to Excel according to 10-year Chief Accountant Standards
   const handleExportExcel = () => {
     if (filteredTransactions.length === 0) {
       toast.error("Không có dữ liệu để xuất Excel");
       return;
     }
 
-    const dataToExport = filteredTransactions.map((t, idx) => ({
-      'STT': idx + 1,
-      'Ngày chứng từ': t.date,
-      'Loại phiếu': t.type === 'income' ? 'THU' : 'CHI',
-      'Tên khoản / Nội dung': t.title,
-      'Số tiền (VNĐ)': t.amount,
-      'Hạng mục': t.category,
-      'Hình thức TT': t.paymentMethod === 'cash' ? 'Tiền mặt' : t.paymentMethod === 'transfer' ? 'Chuyển khoản' : 'Khác',
-      'Người thu/chi (Nội bộ)': t.handlerName || '',
-      'Người nộp / nhận': t.payerPayee || '',
-      'Khách hàng': t.customerName || '',
-      'Cơ sở': t.workshop || '',
-      'Link ảnh chứng từ': t.imageUrl || (t.imageUrls && t.imageUrls.length > 0 ? t.imageUrls[0] : ''),
-      'Ghi chú': t.notes || '',
-      'Người lập': t.createdBy || ''
-    }));
+    // Sort transactions by date ascending for timeline continuity
+    const sortedTxs = [...filteredTransactions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    let runningCash = obCash;
+    let runningBank = obBank;
+    let runningTotal = obTotal;
+
+    const rows: any[] = [];
+
+    // Header Row 0: Opening Balance
+    rows.push({
+      'STT': 0,
+      'Ngày chứng từ': obStartDateVal || 'Đầu kỳ',
+      'Loại phiếu': 'ĐẦU KỲ',
+      'Tên khoản / Diễn giải': `SỐ DƯ ĐẦU KỲ (TM: ${formatCurrency(obCash)} | CK: ${formatCurrency(obBank)})`,
+      'Hạng mục kế toán': 'Số dư đầu kỳ',
+      'Hình thức TT': 'Tổng hợp',
+      'Thu (Phát sinh Nợ)': 0,
+      'Chi (Phát sinh Có)': 0,
+      'Tồn quỹ lũy kế (VNĐ)': runningTotal,
+      'Người nộp / nhận': '',
+      'Nhân viên thực hiện': openingBalance?.updatedBy || '',
+      'Cơ sở / Xưởng': 'Toàn bộ',
+      'Ghi chú': openingBalance?.notes || 'Số dư quỹ ban đầu'
+    });
+
+    sortedTxs.forEach((t, idx) => {
+      const isIncome = t.type === 'income';
+      const isCash = t.paymentMethod === 'cash';
+      const incomeAmt = isIncome ? (t.amount || 0) : 0;
+      const expenseAmt = !isIncome ? (t.amount || 0) : 0;
+
+      if (isCash) {
+        runningCash += incomeAmt - expenseAmt;
+      } else {
+        runningBank += incomeAmt - expenseAmt;
+      }
+      runningTotal = runningCash + runningBank;
+
+      rows.push({
+        'STT': idx + 1,
+        'Ngày chứng từ': t.date || '',
+        'Loại phiếu': isIncome ? 'THU' : 'CHI',
+        'Tên khoản / Diễn giải': t.title || '',
+        'Hạng mục kế toán': t.category || '',
+        'Hình thức TT': isCash ? 'Tiền mặt' : t.paymentMethod === 'transfer' ? 'Chuyển khoản' : 'Khác',
+        'Thu (Phát sinh Nợ)': incomeAmt,
+        'Chi (Phát sinh Có)': expenseAmt,
+        'Tồn quỹ lũy kế (VNĐ)': runningTotal,
+        'Người nộp / nhận': t.payerPayee || t.customerName || '',
+        'Nhân viên thực hiện': t.handlerName || t.createdBy || '',
+        'Cơ sở / Xưởng': getWorkshopName(t.workshop),
+        'Ghi chú': t.notes || ''
+      });
+    });
+
+    // Summary Row
+    rows.push({
+      'STT': 'CỘNG',
+      'Ngày chứng từ': 'TỔNG CỘNG',
+      'Loại phiếu': '',
+      'Tên khoản / Diễn giải': 'TỔNG PHÁT SINH TRONG KỲ VÀ SỐ DƯ CUỐI KỲ',
+      'Hạng mục kế toán': '',
+      'Hình thức TT': '',
+      'Thu (Phát sinh Nợ)': periodStats.totalPeriodIncome,
+      'Chi (Phát sinh Có)': periodStats.totalPeriodExpense,
+      'Tồn quỹ lũy kế (VNĐ)': runningTotal,
+      'Người nộp / nhận': '',
+      'Nhân viên thực hiện': '',
+      'Cơ sở / Xưởng': '',
+      'Ghi chú': `Dòng tiền ròng trong kỳ: ${formatCurrency(periodStats.netPeriodCashflow)}`
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "So_Thu_Chi");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "So_Quy_Ke_Toan");
 
-    // Format header column widths
     const colWidths = [
       { wch: 6 },
       { wch: 14 },
       { wch: 10 },
-      { wch: 30 },
-      { wch: 18 },
-      { wch: 22 },
-      { wch: 16 },
-      { wch: 22 },
-      { wch: 22 },
+      { wch: 32 },
+      { wch: 24 },
       { wch: 14 },
-      { wch: 35 },
-      { wch: 25 },
-      { wch: 18 }
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 22 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 25 }
     ];
     worksheet['!cols'] = colWidths;
 
-    const fileName = `So_Thu_Chi_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `So_Quy_Ke_Toan_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    toast.success(`Đã xuất báo cáo ${fileName}`);
+    toast.success(`Đã xuất Sổ Quỹ Kế Toán chuẩn: ${fileName}`);
   };
 
   // --- SUPPLIER HANDLERS ---
@@ -719,7 +908,16 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+              <Button 
+                onClick={handleOpenOBModal}
+                variant="outline"
+                className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100 flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-semibold rounded-xl"
+              >
+                <PiggyBank className="h-4 w-4" />
+                <span>Quỹ Ban Đầu ({obTotal > 0 ? formatCurrency(obTotal) : 'Khởi tạo'})</span>
+              </Button>
+
               <Button 
                 onClick={() => handleOpenCreateModal('income')} 
                 className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-semibold rounded-xl"
@@ -740,7 +938,7 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <Button 
                 variant="outline" 
                 onClick={handleExportExcel}
-                className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-medium rounded-xl border-border hover:bg-muted"
+                className="flex items-center justify-center gap-1.5 h-10 text-xs sm:text-sm font-medium rounded-xl border-border hover:bg-muted"
               >
                 <Download className="h-4 w-4 text-primary" />
                 <span>Xuất Excel</span>
@@ -749,52 +947,93 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
           </div>
 
           {/* KPI Cards - Responsive Grid 2x2 on Mobile, 4x1 on Desktop */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {/* Total Income */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {/* Card 1: Total Current Fund (Quỹ Tồn Hiện Tại) */}
+            <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
+              <CardContent className="p-3.5 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                    Tổng Quỹ Tồn Hiện Tại
+                  </span>
+                  <button
+                    onClick={handleOpenOBModal}
+                    title="Cấu hình số dư quỹ ban đầu"
+                    className="p-1.5 sm:p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 hover:bg-purple-500/30 transition-colors"
+                  >
+                    <PiggyBank className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <div className="text-lg sm:text-2xl font-black text-purple-700 dark:text-purple-400 truncate">
+                    {formatCurrency(cashbookStats.currentTotalFund)}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 font-semibold">
+                      💵 TM: {formatCurrency(cashbookStats.currentCash)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 font-semibold">
+                      🏦 CK: {formatCurrency(cashbookStats.currentBank)}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card 2: Total Income in Period */}
             <Card className="border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
               <CardContent className="p-3.5 sm:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                    Tổng Thu
+                    Tổng Thu (Kỳ Lọc)
                   </span>
                   <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                     <ArrowDownLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </div>
                 <div className="mt-2">
-                  <div className="text-base sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">
+                  <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">
                     {formatCurrency(totalIncome)}
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
-                    Thu trong kỳ (đã lọc)
-                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 font-semibold">
+                      TM: {formatCurrency(periodStats.incomeCash)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 font-semibold">
+                      CK: {formatCurrency(periodStats.incomeBank)}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Total Expense */}
+            {/* Card 3: Total Expense in Period */}
             <Card className="border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
               <CardContent className="p-3.5 sm:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-                    Tổng Chi
+                    Tổng Chi (Kỳ Lọc)
                   </span>
                   <div className="p-1.5 sm:p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
                     <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </div>
                 <div className="mt-2">
-                  <div className="text-base sm:text-2xl font-black text-rose-600 dark:text-rose-400 truncate">
+                  <div className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400 truncate">
                     {formatCurrency(totalExpense)}
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
-                    Chi trong kỳ (đã lọc)
-                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 font-semibold">
+                      TM: {formatCurrency(periodStats.expenseCash)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 font-semibold">
+                      CK: {formatCurrency(periodStats.expenseBank)}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Net Balance */}
+            {/* Card 4: Net Balance in Period */}
             <Card className={`border shadow-2xs relative overflow-hidden rounded-2xl bg-gradient-to-br ${
               netBalance >= 0 
                 ? 'border-blue-500/20 from-blue-500/10 via-blue-500/5 to-transparent' 
@@ -803,42 +1042,20 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
               <CardContent className="p-3.5 sm:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                    Tồn Quỹ / Số Dư
+                    Dòng Tiền Ròng (Kỳ Lọc)
                   </span>
                   <div className="p-1.5 sm:p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
                     <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </div>
                 <div className="mt-2">
-                  <div className={`text-base sm:text-2xl font-black truncate ${
+                  <div className={`text-lg sm:text-2xl font-black truncate ${
                     netBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'
                   }`}>
                     {formatCurrency(netBalance)}
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
-                    Dòng tiền = Thu - Chi
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Records */}
-            <Card className="border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent shadow-2xs relative overflow-hidden rounded-2xl">
-              <CardContent className="p-3.5 sm:p-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
-                    Chứng Từ Thu Chi
-                  </span>
-                  <div className="p-1.5 sm:p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
-                    <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <div className="text-base sm:text-2xl font-black text-purple-700 dark:text-purple-400 truncate">
-                    {filteredTransactions.length} <span className="text-xs font-normal text-muted-foreground">phiếu</span>
-                  </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
-                    Đã ghi nhận trong kỳ
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 truncate">
+                    Dòng tiền ròng = Thu - Chi trong kỳ
                   </p>
                 </div>
               </CardContent>
@@ -2577,6 +2794,111 @@ export function FinancialPage({ customers = [], members = [], currentUser }: Fin
           </DialogContent>
         </Dialog>
       )}
+
+      {/* OPENING BALANCE SETUP MODAL (QUỸ BAN ĐẦU / SỐ DƯ ĐẦU KỲ) */}
+      <Dialog open={isOBModalOpen} onOpenChange={setIsOBModalOpen}>
+        <DialogContent className="max-w-md w-[94vw] p-4 sm:p-6 rounded-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
+                <PiggyBank className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold">Cấu Hình Số Dư Đầu Kỳ (Quỹ Ban Đầu)</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Thiết lập số dư Tiền mặt & Chuyển khoản ban đầu làm mốc tính Sổ Quỹ Kế Toán
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveOpeningBalanceSubmit} className="space-y-4 mt-2">
+            {/* Cash Balance Input */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs flex items-center justify-between">
+                <span>💵 Quỹ Tiền Mặt Đầu Kỳ (VNĐ)</span>
+                <span className="text-[11px] text-muted-foreground font-normal">Tiền két / tại xưởng</span>
+              </Label>
+              <Input
+                type="number"
+                placeholder="Nhập số tiền mặt..."
+                value={obCashBalance}
+                onChange={(e) => setObCashBalance(e.target.value)}
+                className="rounded-xl font-bold text-sm"
+              />
+            </div>
+
+            {/* Bank Balance Input */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs flex items-center justify-between">
+                <span>🏦 Tiền Gửi Ngân Hàng Đầu Kỳ (VNĐ)</span>
+                <span className="text-[11px] text-muted-foreground font-normal">Tài khoản công ty / chủ xưởng</span>
+              </Label>
+              <Input
+                type="number"
+                placeholder="Nhập số tiền chuyển khoản..."
+                value={obBankBalance}
+                onChange={(e) => setObBankBalance(e.target.value)}
+                className="rounded-xl font-bold text-sm"
+              />
+            </div>
+
+            {/* Total summary helper badge */}
+            <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 flex items-center justify-between text-xs">
+              <span className="font-medium text-purple-900 dark:text-purple-200">Tổng Quỹ Ban Đầu:</span>
+              <span className="font-black text-purple-700 dark:text-purple-300 text-sm">
+                {formatCurrency((parseFloat(obCashBalance) || 0) + (parseFloat(obBankBalance) || 0))}
+              </span>
+            </div>
+
+            {/* Start Date Input */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs">Ngày chốt sổ đầu kỳ</Label>
+              <Input
+                type="date"
+                value={obStartDate}
+                onChange={(e) => setObStartDate(e.target.value)}
+                className="rounded-xl text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground italic">
+                Các phiếu thu chi phát sinh từ ngày này trở về sau sẽ được cộng/trừ trực tiếp vào quỹ ban đầu.
+              </p>
+            </div>
+
+            {/* Accountant Notes */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs">Ghi chú kế toán / Nguồn vốn</Label>
+              <Textarea
+                rows={2}
+                placeholder="Ví dụ: Số dư chốt bàn giao tài chính xưởng..."
+                value={obNotes}
+                onChange={(e) => setObNotes(e.target.value)}
+                className="rounded-xl text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-border flex items-center justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsOBModalOpen(false)}
+                className="rounded-xl text-xs"
+              >
+                Hủy bỏ
+              </Button>
+
+              <Button 
+                type="submit" 
+                disabled={obSaving}
+                className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold"
+              >
+                {obSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+                Lưu Quỹ Ban Đầu
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

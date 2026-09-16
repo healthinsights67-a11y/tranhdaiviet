@@ -464,13 +464,24 @@ export interface SupplierTransaction {
   type: 'purchase' | 'payment'; // 'purchase': Phát sinh đơn mua nợ, 'payment': Thanh toán trả tiền NCC
   amount: number; // Số tiền (VNĐ)
   date: string; // YYYY-MM-DD
-  invoiceNo?: string; // Số hóa đơn / Mã đơn mua
   paymentMethod?: 'cash' | 'transfer' | 'other';
+  invoiceNo?: string; // Số hóa đơn / Mã đơn mua
   financialTransactionId?: string; // Mã phiếu chi liên kết bên Sổ Quỹ Thu Chi
   handlerName?: string; // Tên nhân viên thực hiện
   imageUrls?: string[]; // Ảnh đính kèm hóa đơn
   notes?: string; // Ghi chú diễn giải
   createdBy?: string;
   createdAt: string;
+}
+
+export interface FinancialOpeningBalance {
+  id?: string;
+  cashBalance: number; // Quỹ tiền mặt ban đầu (VNĐ)
+  bankBalance: number; // Quỹ tiền gửi ngân hàng / chuyển khoản ban đầu (VNĐ)
+  startDate: string; // Ngày bắt đầu khóa sổ (YYYY-MM-DD)
+  notes?: string; // Ghi chú nghiệp vụ kế toán
+  updatedBy?: string;
+  updatedAt?: string;
+  byWorkshop?: Record<string, { cash: number; bank: number }>; // Quỹ đầu kỳ tách theo từng xưởng/cơ sở
 }
 

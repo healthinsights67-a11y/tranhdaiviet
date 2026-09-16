@@ -9,8 +9,8 @@ import {
   handleFirestoreError, 
   OperationType 
 } from '../lib/firebase';
-import { FinancialTransaction } from '../types';
-import { FinancialTransactionSchema } from '../schemas';
+import { FinancialTransaction, FinancialOpeningBalance } from '../types';
+import { FinancialTransactionSchema, FinancialOpeningBalanceSchema } from '../schemas';
 import { moveToTrash } from './trashService';
 
 const COLLECTION_NAME = 'financial_transactions';
@@ -215,3 +215,84 @@ export const deleteFinancialTransaction = async (
     } catch {}
   }
 };
+
+const OPENING_BALANCE_DOC_PATH = ['configs', 'financial_opening_balance'] as const;
+const OPENING_BALANCE_LOCAL_KEY = 'mkt_financial_opening_balance_cache';
+
+export const fetchOpeningBalance = async (): Promise<FinancialOpeningBalance> => {
+  const defaultBalance: FinancialOpeningBalance = {
+    cashBalance: 0,
+    bankBalance: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    notes: 'Quỹ khởi tạo ban đầu',
+    byWorkshop: {}
+  };
+
+  try {
+    const rawLocal = localStorage.getItem(OPENING_BALANCE_LOCAL_KEY);
+    const cached = rawLocal ? JSON.parse(rawLocal) : null;
+
+    const docRef = doc(db, OPENING_BALANCE_DOC_PATH[0], OPENING_BALANCE_DOC_PATH[1]);
+    const snap = await getDocs(collection(db, 'configs'));
+    const openingDoc = snap.docs.find(d => d.id === 'financial_opening_balance');
+
+    if (openingDoc && openingDoc.exists()) {
+      const parsed = FinancialOpeningBalanceSchema.parse(openingDoc.data()) as FinancialOpeningBalance;
+      localStorage.setItem(OPENING_BALANCE_LOCAL_KEY, JSON.stringify(parsed));
+      return parsed;
+    } else if (cached) {
+      return cached;
+    }
+  } catch (e) {
+    console.warn("Could not fetch financial opening balance:", e);
+    const rawLocal = localStorage.getItem(OPENING_BALANCE_LOCAL_KEY);
+    if (rawLocal) {
+      try { return JSON.parse(rawLocal); } catch {}
+    }
+  }
+
+  return defaultBalance;
+};
+
+export const subscribeOpeningBalance = (
+  onData: (data: FinancialOpeningBalance) => void
+) => {
+  fetchOpeningBalance().then(d => onData(d));
+
+  const docRef = doc(db, OPENING_BALANCE_DOC_PATH[0], OPENING_BALANCE_DOC_PATH[1]);
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      try {
+        const parsed = FinancialOpeningBalanceSchema.parse(snap.data()) as FinancialOpeningBalance;
+        localStorage.setItem(OPENING_BALANCE_LOCAL_KEY, JSON.stringify(parsed));
+        onData(parsed);
+      } catch (e) {
+        console.warn("Parse error in opening balance subscription:", e);
+      }
+    }
+  }, (err) => {
+    console.warn("Realtime subscription error for opening balance:", err);
+  });
+};
+
+export const saveOpeningBalance = async (
+  data: FinancialOpeningBalance
+): Promise<void> => {
+  const updated: FinancialOpeningBalance = {
+    ...data,
+    updatedAt: new Date().toISOString()
+  };
+
+  const validated = FinancialOpeningBalanceSchema.parse(updated);
+  const sanitized = sanitizeData(validated);
+
+  localStorage.setItem(OPENING_BALANCE_LOCAL_KEY, JSON.stringify(sanitized));
+
+  try {
+    const docRef = doc(db, OPENING_BALANCE_DOC_PATH[0], OPENING_BALANCE_DOC_PATH[1]);
+    await setDoc(docRef, sanitized, { merge: true });
+  } catch (e) {
+    console.warn("Could not save opening balance to Firestore Client SDK (saved locally):", e);
+  }
+};
+
