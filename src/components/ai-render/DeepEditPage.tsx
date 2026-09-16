@@ -63,6 +63,10 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
   const [activeTab, setActiveTab] = useState<'assets' | 'materials' | 'ai' | 'layers'>('ai');
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<any[]>([]);
+  const [mmPerPixel, setMmPerPixel] = useState<number>(2.5);
+  const [isCalibrating, setIsCalibrating] = useState<boolean>(false);
+  const [calibrationPoints, setCalibrationPoints] = useState<any[]>([]);
+  const [calibrationRefMm, setCalibrationRefMm] = useState<number>(2200);
   const [isErasing, setIsErasing] = useState(false);
   const [segments, setSegments] = useState<any[]>([]);
   const [brightness, setBrightness] = useState(100);
@@ -294,7 +298,41 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
 
         // Measurement Logic
         const pointer = canvas.getPointer(options.e);
-        
+
+        // Calibration logic: Pick 2 points to establish real mm scale
+        if (isCalibrating) {
+          const newPoints = [...calibrationPoints, pointer];
+          setCalibrationPoints(newPoints);
+
+          const dot = new fabric.Circle({
+            radius: 5,
+            fill: '#3b82f6',
+            stroke: '#ffffff',
+            strokeWidth: 2,
+            left: pointer.x,
+            top: pointer.y,
+            originX: 'center',
+            originY: 'center',
+            selectable: false,
+          });
+          canvas.add(dot);
+
+          if (newPoints.length === 2) {
+            const dx = newPoints[1].x - newPoints[0].x;
+            const dy = newPoints[1].y - newPoints[0].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 5) {
+              const calculatedMmPerPixel = calibrationRefMm / dist;
+              setMmPerPixel(calculatedMmPerPixel);
+              toast.success(`Cân chỉnh thành công! 1px = ${calculatedMmPerPixel.toFixed(2)}mm (Mẫu: ${calibrationRefMm}mm)`);
+            }
+            setCalibrationPoints([]);
+            setIsCalibrating(false);
+          }
+          return;
+        }
+
+        // Measurement Logic using calibrated mmPerPixel
         if (isMeasuring) {
           const newPoints = [...measurePoints, pointer];
           setMeasurePoints(newPoints);
@@ -313,8 +351,8 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
           if (newPoints.length === 2) {
             const dx = newPoints[1].x - newPoints[0].x;
             const dy = newPoints[1].y - newPoints[0].y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const mmDist = (dist * 2.5).toFixed(0); // Simulated scale
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const mmDist = Math.round(dist * mmPerPixel);
 
             const line = new fabric.Line([newPoints[0].x, newPoints[0].y, newPoints[1].x, newPoints[1].y], {
               stroke: '#f97316',
@@ -335,7 +373,7 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
             canvas.add(line, text);
             setMeasurePoints([]);
             setIsMeasuring(false);
-            toast.success(`Đo thành công: ${mmDist}mm`);
+            toast.success(`Đo thành công: ${mmDist}mm (Tỷ lệ thực tế)`);
           }
           return;
         }
@@ -403,6 +441,126 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
     fabricCanvas.setActiveObject(rect);
   };
 
+  const addProductionModule = (type: string) => {
+    if (!fabricCanvas) return;
+    
+    let w = 120;
+    let h = 160;
+    let color = '#3b82f6';
+    let title = 'MODULE';
+    let subtitle = 'Tiêu chuẩn';
+
+    if (type === 'kitchen_lower') {
+      w = 140; h = 90; color = '#10b981';
+      title = 'TỦ BẾP DƯỚI'; subtitle = 'Cao 810 • Sâu 600';
+    } else if (type === 'kitchen_upper') {
+      w = 140; h = 80; color = '#059669';
+      title = 'TỦ BẾP TRÊN'; subtitle = 'Cao 750 • Sâu 350';
+    } else if (type === 'wardrobe_full') {
+      w = 120; h = 200; color = '#8b5cf6';
+      title = 'TỦ ÁO KỊCH TRẦN'; subtitle = 'Cao 2600 • Sâu 600';
+    } else if (type === 'tv_console') {
+      w = 160; h = 45; color = '#f59e0b';
+      title = 'KỆ TV TREO TƯỜNG'; subtitle = 'Dài 2000 • Sâu 300';
+    } else if (type === 'bed_smart') {
+      w = 160; h = 170; color = '#6366f1';
+      title = 'GIƯỜNG ECOPLAST'; subtitle = '1800 x 2000mm';
+    } else if (type === 'desk_study') {
+      w = 110; h = 70; color = '#06b6d4';
+      title = 'BÀN HỌC / VIỆC'; subtitle = 'Dài 1200 • Sâu 600';
+    } else if (type === 'kitchen_island') {
+      w = 130; h = 90; color = '#d97706';
+      title = 'BÀN ĐẢO BẾP'; subtitle = '1200 x 800mm';
+    }
+
+    const rect = new fabric.Rect({
+      width: w,
+      height: h,
+      fill: `${color}25`,
+      stroke: color,
+      strokeWidth: 2,
+      rx: 6,
+      ry: 6,
+    });
+
+    const headerBar = new fabric.Rect({
+      width: w,
+      height: 22,
+      fill: color,
+      rx: 6,
+      ry: 6,
+    });
+
+    const text = new fabric.IText(title, {
+      fontSize: 9,
+      left: 6,
+      top: 5,
+      fontFamily: 'Inter',
+      fontWeight: 'bold',
+      fill: '#ffffff'
+    });
+
+    const subText = new fabric.IText(subtitle, {
+      fontSize: 8,
+      left: 6,
+      top: 28,
+      fontFamily: 'Inter',
+      fontWeight: 'bold',
+      fill: color
+    });
+
+    const group = new fabric.Group([rect, headerBar, text, subText], {
+      left: 160,
+      top: 160,
+      label: title
+    } as any);
+
+    fabricCanvas.add(group);
+    fabricCanvas.setActiveObject(group);
+    fabricCanvas.renderAll();
+    saveHistory(fabricCanvas);
+    toast.success(`Đã thêm ${title}`);
+  };
+
+  const addTechnicalCallout = (text: string, color: string = '#2563eb') => {
+    if (!fabricCanvas) return;
+
+    const bgRect = new fabric.Rect({
+      width: text.length * 7 + 36,
+      height: 26,
+      fill: color,
+      rx: 13,
+      ry: 13,
+      shadow: new fabric.Shadow({
+        color: 'rgba(0,0,0,0.25)',
+        blur: 4,
+        offsetX: 1,
+        offsetY: 2
+      })
+    });
+
+    const label = new fabric.IText(`🏷️ ${text}`, {
+      fontSize: 10,
+      left: 10,
+      top: 7,
+      fontFamily: 'Inter',
+      fontWeight: 'bold',
+      fill: '#ffffff'
+    });
+
+    const group = new fabric.Group([bgRect, label], {
+      left: 180,
+      top: 180,
+      label: text
+    } as any);
+
+    fabricCanvas.add(group);
+    fabricCanvas.setActiveObject(group);
+    fabricCanvas.renderAll();
+    saveHistory(fabricCanvas);
+    toast.success(`Đã thêm ghi chú: ${text}`);
+  };
+
   const addFurnitureBox = () => {
     if (!fabricCanvas) return;
     const group = new fabric.Group([
@@ -454,9 +612,10 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
       quality: 1,
     });
     const link = document.createElement('a');
-    link.download = 'edited-design.png';
+    link.download = `inoithat_banve_thicong_${Date.now()}.png`;
     link.href = dataURL;
     link.click();
+    toast.success("Đã xuất ảnh bản vẽ phối cảnh & quy cách thi công!");
   };
 
   const analyzeToJSON = () => {
@@ -818,51 +977,133 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
                   className="space-y-6"
                 >
                   <div className="space-y-4">
-                     <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Module Nội thất</Label>
-                     <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => addAsset('kitchen')} className="group flex flex-col items-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <Layout className="h-6 w-6 text-slate-400 group-hover:text-blue-500" />
+                     <div className="flex items-center justify-between">
+                       <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Module Chuẩn Xưởng</Label>
+                       <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full">Chuẩn mm</span>
+                     </div>
+                     <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => addProductionModule('kitchen_lower')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Layout className="h-4 w-4 text-emerald-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Tủ Bếp Dưới</span>
                            </div>
-                           <span className="text-[10px] font-bold text-slate-600">Tủ Bếp</span>
+                           <span className="text-[8px] text-slate-400 font-medium">Cao 810 • Sâu 600</span>
                         </button>
-                        <button onClick={() => addAsset('wardrobe')} className="group flex flex-col items-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <Box className="h-6 w-6 text-slate-400 group-hover:text-blue-500" />
+
+                        <button onClick={() => addProductionModule('kitchen_upper')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Layout className="h-4 w-4 text-emerald-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Tủ Bếp Trên</span>
                            </div>
-                           <span className="text-[10px] font-bold text-slate-600">Tủ Áo</span>
+                           <span className="text-[8px] text-slate-400 font-medium">Cao 750 • Sâu 350</span>
                         </button>
-                        <button onClick={() => addAsset('tv')} className="group flex flex-col items-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <Video className="h-6 w-6 text-slate-400 group-hover:text-blue-500" />
+
+                        <button onClick={() => addProductionModule('wardrobe_full')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Box className="h-4 w-4 text-purple-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Tủ Áo Kịch Trần</span>
                            </div>
-                           <span className="text-[10px] font-bold text-slate-600">Kệ TV</span>
+                           <span className="text-[8px] text-slate-400 font-medium">Cao 2600 • Sâu 600</span>
                         </button>
-                        <button onClick={addRect} className="group flex flex-col items-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <Square className="h-6 w-6 text-slate-400 group-hover:text-blue-500" />
+
+                        <button onClick={() => addProductionModule('tv_console')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Video className="h-4 w-4 text-amber-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Kệ TV Treo</span>
                            </div>
-                           <span className="text-[10px] font-bold text-slate-600">Khoang tủ</span>
+                           <span className="text-[8px] text-slate-400 font-medium">Dài 2000 • Sâu 300</span>
+                        </button>
+
+                        <button onClick={() => addProductionModule('bed_smart')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Box className="h-4 w-4 text-indigo-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Giường Ecoplast</span>
+                           </div>
+                           <span className="text-[8px] text-slate-400 font-medium">1800 x 2000mm</span>
+                        </button>
+
+                        <button onClick={() => addProductionModule('kitchen_island')} className="group flex flex-col items-start p-2.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 transition-all text-left">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <Layout className="h-4 w-4 text-amber-600" />
+                              <span className="text-[10px] font-bold text-slate-700">Bàn Đảo Bếp</span>
+                           </div>
+                           <span className="text-[8px] text-slate-400 font-medium">1200 x 800mm</span>
                         </button>
                      </div>
                   </div>
 
-                  <div className="space-y-4 pt-4 border-t">
-                     <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tiện ích</Label>
+                  <div className="space-y-4 pt-3 border-t">
+                     <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tem Nhãn & Ghi Chú Quy Cách</Label>
+                     <div className="flex flex-col gap-1.5">
+                        <button 
+                          onClick={() => addTechnicalCallout("Thùng Ecoplast Chống Nước 100%", "#059669")}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 text-[9px] font-bold text-emerald-800 transition-colors"
+                        >
+                          🏷️ Thùng Ecoplast Chống Nước 100%
+                        </button>
+                        <button 
+                          onClick={() => addTechnicalCallout("Cánh Kính Khung Nhôm Anodized", "#2563eb")}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50/40 hover:bg-blue-50 text-[9px] font-bold text-blue-800 transition-colors"
+                        >
+                          🏷️ Cánh Kính Khung Nhôm Anodized
+                        </button>
+                        <button 
+                          onClick={() => addTechnicalCallout("Đèn LED Âm Tủ 3000K", "#d97706")}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-amber-200 bg-amber-50/40 hover:bg-amber-50 text-[9px] font-bold text-amber-800 transition-colors"
+                        >
+                          🏷️ Đèn LED Âm Tủ 3000K
+                        </button>
+                        <button 
+                          onClick={() => addTechnicalCallout("Gỗ MDF An Cường Lõi Xanh", "#475569")}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50/40 hover:bg-slate-50 text-[9px] font-bold text-slate-800 transition-colors"
+                        >
+                          🏷️ Gỗ MDF An Cường Lõi Xanh
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="space-y-4 pt-3 border-t">
+                     <div className="flex items-center justify-between">
+                       <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Đo Đạc & Tỷ Lệ</Label>
+                       <span className="text-[8px] text-slate-400 font-mono">1px ≈ {mmPerPixel.toFixed(1)}mm</span>
+                     </div>
                      <div className="space-y-2">
                         <Button 
                           variant="outline" 
-                          className={`w-full justify-start h-10 rounded-xl font-bold text-[10px] ${isMeasuring ? 'bg-orange-50 border-orange-200' : ''}`}
-                          onClick={() => setIsMeasuring(!isMeasuring)}
+                          className={`w-full justify-start h-9 rounded-xl font-bold text-[10px] ${isMeasuring ? 'bg-orange-50 border-orange-300 text-orange-700' : ''}`}
+                          onClick={() => {
+                            setIsMeasuring(!isMeasuring);
+                            setIsCalibrating(false);
+                            if (!isMeasuring) toast.info("Nhấp 2 điểm trên canvas để đo khoảng cách mm thực tế");
+                          }}
                         >
-                          <Ruler className="h-3.5 w-3.5 mr-2 text-orange-500" /> ĐO KÍCH THƯỚC
+                          <Ruler className="h-3.5 w-3.5 mr-2 text-orange-500" /> 
+                          {isMeasuring ? 'ĐANG ĐO... (CLICK 2 ĐIỂM)' : 'ĐO KÍCH THƯỚC (MM THỰC)'}
                         </Button>
+
                         <Button 
                           variant="outline" 
-                          className={`w-full justify-start h-10 rounded-xl font-bold text-[10px] ${isErasing ? 'bg-red-50 border-red-200' : ''}`}
+                          className={`w-full justify-start h-9 rounded-xl font-bold text-[10px] ${isCalibrating ? 'bg-blue-50 border-blue-300 text-blue-700' : ''}`}
+                          onClick={() => {
+                            const ref = prompt("Nhập kích thước mẫu thực tế (mm), ví dụ: Chiều cao cửa chính 2200mm:", "2200");
+                            if (ref && !isNaN(Number(ref))) {
+                              setCalibrationRefMm(Number(ref));
+                              setIsCalibrating(true);
+                              setIsMeasuring(false);
+                              toast.info(`Vui lòng nhấp 2 điểm trên ảnh tương ứng với chiều dài ${ref}mm để cân chỉnh tỷ lệ`);
+                            }
+                          }}
+                        >
+                          <Target className="h-3.5 w-3.5 mr-2 text-blue-500" />
+                          {isCalibrating ? `CÂN CHỈNH (${calibrationRefMm}MM)...` : 'CÂN CHỈNH TỶ LỆ (CALIBRATION)'}
+                        </Button>
+
+                        <Button 
+                          variant="outline" 
+                          className={`w-full justify-start h-9 rounded-xl font-bold text-[10px] ${isErasing ? 'bg-red-50 border-red-200' : ''}`}
                           onClick={() => setIsErasing(!isErasing)}
                         >
-                          <Eraser className="h-3.5 w-3.5 mr-2 text-red-500" /> XÓA VẬT THỂ (AI)
+                          <Eraser className="h-3.5 w-3.5 mr-2 text-red-500" /> XÓA VẬT THỂ (AI INPAINTING)
                         </Button>
                      </div>
                   </div>
