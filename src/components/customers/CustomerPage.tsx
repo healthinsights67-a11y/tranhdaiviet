@@ -30,7 +30,8 @@ import {
   Calendar,
   Palette, 
   Factory, Package, AlertTriangle,
-  UserCheck, Users, Target, Map, LayoutGrid, Upload, Download, RefreshCw
+  UserCheck, Users, Target, Map, LayoutGrid, Upload, Download, RefreshCw,
+  Pencil, ChevronDown, ChevronUp, Building2, Cog, Home, ShoppingBag
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
 import { LocationPickerDialog } from '../maps/LocationPickerDialog';
@@ -537,7 +538,10 @@ export function CustomerPage({
     }
   };
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all' | 'quoted' | 'unquoted'>('all');
+  const [selectedStage, setSelectedStage] = React.useState<CustomerStage | 'all' | 'quoted' | 'unquoted' | 'contracted_last_month'>('all');
+  const [selectedGroup, setSelectedGroup] = React.useState<'all' | 'project' | 'processing' | 'residential'>('all');
+  const [groupMode, setGroupMode] = React.useState<'by_order' | 'by_customer'>('by_customer');
+  const [isKpiCollapsed, setIsKpiCollapsed] = React.useState(false);
   const [activeCustomerType, setActiveCustomerType] = React.useState<CustomerType>('retail');
   const [selectedWorkshop, setSelectedWorkshop] = React.useState(
     currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : 'all'
@@ -1640,6 +1644,38 @@ export function CustomerPage({
     return getVNMonth(dateStr) === selectedMonth;
   }, [selectedMonth]);
 
+  const prevMonthStr = React.useMemo(() => {
+    if (!selectedMonth || selectedMonth === 'all' || selectedMonth === 'today' || selectedMonth === 'week' || selectedMonth === 'last-week') {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const d = new Date(year, month - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [selectedMonth]);
+
+  const matchesGroup = React.useCallback((c: Customer) => {
+    if (selectedGroup === 'all') return true;
+    const cat = (c.furnitureCategory || '').toLowerCase();
+    const name = (c.name || '').toLowerCase();
+    const notes = (c.notes || '').toLowerCase();
+    
+    if (selectedGroup === 'project') {
+      return c.customerType === 'project' || cat.includes('dự án') || name.includes('dự án') || notes.includes('dự án');
+    }
+    if (selectedGroup === 'processing') {
+      return c.customerType === 'agency' || cat.includes('gia công') || name.includes('gia công') || name.includes('tổng kho') || notes.includes('gia công');
+    }
+    if (selectedGroup === 'residential') {
+      const isProj = c.customerType === 'project' || cat.includes('dự án') || name.includes('dự án');
+      const isProc = c.customerType === 'agency' || cat.includes('gia công') || name.includes('gia công') || name.includes('tổng kho');
+      return !isProj && !isProc;
+    }
+    return true;
+  }, [selectedGroup]);
+
   const filteredCustomersForKPIs = React.useMemo(() => {
     return customers.filter(c => {
       const matchWorkshop = selectedWorkshop === 'all' || (c.workshop || 'Hà Nội') === selectedWorkshop;
@@ -1654,35 +1690,91 @@ export function CustomerPage({
 
       // Bỏ qua lọc theo tháng nếu người dùng đang gõ tìm kiếm (tìm trên toàn hệ thống)
       const matchTime = search !== '' || !selectedMonth || !c.createdAt || matchesTime(c.createdAt);
+      const matchGroup = matchesGroup(c);
 
-      const type = c.customerType || 'retail';
-      const matchType = type === activeCustomerType;
-
-      return matchWorkshop && matchSale && matchTime && matchSearch && matchType;
+      return matchWorkshop && matchSale && matchTime && matchSearch && matchGroup;
     });
-  }, [customers, selectedWorkshop, selectedSaleId, selectedMonth, searchTerm, matchesTime, activeCustomerType]);
+  }, [customers, selectedWorkshop, selectedSaleId, selectedMonth, searchTerm, matchesTime, matchesGroup]);
+
+  const contractedLastMonthCount = React.useMemo(() => {
+    return customers.filter(c => {
+      const matchWorkshop = selectedWorkshop === 'all' || (c.workshop || 'Hà Nội') === selectedWorkshop;
+      const matchSale = selectedSaleId === 'all' || c.assignedSaleId === selectedSaleId;
+      if (!matchWorkshop || !matchSale) return false;
+      if (!matchesGroup(c)) return false;
+
+      if (c.stage === 'contracted' && c.createdAt && getVNMonth(c.createdAt) === prevMonthStr) {
+        return true;
+      }
+      const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+      return cQuotes.some(q => (q.status === 'deposit' || (q.depositAmount && q.depositAmount > 0)) && getVNMonth(q.createdAt || q.date) === prevMonthStr);
+    }).length;
+  }, [customers, selectedWorkshop, selectedSaleId, matchesGroup, prevMonthStr, quotations]);
 
   const filteredCustomers = React.useMemo(() => {
     return filteredCustomersForKPIs.filter(c => {
       const hasQuotes = quotations.some(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
-      const matchStage = 
-        selectedStage === 'all' ? true :
-        selectedStage === 'quoted' ? hasQuotes :
-        selectedStage === 'unquoted' ? !hasQuotes :
-        c.stage === selectedStage;
-      return matchStage;
+      if (selectedStage === 'all') return true;
+      if (selectedStage === 'quoted') return hasQuotes;
+      if (selectedStage === 'unquoted') return !hasQuotes;
+      if (selectedStage === 'contracted_last_month') {
+        if (c.stage === 'contracted' && c.createdAt && getVNMonth(c.createdAt) === prevMonthStr) return true;
+        const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        return cQuotes.some(q => (q.status === 'deposit' || (q.depositAmount && q.depositAmount > 0)) && getVNMonth(q.createdAt || q.date) === prevMonthStr);
+      }
+      return c.stage === selectedStage;
     }).sort((a, b) => {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [filteredCustomersForKPIs, selectedStage, quotations]);
+  }, [filteredCustomersForKPIs, selectedStage, quotations, prevMonthStr]);
+
+  const displayItems = React.useMemo(() => {
+    if (groupMode === 'by_customer') {
+      return filteredCustomers.map(c => ({
+        type: 'customer' as const,
+        customer: c,
+        quotation: undefined as Quotation | undefined,
+        key: c.id
+      }));
+    }
+    const items: Array<{
+      type: 'order' | 'customer';
+      customer: Customer;
+      quotation?: Quotation;
+      key: string;
+    }> = [];
+
+    filteredCustomers.forEach(customer => {
+      const cQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
+      if (cQuotes.length > 0) {
+        cQuotes.forEach((q, idx) => {
+          items.push({
+            type: 'order',
+            customer,
+            quotation: q,
+            key: `${customer.id}_order_${q.id || idx}`
+          });
+        });
+      } else {
+        items.push({
+          type: 'customer',
+          customer,
+          quotation: undefined,
+          key: `${customer.id}_inquiry`
+        });
+      }
+    });
+
+    return items;
+  }, [filteredCustomers, quotations, groupMode]);
 
   const isManager = !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r)));
   const canViewRevenue = isManager || currentUser?.permissions?.viewRevenue !== false;
 
-  const { actualRevenue, expectedRevenue, totalCustomers, wonCustomers, winRate } = React.useMemo(() => {
-    const actual = filteredCustomersForKPIs.reduce((sum, c) => {
+  const { receivedMoney, actualRevenue, expectedRevenue, winRate } = React.useMemo(() => {
+    const received = filteredCustomersForKPIs.reduce((sum, c) => {
       const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
       const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
 
@@ -1690,7 +1782,7 @@ export function CustomerPage({
         const qSum = pQuotes.reduce((s, q) => s + (q.totalAmount || 0), 0);
         return sum + (qSum > 0 ? qSum : (c.orderValue || 0));
       }
-      if (['contracted', 'production', 'installation'].includes(c.stage)) {
+      if (['contracted', 'production', 'production_completed', 'installation'].includes(c.stage)) {
         const depositSum = pQuotes.reduce((s, q) => s + (q.depositAmount || 0), 0);
         if (depositSum === 0) {
           const firstQ = cQuotes.find(q => q.status === 'deposit' || q.depositAmount);
@@ -1702,8 +1794,18 @@ export function CustomerPage({
       return sum;
     }, 0);
 
+    const actual = filteredCustomersForKPIs.reduce((sum, c) => {
+      if (c.stage === 'installation' || c.stage === 'completed') {
+        const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
+        const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
+        const qSum = pQuotes.reduce((s, q) => s + (q.totalAmount || 0), 0);
+        return sum + (qSum > 0 ? qSum : (c.orderValue || 0));
+      }
+      return sum;
+    }, 0);
+
     const expected = filteredCustomersForKPIs.reduce((sum, c) => {
-      if (['contracted', 'production', 'installation', 'completed'].includes(c.stage)) {
+      if (['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(c.stage)) {
         const cQuotes = quotations.filter(q => q.customerId === c.id || (q.customerName === c.name && q.phone === c.phone));
         const pQuotes = cQuotes.filter(q => q.status === 'accepted' || q.status === 'deposit');
         const qSum = pQuotes.reduce((s, q) => s + (q.totalAmount || 0), 0);
@@ -1716,7 +1818,7 @@ export function CustomerPage({
     const won = filteredCustomersForKPIs.filter(c => ['contracted', 'production', 'installation', 'completed'].includes(c.stage)).length;
     const rate = total > 0 ? Math.round((won / total) * 100) : 0;
 
-    return { actualRevenue: actual, expectedRevenue: expected, totalCustomers: total, wonCustomers: won, winRate: rate };
+    return { receivedMoney: received, actualRevenue: actual, expectedRevenue: expected, winRate: rate };
   }, [filteredCustomersForKPIs, quotations]);
 
   const cardData = React.useMemo(() => {
@@ -1735,100 +1837,159 @@ export function CustomerPage({
     const productionCompleted = filteredCustomersForKPIs.filter(c => c.stage === 'production_completed').length;
     const installation = filteredCustomersForKPIs.filter(c => c.stage === 'installation').length;
     const completed = filteredCustomersForKPIs.filter(c => c.stage === 'completed').length;
-    const lost = filteredCustomersForKPIs.filter(c => c.stage === 'lost').length;
 
     return [
-      { id: 'all', label: 'Tổng KH', value: total, color: 'text-blue-600', icon: Users, clickable: true },
-      { id: 'consulting', label: STAGE_CONFIG.consulting.label, value: consulting, color: 'text-yellow-600', icon: MessageSquare, clickable: true },
-      { id: 'surveying', label: STAGE_CONFIG.surveying.label, value: surveying, color: 'text-purple-600', icon: MapPin, clickable: true },
-      { id: 'quoted', label: 'Đã báo giá', value: quoted, color: 'text-blue-600', icon: FileText, clickable: true },
-      { id: 'unquoted', label: 'Chưa báo giá', value: unquoted, color: 'text-slate-500', icon: FileText, clickable: true },
-      { id: 'contracted', label: STAGE_CONFIG.contracted.label, value: contracted, color: 'text-emerald-600', icon: ArrowRight, clickable: true },
-      { id: 'production', label: STAGE_CONFIG.production.label, value: production, color: 'text-blue-600', icon: Factory, clickable: true },
-      { id: 'production_completed', label: STAGE_CONFIG.production_completed.label, value: productionCompleted, color: 'text-indigo-600', icon: CheckCircle2, clickable: true },
-      { id: 'installation', label: STAGE_CONFIG.installation.label, value: installation, color: 'text-orange-600', icon: Package, clickable: true },
-      { id: 'completed', label: STAGE_CONFIG.completed.label, value: completed, color: 'text-green-600', icon: CheckCircle2, clickable: true },
-      { id: 'lost', label: STAGE_CONFIG.lost.label, value: lost, color: 'text-red-600', icon: X, clickable: true },
-      { id: 'win_rate', label: 'Tỉ lệ chốt', value: `${winRate}%`, color: 'text-pink-500', icon: Target, clickable: false },
+      { id: 'all', label: 'TỔNG KH', value: total, color: 'text-blue-600', clickable: true },
+      { id: 'consulting', label: 'ĐÃ TƯ VẤN', value: consulting, color: 'text-amber-500', clickable: true },
+      { id: 'surveying', label: 'ĐÃ ĐO ĐẠC', value: surveying, color: 'text-purple-600', clickable: true },
+      { id: 'quoted', label: 'ĐÃ BÁO GIÁ', value: quoted, color: 'text-blue-600', clickable: true },
+      { id: 'unquoted', label: 'CHƯA BÁO GIÁ', value: unquoted, color: 'text-slate-600', clickable: true },
+      { id: 'contracted', label: 'CHỐT CỌC', value: contracted, color: 'text-emerald-600', clickable: true },
+      { id: 'contracted_last_month', label: 'CHỐT CỌC THÁNG TRƯỚC', value: contractedLastMonthCount, color: 'text-fuchsia-600', clickable: true },
+      { id: 'production', label: 'SẢN XUẤT', value: production, color: 'text-blue-600', clickable: true },
+      { id: 'production_completed', label: 'HOÀN TẤT SẢN XUẤT', value: productionCompleted, color: 'text-teal-600', clickable: true },
+      { id: 'installation', label: 'LẮP ĐẶT', value: installation, color: 'text-orange-600', clickable: true },
+      { id: 'completed', label: 'HOÀN THÀNH', value: completed, color: 'text-emerald-600', clickable: true },
+      { id: 'win_rate', label: 'TỈ LỆ CHỐT', value: `${winRate}%`, color: 'text-pink-600', clickable: false },
     ];
-  }, [filteredCustomersForKPIs, quotations, winRate]);
+  }, [filteredCustomersForKPIs, quotations, contractedLastMonthCount, winRate]);
 
   return (
     <div className="space-y-3 md:space-y-8 max-w-[1600px] mx-auto pb-10 px-0.5">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
-        <div className="space-y-3 sm:space-y-0 text-left flex flex-col sm:flex-row sm:items-center gap-4 w-full lg:w-auto">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="space-y-0.5 text-left">
-              <h1 className="text-xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60 leading-tight">
-                Khách hàng
-              </h1>
-              <p className="text-muted-foreground text-[8px] md:text-xs font-medium">Hành trình khách hàng.</p>
-            </div>
-            
-            {/* Thêm khách hàng cho giao diện di động */}
-            <div className="sm:hidden">
-              <Button 
-                className="h-8 rounded-xl gap-1 px-3 shadow-xs text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer"
-                onClick={() => setIsAddDialogOpen(true)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Thêm</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Phân loại Khách hàng */}
-          <div className="flex border border-border bg-card p-0.5 rounded-xl gap-0.5 shadow-xs w-full sm:w-auto text-[11px] shrink-0">
-            <button
-              type="button"
-              className={cn(
-                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
-                activeCustomerType === 'retail' 
-                  ? "bg-primary text-primary-foreground shadow-xs" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              onClick={() => {
-                setActiveCustomerType('retail');
-                setSelectedStage('all');
-              }}
-            >
-              Khách lẻ
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
-                activeCustomerType === 'agency' 
-                  ? "bg-primary text-primary-foreground shadow-xs" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              onClick={() => {
-                setActiveCustomerType('agency');
-                setSelectedStage('all');
-              }}
-            >
-              Đại lý
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "flex-1 sm:flex-none px-4 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-xs",
-                activeCustomerType === 'project' 
-                  ? "bg-primary text-primary-foreground shadow-xs" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              onClick={() => {
-                setActiveCustomerType('project');
-                setSelectedStage('all');
-              }}
-            >
-              Dự án
-            </button>
-          </div>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
+        <div className="space-y-0.5 text-left shrink-0">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-50 leading-tight">
+            Khách<br className="hidden md:inline" /> hàng
+          </h1>
+          <p className="text-muted-foreground text-[10px] md:text-xs font-medium">Hành trình khách hàng.</p>
         </div>
 
-        <div className="flex items-center gap-1.5 w-full lg:w-auto">
+        {/* Toolbar: Time, Workshop, Sale, Search, Group toggle, Actions */}
+        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+          {/* Date Selector Popover */}
+          <Popover>
+            <PopoverTrigger className="inline-flex items-center justify-between whitespace-nowrap h-9 text-xs font-bold border border-input bg-card hover:bg-accent px-3 py-1.5 rounded-xl shadow-xs cursor-pointer text-card-foreground">
+              <span>{selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}</span>
+              <Calendar className="ml-2 h-3.5 w-3.5 opacity-50" />
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground z-[60] rounded-2xl border shadow-xl" align="start">
+              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2 dark:bg-zinc-800">
+                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-semibold">{pickerYear}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const m = String(i + 1).padStart(2, '0');
+                  const val = `${pickerYear}-${m}`;
+                  const isSelected = selectedMonth === val;
+                  return (
+                    <Button
+                      key={m}
+                      variant={isSelected ? "default" : "ghost"}
+                      className={cn("h-9 w-full text-xs cursor-pointer", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
+                      onClick={() => setSelectedMonth(val)}
+                    >
+                      Thg{i + 1}
+                    </Button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
+                  <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
+                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('')}>Tất cả</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Workshop Select */}
+          <Select 
+            value={getNormalizedWorkshopId(selectedWorkshop)} 
+            onValueChange={setSelectedWorkshop}
+            disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
+          >
+            <SelectTrigger className="h-9 min-w-[115px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+              <SelectValue>
+                {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+              {WORKSHOPS.map(w => (
+                <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer">{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Sale Select */}
+          <Select 
+            value={selectedSaleId} 
+            onValueChange={setSelectedSaleId}
+          >
+            <SelectTrigger className="h-9 min-w-[110px] rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
+              <SelectValue>
+                {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
+              <SelectItem value="all" className="text-xs font-bold text-primary cursor-pointer">Tất cả Sale</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Search input */}
+          <div className="relative min-w-[150px] max-w-[190px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input 
+              placeholder="Tìm tên hoặc SĐT..." 
+              className="pl-8.5 h-9 rounded-xl bg-card text-card-foreground border border-border text-xs shadow-xs w-full" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Segmented View Mode Toggle */}
+          <div className="flex border border-border bg-card p-0.5 rounded-xl gap-0.5 shadow-xs text-xs">
+            <button
+              type="button"
+              className={cn(
+                "px-2.5 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-[11px] flex items-center gap-1",
+                groupMode === 'by_order'
+                  ? "bg-slate-100 text-slate-800 shadow-2xs dark:bg-zinc-800 dark:text-zinc-200"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              onClick={() => setGroupMode('by_order')}
+            >
+              <FileText className="h-3 w-3" />
+              <span>Theo Đơn hàng</span>
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "px-2.5 py-1.5 font-bold rounded-lg transition-all text-center cursor-pointer text-[11px] flex items-center gap-1",
+                groupMode === 'by_customer'
+                  ? "bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs dark:bg-blue-950/50 dark:text-blue-400"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              onClick={() => setGroupMode('by_customer')}
+            >
+              <Users className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+              <span>Gom theo Khách</span>
+            </button>
+          </div>
+
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -1839,7 +2000,7 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-green-200 text-green-700 bg-green-50 hover:bg-green-100 font-bold cursor-pointer"
+            className="h-9 rounded-xl gap-1 px-3 shadow-xs text-xs border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-bold cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="h-3.5 w-3.5" />
@@ -1848,7 +2009,7 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
+            className="h-9 rounded-xl gap-1 px-3 shadow-xs text-xs border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
             onClick={handleExportExcel}
           >
             <Download className="h-3.5 w-3.5" />
@@ -1858,24 +2019,21 @@ export function CustomerPage({
           {!!(currentUser?.role && ['giám đốc', 'tổng quản lý', 'chủ sở hữu', 'admin'].some(r => currentUser.role.toLowerCase().includes(r))) && (
             <Button 
               variant="outline"
-              className="h-8 md:h-11 rounded-xl gap-1 px-2 md:px-5 shadow-sm text-[10px] md:text-xs flex-1 sm:flex-none border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 font-bold cursor-pointer"
+              className="h-9 rounded-xl gap-1 px-2.5 shadow-xs text-xs border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 font-bold cursor-pointer"
               onClick={runMigration}
+              title="Đồng bộ"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Đồng bộ</span>
             </Button>
           )}
 
-          {/* Thêm khách hàng cho giao diện máy tính */}
-          <div className="hidden sm:inline-block">
-            <Button 
-              className="h-8 md:h-11 rounded-xl gap-1 px-3 md:px-5 shadow-sm text-[10px] md:text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer"
-              onClick={() => setIsAddDialogOpen(true)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Thêm</span>
-            </Button>
-          </div>
+          <Button 
+            className="h-9 rounded-xl gap-1 px-4 shadow-xs text-xs text-white bg-blue-600 hover:bg-blue-700 font-bold cursor-pointer"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Thêm</span>
+          </Button>
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogContent className="sm:max-w-[800px] rounded-2xl">
@@ -2094,167 +2252,190 @@ export function CustomerPage({
         </div>
       </div>
 
-      {/* Row 2: Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-50/50 dark:bg-zinc-900/30 p-2.5 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
-        {/* Date Selector Popover */}
-        <div className="col-span-2 md:col-span-1">
-          <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-between w-full whitespace-nowrap h-9 text-xs font-bold border border-input bg-card hover:bg-accent px-4 py-2 rounded-xl shadow-xs cursor-pointer text-card-foreground">
-              {selectedMonth === 'today' ? 'Hôm nay' : selectedMonth === 'week' ? 'Tuần này' : selectedMonth === 'last-week' ? 'Tuần trước' : selectedMonth ? `Tháng ${selectedMonth.split('-')[1]} năm ${selectedMonth.split('-')[0]}` : "Chọn thời gian"}
-              <Calendar className="ml-2 h-4 w-4 opacity-50" />
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-2 bg-card text-card-foreground z-[60] rounded-2xl border shadow-xl" align="start">
-              <div className="flex items-center justify-between bg-gray-100 rounded-md p-1 mb-2 dark:bg-zinc-800">
-                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer" onClick={() => setPickerYear(y => y + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const m = String(i + 1).padStart(2, '0');
-                  const val = `${pickerYear}-${m}`;
-                  const isSelected = selectedMonth === val;
-                  return (
-                    <Button
-                      key={m}
-                      variant={isSelected ? "default" : "ghost"}
-                      className={cn("h-9 w-full text-xs cursor-pointer", isSelected && "bg-blue-600 hover:bg-blue-700 text-white")}
-                      onClick={() => setSelectedMonth(val)}
-                    >
-                      Thg{i + 1}
-                    </Button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
-                <div className="grid grid-cols-2 gap-2">
-                   <Button variant={selectedMonth === 'today' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('today')}>Hôm nay</Button>
-                   <Button variant={selectedMonth === 'week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 font-bold cursor-pointer" onClick={() => setSelectedMonth('week')}>Tuần này</Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant={selectedMonth === 'last-week' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('last-week')}>Tuần trước</Button>
-                  <Button variant={selectedMonth === '' ? 'default' : 'outline'} size="sm" className="text-[10px] h-7 flex-1 font-bold cursor-pointer" onClick={() => setSelectedMonth('')}>Tất cả</Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* Workshop Select */}
-        <div className="col-span-1">
-          <Select 
-            value={getNormalizedWorkshopId(selectedWorkshop)} 
-            onValueChange={setSelectedWorkshop}
-            disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
-          >
-            <SelectTrigger className="h-9 w-full rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
-              <SelectValue>
-                {WORKSHOPS.find(w => w.id === getNormalizedWorkshopId(selectedWorkshop))?.name || 'Tất cả cơ sở'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
-              {WORKSHOPS.map(w => (
-                <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer">{w.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Sale Select */}
-        <div className="col-span-1">
-          <Select 
-            value={selectedSaleId} 
-            onValueChange={setSelectedSaleId}
-          >
-            <SelectTrigger className="h-9 w-full rounded-xl border border-border bg-card text-card-foreground text-xs shadow-xs cursor-pointer">
-              <SelectValue>
-                {selectedSaleId === 'all' ? 'Tất cả Sale' : (members.find(m => m.id === selectedSaleId)?.name || selectedSaleId)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-card text-card-foreground border shadow-xl rounded-xl">
-              <SelectItem value="all" className="text-xs font-bold text-primary cursor-pointer">Tất cả Sale</SelectItem>
-              {members.map(m => (
-                <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Search input */}
-        <div className="relative col-span-2 md:col-span-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input 
-            placeholder="Tìm tên hoặc SĐT..." 
-            className="pl-9 h-9 rounded-xl bg-card text-card-foreground border border-border text-xs shadow-xs w-full" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      {/* Customer Category Filter Pills */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <button
+          type="button"
+          className={cn(
+            "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border",
+            selectedGroup === 'all'
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setSelectedGroup('all');
+            setSelectedStage('all');
+          }}
+        >
+          Tất cả nhóm
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
+            selectedGroup === 'project'
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setSelectedGroup('project');
+            setSelectedStage('all');
+          }}
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          <span>Dự án</span>
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
+            selectedGroup === 'processing'
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setSelectedGroup('processing');
+            setSelectedStage('all');
+          }}
+        >
+          <Cog className="h-3.5 w-3.5" />
+          <span>Gia công</span>
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
+            selectedGroup === 'residential'
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+          )}
+          onClick={() => {
+            setSelectedGroup('residential');
+            setSelectedStage('all');
+          }}
+        >
+          <Home className="h-3.5 w-3.5" />
+          <span>Công trình nhà dân</span>
+        </button>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {/* Revenue Cards */}
-        {canViewRevenue && (
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg relative overflow-hidden group border-0">
-               <div className="absolute top-0 right-0 p-3 opacity-20">
-                  <DollarSign className="h-16 w-16 md:h-20 md:w-20" />
-               </div>
-               <CardContent className="p-3 md:p-5 flex flex-col justify-center min-h-[70px] md:min-h-[90px] relative z-10">
-                  <p className="text-[10px] md:text-[12px] uppercase font-black tracking-widest text-emerald-100 mb-1 drop-shadow-sm">Doanh thu thực tế</p>
-                  <h3 className="text-xl md:text-3xl font-black tabular-nums drop-shadow-md">
-                    {formatCurrency(actualRevenue)}
-                  </h3>
-               </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg relative overflow-hidden group border-0">
-               <div className="absolute top-0 right-0 p-3 opacity-20">
-                  <TrendingUp className="h-16 w-16 md:h-20 md:w-20" />
-               </div>
-               <CardContent className="p-3 md:p-5 flex flex-col justify-center min-h-[70px] md:min-h-[90px] relative z-10">
-                  <p className="text-[10px] md:text-[12px] uppercase font-black tracking-widest text-amber-100 mb-1 drop-shadow-sm">Doanh thu dự kiến</p>
-                  <h3 className="text-xl md:text-3xl font-black tabular-nums drop-shadow-md">
-                    {formatCurrency(expectedRevenue)}
-                  </h3>
-               </CardContent>
-            </Card>
+      {/* 3 Metric Financial Cards */}
+      {canViewRevenue && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          {/* Card 1: Tiền thực nhận */}
+          <Card className="bg-[#046c4e] text-white shadow-lg relative overflow-hidden group border-0 rounded-2xl">
+            <div className="absolute top-2 right-2 p-2 opacity-20">
+              <CreditCard className="h-16 w-16 md:h-20 md:w-20" />
+            </div>
+            <CardContent className="p-4 md:p-5 flex flex-col justify-between min-h-[95px] relative z-10">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] md:text-xs uppercase font-extrabold tracking-wider text-emerald-100 drop-shadow-sm">
+                  1. TIỀN THỰC NHẬN
+                </p>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-xs">
+                  Đã thu
+                </span>
+              </div>
+              <h3 className="text-2xl md:text-3xl font-black tabular-nums drop-shadow-md mt-2">
+                {formatCurrency(receivedMoney)}
+              </h3>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Doanh thu thực tế */}
+          <Card className="bg-[#2563eb] text-white shadow-lg relative overflow-hidden group border-0 rounded-2xl">
+            <div className="absolute top-2 right-2 p-2 opacity-20">
+              <DollarSign className="h-16 w-16 md:h-20 md:w-20" />
+            </div>
+            <CardContent className="p-4 md:p-5 flex flex-col justify-between min-h-[95px] relative z-10">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] md:text-xs uppercase font-extrabold tracking-wider text-blue-100 drop-shadow-sm">
+                  2. DOANH THU THỰC TẾ
+                </p>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-xs">
+                  Lắp đặt / Hoàn thành
+                </span>
+              </div>
+              <h3 className="text-2xl md:text-3xl font-black tabular-nums drop-shadow-md mt-2">
+                {formatCurrency(actualRevenue)}
+              </h3>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Doanh thu dự kiến */}
+          <Card className="bg-[#ea580c] text-white shadow-lg relative overflow-hidden group border-0 rounded-2xl">
+            <div className="absolute top-2 right-2 p-2 opacity-20">
+              <TrendingUp className="h-16 w-16 md:h-20 md:w-20" />
+            </div>
+            <CardContent className="p-4 md:p-5 flex flex-col justify-between min-h-[95px] relative z-10">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] md:text-xs uppercase font-extrabold tracking-wider text-orange-100 drop-shadow-sm">
+                  3. DOANH THU DỰ KIẾN
+                </p>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-xs">
+                  Từ Chốt Cọc
+                </span>
+              </div>
+              <h3 className="text-2xl md:text-3xl font-black tabular-nums drop-shadow-md mt-2">
+                {formatCurrency(expectedRevenue)}
+              </h3>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Status Indicators Section */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200">
+              Chỉ số trạng thái
+            </h3>
+            <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-200/60">
+              {filteredCustomersForKPIs.length} Khách hàng
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsKpiCollapsed(!isKpiCollapsed)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium transition-colors cursor-pointer"
+          >
+            <span>{isKpiCollapsed ? 'Mở rộng chỉ số' : 'Thu gọn chỉ số'}</span>
+            {isKpiCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+
+        {!isKpiCollapsed && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
+            {cardData.map((card) => {
+              const isSelected = selectedStage === card.id;
+              return (
+                <div
+                  key={card.id}
+                  className={cn(
+                    "bg-card text-card-foreground p-2 rounded-2xl border transition-all text-center flex flex-col justify-center items-center min-h-[64px]",
+                    card.clickable && "cursor-pointer hover:border-slate-300 hover:shadow-xs",
+                    isSelected 
+                      ? "border-2 border-blue-500 shadow-xs ring-1 ring-blue-500/20" 
+                      : "border-slate-200/80 dark:border-zinc-800"
+                  )}
+                  onClick={() => {
+                    if (card.clickable) {
+                      setSelectedStage(card.id as any);
+                    }
+                  }}
+                >
+                  <p className="text-[8px] md:text-[9px] uppercase font-bold tracking-wider text-slate-500 line-clamp-1 mb-1">
+                    {card.label}
+                  </p>
+                  <h4 className={cn("text-base md:text-lg font-black tabular-nums leading-tight", card.color)}>
+                    {card.value}
+                  </h4>
+                </div>
+              );
+            })}
           </div>
         )}
-        
-        {/* Stages Grid */}
-        <div className="grid grid-cols-4 gap-1.5 md:gap-3">
-          {cardData.map((card) => {
-            const Icon = card.icon;
-            const isSelected = selectedStage === card.id;
-            return (
-              <Card 
-                key={card.id} 
-                className={cn(
-                  "border border-border bg-card text-card-foreground shadow-sm relative overflow-hidden group transition-all",
-                  card.clickable && "cursor-pointer hover:border-primary/50",
-                  isSelected && "ring-2 ring-primary border-primary"
-                )}
-                onClick={() => {
-                  if (card.clickable) {
-                    setSelectedStage(card.id as any);
-                  }
-                }}
-              >
-                 <div className={cn("absolute top-0 right-0 p-1", card.color)}>
-                    <Icon className="h-6 w-6 md:h-10 md:w-10 opacity-10 text-gray-200" />
-                 </div>
-                 <CardContent className="p-1.5 md:p-2 flex flex-col items-center text-center justify-center min-h-[50px] md:min-h-[60px]">
-                    <p className="text-[7px] md:text-[9px] uppercase font-black tracking-widest text-muted-foreground mb-0.5">{card.label}</p>
-                    <h3 className={cn("text-base md:text-xl font-black tabular-nums", card.color)}>{card.value}</h3>
-                 </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       </div>
 
       {/* View Mode Toggle & Customers Grid */}
@@ -2415,8 +2596,10 @@ export function CustomerPage({
           )}
         </Card>
       ) : (
-      <div className="grid gap-2.5 md:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredCustomers.map((customer, i) => {
+      <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {displayItems.map((item, i) => {
+          const customer = item.customer;
+          const currentQuotation = item.quotation;
           const stage = STAGE_CONFIG[customer.stage];
           const sale = members.find(m => m.id === customer.assignedSaleId);
           
@@ -2436,24 +2619,41 @@ export function CustomerPage({
           
           return (
             <motion.div
-              key={customer.id}
+              key={item.key}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
             >
-              <Card className="group h-full flex flex-col justify-between transition-all duration-300 border border-border shadow-sm bg-card text-card-foreground hover:shadow-md">
-                <CardHeader className="p-2.5 md:p-4 pb-1 md:pb-2 space-y-1 md:space-y-2">
+              <Card className="group h-full flex flex-col justify-between transition-all duration-300 border border-slate-200/80 dark:border-zinc-800 shadow-xs bg-card text-card-foreground hover:shadow-md rounded-2xl overflow-hidden">
+                <CardHeader className="p-3.5 md:p-4 pb-2 space-y-2">
                   <div className="flex justify-between items-start">
-                    <div className="flex flex-col gap-0.5 md:gap-1">
+                    <div className="flex flex-col gap-1">
                       <DropdownMenu>
                         <DropdownMenuTrigger render={
                           <button className={cn(
-                            "text-[7px] md:text-[10px] uppercase font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm md:rounded-lg border-none scale-90 md:scale-100 -ml-1 md:ml-0 cursor-pointer flex items-center gap-0.5 select-none hover:opacity-80 transition-opacity focus:outline-none",
-                            stage.color
+                            "text-[10px] md:text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1 select-none hover:opacity-85 transition-opacity border",
+                            customer.stage === 'contracted' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                            customer.stage === 'consulting' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            customer.stage === 'surveying' ? "bg-purple-50 text-purple-700 border-purple-200" :
+                            customer.stage === 'production' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                            customer.stage === 'production_completed' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                            customer.stage === 'installation' ? "bg-orange-50 text-orange-700 border-orange-200" :
+                            customer.stage === 'completed' ? "bg-green-50 text-green-700 border-green-200" :
+                            "bg-rose-50 text-rose-700 border-rose-200"
                           )}>
-                            <stage.icon className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1 inline" />
-                            {stage.label}
-                            <span className="text-[5px] md:text-[7px] ml-0.5 opacity-60">▼</span>
+                            <span className={cn(
+                              "w-2 h-2 rounded-full mr-0.5",
+                              customer.stage === 'contracted' ? "bg-emerald-500" :
+                              customer.stage === 'consulting' ? "bg-amber-500" :
+                              customer.stage === 'surveying' ? "bg-purple-500" :
+                              customer.stage === 'production' ? "bg-blue-500" :
+                              customer.stage === 'production_completed' ? "bg-indigo-500" :
+                              customer.stage === 'installation' ? "bg-orange-500" :
+                              customer.stage === 'completed' ? "bg-green-500" :
+                              "bg-rose-500"
+                            )} />
+                            <span>{stage.label.toUpperCase()}</span>
+                            <span className="text-[8px] ml-0.5 opacity-70">⌵</span>
                           </button>
                         } />
                         <DropdownMenuContent align="start" className="rounded-xl p-1 min-w-[160px]">
@@ -2479,31 +2679,42 @@ export function CustomerPage({
                           })}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <div className="flex flex-col gap-0.5 text-[7px] md:text-[9px] text-muted-foreground/60 font-semibold pl-0.5">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-2 w-2 md:h-2.5 md:w-2.5 opacity-60" />
-                          <span>Chốt/Cọc: {formatVNTime(customer.createdAt)}</span>
-                        </div>
-                        {customer.consultedAt && customer.consultedAt !== customer.createdAt && (
-                          <div className="flex items-center gap-1 text-[7px] md:text-[8px] text-amber-600 font-semibold">
-                            <Clock className="h-2 w-2 opacity-60" />
+
+                      <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] pl-0.5 font-medium">
+                        {['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(customer.stage) && customer.createdAt && (
+                          <div className="flex items-center gap-1 text-emerald-600 font-semibold">
+                            <Clock className="h-2.5 w-2.5 opacity-70" />
+                            <span>Chốt/Cọc: {formatVNTime(customer.createdAt)}</span>
+                          </div>
+                        )}
+                        {customer.consultedAt ? (
+                          <div className="flex items-center gap-1 text-amber-600 font-semibold">
+                            <Clock className="h-2.5 w-2.5 opacity-70" />
                             <span>Tư vấn: {formatVNTime(customer.consultedAt)}</span>
                           </div>
+                        ) : (
+                          customer.stage === 'consulting' && customer.createdAt && (
+                            <div className="flex items-center gap-1 text-amber-600 font-semibold">
+                              <Clock className="h-2.5 w-2.5 opacity-70" />
+                              <span>Tư vấn: {formatVNTime(customer.createdAt)}</span>
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
+
                     <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
                       {customer.workshop && (
                         <Badge 
                           variant="outline" 
                           className={cn(
-                            "text-[8px] md:text-[9px] font-black px-1.5 md:px-2 py-0.5 rounded-sm md:rounded-md border select-none uppercase tracking-wider leading-none shrink-0 shadow-xs",
+                            "text-[8px] md:text-[9px] font-bold px-2 py-0.5 rounded-md border select-none uppercase tracking-wider leading-none shrink-0 shadow-2xs",
                             (() => {
                               const norm = getNormalizedWorkshopId(customer.workshop);
-                              if (norm === 'Hà Nội') return 'bg-rose-50 text-rose-700 border-rose-200/60';
-                              if (norm === 'Cần Thơ') return 'bg-sky-50 text-sky-700 border-sky-200/60';
-                              if (norm === 'Đồng Nai') return 'bg-indigo-50 text-indigo-700 border-indigo-200/60';
-                              return 'bg-slate-50 text-slate-700 border-slate-200/60';
+                              if (norm === 'Hà Nội') return 'bg-rose-50 text-rose-600 border-rose-200';
+                              if (norm === 'Cần Thơ') return 'bg-sky-50 text-sky-600 border-sky-200';
+                              if (norm === 'Đồng Nai') return 'bg-indigo-50 text-indigo-600 border-indigo-200';
+                              return 'bg-slate-50 text-slate-700 border-slate-200';
                             })()
                           )}
                         >
@@ -2512,8 +2723,8 @@ export function CustomerPage({
                       )}
                       <DropdownMenu>
                         <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="h-6 w-6 md:h-8 md:w-8 rounded-lg">
-                            <MoreHorizontal className="h-3 w-3 md:h-4 md:w-4" />
+                          <Button variant="ghost" size="icon" className="h-6 w-6 md:h-7 md:w-7 rounded-lg text-slate-500">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
                           </Button>
                         } />
                       <DropdownMenuContent align="end" className="rounded-xl">
@@ -2578,8 +2789,8 @@ export function CustomerPage({
                   </div>
                   
                   <div className="space-y-1">
-                    <CardTitle className="text-[11px] md:text-sm font-bold tracking-tight leading-tight text-slate-800 flex flex-wrap items-center gap-1.5">
-                      <span className="font-bold text-slate-800">
+                    <CardTitle className="text-xs md:text-sm font-bold tracking-tight leading-tight text-slate-900 dark:text-zinc-100 flex flex-wrap items-center gap-1.5">
+                      <span>
                         {customer.code 
                           ? (customer.code.toLowerCase().includes(customer.name.toLowerCase()) 
                               ? customer.code 
@@ -2589,33 +2800,62 @@ export function CustomerPage({
                       {customer.furnitureCategory && (
                         <>
                           <span className="text-slate-300 font-normal">|</span>
-                          <span className="text-primary font-bold">{customer.furnitureCategory}</span>
+                          <span className="text-blue-600 font-semibold">{customer.furnitureCategory}</span>
                         </>
                       )}
                     </CardTitle>
                     {purchaseCount > 0 && (
-                      <div className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-emerald-100/80">
-                        <Package className="h-2.5 w-2.5 mr-0.5" />
-                        <span>Mua {purchaseCount} lần</span>
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[8px] md:text-[9px] font-bold uppercase tracking-wider border border-emerald-200/60">
+                        <ShoppingBag className="h-2.5 w-2.5" />
+                        <span>MUA {purchaseCount} LẦN</span>
                       </div>
                     )}
                     {totalDebt > 0 && (
-                      <div className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-xs bg-red-50 text-red-700 text-[7px] md:text-[9px] font-bold uppercase tracking-wider ring-1 ring-red-100/80 ml-1.5">
-                        <AlertTriangle className="h-2.5 w-2.5 mr-0.5 text-red-500" />
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-rose-50 text-rose-700 text-[8px] md:text-[9px] font-bold uppercase tracking-wider border border-rose-200/60 ml-1.5">
+                        <AlertTriangle className="h-2.5 w-2.5 text-rose-500" />
                         <span>Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-dashed border-border/60 space-y-2">
+                  <div className="pt-2 border-t border-dashed border-slate-100 dark:border-zinc-800 space-y-1.5">
                     {/* Dòng 1: Số điện thoại */}
-                    <div className="flex items-center text-[9px] md:text-xs text-muted-foreground">
+                    <div className="flex items-center text-[10px] md:text-xs text-muted-foreground font-semibold">
                       <Phone className="h-3 w-3 mr-1.5 opacity-60 text-primary" />
-                      <span className="font-semibold">{customer.phone}</span>
+                      <a href={`tel:${customer.phone}`} className="hover:underline text-slate-700 dark:text-zinc-300">
+                        {customer.phone}
+                      </a>
                     </div>
 
                     {/* Dòng 2: Chi tiết đơn hàng */}
                     {(() => {
+                      const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
+                      if (!showPrice) return null;
+
+                      if (currentQuotation) {
+                        const totalOrdersSum = currentQuotation.totalAmount || 0;
+                        const totalDepositSum = currentQuotation.depositAmount || 0;
+                        return (
+                          <div className="flex justify-between items-start text-xs pt-0.5">
+                            <span className="text-slate-500 font-semibold text-[11px] md:text-xs">
+                              {currentQuotation.quotationNumber ? `Đơn #${currentQuotation.quotationNumber}:` : 'Giá trị:'}
+                            </span>
+                            <div className="flex flex-col items-end">
+                              {totalOrdersSum > 0 ? (
+                                <span className="font-bold text-blue-600 text-xs md:text-sm">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
+                                </span>
+                              ) : null}
+                              {totalDepositSum > 0 && (
+                                <span className="text-[10px] md:text-xs text-purple-600 font-bold mt-0.5">
+                                  Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const validQuotations = customerQuotations.filter(q => q.status === 'accepted' || q.status === 'deposit');
                       const sortedPurchases = [...validQuotations].sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime());
                       
@@ -2630,9 +2870,6 @@ export function CustomerPage({
                       const totalDepositSum = validQuotations.length > 0
                         ? validQuotations.reduce((sum, q) => sum + (q.depositAmount || 0), 0)
                         : 0;
-
-                      const showPrice = !!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false;
-                      if (!showPrice) return null;
 
                       if (sortedPurchases.length > 1) {
                         return (
@@ -2678,21 +2915,21 @@ export function CustomerPage({
                       }
 
                       return (
-                        <div className="flex justify-between items-center text-[10px] md:text-xs">
-                          <span className="text-muted-foreground font-semibold">Giá trị:</span>
+                        <div className="flex justify-between items-start text-xs pt-0.5">
+                          <span className="text-slate-500 font-semibold text-[11px] md:text-xs">Giá trị:</span>
                           <div className="flex flex-col items-end">
-                            {totalOrdersSum > 0 && (
-                              <span className="font-black text-primary/80">
+                            {totalOrdersSum > 0 ? (
+                              <span className="font-bold text-blue-600 text-xs md:text-sm">
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
                               </span>
-                            )}
+                            ) : null}
                             {totalDepositSum > 0 && (
-                              <span className="text-[7px] md:text-[10px] text-purple-600 font-bold mt-0.5">
+                              <span className="text-[10px] md:text-xs text-purple-600 font-bold mt-0.5">
                                 Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
                               </span>
                             )}
                             {totalDebt > 0 && (
-                              <span className="text-[7px] md:text-[10px] text-red-700 font-extrabold mt-0.5 bg-red-50 border border-red-200/50 px-1 rounded-sm">
+                              <span className="text-[8px] md:text-[10px] text-red-700 font-extrabold mt-0.5 bg-red-50 border border-red-200/50 px-1 rounded-sm">
                                 Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
                               </span>
                             )}
@@ -2702,35 +2939,39 @@ export function CustomerPage({
                     })()}
                   </div>
                 </CardHeader>
-                <CardContent className="p-2.5 md:p-4 pt-0 md:pt-0 flex-1 flex flex-col justify-between gap-2.5">
-                  <div className="flex items-start gap-1.5 text-[8px] md:text-[11px] text-muted-foreground/70 leading-tight bg-muted border border-border p-1.5 md:p-2.5 rounded-lg md:rounded-xl">
-                    <MapPin className="h-2.5 w-2.5 md:h-3.5 md:w-3.5 shrink-0 mt-0" />
-                    <span>{customer.address || '—'}</span>
+                <CardContent className="p-3.5 md:p-4 pt-0 md:pt-0 flex-1 flex flex-col justify-between gap-2.5">
+                  <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-500 dark:text-zinc-400 bg-slate-100/70 dark:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-700/50 px-3 py-2 rounded-xl">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate">{customer.address || '—'}</span>
                   </div>
                   
-                  <div className="flex flex-col gap-2 pt-2 border-t border-border mt-auto">
+                  <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800 mt-auto">
                     {/* Hàng 1: Thông tin Sale và Cơ sở */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Avatar className="h-5 w-5 border border-border shadow-xs">
+                        <Avatar className="h-6 w-6 border border-border shadow-2xs">
                           <AvatarImage src={sale?.avatar} />
-                          <AvatarFallback className="text-[7px] bg-gray-50 text-primary">{sale?.name?.charAt(0) || '?'}</AvatarFallback>
+                          <AvatarFallback className="text-[8px] bg-slate-100 text-primary font-bold">{sale?.name?.charAt(0) || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col text-left">
-                          <span className="text-[10px] md:text-[11px] font-bold opacity-80 leading-none">{sale?.name || 'Chưa gán'}</span>
-                          <span className="text-[8px] md:text-[9px] opacity-50 font-medium">{getWorkshopName(customer.workshop)}</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 leading-none">{sale?.name || 'Chưa gán'}</span>
+                          <span className="text-[10px] text-slate-400 font-medium mt-0.5">{getWorkshopName(customer.workshop)}</span>
                         </div>
                       </div>
                     </div>
                     
                     {/* Hàng 2: Các nút hành động */}
-                    <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-dashed border-border/50 justify-end w-full">
-                      {onViewQuotation && quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone)) && (
+                    <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-dashed border-slate-100 dark:border-zinc-800 justify-end w-full">
+                      {onViewQuotation && (currentQuotation || quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone))) && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50/50 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2"
+                          className="h-7 border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/70 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
                           onClick={() => {
+                            if (currentQuotation) {
+                              onViewQuotation(currentQuotation.id, currentQuotation.customerName);
+                              return;
+                            }
                             const customerQuotes = quotations.filter(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone));
                             const sortedQuotes = [...customerQuotes].sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
                             const latestQuote = sortedQuotes[0];
@@ -2740,30 +2981,40 @@ export function CustomerPage({
                           }}
                           title="Xem báo giá"
                         >
-                          <FileText className="h-3.5 w-3.5" />
-                          <span>Xem báo giá</span>
+                          <FileText className="h-3 w-3" />
+                          <span>Xem Báo giá</span>
                         </Button>
                       )}
                       {onCreateQuotation && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 border-primary/20 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2"
+                          className="h-7 border-blue-300 text-blue-600 bg-blue-50/40 hover:bg-blue-100/60 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
                           onClick={() => onCreateQuotation(customer.id)}
                           title="Tạo báo giá"
                         >
-                          <Plus className="h-3.5 w-3.5" />
-                          <span>Tạo báo giá</span>
+                          <Plus className="h-3 w-3" />
+                          <span>Tạo Báo giá</span>
                         </Button>
                       )}
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm" 
-                        className="h-7 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 border border-slate-100"
+                        className="h-7 border-amber-300 text-amber-700 bg-amber-50/40 hover:bg-amber-100/60 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
+                        onClick={() => openEditDialog(customer)}
+                        title="Sửa"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        <span>Sửa</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-7 border-slate-200 text-slate-700 dark:text-zinc-300 bg-slate-50/50 hover:bg-slate-100/70 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
                         onClick={() => openViewDialog(customer)}
                         title="Chi tiết"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="h-3 w-3" />
                         <span>Chi tiết</span>
                       </Button>
                     </div>
