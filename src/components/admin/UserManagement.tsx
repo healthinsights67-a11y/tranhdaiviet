@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { db, collection, getDocs, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot } from '@/src/lib/firebase';
+import { db, collection, getDocs, updateDoc, setDoc, deleteDoc, doc, query, orderBy, onSnapshot } from '@/src/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,19 +37,29 @@ export function UserManagement() {
 
   const handleStatusUpdate = async (userId: string, status: 'approved' | 'rejected') => {
     try {
-      await updateDoc(doc(db, 'users', userId), { status });
-      toast.success(status === 'approved' ? 'Đã duyệt tài khoản' : 'Đã từ chối tài khoản');
-    } catch (error) {
-      toast.error('Lỗi khi cập nhật trạng thái');
+      await setDoc(doc(db, 'users', userId), { status }, { merge: true });
+      toast.success(status === 'approved' ? 'Đã duyệt tài khoản' : 'Đã từ chối / khóa tài khoản');
+    } catch (error: any) {
+      console.error("Lỗi cập nhật trạng thái:", error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Lỗi quyền: Firestore Rules chưa cho phép ghi vào collection users. Vui lòng cập nhật Rules trên Firebase Console.');
+      } else {
+        toast.error(`Lỗi khi cập nhật trạng thái: ${error?.message || error}`);
+      }
     }
   };
 
   const handleRoleUpdate = async (userId: string, role: 'admin' | 'user') => {
     try {
-      await updateDoc(doc(db, 'users', userId), { role });
+      await setDoc(doc(db, 'users', userId), { role }, { merge: true });
       toast.success(`Đã cập nhật quyền thành ${role}`);
-    } catch (error) {
-      toast.error('Lỗi khi cập nhật quyền');
+    } catch (error: any) {
+      console.error("Lỗi cập nhật quyền:", error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Lỗi quyền: Firestore Rules chưa cho phép ghi vào collection users. Vui lòng cập nhật Rules trên Firebase Console.');
+      } else {
+        toast.error(`Lỗi khi cập nhật quyền: ${error?.message || error}`);
+      }
     }
   };
 
@@ -73,8 +83,13 @@ export function UserManagement() {
       await deleteDoc(doc(db, 'users', userToDelete.id));
       toast.success(`Đã xóa tài khoản "${userToDelete.email}"`);
       setUserToDelete(null);
-    } catch (error) {
-      toast.error('Lỗi khi xóa tài khoản');
+    } catch (error: any) {
+      console.error("Lỗi khi xóa tài khoản:", error);
+      if (error?.code === 'permission-denied') {
+        toast.error('Lỗi quyền: Firestore Rules chưa cho phép xóa trong collection users. Vui lòng cập nhật Rules trên Firebase Console.');
+      } else {
+        toast.error(`Lỗi khi xóa tài khoản: ${error?.message || error}`);
+      }
     } finally {
       setIsDeleting(false);
     }
