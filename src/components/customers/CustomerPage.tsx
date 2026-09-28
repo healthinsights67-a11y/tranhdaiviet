@@ -2609,12 +2609,17 @@ export function CustomerPage({
             purchaseCount = 1;
           }
           
-          let totalDebt = customerQuotations
-            .filter(q => q.status === 'accepted' || q.status === 'deposit')
-            .reduce((sum, q) => sum + Math.max(0, (q.totalAmount || 0) - (q.depositAmount || 0)), 0);
-          
-          if (totalDebt === 0 && purchaseCount > 0 && customer.orderValue) {
-            totalDebt = customer.orderValue;
+          const isCompleted = customer.stage === 'completed';
+
+          let totalDebt = 0;
+          if (!isCompleted && customer.stage !== 'lost') {
+            totalDebt = customerQuotations
+              .filter(q => q.status === 'accepted' || q.status === 'deposit')
+              .reduce((sum, q) => sum + Math.max(0, (q.totalAmount || 0) - (q.depositAmount || 0)), 0);
+            
+            if (totalDebt === 0 && purchaseCount > 0 && customer.orderValue && ['contracted', 'production', 'production_completed', 'installation'].includes(customer.stage)) {
+              totalDebt = customer.orderValue;
+            }
           }
           
           return (
@@ -2810,12 +2815,17 @@ export function CustomerPage({
                         <span>MUA {purchaseCount} LẦN</span>
                       </div>
                     )}
-                    {totalDebt > 0 && (
-                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-rose-50 text-rose-700 text-[8px] md:text-[9px] font-bold uppercase tracking-wider border border-rose-200/60 ml-1.5">
-                        <AlertTriangle className="h-2.5 w-2.5 text-rose-500" />
-                        <span>Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}</span>
+                    {isCompleted ? (
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 text-[8px] md:text-[9px] font-bold uppercase tracking-wider border border-emerald-200/60 ml-1.5">
+                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" />
+                        <span>ĐÃ TẤT TOÁN</span>
                       </div>
-                    )}
+                    ) : totalDebt > 0 ? (
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs bg-amber-50 text-amber-700 text-[8px] md:text-[9px] font-bold uppercase tracking-wider border border-amber-200/60 ml-1.5">
+                        <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                        <span>CÒN LẠI: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="pt-2 border-t border-dashed border-slate-100 dark:border-zinc-800 space-y-1.5">
@@ -2835,6 +2845,7 @@ export function CustomerPage({
                       if (currentQuotation) {
                         const totalOrdersSum = currentQuotation.totalAmount || 0;
                         const totalDepositSum = currentQuotation.depositAmount || 0;
+                        const remaining = Math.max(0, totalOrdersSum - totalDepositSum);
                         return (
                           <div className="flex justify-between items-start text-xs pt-0.5">
                             <span className="text-slate-500 font-semibold text-[11px] md:text-xs">
@@ -2851,6 +2862,15 @@ export function CustomerPage({
                                   Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
                                 </span>
                               )}
+                              {isCompleted ? (
+                                <span className="text-[8px] md:text-[10px] text-emerald-700 font-bold mt-0.5 bg-emerald-50 border border-emerald-200/50 px-1 rounded-sm">
+                                  Đã tất toán
+                                </span>
+                              ) : remaining > 0 ? (
+                                <span className="text-[8px] md:text-[10px] text-amber-700 font-extrabold mt-0.5 bg-amber-50 border border-amber-200/50 px-1 rounded-sm">
+                                  Còn lại: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(remaining)}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         );
@@ -2902,14 +2922,19 @@ export function CustomerPage({
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalOrdersSum)}
                               </span>
                             </div>
-                            {totalDebt > 0 && (
-                              <div className="flex justify-between items-center text-red-700 font-extrabold text-[8px] md:text-[10px] mt-1 pt-1 border-t border-dotted border-red-200">
-                                <span>Công nợ:</span>
+                            {isCompleted ? (
+                              <div className="flex justify-between items-center text-emerald-700 font-extrabold text-[8px] md:text-[10px] mt-1 pt-1 border-t border-dotted border-emerald-200">
+                                <span>Thanh toán:</span>
+                                <span>Đã tất toán</span>
+                              </div>
+                            ) : totalDebt > 0 ? (
+                              <div className="flex justify-between items-center text-amber-700 font-extrabold text-[8px] md:text-[10px] mt-1 pt-1 border-t border-dotted border-amber-200">
+                                <span>Còn lại:</span>
                                 <span>
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
                                 </span>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         );
                       }
@@ -2928,11 +2953,15 @@ export function CustomerPage({
                                 Cọc: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDepositSum)}
                               </span>
                             )}
-                            {totalDebt > 0 && (
-                              <span className="text-[8px] md:text-[10px] text-red-700 font-extrabold mt-0.5 bg-red-50 border border-red-200/50 px-1 rounded-sm">
-                                Nợ: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
+                            {isCompleted ? (
+                              <span className="text-[8px] md:text-[10px] text-emerald-700 font-bold mt-0.5 bg-emerald-50 border border-emerald-200/50 px-1 rounded-sm">
+                                Đã tất toán
                               </span>
-                            )}
+                            ) : totalDebt > 0 ? (
+                              <span className="text-[8px] md:text-[10px] text-amber-700 font-extrabold mt-0.5 bg-amber-50 border border-amber-200/50 px-1 rounded-sm">
+                                Còn lại: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(totalDebt)}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -2960,13 +2989,13 @@ export function CustomerPage({
                       </div>
                     </div>
                     
-                    {/* Hàng 2: Các nút hành động */}
-                    <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-dashed border-slate-100 dark:border-zinc-800 justify-end w-full">
+                    {/* Hàng 2: Các nút hành động - Luôn thành 1 hàng cân đối trên cả Mobile và Desktop */}
+                    <div className="flex items-center gap-1 pt-2 border-t border-dashed border-slate-100 dark:border-zinc-800 w-full">
                       {onViewQuotation && (currentQuotation || quotations.some(q => q.customerId === customer.id || (q.customerName === customer.name && q.phone === customer.phone))) && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/70 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
+                          className="flex-1 min-w-0 h-7 md:h-7.5 border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/70 flex items-center justify-center gap-1 text-[9px] sm:text-[10px] md:text-[11px] font-bold rounded-lg px-1 sm:px-1.5 cursor-pointer shadow-2xs transition-colors"
                           onClick={() => {
                             if (currentQuotation) {
                               onViewQuotation(currentQuotation.id, currentQuotation.customerName);
@@ -2981,41 +3010,45 @@ export function CustomerPage({
                           }}
                           title="Xem báo giá"
                         >
-                          <FileText className="h-3 w-3" />
-                          <span>Xem Báo giá</span>
+                          <FileText className="h-3 w-3 shrink-0" />
+                          <span className="truncate">
+                            <span className="hidden sm:inline">Xem </span>Báo giá
+                          </span>
                         </Button>
                       )}
                       {onCreateQuotation && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-7 border-blue-300 text-blue-600 bg-blue-50/40 hover:bg-blue-100/60 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
+                          className="flex-1 min-w-0 h-7 md:h-7.5 border-blue-300 text-blue-600 bg-blue-50/40 hover:bg-blue-100/60 flex items-center justify-center gap-1 text-[9px] sm:text-[10px] md:text-[11px] font-bold rounded-lg px-1 sm:px-1.5 cursor-pointer shadow-2xs transition-colors"
                           onClick={() => onCreateQuotation(customer.id)}
                           title="Tạo báo giá"
                         >
-                          <Plus className="h-3 w-3" />
-                          <span>Tạo Báo giá</span>
+                          <Plus className="h-3 w-3 shrink-0" />
+                          <span className="truncate">
+                            <span className="hidden sm:inline">Tạo </span>Báo giá
+                          </span>
                         </Button>
                       )}
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="h-7 border-amber-300 text-amber-700 bg-amber-50/40 hover:bg-amber-100/60 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
+                        className="flex-1 min-w-0 h-7 md:h-7.5 border-amber-300 text-amber-700 bg-amber-50/40 hover:bg-amber-100/60 flex items-center justify-center gap-1 text-[9px] sm:text-[10px] md:text-[11px] font-bold rounded-lg px-1 sm:px-1.5 cursor-pointer shadow-2xs transition-colors"
                         onClick={() => openEditDialog(customer)}
                         title="Sửa"
                       >
-                        <Pencil className="h-3 w-3" />
-                        <span>Sửa</span>
+                        <Pencil className="h-3 w-3 shrink-0" />
+                        <span className="truncate">Sửa</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="h-7 border-slate-200 text-slate-700 dark:text-zinc-300 bg-slate-50/50 hover:bg-slate-100/70 flex items-center justify-center gap-1 text-[10px] font-bold rounded-lg px-2 cursor-pointer"
+                        className="flex-1 min-w-0 h-7 md:h-7.5 border-slate-200 text-slate-700 dark:text-zinc-300 bg-slate-50/50 hover:bg-slate-100/70 flex items-center justify-center gap-1 text-[9px] sm:text-[10px] md:text-[11px] font-bold rounded-lg px-1 sm:px-1.5 cursor-pointer shadow-2xs transition-colors"
                         onClick={() => openViewDialog(customer)}
                         title="Chi tiết"
                       >
-                        <ExternalLink className="h-3 w-3" />
-                        <span>Chi tiết</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        <span className="truncate">Chi tiết</span>
                       </Button>
                     </div>
                   </div>
