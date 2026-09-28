@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updatePassword } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocFromServer, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
@@ -22,7 +22,8 @@ if (typeof window !== 'undefined') {
 export const messaging = messagingInstance;
 export const googleProvider = new GoogleAuthProvider();
 
-export { signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
+export { signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updatePassword };
+export { firebaseConfig };
 export { ref, uploadBytes, getDownloadURL, deleteObject };
 export { getToken, onMessage };
 
