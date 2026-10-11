@@ -736,7 +736,7 @@ export function QuotationPage({
   const getStatusBadge = (status: Quotation['status']) => {
     switch (status) {
       case 'draft': return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 px-2.5 py-0.5">Bản nháp</Badge>;
-      case 'sent': return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-2.5 py-0.5">Đã gửi</Badge>;
+      case 'sent': return <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 px-2.5 py-0.5">Đã gửi</Badge>;
       case 'accepted': return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 px-2.5 py-0.5 font-bold">Chốt Báo Giá</Badge>;
       case 'deposit': return <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 px-2.5 py-0.5 font-bold">Đã cọc</Badge>;
       case 'rejected': return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 px-2.5 py-0.5">Từ chối</Badge>;
@@ -750,7 +750,7 @@ export function QuotationPage({
       case 'deposit':
         return 'border-l-4 border-l-purple-500 bg-white hover:border-purple-300 shadow-sm hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300 border border-slate-100';
       case 'sent':
-        return 'border-l-4 border-l-blue-500 bg-white hover:border-blue-300 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 border border-slate-100';
+        return 'border-l-4 border-l-rose-500 bg-white hover:border-rose-300 shadow-sm hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-300 border border-slate-100';
       case 'rejected':
         return 'border-l-4 border-l-red-500 bg-white hover:border-red-300 shadow-sm hover:shadow-xl hover:shadow-red-500/5 transition-all duration-300 border border-slate-100';
       default: // draft
@@ -858,7 +858,7 @@ export function QuotationPage({
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <CardTitle className="text-lg md:text-xl font-bold flex items-center gap-2">
                       Hồ sơ lưu trữ
-                      <Badge variant="secondary" className="rounded-full h-5 text-[10px] px-2 bg-blue-50 text-primary border border-blue-100 shrink-0">
+                      <Badge variant="secondary" className="rounded-full h-5 text-[10px] px-2 bg-rose-50 text-primary border border-rose-100 shrink-0">
                          {groupedQuotations.length} tệp khách hàng
                       </Badge>
                   </CardTitle>
@@ -1014,7 +1014,7 @@ export function QuotationPage({
                                  "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm border border-slate-100",
                                  activeQuotation.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/30' :
                                  activeQuotation.status === 'deposit' ? 'bg-purple-50 text-purple-600 border border-purple-100/30' :
-                                 activeQuotation.status === 'sent' ? 'bg-blue-50 text-blue-600 border border-blue-100/30' :
+                                 activeQuotation.status === 'sent' ? 'bg-rose-50 text-rose-600 border border-rose-100/30' :
                                  activeQuotation.status === 'rejected' ? 'bg-rose-50 text-rose-600 border border-rose-100/30' :
                                  'bg-slate-50 text-slate-600 border border-slate-200/30'
                                )}>

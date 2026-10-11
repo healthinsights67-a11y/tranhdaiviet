@@ -1839,14 +1839,14 @@ export function CustomerPage({
     const completed = filteredCustomersForKPIs.filter(c => c.stage === 'completed').length;
 
     return [
-      { id: 'all', label: 'TỔNG KH', value: total, color: 'text-blue-600', clickable: true },
+      { id: 'all', label: 'TỔNG KH', value: total, color: 'text-primary', clickable: true },
       { id: 'consulting', label: 'ĐÃ TƯ VẤN', value: consulting, color: 'text-amber-500', clickable: true },
       { id: 'surveying', label: 'ĐÃ ĐO ĐẠC', value: surveying, color: 'text-purple-600', clickable: true },
-      { id: 'quoted', label: 'ĐÃ BÁO GIÁ', value: quoted, color: 'text-blue-600', clickable: true },
+      { id: 'quoted', label: 'ĐÃ BÁO GIÁ', value: quoted, color: 'text-rose-600', clickable: true },
       { id: 'unquoted', label: 'CHƯA BÁO GIÁ', value: unquoted, color: 'text-slate-600', clickable: true },
       { id: 'contracted', label: 'CHỐT CỌC', value: contracted, color: 'text-emerald-600', clickable: true },
       { id: 'contracted_last_month', label: 'CHỐT CỌC THÁNG TRƯỚC', value: contractedLastMonthCount, color: 'text-fuchsia-600', clickable: true },
-      { id: 'production', label: 'SẢN XUẤT', value: production, color: 'text-blue-600', clickable: true },
+      { id: 'production', label: 'SẢN XUẤT', value: production, color: 'text-rose-500', clickable: true },
       { id: 'production_completed', label: 'HOÀN TẤT SẢN XUẤT', value: productionCompleted, color: 'text-teal-600', clickable: true },
       { id: 'installation', label: 'LẮP ĐẶT', value: installation, color: 'text-orange-600', clickable: true },
       { id: 'completed', label: 'HOÀN THÀNH', value: completed, color: 'text-emerald-600', clickable: true },
@@ -2009,7 +2009,7 @@ export function CustomerPage({
 
           <Button 
             variant="outline"
-            className="h-9 rounded-xl gap-1 px-3 shadow-xs text-xs border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold cursor-pointer"
+            className="h-9 rounded-xl gap-1 px-3 shadow-xs text-xs border-rose-200 text-primary bg-rose-50/70 hover:bg-rose-100/70 font-bold cursor-pointer"
             onClick={handleExportExcel}
           >
             <Download className="h-3.5 w-3.5" />
@@ -2028,7 +2028,7 @@ export function CustomerPage({
           )}
 
           <Button 
-            className="h-9 rounded-xl gap-1 px-4 shadow-xs text-xs text-white bg-blue-600 hover:bg-blue-700 font-bold cursor-pointer"
+            className="h-9 rounded-xl gap-1 px-4 shadow-sm text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer shadow-rose-300 dark:shadow-none"
             onClick={() => setIsAddDialogOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -2259,7 +2259,7 @@ export function CustomerPage({
           className={cn(
             "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border",
             selectedGroup === 'all'
-              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              ? "bg-primary text-white border-primary shadow-xs shadow-rose-200"
               : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
           )}
           onClick={() => {
@@ -2274,7 +2274,7 @@ export function CustomerPage({
           className={cn(
             "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
             selectedGroup === 'project'
-              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              ? "bg-primary text-white border-primary shadow-xs shadow-rose-200"
               : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
           )}
           onClick={() => {
@@ -2290,7 +2290,7 @@ export function CustomerPage({
           className={cn(
             "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
             selectedGroup === 'processing'
-              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              ? "bg-primary text-white border-primary shadow-xs shadow-rose-200"
               : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
           )}
           onClick={() => {
@@ -2306,7 +2306,7 @@ export function CustomerPage({
           className={cn(
             "px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border flex items-center gap-1.5",
             selectedGroup === 'residential'
-              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              ? "bg-primary text-white border-primary shadow-xs shadow-rose-200"
               : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
           )}
           onClick={() => {

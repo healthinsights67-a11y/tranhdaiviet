@@ -148,7 +148,7 @@ export function LoginForm() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="nhanvien@congty.com"
                 required
               />
@@ -158,7 +158,7 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-md shadow-rose-200 dark:shadow-none disabled:opacity-50"
           >
             <KeyRound className="w-4 h-4" />
             {isLoading ? "Đang gửi email..." : "Gửi email khôi phục mật khẩu"}
@@ -168,7 +168,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setAuthMode('login')}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary font-medium"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Quay lại đăng nhập
@@ -187,7 +187,7 @@ export function LoginForm() {
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                   placeholder="Nguyễn Văn A"
                   required={authMode === 'register'}
                 />
@@ -203,7 +203,7 @@ export function LoginForm() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="nhanvien@congty.com"
                 required
               />
@@ -217,7 +217,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setAuthMode('forgot')}
-                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  className="text-[11px] text-primary hover:underline font-medium"
                 >
                   Quên mật khẩu?
                 </button>
@@ -229,7 +229,7 @@ export function LoginForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full h-10 pl-9 pr-3 text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
                 placeholder="••••••••"
                 required
                 minLength={6}
@@ -241,7 +241,7 @@ export function LoginForm() {
             type="button"
             onClick={(e) => handleEmailAuth(e as any)}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-md shadow-rose-200 dark:shadow-none disabled:opacity-50"
           >
             {authMode === 'register' ? <UserPlus className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
             {authMode === 'register' ? 'Đăng ký ngay' : 'Đăng nhập'}
@@ -254,7 +254,7 @@ export function LoginForm() {
           {authMode === 'register' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}
           <button
             onClick={() => setAuthMode(authMode === 'register' ? 'login' : 'register')}
-            className="ml-1 text-blue-600 dark:text-blue-400 font-bold hover:underline"
+            className="ml-1 text-primary font-bold hover:underline"
             type="button"
           >
             {authMode === 'register' ? 'Đăng nhập' : 'Đăng ký'}

@@ -134,7 +134,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
       <DialogContent className="sm:max-w-[1000px] w-[95vw] max-h-[90vh] gap-0 p-0 overflow-hidden outline-none border border-gray-200 shadow-2xl flex flex-col">
         <DialogHeader className="p-4 md:p-8 pb-6 bg-gray-50 border-b shrink-0">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl shadow-sm">
+            <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm">
               <Settings className="h-6 w-6 text-primary" />
             </div>
             <div className="space-y-1">
@@ -226,13 +226,13 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                     <p className="text-xs text-muted-foreground font-medium">Kết nối với bên thứ ba để tối ưu hóa chi phí lưu trữ hình ảnh.</p>
                   </div>
 
-                  <div className="p-5 bg-blue-50 border-2 border-blue-100 rounded-2xl flex gap-4">
-                    <div className="p-2 bg-blue-100 rounded-xl shrink-0 h-fit">
-                      <AlertCircle className="h-5 w-5 text-blue-600" />
+                  <div className="p-5 bg-rose-50/70 border-2 border-rose-100 rounded-2xl flex gap-4">
+                    <div className="p-2 bg-rose-100/70 rounded-xl shrink-0 h-fit">
+                      <AlertCircle className="h-5 w-5 text-primary" />
                     </div>
                     <div className="space-y-1.5">
-                      <p className="text-sm font-bold text-blue-900">Tại sao cần tích hợp ImgBB?</p>
-                      <p className="text-[12px] text-blue-800/80 leading-relaxed font-medium">
+                      <p className="text-sm font-bold text-foreground">Tại sao cần tích hợp ImgBB?</p>
+                      <p className="text-[12px] text-muted-foreground leading-relaxed font-medium">
                         Firebase Storage mặc định có giới hạn băng thông và dung lượng miễn phí rất thấp cho các tệp tin lớn. Tích hợp ImgBB cho phép hệ thống quản lý hàng chục ngàn bản vẽ PDF, ảnh công trình mà không làm tăng chi phí hạ tầng.
                       </p>
                     </div>

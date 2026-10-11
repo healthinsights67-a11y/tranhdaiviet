@@ -280,22 +280,22 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser, setA
                               key={n.id} 
                               className={cn(
                                 "flex flex-col items-start gap-1 p-3 cursor-pointer hover:bg-slate-50 border-b border-slate-50 last:border-b-0 transition-colors", 
-                                isUnread ? "bg-blue-50/40 hover:bg-blue-50/60" : ""
+                                isUnread ? "bg-rose-50/70 hover:bg-rose-100/60 dark:bg-rose-950/40" : ""
                               )}
                               onClick={() => handleNotificationClick(n)}
                             >
                               <div className="flex items-start justify-between w-full gap-2">
-                                <span className={cn("text-xs md:text-sm", isUnread ? "font-bold text-blue-900" : "font-semibold text-foreground")}>{n.title}</span>
+                                <span className={cn("text-xs md:text-sm", isUnread ? "font-bold text-primary" : "font-semibold text-foreground")}>{n.title}</span>
                                 <span className="text-[9px] text-muted-foreground shrink-0 mt-0.5">{getRelativeTime(n.createdAt)}</span>
                               </div>
-                              <p className={cn("text-[11px] md:text-xs leading-relaxed whitespace-pre-wrap line-clamp-2", isUnread ? "text-blue-800/90" : "text-muted-foreground")}>
+                              <p className={cn("text-[11px] md:text-xs leading-relaxed whitespace-pre-wrap line-clamp-2", isUnread ? "text-foreground/90 font-medium" : "text-muted-foreground")}>
                                 {n.message}
                               </p>
                               {isUnread && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-6 text-[10px] px-2 mt-1 -ml-2 text-blue-600 hover:text-blue-700 hover:bg-blue-100/60"
+                                  className="h-6 text-[10px] px-2 mt-1 -ml-2 text-primary hover:text-primary hover:bg-rose-100/60"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
