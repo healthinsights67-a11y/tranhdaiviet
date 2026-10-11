@@ -231,9 +231,7 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser, setA
         <div className="flex items-center gap-3">
           {/* Brand Logo & Name on Mobile Header */}
           <div className="flex items-center gap-2 md:hidden">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/20 shrink-0">
-              <Briefcase className="h-3.5 w-3.5" />
-            </div>
+            <img src="/logo.png" alt="Tranh Đại Việt" className="w-7 h-7 rounded-lg object-contain shadow-sm shrink-0" />
             <span className="font-black text-sm tracking-tight text-primary uppercase">TRANH ĐẠI VIỆT</span>
           </div>
 

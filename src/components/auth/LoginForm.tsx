@@ -85,6 +85,7 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-md mx-auto p-1 bg-white dark:bg-slate-900 rounded-2xl">
       <div className="text-center mb-6">
+        <img src="/logo.png" alt="Tranh Đại Việt" className="w-16 h-16 rounded-2xl mx-auto mb-3 shadow-md object-contain border border-border/40" />
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
           {authMode === 'register' 
             ? 'Tạo tài khoản mới' 

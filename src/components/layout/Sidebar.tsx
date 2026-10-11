@@ -183,10 +183,8 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2.5 font-bold text-lg tracking-tight text-primary"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20 shrink-0">
-                <Briefcase className="h-4 w-4" />
-              </div>
-              <span className="text-primary font-black uppercase">TRANH ĐẠI VIỆT</span>
+              <img src="/logo.png" alt="Tranh Đại Việt" className="w-8 h-8 rounded-lg object-contain shadow-sm shrink-0" />
+              <span className="text-primary font-black uppercase tracking-tight">TRANH ĐẠI VIỆT</span>
             </motion.div>
           )}
           <Button 
