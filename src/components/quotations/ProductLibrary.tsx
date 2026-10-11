@@ -248,9 +248,9 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
       };
 
       // Header Brand Info
-      addTitleHeader('CÔNG TY CỔ PHẦN QUỐC TẾ I NỘI THẤT', true, 13, 'FF1E3A8A');
-      addTitleHeader('Địa chỉ: Số 12, Đường 3, KCN Bắc Thăng Long, Đông Anh, Hà Nội', false, 10, 'FF4B5563');
-      addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: i-noi-that.vercel.app', false, 10, 'FF4B5563');
+      addTitleHeader('TRANH ĐẠI VIỆT', true, 13, 'FF1E3A8A');
+      addTitleHeader('Hệ thống Quản lý & Vận hành Sản xuất Tranh Đại Việt', false, 10, 'FF4B5563');
+      addTitleHeader('Website: tranhdaiviet.vercel.app', false, 10, 'FF4B5563');
       
       const spaceRow = sheet.addRow([]);
       spaceRow.height = 10;

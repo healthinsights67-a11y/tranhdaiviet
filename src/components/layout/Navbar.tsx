@@ -234,7 +234,7 @@ export function Navbar({ onMenuClick, user, onLogin, onLogout, currentUser, setA
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/20 shrink-0">
               <Briefcase className="h-3.5 w-3.5" />
             </div>
-            <span className="font-black text-sm tracking-tight text-primary uppercase">I NỘI THẤT</span>
+            <span className="font-black text-sm tracking-tight text-primary uppercase">TRANH ĐẠI VIỆT</span>
           </div>
 
           <div className="flex-1 max-w-md hidden md:block">

@@ -186,7 +186,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-md shadow-primary/20 shrink-0">
                 <Briefcase className="h-4 w-4" />
               </div>
-              <span className="text-primary font-black uppercase">I NỘI THẤT</span>
+              <span className="text-primary font-black uppercase">TRANH ĐẠI VIỆT</span>
             </motion.div>
           )}
           <Button 

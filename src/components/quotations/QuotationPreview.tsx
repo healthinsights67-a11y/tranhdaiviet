@@ -1169,7 +1169,7 @@ export function QuotationPreview({
       };
       const isReadyMade = quotation.type === 'ready-made' || (readyMadeItems.length > 0 && customItems.length === 0);
 
-      addHeader(template.companyName || 'CÔNG TY CỔ PHẦN QUỐC TẾ I NỘI THẤT', true, 16);
+      addHeader(template.companyName || 'TRANH ĐẠI VIỆT', true, 16);
       addHeader(isReadyMade ? 'BÁO GIÁ SẢN PHẨM' : 'BÁO GIÁ THI CÔNG', true, 18);
       
       const applyBorderAndFont = (row: ExcelJS.Row, isBold = false) => {
@@ -1192,7 +1192,7 @@ export function QuotationPreview({
       noRow.getCell(1).font = { name: 'Times New Roman', bold: true, size: 12 };
       noRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       
-      const dearRow = sheet.addRow([`Kính gửi: ${template.companyName || 'CÔNG TY CỔ PHẦN QUỐC TẾ I NỘI THẤT'} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${isReadyMade ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`]);
+      const dearRow = sheet.addRow([`Kính gửi: ${template.companyName || 'TRANH ĐẠI VIỆT'} xin cảm ơn ${quotation.customerName || 'Quý khách hàng'} đã quan tâm tới sản phẩm của công ty. Chúng tôi xin gửi ${isReadyMade ? 'báo giá sản phẩm' : 'báo giá thi công thực tế'} như sau:`]);
       sheet.mergeCells(dearRow.number, 1, dearRow.number, maxCol);
       dearRow.getCell(1).font = { name: 'Times New Roman', italic: true, size: 11 };
       dearRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1723,7 +1723,7 @@ export function QuotationPreview({
                   {logoDataUrl || template.logoUrl ? (
                     <img src={logoDataUrl || template.logoUrl} className="w-[70%] max-w-[500px] object-contain grayscale" alt="Watermark" />
                   ) : (
-                    <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">I NỘI THẤT</div>
+                    <div className="text-8xl font-black rotate-[-45deg] tracking-widest uppercase">TRANH ĐẠI VIỆT</div>
                   )}
               </div>
 
