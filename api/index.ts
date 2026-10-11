@@ -191,20 +191,143 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
   // Store recent webhooks in memory for debugging
   const recentWebhooks: any[] = [];
 
+  async function saveWebhookLog(logItem: any) {
+    recentWebhooks.unshift(logItem);
+    if (recentWebhooks.length > 30) recentWebhooks.pop();
+
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (cfg.apiKey && cfg.projectId) {
+          const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/webhook_logs?key=${cfg.apiKey}`;
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                time: { stringValue: logItem.time || new Date().toISOString() },
+                senderId: { stringValue: String(logItem.body?.sender?.id || logItem.body?.message?.from?.id || '') },
+                chatId: { stringValue: String(logItem.body?.message?.chat?.id || logItem.body?.recipient?.id || logItem.body?.chat_id || logItem.body?.sender?.id || '') },
+                text: { stringValue: String(logItem.body?.message?.text || logItem.body?.text || '') },
+                eventName: { stringValue: String(logItem.body?.event_name || '') },
+                raw: { stringValue: JSON.stringify(logItem.body || {}) }
+              }
+            })
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not persist webhook to Firestore REST:", err);
+    }
+  }
+
   async function getPersistentWebhookLogs() {
     try {
-      const clientDb = await getAuthenticatedClientDb();
-      const docRef = doc(clientDb, 'configs', 'webhook_logs');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return data.logs || [];
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (cfg.apiKey && cfg.projectId) {
+          const url = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/webhook_logs?key=${cfg.apiKey}&pageSize=30`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.documents && data.documents.length > 0) {
+              return data.documents.map((d: any) => {
+                const f = d.fields || {};
+                return {
+                  time: f.time?.stringValue || d.createTime,
+                  chatId: f.chatId?.stringValue || '',
+                  senderId: f.senderId?.stringValue || '',
+                  text: f.text?.stringValue || '',
+                  eventName: f.eventName?.stringValue || '',
+                  body: f.raw?.stringValue ? JSON.parse(f.raw.stringValue) : {}
+                };
+              });
+            }
+          }
+        }
       }
-      return recentWebhooks.length > 0 ? recentWebhooks : [{ info: "Chưa có webhook nào được gửi từ Zalo hoặc CSDL rỗng" }];
-    } catch (err: any) {
-      console.error("Error fetching persistent webhook logs:", err);
-      return [{ error: err.message || String(err), memoryLogs: recentWebhooks }];
+    } catch (err) {
+      console.warn("Could not read webhook_logs via REST:", err);
     }
+    return recentWebhooks;
+  }
+
+  function renderWebhookDashboard(logs: any[]) {
+    const listHtml = logs.length === 0 ? `
+      <div style="background:#fff;padding:24px;border-radius:12px;border:1px dashed #cbd5e1;text-align:center;color:#64748b;">
+        <p style="font-size:16px;font-weight:600;margin:0 0 8px 0;color:#334155;">Chưa nhận được tin nhắn hoặc sự kiện nào từ Zalo!</p>
+        <p style="font-size:14px;margin:0;">👉 Hãy vào nhóm Zalo <b>Tranh Đại Việt - Quản Lý</b>, tag bot: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#0284c7;">@Bot Tranh Đại Việt /id</code> hoặc nhắn một tin nhắn bất kỳ, sau đó bấm <b>Tải lại trang</b>.</p>
+      </div>
+    ` : logs.map((item, idx) => {
+      const chatId = item.chatId || item.body?.message?.chat?.id || item.body?.sender?.id || item.body?.recipient?.id || '';
+      const senderId = item.senderId || item.body?.sender?.id || item.body?.message?.from?.id || '';
+      const text = item.text || item.body?.message?.text || item.body?.text || '';
+      const eventName = item.eventName || item.body?.event_name || 'user_send_text';
+      const timeStr = item.time ? new Date(item.time).toLocaleTimeString('vi-VN') + ' ' + new Date(item.time).toLocaleDateString('vi-VN') : 'Vừa xong';
+
+      return `
+        <div style="background:#fff;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <span style="background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;">#${idx + 1} Sự kiện: ${eventName}</span>
+            <span style="font-size:13px;color:#94a3b8;font-weight:500;">⏱️ ${timeStr}</span>
+          </div>
+
+          ${chatId ? `
+            <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div>
+                <span style="font-size:12px;font-weight:700;color:#166534;display:block;text-transform:uppercase;letter-spacing:0.5px;">MÃ CHAT ID / GROUP ID CẦN LẤY:</span>
+                <code style="font-size:18px;font-weight:900;color:#15803d;font-family:monospace;letter-spacing:1px;">${chatId}</code>
+              </div>
+              <button onclick="navigator.clipboard.writeText('${chatId}');alert('Đã sao chép mã ID: ${chatId}');" style="background:#16a34a;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📋 Sao chép ID</button>
+            </div>
+          ` : ''}
+
+          <div style="font-size:13px;color:#475569;line-height:1.6;background:#f8fafc;padding:12px;border-radius:8px;">
+            <div><b>👤 Người gửi (Sender ID):</b> <code style="color:#0284c7;">${senderId || 'N/A'}</code></div>
+            <div><b>💬 Nội dung tin nhắn:</b> <span style="color:#0f172a;font-weight:600;">${text || '*(Không có chữ)*'}</span></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html lang="vi">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Zalo Webhook & Chat ID Inspector - Tranh Đại Việt</title>
+        <style>
+          * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+          body { background: #f8fafc; color: #1e293b; margin: 0; padding: 20px; }
+          .container { max-width: 800px; margin: 0 auto; }
+          .header { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+          .btn-reload { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+          .btn-reload:hover { background: #1d4ed8; }
+        </style>
+        <script>
+          // Tự động tải lại sau mỗi 6 giây để cập nhật tin nhắn mới
+          setTimeout(() => { window.location.reload(); }, 6000);
+        </script>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+              <div>
+                <h1 style="margin:0 0 6px 0;font-size:22px;color:#0f172a;">Trình Bắt Mã ID Zalo Bot - Tranh Đại Việt</h1>
+                <p style="margin:0;font-size:13px;color:#64748b;">Trang tự động làm mới sau mỗi 6 giây để hiển thị tin nhắn mới nhất.</p>
+              </div>
+              <button onclick="window.location.reload();" class="btn-reload">🔄 Tải lại ngay</button>
+            </div>
+          </div>
+          <div>${listHtml}</div>
+        </div>
+      </body>
+      </html>
+    `;
   }
   
   // Robust middleware for Vercel Serverless Function rewrites
@@ -212,11 +335,20 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     const rawUrl = req.originalUrl || req.url || '';
     if (rawUrl.includes('webhook-logs') || rawUrl.includes('webhook_logs')) {
       const logs = await getPersistentWebhookLogs();
-      return res.json(logs);
+      const wantsJson = req.headers.accept?.includes('application/json') || req.query.json === 'true';
+      if (wantsJson) {
+        return res.json(logs);
+      }
+      return res.send(renderWebhookDashboard(logs));
     }
     if (rawUrl.includes('webhooks/zalo') || rawUrl.includes('/zalo')) {
       if (req.method === 'GET') {
-        return res.status(200).send("OK");
+        const logs = await getPersistentWebhookLogs();
+        const wantsJson = req.headers.accept?.includes('application/json') || req.query.json === 'true';
+        if (wantsJson) {
+          return res.status(200).send("OK");
+        }
+        return res.send(renderWebhookDashboard(logs));
       }
     }
     next();
@@ -224,7 +356,11 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
 
   app.get(["/api/webhook-logs", "/api/webhook_logs", "/webhook-logs", "/webhook_logs"], async (req, res) => {
     const logs = await getPersistentWebhookLogs();
-    res.json(logs);
+    const wantsJson = req.headers.accept?.includes('application/json') || req.query.json === 'true';
+    if (wantsJson) {
+      return res.json(logs);
+    }
+    res.send(renderWebhookDashboard(logs));
   });
 
   // Helper to send bot notification from Express server using authenticated Client SDK
@@ -867,11 +1003,6 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     listenToSalesRoutes();
   }
 
-  // Zalo Webhook Endpoint
-  app.get(["/webhooks/zalo", "/api/webhooks/zalo"], (req, res) => {
-    res.status(200).send("OK");
-  });
-
   app.post(["/webhooks/zalo", "/api/webhooks/zalo"], async (req, res) => {
     const body = req.body;
     console.log("Received Zalo Webhook:", JSON.stringify(body, null, 2));
@@ -881,24 +1012,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
       headers: req.headers,
       body 
     };
-    recentWebhooks.unshift(logItem);
-    if (recentWebhooks.length > 20) recentWebhooks.pop();
-
-    try {
-      const clientDb = await getAuthenticatedClientDb();
-      const docRef = doc(clientDb, 'configs', 'webhook_logs');
-      const docSnap = await getDoc(docRef);
-      let logs = [];
-      if (docSnap.exists()) {
-        logs = docSnap.data().logs || [];
-      }
-      logs.unshift(logItem);
-      logs = logs.slice(0, 20);
-      await setDoc(docRef, { logs, updatedAt: new Date().toISOString() });
-      console.log("Successfully persisted webhook log to configs/webhook_logs");
-    } catch (saveErr) {
-      console.error("Failed to persist webhook log to configs:", saveErr);
-    }
+    await saveWebhookLog(logItem);
 
     // We should ideally use a secret token from env or database
     const WEBHOOK_SECRET_TOKEN = process.env.ZALO_WEBHOOK_SECRET || 'your-secret-token';
