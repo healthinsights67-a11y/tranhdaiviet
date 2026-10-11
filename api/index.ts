@@ -363,33 +363,41 @@ app.use("/uploads", express.static(path.join(process.cwd(), 'uploads')));
     res.send(renderWebhookDashboard(logs));
   });
 
-  // Helper to send bot notification from Express server using authenticated Client SDK
+  // Helper to send bot notification from Express server
   async function sendSystemNotificationFromServer(message: string) {
+    let botToken = "1034247126900485411:nDxvsJtCZFncnHpElkOlHjulbpTSIbXiucsPfObaGSDKhJaVgUHTBobFvINoJXKk";
+    let chatId = "zgr-8e80cc49912678782137";
+    let isZaloActive = true;
+
     try {
       const clientDb = await getAuthenticatedClientDb();
       const docSnap = await getDoc(doc(clientDb, 'configs', 'notifications'));
-      if (!docSnap.exists()) return;
-      const config = docSnap.data();
-      if (!config) return;
-
-      // Send to Zalo if enabled
-      if (config.zalo?.isActive !== false && config.zalo.botToken && config.zalo.chatId) {
-        const chatIds = config.zalo.chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
-        for (const id of chatIds) {
-          try {
-            await fetch(`https://bot-api.zaloplatforms.com/bot${config.zalo.botToken.trim()}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chat_id: id, text: message })
-            });
-            console.log(`Server sent Zalo notification to ${id} successfully`);
-          } catch (err: any) {
-            console.error(`Failed to send Zalo notification to ${id}:`, err.message);
-          }
+      if (docSnap.exists()) {
+        const config = docSnap.data();
+        if (config?.zalo) {
+          botToken = config.zalo.botToken || botToken;
+          chatId = config.zalo.chatId || chatId;
+          isZaloActive = config.zalo.isActive !== false;
         }
       }
     } catch (err) {
-      console.error("Error sending bot notification from server:", err);
+      console.warn("Could not fetch remote notifications config, using default Tranh Dai Viet bot credentials:", err);
+    }
+
+    if (isZaloActive && botToken && chatId) {
+      const chatIds = chatId.split(',').map((id: string) => id.trim()).filter((id: string) => !!id);
+      for (const id of chatIds) {
+        try {
+          await fetch(`https://bot-api.zaloplatforms.com/bot${botToken.trim()}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: id, text: message })
+          });
+          console.log(`Server sent Zalo notification to ${id} successfully`);
+        } catch (err: any) {
+          console.error(`Failed to send Zalo notification to ${id}:`, err.message);
+        }
+      }
     }
   }
 

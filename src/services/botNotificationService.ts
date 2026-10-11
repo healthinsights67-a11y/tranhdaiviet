@@ -7,6 +7,24 @@ export type BotNotificationConfig = z.infer<typeof BotNotificationConfigSchema>;
 
 const CONFIG_DOC_PATH = 'configs/notifications';
 
+export const DEFAULT_BOT_CONFIG: BotNotificationConfig = {
+  telegram: { 
+    botToken: '', 
+    chatId: '', 
+    isActive: false, 
+    groups: { customers: '', measurements: '', production: '', design: '' },
+    workshopGroups: {}
+  },
+  zalo: { 
+    botToken: '1034247126900485411:nDxvsJtCZFncnHpElkOlHjulbpTSIbXiucsPfObaGSDKhJaVgUHTBobFvINoJXKk', 
+    chatId: 'zgr-8e80cc49912678782137', 
+    isActive: true, 
+    groups: { customers: '', measurements: '', production: '', design: '' },
+    workshopGroups: {}
+  },
+  updatedAt: new Date().toISOString()
+};
+
 /**
  * Fetch the current bot notification configurations.
  */
@@ -15,12 +33,22 @@ export async function getBotNotificationConfig(): Promise<BotNotificationConfig 
     const docRef = doc(db, CONFIG_DOC_PATH);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as BotNotificationConfig;
+      const data = docSnap.data() as BotNotificationConfig;
+      return {
+        ...DEFAULT_BOT_CONFIG,
+        ...data,
+        zalo: {
+          ...DEFAULT_BOT_CONFIG.zalo,
+          ...data.zalo,
+          botToken: data.zalo?.botToken || DEFAULT_BOT_CONFIG.zalo.botToken,
+          chatId: data.zalo?.chatId || DEFAULT_BOT_CONFIG.zalo.chatId,
+        }
+      };
     }
-    return null;
+    return DEFAULT_BOT_CONFIG;
   } catch (error) {
-    console.error('Error fetching bot config:', error);
-    throw error;
+    console.error('Error fetching bot config, using default:', error);
+    return DEFAULT_BOT_CONFIG;
   }
 }
 

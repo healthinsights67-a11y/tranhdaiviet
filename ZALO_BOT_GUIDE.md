@@ -97,10 +97,13 @@ Hệ thống có trang nhật ký webhook được lưu trực tiếp vào Fires
    - **Mã User ID cá nhân:** Nằm ở mục `body -> sender -> id` (hoặc do Bot trả lời trực tiếp trong chat 1-1).
    - **Mã Group Chat ID (Nhóm):** Nằm ở mục `body -> message -> chat -> id` (khi gửi tin nhắn trong nhóm).
 
----
-
 ## 6. Thiết lập thông báo trên phần mềm
 1. Đăng nhập vào trang quản trị phần mềm -> Mở mục **Cấu hình hệ thống** -> Tab **Bot Thông Báo**.
-2. Nhập **Bot Token** thu được ở **Mục 1**.
-3. Nhập **Chat ID** (Mã User ID hoặc Group ID) thu được ở **Mục 5**.
+2. Hệ thống đã cài đặt sẵn mặc định thông tin kết nối cho **Tranh Đại Việt**:
+   - **Tên Bot:** Bot Tranh Đại Việt
+   - **Nhóm nhận tin:** Tranh Đại Việt - Quản Lý
+   - **Mã Nhóm (Group ID):** `zgr-8e80cc49912678782137`
+   - **Trang bắt ID trực quan:** `https://tranhdaiviet.vercel.app/api/webhooks/zalo`
+3. Nhấn **"Kiểm tra kết nối Zalo"** và bấm **"Lưu Cấu Hình"**.
+
 4. Nhấn **"Lưu cấu hình"** và bấm **"Gửi Tin Nhắn Test"** để nhận tin nhắn kiểm tra.

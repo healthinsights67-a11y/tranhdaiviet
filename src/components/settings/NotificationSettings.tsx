@@ -26,8 +26,8 @@ export function NotificationSettings() {
       workshopGroups: {}
     },
     zalo: { 
-      botToken: '', 
-      chatId: '', 
+      botToken: '1034247126900485411:nDxvsJtCZFncnHpElkOlHjulbpTSIbXiucsPfObaGSDKhJaVgUHTBobFvINoJXKk', 
+      chatId: 'zgr-8e80cc49912678782137', 
       isActive: true, 
       groups: { customers: '', measurements: '', production: '', design: '' },
       workshopGroups: {}
