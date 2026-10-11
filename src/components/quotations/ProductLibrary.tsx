@@ -115,7 +115,7 @@ export function ProductLibrary({ products = [], user, onSave, onDelete }: Produc
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const availableCategories = React.useMemo(() => {
-    const list = new Set(["Phòng khách", "Phòng ngủ", "Phòng bếp", "Phòng thờ", "Hàng đóng sẵn", "Khác"]);
+    const list = new Set(["Tranh gạo rang", "Tranh gạo màu", "Tranh chân dung", "Tranh theo yêu cầu", "Khác"]);
     productList.forEach(p => {
       if (p.category) {
         list.add(p.category.trim());

@@ -35,17 +35,17 @@ export interface QuotationTemplate {
 }
 
 export const defaultTemplate: QuotationTemplate = {
-  companyName: 'TRANH ĐẠI VIỆT',
-  companyAddress: '',
-  companyPhone: '',
-  companyEmail: '',
-  companyWebsite: '',
-  logoUrl: '',
+  companyName: 'TRANH ĐẠI VIỆT - TRANH GẠO VIỆT',
+  companyAddress: '144 P. Trần Vỹ, Mai Dịch, Cầu Giấy, Hà Nội',
+  companyPhone: '0949.169.190',
+  companyEmail: 'cskh@tranhgaoviet.vn',
+  companyWebsite: 'www.tranhgaoviet.vn',
+  logoUrl: '/logo.png',
   bankName: '',
   bankAccount: '',
   bankAccountName: '',
   qrCodeUrl: '',
-  terms: '- Tạm ứng 30% ngay sau khi ký hợp đồng.\n- Thanh toán 70% còn lại trước khi giao hàng.\n- Báo giá có giá trị trong vòng 15 ngày.',
+  terms: '- Thổi hồn vào tranh gạo truyền thống Việt Nam.\n- Tạm ứng 30% - 50% ngay sau khi chốt đơn đặt hàng.\n- Thanh toán số tiền còn lại trước khi hoặc ngay khi giao nhận tranh.\n- Báo giá có hiệu lực trong vòng 15 ngày.',
 };
 
 export const QuotationTemplateConfig = ({ trigger, currentUser }: { trigger?: React.ReactNode, currentUser?: any }) => {

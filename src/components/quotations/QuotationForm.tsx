@@ -409,7 +409,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         category: product.category || 'Khác',
         name: product.productName,
         description: updateDescriptionWithMaterial(product.description || '', isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'ECO'),
-        unit: product.unit || 'md',
+        unit: product.unit || 'bức',
         quantity: 1,
         basePrice,
         unitPrice,
@@ -438,17 +438,16 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
   const handleAddItem = () => {
     const newItem: QuotationItem = {
       id: Math.random().toString(36).substr(2, 9),
-      category: formData.items[formData.items.length - 1]?.category || '',
+      category: formData.items[formData.items.length - 1]?.category || 'Tranh gạo rang',
       name: '',
       description: '',
-      unit: 'md',
+      unit: 'bức',
       quantity: 1,
       basePrice: 0,
       unitPrice: 0,
       total: 0,
-      // Mặc định ECO cho hạng mục nội thất mới
-      materialCode: 'ECO',
-      materialName: 'ECO'
+      materialCode: 'STD',
+      materialName: 'Tiêu chuẩn'
     };
     setFormData({ ...formData, items: [...formData.items, newItem] });
   };
@@ -906,12 +905,12 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-bold text-slate-700">Loại công trình</Label>
+                    <Label className="text-xs font-bold text-slate-700">Thể loại tranh / Sản phẩm</Label>
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                       <Input 
                         className="pl-9 h-9 w-full bg-white"
-                        placeholder="Vd: Tủ bếp, Nội thất trọn gói..."
+                        placeholder="Vd: Tranh gạo rang, Tranh chân dung, Tranh logo..."
                         value={formData.constructionType} 
                         onChange={(e) => setFormData({ ...formData, constructionType: e.target.value })}
                       />

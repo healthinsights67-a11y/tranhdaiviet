@@ -488,7 +488,7 @@ export function QuotationPage({
 
     const customer = customers.find(c => c.id === customerId);
     const address = customer?.address || '';
-    const category = customer?.furnitureCategory || 'Nội thất';
+    const category = customer?.furnitureCategory || 'Tranh gạo';
     const phone = customer?.phone || '';
     const workshop = customer?.workshop || '';
 
@@ -766,15 +766,8 @@ export function QuotationPage({
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-4 md:gap-6">
-          <div className="hidden sm:flex flex-col items-center justify-center p-2 md:p-3 bg-card text-card-foreground border-2 border-blue-100 rounded-2xl shadow-sm shrink-0">
-             <div className="flex items-baseline leading-none">
-                <span className="text-xl md:text-2xl font-black tracking-tighter" style={{ color: '#BE1E2D' }}>tủ</span>
-                <span className="text-2xl md:text-3xl font-black mx-0.5" style={{ color: '#FBB03B' }}>3</span>
-                <span className="text-xl md:text-2xl font-black tracking-tighter" style={{ color: '#BE1E2D' }}>miền</span>
-             </div>
-             <div className="text-[5px] md:text-[6px] font-black uppercase tracking-[0.2em] text-black whitespace-nowrap">
-                tủ cho người Việt
-             </div>
+          <div className="hidden sm:flex items-center justify-center p-1.5 md:p-2 bg-card text-card-foreground border-2 border-border/80 rounded-2xl shadow-sm shrink-0">
+             <img src="/logo.png" alt="Tranh Đại Việt" className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-contain shadow-xs" />
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl md:text-4xl font-black tracking-tight flex items-center gap-3">
