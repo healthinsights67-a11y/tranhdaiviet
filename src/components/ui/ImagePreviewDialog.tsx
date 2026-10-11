@@ -81,14 +81,14 @@ export function ImagePreviewDialog({
         await navigator.share({
           files: [file],
           title: 'Chia sẻ hình ảnh mẫu',
-          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+          text: 'Xem mẫu thiết kế tuyệt đẹp từ Tranh Đại Việt',
         });
         toast.success('Đã mở màn hình chia sẻ hình ảnh!');
       } else if (navigator.share) {
         // Fallback to sharing URL if browser supports sharing but not file objects
         await navigator.share({
           title: 'Chia sẻ hình ảnh mẫu',
-          text: 'Xem mẫu thiết kế nội thất tuyệt đẹp từ I Nội Thất',
+          text: 'Xem mẫu thiết kế tuyệt đẹp từ Tranh Đại Việt',
           url: imageUrl,
         });
       } else {
@@ -119,7 +119,7 @@ export function ImagePreviewDialog({
       link.href = url;
       
       const dateStr = new Date().toISOString().slice(0, 10);
-      link.download = `inoithat_gallery_${dateStr}.jpg`;
+      link.download = `tranhdaiviet_gallery_${dateStr}.jpg`;
       
       document.body.appendChild(link);
       link.click();

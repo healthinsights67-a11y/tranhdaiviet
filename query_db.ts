@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 import * as path from 'path';
 import * as fs from 'fs';
 
-let storageBucket = "inoithat-app.firebasestorage.app";
+let storageBucket = "tranh-dai-viet.firebasestorage.app";
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 if (fs.existsSync(configPath)) {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

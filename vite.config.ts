@@ -17,9 +17,9 @@ export default defineConfig(({mode}) => {
           navigateFallbackDenylist: [/^\/api/, /^\/webhooks/]
         },
         manifest: {
-          name: 'I Nội Thất',
-          short_name: 'I Nội Thất',
-          description: 'Hệ thống quản lý I Nội Thất',
+          name: 'Tranh Đại Việt',
+          short_name: 'Tranh Đại Việt',
+          description: 'Hệ thống quản lý Tranh Đại Việt',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',

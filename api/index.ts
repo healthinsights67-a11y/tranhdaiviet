@@ -94,7 +94,7 @@ function initializeFirebaseAdmin() {
     return;
   }
 
-  let storageBucket = "inoithat-app.firebasestorage.app";
+  let storageBucket = "tranh-dai-viet.firebasestorage.app";
   try {
     const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
     if (fs.existsSync(configPath)) {

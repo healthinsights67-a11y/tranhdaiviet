@@ -5,12 +5,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-com
 // For the purpose of this template, they should match your firebase-applet-config.json
 // Note: In a real build step, you might want to automate this.
 firebase.initializeApp({
-  apiKey: "AIzaSyCxySA2KIDQzbBfwLT8rRXnY-aBhPbqlRU",
-  authDomain: "inoithat-app.firebaseapp.com",
-  projectId: "inoithat-app",
-  storageBucket: "inoithat-app.firebasestorage.app",
-  messagingSenderId: "736759520817",
-  appId: "1:736759520817:web:a153d47faff01099c27f10"
+  apiKey: "AIzaSyCj1RgCc1jYf9EkUTsCx_i_wDhnP8lekP4",
+  authDomain: "tranh-dai-viet.firebaseapp.com",
+  projectId: "tranh-dai-viet",
+  storageBucket: "tranh-dai-viet.firebasestorage.app",
+  messagingSenderId: "1023501475852",
+  appId: "1:1023501475852:web:99cb8ea6ec484779c98e29"
 });
 
 const messaging = firebase.messaging();

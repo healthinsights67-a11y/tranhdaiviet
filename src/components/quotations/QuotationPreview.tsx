@@ -1030,7 +1030,7 @@ export function QuotationPreview({
             await navigator.share({
               files: [file],
               title: `Báo giá ${getFileName()}`,
-              text: `Gửi anh/chị báo giá chi tiết từ I Nội Thất cho công trình ${quotation.constructionType || ''}.`,
+              text: `Gửi anh/chị báo giá chi tiết từ Tranh Đại Việt cho công trình ${quotation.constructionType || ''}.`,
             });
             toast.success("Chia sẻ báo giá thành công!");
           } catch (err: any) {

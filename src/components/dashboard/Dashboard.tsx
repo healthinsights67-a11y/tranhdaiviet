@@ -388,7 +388,7 @@ export function Dashboard({
       const wsEmp = XLSX.utils.json_to_sheet(empData);
       XLSX.utils.book_append_sheet(wb, wsEmp, 'KPI_Nhan_Vien');
 
-      XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_INoiThat_${selectedMonth || 'All'}.xlsx`);
+      XLSX.writeFile(wb, `Bao_Cao_Tong_Hop_TranhDaiViet_${selectedMonth || 'All'}.xlsx`);
       toast.success('Đã xuất báo cáo Excel thành công!');
     } catch (e: any) {
       toast.error('Lỗi khi xuất file Excel: ' + (e.message || ''));

@@ -249,7 +249,7 @@ export default function AIRenderPage() {
     if (!resultImage) return;
     const a = document.createElement('a');
     a.href = resultImage;
-    a.download = `inoithat_ai_${roomType}_${designStyle}_${Date.now()}.jpg`;
+    a.download = `tranhdaiviet_ai_${roomType}_${designStyle}_${Date.now()}.jpg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

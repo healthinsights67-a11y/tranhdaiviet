@@ -612,7 +612,7 @@ export default function DeepEditPage({ imageUrl, onBack, apiKey }: DeepEditPageP
       quality: 1,
     });
     const link = document.createElement('a');
-    link.download = `inoithat_banve_thicong_${Date.now()}.png`;
+    link.download = `tranhdaiviet_banve_thicong_${Date.now()}.png`;
     link.href = dataURL;
     link.click();
     toast.success("Đã xuất ảnh bản vẽ phối cảnh & quy cách thi công!");
