@@ -111,7 +111,7 @@ const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: 
   consulting: { label: 'Đã tư vấn', color: 'bg-yellow-50 text-yellow-600 border-yellow-200', icon: MessageSquare },
   surveying: { label: 'Đã đo đạc', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: MapPin },
   contracted: { label: 'Chốt Cọc', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: ArrowRight },
-  production: { label: 'Sản xuất', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Factory },
+  production: { label: 'Chế tác tranh', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Factory },
   production_completed: { label: 'Hoàn tất tranh', color: 'bg-indigo-50 text-indigo-600 border-indigo-200', icon: CheckCircle2 },
   installation: { label: 'Đóng khung / Giao tranh', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: Package },
   completed: { label: 'Hoàn thành', color: 'bg-green-50 text-green-600 border-green-200', icon: CheckCircle2 },
@@ -173,88 +173,167 @@ export function CustomerPage({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const toastId = toast.loading("Đang đọc và phân tích file Excel...");
     try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        const bstr = evt.target?.result;
-        if (typeof bstr !== 'string') return;
-        
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
-        
-        if (data.length === 0) {
-          toast.error("File Excel trống");
-          return;
-        }
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
 
-        let importedCount = 0;
-        const nowStr = new Date().toISOString();
+      // Convert to 2D array of rows
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-        for (const row of data as any[]) {
-          // Map columns (Tên, SĐT, Địa chỉ, Nhu cầu)
-          const name = row['Tên'] || row['Name'] || row['Khách hàng'] || '';
-          const phone = row['SĐT'] || row['Phone'] || row['Số điện thoại'] || '';
-          const address = row['Địa chỉ'] || row['Address'] || '';
-          const notes = row['Ghi chú'] || row['Nhu cầu'] || '';
-          const stageStr = row['Trạng thái'] || row['Stage'] || '';
-          
-          if (!name || !phone) continue; // Skip rows without name or phone
-
-          let stage: CustomerStage = 'consulting';
-          if (stageStr.toLowerCase().includes('khảo sát')) stage = 'surveying';
-          else if (stageStr.toLowerCase().includes('chốt cọc')) stage = 'contracted';
-          else if (stageStr.toLowerCase().includes('hoàn tất sản xuất')) stage = 'production_completed';
-          else if (stageStr.toLowerCase().includes('sản xuất')) stage = 'production';
-          else if (stageStr.toLowerCase().includes('lắp đặt')) stage = 'installation';
-          else if (stageStr.toLowerCase().includes('hoàn thành')) stage = 'completed';
-          else if (stageStr.toLowerCase().includes('tạm dừng')) stage = 'lost';
-
-          const newId = Math.random().toString(36).substr(2, 9);
-          const rowWorkshop = row['Cơ sở'] || row['Workshop'] || row['Xưởng'] || '';
-          const finalWs = rowWorkshop ? getNormalizedWorkshopId(rowWorkshop) : (currentUser?.workshop && currentUser?.workshop !== 'all' ? getNormalizedWorkshopId(currentUser.workshop) : 'Hà Nội');
-          
-          let prefix = 'HN';
-          if (finalWs === 'Cần Thơ') prefix = 'CT';
-          else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
-
-           const newCode = `${prefix}${getCurrentVNYear()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-           const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
-           const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
-
-           const docRef = await addDoc(collection(db, 'customers'), {
-             id: newId,
-             code: newCode,
-             name,
-             phone: String(phone),
-             address,
-             stage: initialStage,
-             notes,
-             assignedSaleId: currentUser?.id || '',
-             workshop: finalWs,
-             createdAt: nowStr,
-             orderValue: 0
-           });
-
-          if (needsStageUpdateAfterCreate) {
-            await updateDoc(doc(db, 'customers', docRef.id), { stage });
-          }
-          importedCount++;
-        }
-
-        // Notify managers about bulk import
-        if (importedCount > 0) {
-          sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới vào hệ thống.`, 'customers');
-        }
-
-        toast.success(`Đã nhập thành công ${importedCount} khách hàng`);
+      if (!rawRows || rawRows.length === 0) {
+        toast.dismiss(toastId);
+        toast.error("File Excel trống, không có dữ liệu!");
         if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Step 1: Scan for Header Row (search first 20 rows)
+      let headerRowIndex = -1;
+      let colMap = {
+        name: -1,
+        phone: -1,
+        code: -1,
+        address: -1,
+        category: -1,
+        stage: -1,
+        orderValue: -1,
+        sale: -1,
+        notes: -1,
+        workshop: -1,
       };
-      reader.readAsBinaryString(file);
-    } catch (error) {
+
+      for (let r = 0; r < Math.min(rawRows.length, 20); r++) {
+        const row = rawRows[r].map((cell: any) => String(cell || '').trim().toLowerCase());
+        
+        // Find name & phone columns
+        const nameIdx = row.findIndex((c: string) => 
+          c === 'họ và tên' || c === 'họ tên' || c === 'tên khách hàng' || c === 'tên khách' || c === 'khách hàng' || c === 'tên' || c === 'name' || c === 'customer'
+        );
+        const phoneIdx = row.findIndex((c: string) => 
+          c === 'số điện thoại' || c === 'sđt' || c === 'sdt' || c === 'điện thoại' || c === 'phone' || c === 'mobile' || c === 'tel'
+        );
+
+        if (nameIdx !== -1 || phoneIdx !== -1) {
+          headerRowIndex = r;
+          colMap.name = nameIdx;
+          colMap.phone = phoneIdx;
+
+          // Map other columns
+          colMap.code = row.findIndex((c: string) => c.includes('mã') || c === 'code');
+          colMap.address = row.findIndex((c: string) => c.includes('địa chỉ') || c.includes('address') || c.includes('nơi ở') || c.includes('giao'));
+          colMap.category = row.findIndex((c: string) => c.includes('hạng mục') || c.includes('thể loại') || c.includes('sản phẩm') || c.includes('quy cách') || c.includes('tranh'));
+          colMap.stage = row.findIndex((c: string) => c.includes('trạng thái') || c.includes('tiến độ') || c.includes('stage'));
+          colMap.orderValue = row.findIndex((c: string) => c.includes('giá trị') || c.includes('trị giá') || c.includes('doanh thu') || c.includes('tiền') || c.includes('tổng'));
+          colMap.sale = row.findIndex((c: string) => c.includes('sale') || c.includes('nhân viên') || c.includes('phụ trách'));
+          colMap.notes = row.findIndex((c: string) => c.includes('ghi chú') || c.includes('nhu cầu') || c.includes('yêu cầu') || c.includes('notes'));
+          colMap.workshop = row.findIndex((c: string) => c.includes('cơ sở') || c.includes('xưởng') || c.includes('workshop'));
+          break;
+        }
+      }
+
+      // If no recognized header row was found, fall back to standard column sequence
+      const dataStartRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 0;
+      if (headerRowIndex === -1) {
+        colMap.name = 1;
+        colMap.phone = 2;
+        colMap.address = 3;
+        colMap.category = 4;
+      }
+
+      let importedCount = 0;
+      const nowStr = new Date().toISOString();
+
+      for (let i = dataStartRow; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || row.length === 0) continue;
+
+        let name = colMap.name !== -1 ? String(row[colMap.name] || '').trim() : '';
+        let rawPhone = colMap.phone !== -1 ? String(row[colMap.phone] || '').trim() : '';
+
+        // Clean phone number: remove non-digits
+        let phone = rawPhone.replace(/\D/g, '');
+        if (phone.length === 9 && !phone.startsWith('0')) {
+          phone = '0' + phone;
+        }
+
+        // Skip rows without name or phone, or summary rows
+        if (!name || name.toLowerCase().includes('tổng cộng') || name.toLowerCase().includes('họ và tên') || name.toLowerCase().includes('stt')) {
+          continue;
+        }
+
+        const address = colMap.address !== -1 ? String(row[colMap.address] || '').trim() : '';
+        const category = colMap.category !== -1 ? String(row[colMap.category] || '').trim() : '';
+        const notes = colMap.notes !== -1 ? String(row[colMap.notes] || '').trim() : '';
+        const stageStr = colMap.stage !== -1 ? String(row[colMap.stage] || '').trim().toLowerCase() : '';
+        const rowCode = colMap.code !== -1 ? String(row[colMap.code] || '').trim() : '';
+        
+        // Parse order value
+        let orderValue = 0;
+        if (colMap.orderValue !== -1) {
+          const rawVal = String(row[colMap.orderValue] || '').replace(/[^\d]/g, '');
+          if (rawVal) orderValue = parseInt(rawVal, 10) || 0;
+        }
+
+        // Map stage
+        let stage: CustomerStage = 'consulting';
+        if (stageStr.includes('khảo sát') || stageStr.includes('đo đạc')) stage = 'surveying';
+        else if (stageStr.includes('chốt cọc') || stageStr.includes('cọc')) stage = 'contracted';
+        else if (stageStr.includes('hoàn tất') || stageStr.includes('làm xong')) stage = 'production_completed';
+        else if (stageStr.includes('sản xuất') || stageStr.includes('chế tác') || stageStr.includes('làm tranh')) stage = 'production';
+        else if (stageStr.includes('lắp đặt') || stageStr.includes('giao tranh') || stageStr.includes('đóng khung') || stageStr.includes('giao hàng')) stage = 'installation';
+        else if (stageStr.includes('hoàn thành') || stageStr.includes('đã giao') || stageStr.includes('tất toán')) stage = 'completed';
+        else if (stageStr.includes('tạm dừng') || stageStr.includes('hủy') || stageStr.includes('lost')) stage = 'lost';
+
+        const rowWorkshop = colMap.workshop !== -1 ? String(row[colMap.workshop] || '').trim() : '';
+        const finalWs = rowWorkshop ? getNormalizedWorkshopId(rowWorkshop) : (currentUser?.workshop && currentUser?.workshop !== 'all' ? getNormalizedWorkshopId(currentUser.workshop) : 'Hà Nội');
+
+        let prefix = 'HN';
+        if (finalWs === 'Cần Thơ') prefix = 'CT';
+        else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
+
+        const newCode = rowCode && rowCode.length >= 3 ? rowCode : `${prefix}${getCurrentVNYear()}${Math.floor(100 + Math.random() * 900)}`;
+
+        const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
+        const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
+
+        const docRef = await addDoc(collection(db, 'customers'), {
+          code: newCode,
+          name,
+          phone,
+          address,
+          furnitureCategory: category || 'Tranh gạo nghệ thuật',
+          stage: initialStage,
+          notes,
+          assignedSaleId: currentUser?.id || '',
+          workshop: finalWs,
+          createdAt: nowStr,
+          orderValue: orderValue || 0,
+          customerType: 'retail'
+        });
+
+        if (needsStageUpdateAfterCreate) {
+          await updateDoc(doc(db, 'customers', docRef.id), { stage });
+        }
+        importedCount++;
+      }
+
+      toast.dismiss(toastId);
+      if (importedCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
+        toast.success(`🎉 Đã nhập thành công ${importedCount} khách hàng vào hệ thống!`);
+        sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới.`, 'customers');
+      } else {
+        toast.error(`Không tìm thấy dòng khách hàng hợp lệ (đã quét ${rawRows.length} dòng). Vui lòng kiểm tra tiêu đề cột Họ tên & SĐT trong file Excel.`);
+      }
+
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (error: any) {
+      toast.dismiss(toastId);
       console.error("Lỗi khi đọc file Excel:", error);
-      toast.error("Lỗi khi đọc file. Vui lòng kiểm tra lại định dạng.");
+      toast.error("Lỗi khi đọc file Excel: " + (error?.message || "Định dạng file không hỗ trợ"));
     }
   };
 
@@ -297,9 +376,9 @@ export function CustomerPage({
       };
 
       // Header Brand Info
-      addTitleHeader('TRANH ĐẠI VIỆT - TRANH GẠO NGHỆ THUẬT', true, 13, 'FF1E3A8A');
+      addTitleHeader('TRANH ĐẠI VIỆT - TRANH GẠO NGHỆ THUẬT', true, 14, 'FFE11D48');
       addTitleHeader('Địa chỉ: Số 12, Đường 3, KCN Bắc Thăng Long, Đông Anh, Hà Nội', false, 10, 'FF4B5563');
-      addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: i-noi-that.vercel.app', false, 10, 'FF4B5563');
+      addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: tranhdaiviet.vercel.app', false, 10, 'FF4B5563');
       
       const spaceRow = sheet.addRow([]);
       spaceRow.height = 10;
@@ -331,7 +410,7 @@ export function CustomerPage({
         'HỌ VÀ TÊN', 
         'SỐ ĐIỆN THOẠI', 
         'ĐỊA CHỈ', 
-        'HẠNG MỤC',
+        'THỂ LOẠI TRANH / QUY CÁCH',
         'TRẠNG THÁI',
         'GIÁ TRỊ ĐƠN (VNĐ)',
         'SALE PHỤ TRÁCH',
@@ -347,7 +426,7 @@ export function CustomerPage({
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FF1E3A8A' } // Brand dark blue
+          fgColor: { argb: 'FFE11D48' } // Brand red/rose
         };
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = {
@@ -1981,9 +2060,9 @@ export function CustomerPage({
       { id: 'unquoted', label: 'CHƯA BÁO GIÁ', value: unquoted, color: 'text-slate-600', clickable: true },
       { id: 'contracted', label: 'CHỐT CỌC', value: contracted, color: 'text-emerald-600', clickable: true },
       { id: 'contracted_last_month', label: 'CHỐT CỌC THÁNG TRƯỚC', value: contractedLastMonthCount, color: 'text-fuchsia-600', clickable: true },
-      { id: 'production', label: 'SẢN XUẤT', value: production, color: 'text-rose-500', clickable: true },
-      { id: 'production_completed', label: 'HOÀN TẤT SẢN XUẤT', value: productionCompleted, color: 'text-teal-600', clickable: true },
-      { id: 'installation', label: 'LẮP ĐẶT', value: installation, color: 'text-orange-600', clickable: true },
+      { id: 'production', label: 'CHẾ TÁC TRANH', value: production, color: 'text-rose-500', clickable: true },
+      { id: 'production_completed', label: 'HOÀN TẤT TRANH', value: productionCompleted, color: 'text-teal-600', clickable: true },
+      { id: 'installation', label: 'ĐÓNG KHUNG / GIAO', value: installation, color: 'text-orange-600', clickable: true },
       { id: 'completed', label: 'HOÀN THÀNH', value: completed, color: 'text-emerald-600', clickable: true },
       { id: 'win_rate', label: 'TỈ LỆ CHỐT', value: `${winRate}%`, color: 'text-pink-600', clickable: false },
     ];

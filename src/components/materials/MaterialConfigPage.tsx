@@ -41,7 +41,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [bulkInputText, setBulkInputText] = useState('');
   const [bulkItems, setBulkItems] = useState<any[]>([]);
   const [bulkDefaults, setBulkDefaults] = useState({
-    category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+    category: 'GẠO RANG & KHUNG TRANH',
     unit: 'Hộp',
     width: '',
     thickness: '',
@@ -110,7 +110,62 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
   const [selectedScanItems, setSelectedScanItems] = useState<Record<string, boolean>>({});
   const [scannedQuantities, setScannedQuantities] = useState<Record<string, string>>({});
 
-  const handleOpenTransactionDialog = (item: any) => {
+    const handleSeedPaintingInventory = async () => {
+    if (!window.confirm("Bạn có muốn khởi tạo nhanh danh mục kho mẫu cho Tranh Đại Việt (Gạo rang 6 sắc độ, Khung composite, Ván lót, Keo dán, Tem đồng, Hộp quà)?")) {
+      return;
+    }
+
+    const toastId = toast.loading("Đang khởi tạo kho mẫu Tranh Đại Việt...");
+    try {
+      const batch = writeBatch(db);
+
+      const sampleMaterials = [
+        { code: 'GR_01', name: 'Gạo rang trắng ngà (Cấp độ 1)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 45000, listedBoxPrice: 45000, stock: 50, minStock: 10 },
+        { code: 'GR_02', name: 'Gạo rang vàng nhạt (Cấp độ 2)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 45000, listedBoxPrice: 45000, stock: 50, minStock: 10 },
+        { code: 'GR_03', name: 'Gạo rang vàng cánh gián (Cấp độ 3)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 50000, listedBoxPrice: 50000, stock: 60, minStock: 15 },
+        { code: 'GR_04', name: 'Gạo rang nâu nhạt (Cấp độ 4)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 50000, listedBoxPrice: 50000, stock: 45, minStock: 10 },
+        { code: 'GR_05', name: 'Gạo rang nâu sẫm (Cấp độ 5)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 55000, listedBoxPrice: 55000, stock: 40, minStock: 10 },
+        { code: 'GR_06', name: 'Gạo rang đen mun (Cấp độ 6)', category: 'GẠO RANG NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 55000, listedBoxPrice: 55000, stock: 35, minStock: 10 },
+        { code: 'GM_01', name: 'Gạo màu nghệ thuật ngũ sắc', category: 'GẠO MÀU NGHỆ THUẬT', unit: 'Kg', preTaxBoxPrice: 70000, listedBoxPrice: 70000, stock: 25, minStock: 5 },
+        { code: 'KC_2025', name: 'Khung composite nâu viền vàng 20x25cm', category: 'KHUNG TRANH & KÍNH', unit: 'Cái', preTaxBoxPrice: 65000, listedBoxPrice: 65000, stock: 30, minStock: 5 },
+        { code: 'KC_2535', name: 'Khung composite nâu viền vàng 25x35cm', category: 'KHUNG TRANH & KÍNH', unit: 'Cái', preTaxBoxPrice: 85000, listedBoxPrice: 85000, stock: 25, minStock: 5 },
+        { code: 'KC_3343', name: 'Khung composite nâu viền vàng 33x43cm', category: 'KHUNG TRANH & KÍNH', unit: 'Cái', preTaxBoxPrice: 120000, listedBoxPrice: 120000, stock: 20, minStock: 5 },
+        { code: 'KC_4050', name: 'Khung composite hoa văn cổ điển 40x50cm', category: 'KHUNG TRANH & KÍNH', unit: 'Cái', preTaxBoxPrice: 165000, listedBoxPrice: 165000, stock: 20, minStock: 5 },
+        { code: 'KG_6090', name: 'Khung gỗ tự nhiên bản lớn 60x90cm', category: 'KHUNG TRANH & KÍNH', unit: 'Cái', preTaxBoxPrice: 350000, listedBoxPrice: 350000, stock: 10, minStock: 2 },
+        { code: 'MDF_03', name: 'Ván lót MDF chống ẩm 3mm', category: 'KHUNG TRANH & KÍNH', unit: 'Tấm', preTaxBoxPrice: 30000, listedBoxPrice: 30000, stock: 50, minStock: 10 },
+        { code: 'KT_02', name: 'Kính trắng trong suốt 2mm bảo vệ tranh', category: 'KHUNG TRANH & KÍNH', unit: 'Tấm', preTaxBoxPrice: 40000, listedBoxPrice: 40000, stock: 40, minStock: 10 },
+      ];
+
+      const sampleAccessories = [
+        { code: 'KS_ATM', name: 'Keo sữa chuyên dụng gắn tranh ATM', option: 'Bình 1kg', unit: 'Bình', preTaxPrice: 42000, listedPrice: 42000, stock: 20, minStock: 5 },
+        { code: 'K_502', name: 'Keo 502 định hình hạt gạo', option: 'Chai tiêu chuẩn', unit: 'Chai', preTaxPrice: 8000, listedPrice: 8000, stock: 50, minStock: 15 },
+        { code: 'SN_NANO', name: 'Sơn bóng phủ Nano bảo quản tranh gạo', option: 'Chai xịt 400ml', unit: 'Chai', preTaxPrice: 55000, listedPrice: 55000, stock: 15, minStock: 5 },
+        { code: 'TD_LASER', name: 'Tem đồng khắc laser logo / lời tặng', option: 'Khắc theo yêu cầu', unit: 'Cái', preTaxPrice: 35000, listedPrice: 35000, stock: 40, minStock: 10 },
+        { code: 'HQ_DO', name: 'Hộp quà đỏ cao cấp lót lụa vàng Tranh Đại Việt', option: 'Hộp sang trọng', unit: 'Hộp', preTaxPrice: 75000, listedPrice: 75000, stock: 25, minStock: 5 },
+        { code: 'PK_MOC', name: 'Bộ móc treo tranh & đinh ghim ba chân', option: 'Bộ 2 móc + đinh', unit: 'Bộ', preTaxPrice: 5000, listedPrice: 5000, stock: 100, minStock: 20 },
+      ];
+
+      sampleMaterials.forEach(m => {
+        const docRef = doc(collection(db, 'materialConfigs'));
+        batch.set(docRef, { ...m, discountPercent: 0, createdAt: new Date().toISOString() });
+      });
+
+      sampleAccessories.forEach(a => {
+        const docRef = doc(collection(db, 'accessoryConfigs'));
+        batch.set(docRef, { ...a, discountPercent: 0, createdAt: new Date().toISOString() });
+      });
+
+      await batch.commit();
+      toast.dismiss(toastId);
+      toast.success("🎉 Đã khởi tạo thành công 20 mặt hàng mẫu chuẩn cho Tranh Đại Việt!");
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      console.error("Seed inventory error:", err);
+      toast.error("Lỗi khi tạo kho mẫu: " + (err?.message || ""));
+    }
+  };
+
+const handleOpenTransactionDialog = (item: any) => {
     setSelectedInventoryItem(item);
     setTransactionForm({
       type: 'import',
@@ -742,7 +797,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
     preTaxBoxPrice: 0,
     listedMeterPrice: 0,
     listedBoxPrice: 0,
-    category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+    category: 'GẠO RANG & KHUNG TRANH',
     discountPercent: 0
   });
 
@@ -1246,7 +1301,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       setFormData({ 
         code: '', width: '', thickness: '', length: '', itemsPerBox: '', unit: 'Hộp', 
         preTaxMeterPrice: 0, preTaxBoxPrice: 0, listedMeterPrice: 0, listedBoxPrice: 0, 
-        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+        category: 'GẠO RANG & KHUNG TRANH',
         discountPercent: 0
       });
     }
@@ -1319,10 +1374,10 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
             <span className="hidden sm:inline">Phân tích </span>Lãi Thực
           </TabsTrigger>
           <TabsTrigger value="config" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
-            <span className="hidden sm:inline">Giá </span>Vật Tư Nhựa
+            Gạo & Khung Tranh
           </TabsTrigger>
           <TabsTrigger value="accessory" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
-            <span className="hidden sm:inline">Giá </span>Phụ Kiện
+            Phụ Kiện Chế Tác
           </TabsTrigger>
           <TabsTrigger value="inventory" className="rounded-lg text-[11px] sm:text-xs font-bold px-1 py-1.5 text-center leading-tight">
             <span className="hidden sm:inline">Quản lý </span>Kho Hàng
@@ -1738,20 +1793,29 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                         thickness: '',
                         length: '',
                         itemsPerBox: '',
-                        unit: 'Hộp',
+                        unit: 'Kg',
                         preTaxMeterPrice: 0,
                         preTaxBoxPrice: 0,
                         listedMeterPrice: 0,
                         listedBoxPrice: 0,
-                        category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+                        category: 'GẠO RANG & KHUNG TRANH',
                         discountPercent: 0
                       });
                       setIsDialogOpen(true);
                     }}
-                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white h-8 px-1 sm:px-2.5 justify-center"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-8 px-1 sm:px-2.5 justify-center"
                   >
                     <Plus className="h-3.5 w-3.5 shrink-0" />
-                    <span>+ Nhựa<span className="hidden sm:inline"> (Vật tư)</span></span>
+                    <span>+ Gạo / Khung Tranh</span>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50 bg-rose-50/50 h-8 px-1 sm:px-2.5 justify-center"
+                    onClick={handleSeedPaintingInventory}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                    <span>Mẫu Tranh</span>
                   </Button>
                   <Button 
                     size="sm" 
@@ -1759,7 +1823,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                     className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white h-8 px-1 sm:px-2.5 justify-center"
                   >
                     <Plus className="h-3.5 w-3.5 shrink-0" />
-                    <span>+ Phụ kiện</span>
+                    <span>+ Phụ kiện Chế tác</span>
                   </Button>
                   <Button 
                     size="sm" 
@@ -1799,8 +1863,8 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                     className="h-8 md:h-9 rounded-xl border border-border bg-card px-2 text-xs font-semibold focus:outline-none flex-1 text-foreground"
                   >
                     <option value="all">Tất cả loại</option>
-                    <option value="material">Vật tư nhựa</option>
-                    <option value="accessory">Phụ kiện</option>
+                    <option value="material">Gạo & Khung tranh</option>
+                    <option value="accessory">Phụ kiện chế tác</option>
                   </select>
                   <select
                     value={inventoryStatusFilter}
@@ -1869,9 +1933,16 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                         <td colSpan={8} className="p-8 text-center text-muted-foreground">
                           <p className="font-semibold text-sm">Không tìm thấy mặt hàng nào trong kho.</p>
                           <p className="text-xs text-muted-foreground/80 mt-1 mb-4">
-                            Hãy thêm mới vật tư nhựa hoặc phụ kiện để quản lý và theo dõi tồn kho.
+                            Hãy thêm mới gạo rang, khung tranh, phụ kiện hoặc bấm khởi tạo kho mẫu để quản lý và theo dõi tồn kho.
                           </p>
-                          <div className="flex justify-center gap-2">
+                          <div className="flex flex-wrap justify-center gap-2">
+                            <Button 
+                              size="sm" 
+                              onClick={handleSeedPaintingInventory}
+                              className="text-xs font-bold gap-1 bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                            >
+                              <Sparkles className="h-3.5 w-3.5" /> Khởi tạo kho mẫu Tranh Gạo
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm" 
@@ -1883,19 +1954,19 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                                   thickness: '',
                                   length: '',
                                   itemsPerBox: '',
-                                  unit: 'Hộp',
+                                  unit: 'Kg',
                                   preTaxMeterPrice: 0,
                                   preTaxBoxPrice: 0,
                                   listedMeterPrice: 0,
                                   listedBoxPrice: 0,
-                                  category: 'HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST',
+                                  category: 'GẠO RANG & KHUNG TRANH',
                                   discountPercent: 0
                                 });
                                 setIsDialogOpen(true);
                               }}
-                              className="text-xs font-bold gap-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                              className="text-xs font-bold gap-1 border-rose-200 text-rose-600 hover:bg-rose-50"
                             >
-                              <Plus className="h-3.5 w-3.5" /> Thêm vật tư nhựa
+                              <Plus className="h-3.5 w-3.5" /> + Gạo / Khung Tranh
                             </Button>
                             <Button 
                               variant="outline" 
@@ -1903,7 +1974,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                               onClick={() => handleOpenAccessoryDialog()}
                               className="text-xs font-bold gap-1 border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
-                              <Plus className="h-3.5 w-3.5" /> Thêm phụ kiện
+                              <Plus className="h-3.5 w-3.5" /> + Phụ kiện chế tác
                             </Button>
                           </div>
                         </td>
@@ -1938,7 +2009,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                             <td className="p-3">
                               <p className="font-semibold text-foreground truncate">{item.name}</p>
                               <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold border border-slate-200 mt-1 inline-block uppercase">
-                                {item.type === 'material' ? 'Nhựa' : 'Phụ kiện'}
+                                {item.type === 'material' ? 'Gạo / Khung' : 'Phụ kiện'}
                               </span>
                             </td>
                             <td className="p-3 text-muted-foreground text-xs font-medium truncate">{item.category}</td>
@@ -2147,7 +2218,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                           <td className="p-3 truncate">
                             <p className="font-semibold text-foreground truncate">{tx.itemName}</p>
                             <span className="text-[9px] text-slate-400 capitalize">
-                              {tx.itemType === 'material' ? 'Vật tư nhựa' : 'Phụ kiện'}
+                              {tx.itemType === 'material' ? 'Gạo & Khung' : 'Phụ kiện'}
                             </span>
                           </td>
                           <td className="p-3 text-center">
@@ -2272,7 +2343,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
               <Label htmlFor="tx-note" className="text-xs font-bold text-muted-foreground">Ghi chú giao dịch</Label>
               <Input 
                 id="tx-note"
-                placeholder="VD: Nhập thêm lô hàng nhựa mới, Xuất kho lắp tủ bếp..."
+                placeholder="VD: Nhập 50kg gạo rang mộc, Xuất 10 khung composite 40x50cm, Keo sữa..."
                 value={transactionForm.note}
                 onChange={(e) => setTransactionForm({ ...transactionForm, note: e.target.value })}
                 className="h-11 rounded-xl text-sm focus:border-blue-400"
@@ -2476,14 +2547,14 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
         <DialogContent className="max-w-[800px] h-[90vh] md:h-auto overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Sửa thông tin vật tư' : 'Thêm vật tư mới'}</DialogTitle>
-            <DialogDescription>Nhập thông tin sản phẩm và giá (Nhựa Ecoplast, Luxury, v.v.).</DialogDescription>
+            <DialogDescription>Nhập thông tin sản phẩm gạo, quy cách khung tranh (Khung gỗ, Composite, Gạo rang, Gạo màu, v.v.).</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 py-4">
             
             <div className="col-span-1 md:col-span-2 space-y-2">
-              <Label>Hạng mục (Tên Loại Nhựa)</Label>
+              <Label>Hạng mục (Loại Gạo / Khung Tranh)</Label>
               <Input
-                placeholder="VD: HẠNG MỤC BÁO GIÁ NHỰA ECOPLAST"
+                placeholder="VD: GẠO RANG NGHỆ THUẬT, KHUNG TRANH COMPOSITE"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value.toUpperCase() })}
               />
@@ -2787,7 +2858,7 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
                 <div className="space-y-1 col-span-2">
                   <label className="text-[10px] font-medium text-muted-foreground uppercase">Hạng mục chính</label>
                   <Input 
-                    placeholder="Tên loại nhựa..." 
+                    placeholder="Tên loại gạo / khung tranh..." 
                     className="h-8 text-xs"
                     value={bulkDefaults.category}
                     onChange={(e) => setBulkDefaults({...bulkDefaults, category: e.target.value.toUpperCase()})}
