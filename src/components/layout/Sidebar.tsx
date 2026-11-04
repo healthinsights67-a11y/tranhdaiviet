@@ -71,10 +71,10 @@ const navGroups = [
     ]
   },
   {
-    title: 'Sản xuất & Thi công',
+    title: 'Chế tác & Giao tranh',
     items: [
-      { id: 'production', label: 'Lịch Sản Xuất & Thi Công', icon: CalendarDays, permission: 'menuProduction' },
-      { id: 'installations', label: 'Báo cáo Thi công', icon: Wrench, permission: 'menuInstallations' },
+      { id: 'production', label: 'Lịch Chế Tác & Giao Tranh', icon: CalendarDays, permission: 'menuProduction' },
+      { id: 'installations', label: 'Tiến độ Đóng khung & Giao', icon: Wrench, permission: 'menuInstallations' },
     ]
   },
   {
@@ -83,13 +83,13 @@ const navGroups = [
       { id: 'design', label: 'Thiết kế', icon: Briefcase, permission: 'menuDesign' },
       { id: 'marketing', label: 'Marketing', icon: Megaphone, permission: 'menuMarketing' },
       { id: 'ai-render', label: 'Thiết kế AI', icon: Sparkles, permission: 'menuAi' },
-      { id: 'ecoplast-learning', label: 'Học tập Ecoplast', icon: BookOpen, permission: 'menuSale' },
+      { id: 'ecoplast-learning', label: 'Kiến thức Tranh Gạo', icon: BookOpen, permission: 'menuSale' },
     ]
   },
   {
     title: 'Hệ thống',
     items: [
-      { id: 'materials', label: 'Vật tư & Kho', icon: Package, permission: 'viewPrice' },
+      { id: 'materials', label: 'Gạo, Khung & Vật tư', icon: Package, permission: 'viewPrice' },
       { id: 'media', label: 'Thư viện ảnh', icon: Image, permission: 'menuMedia' },
         { id: 'documents', label: 'Tài liệu Sản Phẩm', icon: Folder, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
@@ -109,7 +109,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
     const initial: Record<string, boolean> = {
       'Chung': false,
       'Đơn hàng & Khách': true,
-      'Sản xuất & Thi công': true,
+      'Chế tác & Giao tranh': true,
       'Phòng ban': false,
       'Hệ thống': false,
     };

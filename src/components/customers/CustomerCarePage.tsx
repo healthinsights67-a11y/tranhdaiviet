@@ -894,7 +894,7 @@ export function CustomerCarePage({ customers, members, currentUser }: CustomerCa
                 </div>
                 <Textarea
                   id="careNote"
-                  placeholder="Ghi chú nội dung cuộc gọi hỏi thăm (ví dụ: khách rất hài lòng với tủ bếp nhựa, bản lề dùng êm, chưa cần sửa chữa...)"
+                  placeholder="Ghi chú nội dung cuộc gọi hỏi thăm (ví dụ: khách rất hài lòng với tranh nhựa, bản lề dùng êm, chưa cần sửa chữa...)"
                   value={logNote}
                   onChange={(e) => setLogNote(e.target.value)}
                   className="min-h-[100px] resize-none bg-white border border-border focus-visible:ring-primary/50"

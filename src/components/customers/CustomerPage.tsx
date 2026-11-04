@@ -34,6 +34,7 @@ import {
   Pencil, ChevronDown, ChevronUp, Building2, Cog, Home, ShoppingBag
 } from 'lucide-react';
 import { CustomerWorkflowHistory } from './CustomerWorkflowHistory';
+import { PaintingQuickSelector, SelectedPaintingItem, summarizePaintings } from './PaintingQuickSelector';
 import { LocationPickerDialog } from '../maps/LocationPickerDialog';
 import { MapComponent, CustomMarker } from '../maps/MapComponent';
 import { Input } from '@/components/ui/input';
@@ -104,8 +105,8 @@ const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: 
   surveying: { label: 'Đã đo đạc', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: MapPin },
   contracted: { label: 'Chốt Cọc', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: ArrowRight },
   production: { label: 'Sản xuất', color: 'bg-blue-50 text-blue-600 border-blue-200', icon: Factory },
-  production_completed: { label: 'Hoàn tất sản xuất', color: 'bg-indigo-50 text-indigo-600 border-indigo-200', icon: CheckCircle2 },
-  installation: { label: 'Lắp đặt', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: Package },
+  production_completed: { label: 'Hoàn tất tranh', color: 'bg-indigo-50 text-indigo-600 border-indigo-200', icon: CheckCircle2 },
+  installation: { label: 'Đóng khung / Giao tranh', color: 'bg-orange-50 text-orange-600 border-orange-200', icon: Package },
   completed: { label: 'Hoàn thành', color: 'bg-green-50 text-green-600 border-green-200', icon: CheckCircle2 },
   lost: { label: 'Tạm dừng', color: 'bg-red-50 text-red-600 border-red-200', icon: X },
 };
@@ -289,7 +290,7 @@ export function CustomerPage({
       };
 
       // Header Brand Info
-      addTitleHeader('CÔNG TY CỔ PHẦN QUỐC TẾ I NỘI THẤT', true, 13, 'FF1E3A8A');
+      addTitleHeader('TRANH ĐẠI VIỆT - TRANH GẠO NGHỆ THUẬT', true, 13, 'FF1E3A8A');
       addTitleHeader('Địa chỉ: Số 12, Đường 3, KCN Bắc Thăng Long, Đông Anh, Hà Nội', false, 10, 'FF4B5563');
       addTitleHeader('Điện thoại: 0976.191.583 - 0983.487.411 | Website: i-noi-that.vercel.app', false, 10, 'FF4B5563');
       
@@ -550,6 +551,9 @@ export function CustomerPage({
   const [selectedSaleId, setSelectedSaleId] = React.useState<string>('all');
   const [pickerYear, setPickerYear] = React.useState<number>(getCurrentVNYear());
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [newCustomerPaintings, setNewCustomerPaintings] = React.useState<SelectedPaintingItem[]>([]);
+  const [editCustomerPaintings, setEditCustomerPaintings] = React.useState<SelectedPaintingItem[]>([]);
+  const [autoCreateQuotation, setAutoCreateQuotation] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
@@ -846,7 +850,55 @@ export function CustomerPage({
         );
 
         // Send to external bot platforms (Zalo/Telegram)
-        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n📝 Hạng mục: ${customerData.furnitureCategory || 'Không có'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'customers', customerData.workshop);
+        sendSystemNotification(`🌟 Khách hàng mới!\n\n👤 Tên: ${customerData.name}\n📞 SĐT: ${customerData.phone}\n📍 Địa chỉ: ${customerData.address || 'Chưa cập nhật'}\n🎨 Tranh đặt: ${customerData.furnitureCategory || 'Không có'}\n💰 Giá trị: ${customerData.orderValue ? new Intl.NumberFormat('vi-VN').format(customerData.orderValue) + ' đ' : 'Chưa chốt'}\n\nĐược tạo bởi: ${currentUser?.name || 'Hệ thống'}`, 'customers', customerData.workshop);
+
+        // TỰ ĐỘNG TẠO BẢN BÁO GIÁ CHO TRANH NẾU CÓ CHỌN SẢN PHẨM
+        if (autoCreateQuotation && newCustomerPaintings.length > 0) {
+          try {
+            const quoteTotal = newCustomerPaintings.reduce((sum, p) => sum + (p.total || 0), 0);
+            const quoteNumber = `BG-${customerCode.split('_')[0] || 'TDV'}-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`;
+            const quotationData = {
+              quotationNumber: quoteNumber,
+              customerName: customerData.name,
+              customerId: createdCustomerId,
+              phone: customerData.phone,
+              address: customerData.address || '',
+              constructionType: customerData.furnitureCategory || 'Tranh gạo nghệ thuật',
+              estimatedTime: '3 - 5 ngày hoàn thiện',
+              date: nowStr.split('T')[0],
+              items: newCustomerPaintings.map(p => ({
+                id: p.id || Math.random().toString(36).substr(2, 9),
+                category: p.category || 'Tranh gạo',
+                name: p.name,
+                description: p.description || '',
+                unit: 'bức',
+                quantity: p.quantity,
+                unitPrice: p.unitPrice,
+                total: p.total,
+                basePrice: p.unitPrice
+              })),
+              subTotal: quoteTotal,
+              discount: 0,
+              totalAmount: quoteTotal,
+              status: customerData.stage === 'contracted' ? 'deposit' : 'sent',
+              paymentInfo: {
+                bankName: 'MB Bank (Quân Đội)',
+                accountNumber: '0949169190',
+                accountHolder: 'TRANH ĐẠI VIỆT',
+                content: `Báo giá tranh ${customerCode.split('_')[0] || customerData.name}`
+              },
+              createdBy: currentUser?.name || 'Hệ thống',
+              workshop: customerData.workshop || 'all',
+              createdAt: nowStr,
+              updatedAt: nowStr
+            };
+            await addDoc(collection(db, 'quotations'), quotationData);
+            queryClient.invalidateQueries({ queryKey: ['quotations'] });
+            console.log('Tự động tạo báo giá thành công:', quoteNumber);
+          } catch (qErr) {
+            console.error('Lỗi khi tự động tạo báo giá:', qErr);
+          }
+        }
 
         // Auto-sync to Sale Weekly Plan
         const newSaleTask = {
@@ -1259,6 +1311,67 @@ export function CustomerPage({
 
         await updateDoc(doc(db, 'customers', id), updateData);
 
+        // Tự động đồng bộ cập nhật Báo giá nếu có sản phẩm tranh
+        if (editCustomerPaintings.length > 0) {
+          try {
+            const quoteTotal = editCustomerPaintings.reduce((sum, p) => sum + (p.total || 0), 0);
+            const existingQuote = quotations.find(q => q.customerId === id);
+            const quoteItems = editCustomerPaintings.map(p => ({
+              id: p.id || Math.random().toString(36).substr(2, 9),
+              category: p.category || 'Tranh gạo',
+              name: p.name,
+              description: p.description || '',
+              unit: 'bức',
+              quantity: p.quantity,
+              unitPrice: p.unitPrice,
+              total: p.total,
+              basePrice: p.unitPrice
+            }));
+
+            if (existingQuote) {
+              await updateDoc(doc(db, 'quotations', existingQuote.id), {
+                items: quoteItems,
+                subTotal: quoteTotal,
+                totalAmount: quoteTotal,
+                customerName: selectedCustomer.name,
+                phone: selectedCustomer.phone,
+                address: selectedCustomer.address || '',
+                updatedAt: new Date().toISOString()
+              });
+            } else {
+              const quoteNumber = `BG-${(selectedCustomer.code || 'TDV').split('_')[0]}-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`;
+              await addDoc(collection(db, 'quotations'), {
+                quotationNumber: quoteNumber,
+                customerName: selectedCustomer.name,
+                customerId: id,
+                phone: selectedCustomer.phone,
+                address: selectedCustomer.address || '',
+                constructionType: selectedCustomer.furnitureCategory || 'Tranh gạo nghệ thuật',
+                estimatedTime: '3 - 5 ngày hoàn thiện',
+                date: new Date().toISOString().split('T')[0],
+                items: quoteItems,
+                subTotal: quoteTotal,
+                discount: 0,
+                totalAmount: quoteTotal,
+                status: selectedCustomer.stage === 'contracted' ? 'deposit' : 'sent',
+                paymentInfo: {
+                  bankName: 'MB Bank (Quân Đội)',
+                  accountNumber: '0949169190',
+                  accountHolder: 'TRANH ĐẠI VIỆT',
+                  content: `Báo giá tranh ${(selectedCustomer.code || selectedCustomer.name).split('_')[0]}`
+                },
+                createdBy: currentUser?.name || 'Hệ thống',
+                workshop: selectedCustomer.workshop || 'all',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              });
+            }
+            queryClient.invalidateQueries({ queryKey: ['quotations'] });
+          } catch (qErr) {
+            console.error('Lỗi khi cập nhật báo giá:', qErr);
+          }
+        }
+
         // Notify the newly assigned sale member via Zalo if reassigned
         const isSaleAssignedChanged = existingCustomer && existingCustomer.assignedSaleId !== selectedCustomer.assignedSaleId;
         if (isSaleAssignedChanged && selectedCustomer.assignedSaleId) {
@@ -1570,6 +1683,21 @@ export function CustomerPage({
 
   const openEditDialog = (customer: Customer) => {
     setSelectedCustomer({ ...customer });
+    const existingQuote = quotations.find(q => q.customerId === customer.id);
+    if (existingQuote && existingQuote.items && existingQuote.items.length > 0) {
+      setEditCustomerPaintings(existingQuote.items.map(it => ({
+        id: it.id,
+        name: it.name,
+        category: it.category || 'Tranh gạo',
+        dimensions: '',
+        quantity: it.quantity || 1,
+        unitPrice: it.unitPrice || 0,
+        total: it.total || ((it.quantity || 1) * (it.unitPrice || 0)),
+        description: it.description || ''
+      })));
+    } else {
+      setEditCustomerPaintings([]);
+    }
     setIsEditDialogOpen(true);
   };
 
@@ -1862,7 +1990,7 @@ export function CustomerPage({
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-50 leading-tight">
             Khách<br className="hidden md:inline" /> hàng
           </h1>
-          <p className="text-muted-foreground text-[10px] md:text-xs font-medium">Hành trình khách hàng.</p>
+          <p className="text-muted-foreground text-[10px] md:text-xs font-medium">Quản lý khách hàng & Đơn đặt tranh gạo.</p>
         </div>
 
         {/* Toolbar: Time, Workshop, Sale, Search, Group toggle, Actions */}
@@ -2029,7 +2157,7 @@ export function CustomerPage({
 
           <Button 
             className="h-9 rounded-xl gap-1 px-4 shadow-sm text-xs text-white bg-primary hover:bg-primary/90 font-bold cursor-pointer shadow-rose-300 dark:shadow-none"
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => { setNewCustomerPaintings([]); setAutoCreateQuotation(true); setIsAddDialogOpen(true); }}
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Thêm</span>
@@ -2098,17 +2226,17 @@ export function CustomerPage({
                         id="address"
                         value={newCustomer.address}
                         onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-                        placeholder="Địa chỉ lắp đặt"
+                        placeholder="Địa chỉ nhận tranh / Giao hàng"
                         className="h-11 rounded-xl"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="furnitureCategory">Hạng mục nội thất</Label>
+                      <Label htmlFor="furnitureCategory">Thể loại tranh / Sản phẩm</Label>
                       <Input
                         id="furnitureCategory"
                         value={newCustomer.furnitureCategory}
                         onChange={(e) => setNewCustomer({ ...newCustomer, furnitureCategory: e.target.value })}
-                        placeholder="VD: Tủ bếp, Sofa, Giường..."
+                        placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
                         className="h-11 rounded-xl"
                       />
                     </div>
@@ -2236,8 +2364,34 @@ export function CustomerPage({
                       value={newCustomer.notes}
                       onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
                       placeholder="Yêu cầu chi tiết của khách..."
-                      className="h-24 rounded-xl"
+                      className="h-20 rounded-xl"
                     />
+                  </div>
+
+                  <div className="md:col-span-2 pt-2 border-t border-rose-100">
+                    <PaintingQuickSelector
+                      items={newCustomerPaintings}
+                      onChange={(items, total, summary) => {
+                        setNewCustomerPaintings(items);
+                        setNewCustomer(prev => ({
+                          ...prev,
+                          orderValue: total > 0 ? total : prev.orderValue,
+                          furnitureCategory: summary ? summary : prev.furnitureCategory
+                        }));
+                      }}
+                    />
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <input
+                        type="checkbox"
+                        id="auto-quote-create"
+                        checked={autoCreateQuotation}
+                        onChange={(e) => setAutoCreateQuotation(e.target.checked)}
+                        className="h-4 w-4 accent-rose-600 rounded cursor-pointer"
+                      />
+                      <Label htmlFor="auto-quote-create" className="text-xs font-semibold text-foreground/80 cursor-pointer">
+                        Tự động khởi tạo bản Báo Giá chính thức cho khách hàng này (không cần vào mục Báo Giá nữa)
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2283,7 +2437,7 @@ export function CustomerPage({
           }}
         >
           <Building2 className="h-3.5 w-3.5" />
-          <span>Dự án</span>
+          <span>Doanh nghiệp / Quà tặng</span>
         </button>
         <button
           type="button"
@@ -2299,7 +2453,7 @@ export function CustomerPage({
           }}
         >
           <Cog className="h-3.5 w-3.5" />
-          <span>Gia công</span>
+          <span>Tranh theo yêu cầu</span>
         </button>
         <button
           type="button"
@@ -2315,7 +2469,7 @@ export function CustomerPage({
           }}
         >
           <Home className="h-3.5 w-3.5" />
-          <span>Công trình nhà dân</span>
+          <span>Khách lẻ</span>
         </button>
       </div>
 
@@ -3123,12 +3277,12 @@ export function CustomerPage({
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-furnitureCategory">Hạng mục nội thất</Label>
+                      <Label htmlFor="edit-furnitureCategory">Thể loại tranh / Sản phẩm</Label>
                       <Input
                         id="edit-furnitureCategory"
                         value={selectedCustomer.furnitureCategory || ''}
                         onChange={(e) => setSelectedCustomer({ ...selectedCustomer, furnitureCategory: e.target.value })}
-                        placeholder="VD: Tủ bếp, Sofa, Giường..."
+                        placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
                         className="h-11 rounded-xl"
                       />
                     </div>
@@ -3257,7 +3411,21 @@ export function CustomerPage({
                       id="edit-notes"
                       value={selectedCustomer.notes}
                       onChange={(e) => setSelectedCustomer({ ...selectedCustomer, notes: e.target.value })}
-                      className="h-24 rounded-xl"
+                      className="h-20 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 pt-2 border-t border-rose-100">
+                    <PaintingQuickSelector
+                      items={editCustomerPaintings}
+                      onChange={(items, total, summary) => {
+                        setEditCustomerPaintings(items);
+                        setSelectedCustomer(prev => prev ? ({
+                          ...prev,
+                          orderValue: total > 0 ? total : prev.orderValue,
+                          furnitureCategory: summary ? summary : prev.furnitureCategory
+                        }) : null);
+                      }}
                     />
                   </div>
                 </div>
@@ -3349,7 +3517,7 @@ export function CustomerPage({
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Hạng mục nội thất</Label>
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Thể loại tranh / Sản phẩm</Label>
                     <div className="flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-secondary/30 ring-1 ring-border/50">
                       <Layout className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
                       <p className="text-[11px] sm:text-xs font-bold">{selectedCustomer.furnitureCategory || 'Chưa cập nhật'}</p>
