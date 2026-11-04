@@ -100,6 +100,13 @@ interface CustomerPageProps {
   onViewQuotation?: (quotationId: string, customerName: string) => void;
 }
 
+const CUSTOMER_TYPE_LABELS: Record<string, string> = {
+  retail: 'Khách lẻ',
+  agency: 'Đại lý / Doanh nghiệp',
+  project: 'Dự án / Quà tặng',
+  wholesale: 'Khách sỉ',
+};
+
 const STAGE_CONFIG: Record<CustomerStage, { label: string; color: string; icon: any }> = {
   consulting: { label: 'Đã tư vấn', color: 'bg-yellow-50 text-yellow-600 border-yellow-200', icon: MessageSquare },
   surveying: { label: 'Đã đo đạc', color: 'bg-purple-50 text-purple-600 border-purple-200', icon: MapPin },
@@ -2164,34 +2171,35 @@ export function CustomerPage({
           </Button>
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogContent className="sm:max-w-[800px] rounded-2xl">
-              <DialogHeader>
-                <DialogTitle>Thêm khách hàng mới</DialogTitle>
-                <DialogDescription>
-                  Nhập thông tin khách hàng tiềm năng để bắt đầu quy trình tư vấn.
+            <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-5 gap-3 rounded-2xl">
+              <DialogHeader className="pb-1 border-b border-rose-100">
+                <DialogTitle className="text-lg font-bold text-foreground">Thêm khách hàng mới</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Nhập thông tin khách hàng tiềm năng và chọn tranh để hệ thống tự động tính báo giá.
                 </DialogDescription>
               </DialogHeader>
-              <div className="max-h-[70vh] overflow-y-auto w-full px-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name">Tên khách hàng</Label>
+              <div className="flex-1 overflow-y-auto px-1 space-y-3.5 pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Cột trái: Thông tin liên hệ */}
+                  <div className="space-y-3">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="name" className="text-xs font-semibold">Tên khách hàng</Label>
                       <Input
                         id="name"
                         value={newCustomer.name}
                         onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
                         placeholder="VD: Anh Hùng"
-                        className="h-11 rounded-xl"
+                        className="h-10 rounded-xl"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Số điện thoại</Label>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="phone" className="text-xs font-semibold">Số điện thoại</Label>
                       <Input
                         id="phone"
                         value={newCustomer.phone}
                         onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                         placeholder="090..."
-                        className="h-11 rounded-xl"
+                        className="h-10 rounded-xl"
                       />
                       {(() => {
                         const cleanVal = newCustomer.phone.trim().replace(/\D/g, '');
@@ -2200,7 +2208,7 @@ export function CustomerPage({
                           if (dup) {
                             return (
                               <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-1.5 rounded-md border border-amber-200 leading-normal">
-                                ⚠️ SĐT đã tồn tại trên hệ thống (Khách: {dup.name} - {dup.code}). Bạn nên tìm và tạo báo giá mới cho khách cũ này thay vì tạo trùng lặp.
+                                ⚠️ SĐT đã tồn tại trên hệ thống (Khách: {dup.name} - {dup.code}). Bạn nên tìm và tạo báo giá mới cho khách cũ này.
                               </p>
                             );
                           }
@@ -2208,14 +2216,14 @@ export function CustomerPage({
                         return null;
                       })()}
                     </div>
-                    <div className="grid gap-2 relative">
-                      <Label htmlFor="address" className="flex items-center justify-between">
-                        <span>Địa chỉ / Công trình</span>
+                    <div className="grid gap-1.5 relative">
+                      <Label htmlFor="address" className="flex items-center justify-between text-xs font-semibold">
+                        <span>Địa chỉ giao nhận tranh</span>
                         <Button 
                           type="button" 
                           variant="ghost" 
                           size="sm" 
-                          className={cn("h-6 px-2 text-[10px]", newCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
+                          className={cn("h-5 px-1.5 text-[10px]", newCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
                           onClick={() => setLocationPickerFor('add')}
                         >
                           <MapPin className="h-3 w-3 mr-1" />
@@ -2227,27 +2235,17 @@ export function CustomerPage({
                         value={newCustomer.address}
                         onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
                         placeholder="Địa chỉ nhận tranh / Giao hàng"
-                        className="h-11 rounded-xl"
+                        className="h-10 rounded-xl"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="furnitureCategory">Thể loại tranh / Sản phẩm</Label>
-                      <Input
-                        id="furnitureCategory"
-                        value={newCustomer.furnitureCategory}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, furnitureCategory: e.target.value })}
-                        placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Cơ sở phụ trách</Label>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs font-semibold">Cơ sở phụ trách</Label>
                       <Select 
                         value={getNormalizedWorkshopId(newCustomer.workshop)} 
                         onValueChange={(v) => setNewCustomer({ ...newCustomer, workshop: v })}
                         disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
                       >
-                        <SelectTrigger className="h-11 rounded-xl">
+                        <SelectTrigger className="h-10 rounded-xl">
                           <SelectValue placeholder="Chọn cơ sở" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2257,50 +2255,35 @@ export function CustomerPage({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label>Giai đoạn</Label>
-                      <Select 
-                        value={newCustomer.stage || 'consulting'} 
-                        onValueChange={(v: CustomerStage) => setNewCustomer({ ...newCustomer, stage: v })}
-                      >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn giai đoạn">
-                            {newCustomer.stage ? STAGE_CONFIG[newCustomer.stage as keyof typeof STAGE_CONFIG]?.label : "Chọn giai đoạn"}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STAGE_CONFIG).map(([key, config]) => (
-                            <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Loại khách hàng</Label>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs font-semibold">Loại khách hàng</Label>
                       <Select 
                         value={newCustomer.customerType || 'retail'} 
                         onValueChange={(v: CustomerType) => setNewCustomer({ ...newCustomer, customerType: v })}
                       >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn loại khách hàng" />
+                        <SelectTrigger className="h-10 rounded-xl">
+                          <SelectValue placeholder="Chọn loại khách hàng">
+                            {CUSTOMER_TYPE_LABELS[newCustomer.customerType || 'retail'] || 'Khách lẻ'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="retail">Khách lẻ</SelectItem>
-                          <SelectItem value="agency">Đại lý</SelectItem>
-                          <SelectItem value="project">Dự án</SelectItem>
+                          <SelectItem value="agency">Đại lý / Doanh nghiệp</SelectItem>
+                          <SelectItem value="project">Dự án / Quà tặng sự kiện</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Sale phụ trách</Label>
+                  {/* Cột phải: Bán hàng & Quy cách & Giá trị */}
+                  <div className="space-y-3">
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs font-semibold">Sale phụ trách</Label>
                       <Select 
                         value={newCustomer.assignedSaleId || ''} 
                         onValueChange={(v) => setNewCustomer({ ...newCustomer, assignedSaleId: v })}
                       >
-                        <SelectTrigger className="h-11 rounded-xl">
+                        <SelectTrigger className="h-10 rounded-xl">
                           <SelectValue placeholder="Chọn nhân viên">
                             {newCustomer.assignedSaleId 
                               ? members.find(m => m.id === newCustomer.assignedSaleId)?.name 
@@ -2319,9 +2302,47 @@ export function CustomerPage({
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs font-semibold">Giai đoạn tư vấn</Label>
+                      <Select 
+                        value={newCustomer.stage || 'consulting'} 
+                        onValueChange={(v: CustomerStage) => setNewCustomer({ ...newCustomer, stage: v })}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl">
+                          <SelectValue placeholder="Chọn giai đoạn">
+                            {newCustomer.stage ? STAGE_CONFIG[newCustomer.stage as keyof typeof STAGE_CONFIG]?.label : "Chọn giai đoạn"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(STAGE_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="nextContactDate" className="text-xs font-semibold">Nhắc nhở gọi lại</Label>
+                      <Input
+                        id="nextContactDate"
+                        type="date"
+                        value={newCustomer.nextContactDate}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, nextContactDate: e.target.value })}
+                        className="h-10 rounded-xl"
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="furnitureCategory" className="text-xs font-semibold">Thể loại tranh / Sản phẩm</Label>
+                      <Input
+                        id="furnitureCategory"
+                        value={newCustomer.furnitureCategory}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, furnitureCategory: e.target.value })}
+                        placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
+                        className="h-10 rounded-xl"
+                      />
+                    </div>
                     {(!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="orderValue">Giá trị đơn hàng (VNĐ)</Label>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="orderValue" className="text-xs font-semibold">Giá trị đơn hàng (VNĐ)</Label>
                         <Input
                           id="orderValue"
                           type="text"
@@ -2331,73 +2352,69 @@ export function CustomerPage({
                             setNewCustomer({ ...newCustomer, orderValue: rawValue === '' ? 0 : parseInt(rawValue, 10) });
                           }}
                           placeholder="VD: 1.000.000"
-                          className="h-11 rounded-xl"
+                          className="h-10 rounded-xl font-bold text-primary"
                         />
                       </div>
                     )}
-                    <div className="grid gap-2">
-                      <Label htmlFor="nextContactDate">Nhắc nhở gọi lại</Label>
-                      <Input
-                        id="nextContactDate"
-                        type="date"
-                        value={newCustomer.nextContactDate}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, nextContactDate: e.target.value })}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="oneDriveLink">Liên kết OneDrive / Folder ảnh</Label>
-                      <Input
-                        id="oneDriveLink"
-                        value={newCustomer.oneDriveLink}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, oneDriveLink: e.target.value })}
-                        placeholder="https://onedrive.live.com/..."
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
                   </div>
+                </div>
 
-                  <div className="md:col-span-2 grid gap-2">
-                    <Label htmlFor="notes">Ghi chú</Label>
+                {/* Hàng ngang: Ghi chú & Link ảnh */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="notes" className="text-xs font-semibold">Ghi chú yêu cầu của khách</Label>
                     <Textarea
                       id="notes"
                       value={newCustomer.notes}
                       onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
                       placeholder="Yêu cầu chi tiết của khách..."
-                      className="h-20 rounded-xl"
+                      className="h-16 rounded-xl text-xs resize-none"
                     />
                   </div>
-
-                  <div className="md:col-span-2 pt-2 border-t border-rose-100">
-                    <PaintingQuickSelector
-                      items={newCustomerPaintings}
-                      onChange={(items, total, summary) => {
-                        setNewCustomerPaintings(items);
-                        setNewCustomer(prev => ({
-                          ...prev,
-                          orderValue: total > 0 ? total : prev.orderValue,
-                          furnitureCategory: summary ? summary : prev.furnitureCategory
-                        }));
-                      }}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="oneDriveLink" className="text-xs font-semibold">Link ảnh mẫu / Folder Drive</Label>
+                    <Input
+                      id="oneDriveLink"
+                      value={newCustomer.oneDriveLink}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, oneDriveLink: e.target.value })}
+                      placeholder="https://drive.google.com/... hoặc link ảnh mẫu"
+                      className="h-10 rounded-xl text-xs"
                     />
-                    <div className="flex items-center gap-2 mt-2 px-1">
-                      <input
-                        type="checkbox"
-                        id="auto-quote-create"
-                        checked={autoCreateQuotation}
-                        onChange={(e) => setAutoCreateQuotation(e.target.checked)}
-                        className="h-4 w-4 accent-rose-600 rounded cursor-pointer"
-                      />
-                      <Label htmlFor="auto-quote-create" className="text-xs font-semibold text-foreground/80 cursor-pointer">
-                        Tự động khởi tạo bản Báo Giá chính thức cho khách hàng này (không cần vào mục Báo Giá nữa)
-                      </Label>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground">Lưu link ảnh mẫu để thợ chế tác tranh theo đúng mẫu.</p>
+                  </div>
+                </div>
+
+                {/* Khối Chọn tranh đặt hàng & Báo giá nhanh */}
+                <div className="pt-2 border-t border-rose-100">
+                  <PaintingQuickSelector
+                    items={newCustomerPaintings}
+                    onChange={(items, total, summary) => {
+                      setNewCustomerPaintings(items);
+                      setNewCustomer(prev => ({
+                        ...prev,
+                        orderValue: total > 0 ? total : prev.orderValue,
+                        furnitureCategory: summary ? summary : prev.furnitureCategory
+                      }));
+                    }}
+                  />
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <input
+                      type="checkbox"
+                      id="auto-quote-create"
+                      checked={autoCreateQuotation}
+                      onChange={(e) => setAutoCreateQuotation(e.target.checked)}
+                      className="h-4 w-4 accent-rose-600 rounded cursor-pointer"
+                    />
+                    <Label htmlFor="auto-quote-create" className="text-xs font-semibold text-foreground/80 cursor-pointer">
+                      Tự động khởi tạo bản Báo Giá chính thức cho khách hàng này (không cần vào mục Báo Giá nữa)
+                    </Label>
                   </div>
                 </div>
               </div>
-              <DialogFooter>
+
+              <DialogFooter className="pt-2 border-t border-rose-100">
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>Hủy</Button>
-                <Button onClick={handleAddCustomer} disabled={isSaving}>
+                <Button onClick={handleAddCustomer} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white font-bold">
                   {isSaving ? "Đang lưu..." : "Lưu khách hàng"}
                 </Button>
               </DialogFooter>
@@ -3216,224 +3233,227 @@ export function CustomerPage({
 
       {/* Edit Customer Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa khách hàng</DialogTitle>
-            <DialogDescription>
-              Cập nhật thông tin khách hàng và giai đoạn tư vấn.
+        <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-5 gap-3 rounded-2xl">
+          <DialogHeader className="pb-1 border-b border-rose-100">
+            <DialogTitle className="text-lg font-bold text-foreground">Chỉnh sửa thông tin khách hàng</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Cập nhật thông tin khách hàng, sản phẩm tranh và giai đoạn tiến độ.
             </DialogDescription>
           </DialogHeader>
           {selectedCustomer && (
-              <div className="max-h-[70vh] overflow-y-auto w-full px-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-code">Mã khách hàng</Label>
-                      <Input
-                        id="edit-code"
-                        value={selectedCustomer.code || ''}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, code: e.target.value })}
-                        className="h-11 rounded-xl font-mono"
-                        placeholder="Vd: KH060"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-name">Tên khách hàng</Label>
-                      <Input
-                        id="edit-name"
-                        value={selectedCustomer.name}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, name: e.target.value })}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-phone">Số điện thoại</Label>
-                      <Input
-                        id="edit-phone"
-                        value={selectedCustomer.phone}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, phone: e.target.value })}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2 relative">
-                      <Label htmlFor="edit-address" className="flex items-center justify-between">
-                        <span>Địa chỉ / Công trình</span>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          className={cn("h-6 px-2 text-[10px]", selectedCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
-                          onClick={() => setLocationPickerFor('edit')}
-                        >
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {selectedCustomer.location ? "Đã ghim vị trí" : "Ghim bản đồ"}
-                        </Button>
-                      </Label>
-                      <Input
-                        id="edit-address"
-                        value={selectedCustomer.address}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, address: e.target.value })}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-furnitureCategory">Thể loại tranh / Sản phẩm</Label>
-                      <Input
-                        id="edit-furnitureCategory"
-                        value={selectedCustomer.furnitureCategory || ''}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, furnitureCategory: e.target.value })}
-                        placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Cơ sở phụ trách</Label>
-                      <Select 
-                        value={getNormalizedWorkshopId(selectedCustomer.workshop)} 
-                        onValueChange={(v) => {
-                          const updatedCode = updateCodePrefix(selectedCustomer.code || '', v, selectedCustomer.name);
-                          setSelectedCustomer({ ...selectedCustomer, workshop: v, code: updatedCode });
-                        }}
-                        disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
-                      >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn cơ sở" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {WORKSHOPS.filter(w => w.id !== 'all').map(w => (
-                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Giai đoạn</Label>
-                      <Select 
-                        value={selectedCustomer.stage || 'consulting'} 
-                        onValueChange={(v: CustomerStage) => setSelectedCustomer({ ...selectedCustomer, stage: v })}
-                      >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn giai đoạn">
-                            {selectedCustomer.stage ? STAGE_CONFIG[selectedCustomer.stage as keyof typeof STAGE_CONFIG]?.label : "Chọn giai đoạn"}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STAGE_CONFIG).map(([key, config]) => (
-                            <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Loại khách hàng</Label>
-                      <Select 
-                        value={selectedCustomer.customerType || 'retail'} 
-                        onValueChange={(v: CustomerType) => setSelectedCustomer({ ...selectedCustomer, customerType: v })}
-                      >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn loại khách hàng" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="retail">Khách lẻ</SelectItem>
-                          <SelectItem value="agency">Đại lý</SelectItem>
-                          <SelectItem value="project">Dự án</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Sale phụ trách</Label>
-                      <Select 
-                        value={selectedCustomer.assignedSaleId || ''} 
-                        onValueChange={(v) => setSelectedCustomer({ ...selectedCustomer, assignedSaleId: v })}
-                      >
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Chọn nhân viên">
-                            {selectedCustomer.assignedSaleId 
-                              ? members.find(m => m.id === selectedCustomer.assignedSaleId)?.name 
-                              : "Chọn nhân viên"}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent alignItemWithTrigger={false} className="w-[var(--radix-select-trigger-width)] min-w-[300px]">
-                          {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
-                            <SelectItem key={m.id} value={m.id}>
-                              <div className="flex flex-col gap-0.5 text-left">
-                                <span className="font-bold text-sm">{m.name}</span>
-                                <span className="text-[10px] text-muted-foreground">{m.role}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {(!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-orderValue">Giá trị đơn hàng (VNĐ)</Label>
-                        <Input
-                          id="edit-orderValue"
-                          type="text"
-                          value={selectedCustomer.orderValue === 0 ? "" : new Intl.NumberFormat('vi-VN').format(selectedCustomer.orderValue || 0)}
-                          onChange={(e) => {
-                            const rawValue = e.target.value.replace(/\D/g, '');
-                            setSelectedCustomer({ ...selectedCustomer, orderValue: rawValue === '' ? 0 : parseInt(rawValue, 10) });
-                          }}
-                          className="h-11 rounded-xl"
-                        />
-                      </div>
-                    )}
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-nextContactDate">Nhắc nhở gọi lại</Label>
-                      <Input
-                        id="edit-nextContactDate"
-                        type="date"
-                        value={selectedCustomer.nextContactDate || ''}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, nextContactDate: e.target.value })}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-oneDriveLink">Liên kết OneDrive / Folder ảnh</Label>
-                      <Input
-                        id="edit-oneDriveLink"
-                        value={selectedCustomer.oneDriveLink || ''}
-                        onChange={(e) => setSelectedCustomer({ ...selectedCustomer, oneDriveLink: e.target.value })}
-                        placeholder="https://onedrive.live.com/..."
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2 grid gap-2">
-                    <Label htmlFor="edit-notes">Ghi chú</Label>
-                    <Textarea
-                      id="edit-notes"
-                      value={selectedCustomer.notes}
-                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, notes: e.target.value })}
-                      className="h-20 rounded-xl"
+            <div className="flex-1 overflow-y-auto px-1 space-y-3.5 pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cột trái: Thông tin liên hệ */}
+                <div className="space-y-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-name" className="text-xs font-semibold">Tên khách hàng</Label>
+                    <Input
+                      id="edit-name"
+                      value={selectedCustomer.name}
+                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, name: e.target.value })}
+                      className="h-10 rounded-xl"
                     />
                   </div>
-
-                  <div className="md:col-span-2 pt-2 border-t border-rose-100">
-                    <PaintingQuickSelector
-                      items={editCustomerPaintings}
-                      onChange={(items, total, summary) => {
-                        setEditCustomerPaintings(items);
-                        setSelectedCustomer(prev => prev ? ({
-                          ...prev,
-                          orderValue: total > 0 ? total : prev.orderValue,
-                          furnitureCategory: summary ? summary : prev.furnitureCategory
-                        }) : null);
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-phone" className="text-xs font-semibold">Số điện thoại</Label>
+                    <Input
+                      id="edit-phone"
+                      value={selectedCustomer.phone}
+                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, phone: e.target.value })}
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  <div className="grid gap-1.5 relative">
+                    <Label htmlFor="edit-address" className="flex items-center justify-between text-xs font-semibold">
+                      <span>Địa chỉ giao nhận tranh</span>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-5 px-1.5 text-[10px]", selectedCustomer.location ? "text-green-600 bg-green-50" : "text-blue-600")}
+                        onClick={() => setLocationPickerFor('edit')}
+                      >
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {selectedCustomer.location ? "Đã ghim vị trí" : "Ghim bản đồ"}
+                      </Button>
+                    </Label>
+                    <Input
+                      id="edit-address"
+                      value={selectedCustomer.address}
+                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, address: e.target.value })}
+                      placeholder="Địa chỉ nhận tranh / Giao hàng"
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs font-semibold">Cơ sở phụ trách</Label>
+                    <Select 
+                      value={getNormalizedWorkshopId(selectedCustomer.workshop)} 
+                      onValueChange={(v) => {
+                        const updatedCode = updateCodePrefix(selectedCustomer.code || '', v, selectedCustomer.name);
+                        setSelectedCustomer({ ...selectedCustomer, workshop: v, code: updatedCode });
                       }}
-                    />
+                      disabled={currentUser?.workshop && currentUser?.workshop !== 'all'}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue placeholder="Chọn cơ sở" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WORKSHOPS.filter(w => w.id !== 'all').map(w => (
+                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs font-semibold">Loại khách hàng</Label>
+                    <Select 
+                      value={selectedCustomer.customerType || 'retail'} 
+                      onValueChange={(v: CustomerType) => setSelectedCustomer({ ...selectedCustomer, customerType: v })}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue placeholder="Chọn loại khách hàng">
+                          {CUSTOMER_TYPE_LABELS[selectedCustomer.customerType || 'retail'] || 'Khách lẻ'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="retail">Khách lẻ</SelectItem>
+                        <SelectItem value="agency">Đại lý / Doanh nghiệp</SelectItem>
+                        <SelectItem value="project">Dự án / Quà tặng sự kiện</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
+
+                {/* Cột phải: Bán hàng & Quy cách & Giá trị */}
+                <div className="space-y-3">
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs font-semibold">Sale phụ trách</Label>
+                    <Select 
+                      value={selectedCustomer.assignedSaleId || ''} 
+                      onValueChange={(v) => setSelectedCustomer({ ...selectedCustomer, assignedSaleId: v })}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue placeholder="Chọn nhân viên">
+                          {selectedCustomer.assignedSaleId 
+                            ? members.find(m => m.id === selectedCustomer.assignedSaleId)?.name 
+                            : "Chọn nhân viên"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} className="w-[var(--radix-select-trigger-width)] min-w-[300px]">
+                        {members.filter(m => !!m.role?.toLowerCase()?.includes('sale')).map(m => (
+                          <SelectItem key={m.id} value={m.id}>
+                            <div className="flex flex-col gap-0.5 text-left">
+                              <span className="font-bold text-sm">{m.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{m.role}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs font-semibold">Giai đoạn tư vấn</Label>
+                    <Select 
+                      value={selectedCustomer.stage || 'consulting'} 
+                      onValueChange={(v: CustomerStage) => setSelectedCustomer({ ...selectedCustomer, stage: v })}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue placeholder="Chọn giai đoạn">
+                          {selectedCustomer.stage ? STAGE_CONFIG[selectedCustomer.stage as keyof typeof STAGE_CONFIG]?.label : "Chọn giai đoạn"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(STAGE_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-nextContactDate" className="text-xs font-semibold">Nhắc nhở gọi lại</Label>
+                    <Input
+                      id="edit-nextContactDate"
+                      type="date"
+                      value={selectedCustomer.nextContactDate || ''}
+                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, nextContactDate: e.target.value })}
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-furnitureCategory" className="text-xs font-semibold">Thể loại tranh / Sản phẩm</Label>
+                    <Input
+                      id="edit-furnitureCategory"
+                      value={selectedCustomer.furnitureCategory || ''}
+                      onChange={(e) => setSelectedCustomer({ ...selectedCustomer, furnitureCategory: e.target.value })}
+                      placeholder="VD: Tranh gạo rang 40x50cm, Tranh chân dung 33x43cm..."
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  {(!!currentUser?.role?.toLowerCase()?.includes('quản lý') || currentUser?.permissions?.viewPrice !== false) && (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-orderValue" className="text-xs font-semibold">Giá trị đơn hàng (VNĐ)</Label>
+                      <Input
+                        id="edit-orderValue"
+                        type="text"
+                        value={selectedCustomer.orderValue === 0 ? "" : new Intl.NumberFormat('vi-VN').format(selectedCustomer.orderValue || 0)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/\D/g, '');
+                          setSelectedCustomer({ ...selectedCustomer, orderValue: rawValue === '' ? 0 : parseInt(rawValue, 10) });
+                        }}
+                        className="h-10 rounded-xl font-bold text-primary"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Hàng ngang: Ghi chú & Link ảnh */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-notes" className="text-xs font-semibold">Ghi chú yêu cầu của khách</Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={selectedCustomer.notes}
+                    onChange={(e) => setSelectedCustomer({ ...selectedCustomer, notes: e.target.value })}
+                    className="h-16 rounded-xl text-xs resize-none"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-oneDriveLink" className="text-xs font-semibold">Link ảnh mẫu / Folder Drive</Label>
+                  <Input
+                    id="edit-oneDriveLink"
+                    value={selectedCustomer.oneDriveLink || ''}
+                    onChange={(e) => setSelectedCustomer({ ...selectedCustomer, oneDriveLink: e.target.value })}
+                    placeholder="https://drive.google.com/... hoặc link ảnh mẫu"
+                    className="h-10 rounded-xl text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Lưu link ảnh mẫu để thợ chế tác tranh theo đúng mẫu.</p>
+                </div>
+              </div>
+
+              {/* Khối Chọn tranh đặt hàng & Báo giá nhanh */}
+              <div className="pt-2 border-t border-rose-100">
+                <PaintingQuickSelector
+                  items={editCustomerPaintings}
+                  onChange={(items, total, summary) => {
+                    setEditCustomerPaintings(items);
+                    setSelectedCustomer(prev => {
+                      if (!prev) return prev;
+                      return {
+                        ...prev,
+                        orderValue: total > 0 ? total : prev.orderValue,
+                        furnitureCategory: summary ? summary : prev.furnitureCategory
+                      };
+                    });
+                  }}
+                />
+              </div>
+            </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="pt-2 border-t border-rose-100">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>Hủy</Button>
-            <Button onClick={handleUpdateCustomer} disabled={isSaving}>
+            <Button onClick={handleUpdateCustomer} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white font-bold">
               {isSaving ? "Đang lưu..." : "Cập nhật"}
             </Button>
           </DialogFooter>

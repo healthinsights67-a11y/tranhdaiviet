@@ -34,8 +34,12 @@ const extractDimensions = (name: string): string => {
 export const summarizePaintings = (items: SelectedPaintingItem[]): string => {
   if (!items || items.length === 0) return '';
   return items.map(p => {
-    const dim = p.dimensions ? ` ${p.dimensions}` : '';
-    return `${p.name}${dim} (x${p.quantity})`;
+    const nameClean = (p.name || '').trim();
+    const dimClean = (p.dimensions || '').replace(/\s+/g, '');
+    const nameNoSpace = nameClean.replace(/\s+/g, '');
+    const alreadyHasDim = dimClean && nameNoSpace.toLowerCase().includes(dimClean.toLowerCase());
+    const dimText = (p.dimensions && !alreadyHasDim) ? ` ${p.dimensions}` : '';
+    return `${nameClean}${dimText} (x${p.quantity})`;
   }).join(', ');
 };
 
@@ -127,8 +131,8 @@ export function PaintingQuickSelector({ items, onChange, className }: PaintingQu
   }, [items]);
 
   return (
-    <div className={cn("rounded-2xl border-2 border-rose-100 bg-rose-50/30 p-4 space-y-4", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-200/60 pb-3">
+    <div className={cn("rounded-2xl border border-rose-200/80 bg-rose-50/30 p-3 space-y-2.5", className)}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-200/60 pb-2">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0">
             <Sparkles className="h-4 w-4" />
@@ -202,7 +206,7 @@ export function PaintingQuickSelector({ items, onChange, className }: PaintingQu
 
       {/* Items List */}
       {items.length === 0 ? (
-        <div className="text-center py-6 border border-dashed border-rose-200/80 rounded-xl bg-white/60">
+        <div className="text-center py-3.5 border border-dashed border-rose-200/80 rounded-xl bg-white/60">
           <ImageIcon className="h-8 w-8 text-rose-300 mx-auto mb-1.5" />
           <p className="text-xs font-bold text-foreground/80">Chưa chọn bức tranh nào cho đơn hàng này</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
