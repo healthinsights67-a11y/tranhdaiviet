@@ -78,20 +78,9 @@ const navGroups = [
     ]
   },
   {
-    title: 'Phòng ban',
-    items: [
-      { id: 'design', label: 'Thiết kế', icon: Briefcase, permission: 'menuDesign' },
-      { id: 'marketing', label: 'Marketing', icon: Megaphone, permission: 'menuMarketing' },
-      { id: 'ai-render', label: 'Thiết kế AI', icon: Sparkles, permission: 'menuAi' },
-      { id: 'ecoplast-learning', label: 'Kiến thức Tranh Gạo', icon: BookOpen, permission: 'menuSale' },
-    ]
-  },
-  {
     title: 'Hệ thống',
     items: [
       { id: 'materials', label: 'Gạo, Khung & Vật tư', icon: Package, permission: 'viewPrice' },
-      { id: 'media', label: 'Thư viện ảnh', icon: Image, permission: 'menuMedia' },
-        { id: 'documents', label: 'Tài liệu Sản Phẩm', icon: Folder, permission: 'menuMedia' },
       { id: 'employees', label: 'Nhân sự', icon: Users, permission: 'menuMembers' },
       { id: 'users', label: 'Phân quyền', icon: ShieldAlert, isAdminOnly: true },
       { id: 'workflow-guide', label: 'Hướng dẫn', icon: HelpCircle },
@@ -110,7 +99,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, toggleDarkMode, i
       'Chung': false,
       'Đơn hàng & Khách': true,
       'Chế tác & Giao tranh': true,
-      'Phòng ban': false,
+      
       'Hệ thống': false,
     };
     navGroups.forEach(group => {
