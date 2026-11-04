@@ -203,6 +203,7 @@ export function CustomerPage({
         sale: -1,
         notes: -1,
         workshop: -1,
+        date: -1,
       };
 
       for (let r = 0; r < Math.min(rawRows.length, 20); r++) {
@@ -230,6 +231,7 @@ export function CustomerPage({
           colMap.sale = row.findIndex((c: string) => c.includes('sale') || c.includes('nhân viên') || c.includes('phụ trách'));
           colMap.notes = row.findIndex((c: string) => c.includes('ghi chú') || c.includes('nhu cầu') || c.includes('yêu cầu') || c.includes('notes'));
           colMap.workshop = row.findIndex((c: string) => c.includes('cơ sở') || c.includes('xưởng') || c.includes('workshop'));
+          colMap.date = row.findIndex((c: string) => c.includes('ngày') || c.includes('date') || c.includes('thời gian') || c.includes('tháng'));
           break;
         }
       }
@@ -299,6 +301,27 @@ export function CustomerPage({
         const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
         const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
 
+        let rowCreatedAt = nowStr;
+        if (colMap.date !== -1 && row[colMap.date]) {
+          const rawDate = row[colMap.date];
+          if (rawDate instanceof Date) {
+            rowCreatedAt = rawDate.toISOString();
+          } else if (typeof rawDate === 'number') {
+            const jsDate = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+            if (!isNaN(jsDate.getTime())) rowCreatedAt = jsDate.toISOString();
+          } else if (typeof rawDate === 'string' && rawDate.trim()) {
+            const s = rawDate.trim();
+            const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+            if (dmy) {
+              const parsedD = new Date(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}T12:00:00`);
+              if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
+            } else {
+              const parsedD = new Date(s);
+              if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
+            }
+          }
+        }
+
         const docRef = await addDoc(collection(db, 'customers'), {
           code: newCode,
           name,
@@ -309,7 +332,8 @@ export function CustomerPage({
           notes,
           assignedSaleId: currentUser?.id || '',
           workshop: finalWs,
-          createdAt: nowStr,
+          createdAt: rowCreatedAt,
+          consultedAt: rowCreatedAt,
           orderValue: orderValue || 0,
           customerType: 'retail'
         });
@@ -642,6 +666,10 @@ export function CustomerPage({
   const [autoCreateQuotation, setAutoCreateQuotation] = React.useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
+  const [quickDateCustomer, setQuickDateCustomer] = React.useState<Customer | null>(null);
+  const [quickDateVal, setQuickDateVal] = React.useState<string>('');
+  const [quickConsultedDateVal, setQuickConsultedDateVal] = React.useState<string>('');
+  const [isQuickDateDialogOpen, setIsQuickDateDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
   const [newNoteContent, setNewNoteContent] = React.useState('');
   const [pendingContract, setPendingContract] = React.useState<{
@@ -672,6 +700,8 @@ export function CustomerPage({
     workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
     location: undefined as { lat: number, lng: number } | undefined,
     nextContactDate: '',
+    createdAtDate: new Date().toISOString().slice(0, 10),
+    consultedAtDate: new Date().toISOString().slice(0, 10),
   });
 
   // Update default assignedSaleId when currentUser changes
@@ -867,6 +897,12 @@ export function CustomerPage({
     const customerCode = `${prefix}${codeIndex}_${newCustomer.name}`;
 
     const nowStr = new Date().toISOString();
+    const targetCreatedAt = newCustomer.createdAtDate 
+      ? new Date(newCustomer.createdAtDate + 'T12:00:00').toISOString() 
+      : nowStr;
+    const targetConsultedAt = newCustomer.consultedAtDate 
+      ? new Date(newCustomer.consultedAtDate + 'T12:00:00').toISOString() 
+      : targetCreatedAt;
     let finalLocation = newCustomer.location;
     if (!finalLocation && newCustomer.address && newCustomer.address.trim().length > 3) {
       const toastId = toast.loading("Đang tự động định vị địa chỉ khách hàng...");
@@ -899,8 +935,8 @@ export function CustomerPage({
       stage: initialStage,
       location: validLocation,
       code: customerCode,
-      createdAt: nowStr,
-      consultedAt: nowStr,
+      createdAt: targetCreatedAt,
+      consultedAt: targetConsultedAt,
       nextContactDate: finalNextContactDate,
     };
 
@@ -951,7 +987,7 @@ export function CustomerPage({
               address: customerData.address || '',
               constructionType: customerData.furnitureCategory || 'Tranh gạo nghệ thuật',
               estimatedTime: '3 - 5 ngày hoàn thiện',
-              date: nowStr.split('T')[0],
+              date: targetCreatedAt.split('T')[0],
               items: newCustomerPaintings.map(p => {
                 const catLower = (p.category || '').toLowerCase();
                 const matCode = catLower.includes('màu') ? 'GM' : (catLower.includes('chân dung') ? 'CD' : (catLower.includes('yêu cầu') ? 'YEUCAU' : 'GR'));
@@ -982,8 +1018,8 @@ export function CustomerPage({
               },
               createdBy: currentUser?.name || 'Hệ thống',
               workshop: customerData.workshop || 'all',
-              createdAt: nowStr,
-              updatedAt: nowStr
+              createdAt: targetCreatedAt,
+              updatedAt: targetCreatedAt
             };
             await addDoc(collection(db, 'quotations'), quotationData);
             queryClient.invalidateQueries({ queryKey: ['quotations'] });
@@ -1068,6 +1104,8 @@ export function CustomerPage({
         workshop: currentUser?.workshop && currentUser?.workshop !== 'all' ? currentUser.workshop : WORKSHOPS[1].id,
         location: undefined,
         nextContactDate: '',
+        createdAtDate: new Date().toISOString().slice(0, 10),
+        consultedAtDate: new Date().toISOString().slice(0, 10),
       });
       toast.success("Khách hàng đã được thêm thành công");
 
@@ -1162,8 +1200,12 @@ export function CustomerPage({
       };
       
       if (existingCustomer.stage !== 'contracted') {
-        updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
-        updateData.createdAt = nowStr;
+        if (!existingCustomer.consultedAt) {
+          updateData.consultedAt = existingCustomer.createdAt || nowStr;
+        }
+        if (!existingCustomer.createdAt) {
+          updateData.createdAt = nowStr;
+        }
       }
       
       await updateDoc(doc(db, 'customers', customerId), updateData);
@@ -1262,11 +1304,15 @@ export function CustomerPage({
 
       const updateData: any = { stage: newStage };
 
-      // Date adjustments (similar to dialog logic)
+      // Date adjustments (preserve historic creation date if already set)
       if ((newStage === 'contracted' || newStage === 'completed') && 
           oldStage !== 'contracted' && oldStage !== 'completed') {
-        updateData.consultedAt = existingCustomer.consultedAt || existingCustomer.createdAt || nowStr;
-        updateData.createdAt = nowStr;
+        if (!existingCustomer.consultedAt) {
+          updateData.consultedAt = existingCustomer.createdAt || nowStr;
+        }
+        if (!existingCustomer.createdAt) {
+          updateData.createdAt = nowStr;
+        }
       }
 
       if (newStage === 'completed' && oldStage !== 'completed') {
@@ -1368,11 +1414,14 @@ export function CustomerPage({
         if ((selectedCustomer.stage === 'contracted' || selectedCustomer.stage === 'completed') && 
             existingStage !== 'contracted' && existingStage !== 'completed') {
           const nowStr = new Date().toISOString();
-          updateData.consultedAt = existingCustomer?.consultedAt || existingCustomer?.createdAt || nowStr;
-          updateData.createdAt = nowStr;
-          
-          selectedCustomer.consultedAt = updateData.consultedAt;
-          selectedCustomer.createdAt = updateData.createdAt;
+          if (!selectedCustomer.createdAt && !existingCustomer?.createdAt) {
+            updateData.createdAt = nowStr;
+            selectedCustomer.createdAt = nowStr;
+          }
+          if (!selectedCustomer.consultedAt && !existingCustomer?.consultedAt) {
+            updateData.consultedAt = existingCustomer?.createdAt || selectedCustomer.createdAt || nowStr;
+            selectedCustomer.consultedAt = updateData.consultedAt;
+          }
         }
 
         if (selectedCustomer.stage === 'completed' && existingStage !== 'completed') {
@@ -1429,6 +1478,8 @@ export function CustomerPage({
                 customerName: selectedCustomer.name,
                 phone: selectedCustomer.phone,
                 address: selectedCustomer.address || '',
+                date: (selectedCustomer.createdAt || new Date().toISOString()).split('T')[0],
+                createdAt: selectedCustomer.createdAt || existingQuote.createdAt,
                 updatedAt: new Date().toISOString()
               });
             } else {
@@ -1771,6 +1822,80 @@ export function CustomerPage({
       try {
         handleFirestoreError(error, OperationType.DELETE, `customers/${id}`);
       } catch (e) {}
+    }
+  };
+
+  const openQuickDateDialog = (customer: Customer) => {
+    setQuickDateCustomer(customer);
+    setQuickDateVal(customer.createdAt ? customer.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setQuickConsultedDateVal(customer.consultedAt ? customer.consultedAt.slice(0, 10) : (customer.createdAt ? customer.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10)));
+    setIsQuickDateDialogOpen(true);
+  };
+
+  const handleSaveQuickDate = async () => {
+    if (!quickDateCustomer || !quickDateVal) {
+      toast.error("Vui lòng chọn ngày chốt hợp lệ");
+      return;
+    }
+
+    const toastId = toast.loading("Đang cập nhật ngày chốt đơn...");
+    try {
+      let targetCreatedAt = '';
+      if (quickDateCustomer.createdAt && quickDateCustomer.createdAt.includes('T')) {
+        const timePart = quickDateCustomer.createdAt.split('T')[1];
+        targetCreatedAt = quickDateVal + 'T' + timePart;
+      } else {
+        targetCreatedAt = new Date(quickDateVal + 'T12:00:00').toISOString();
+      }
+
+      let targetConsultedAt = quickDateCustomer.consultedAt;
+      if (quickConsultedDateVal) {
+        if (quickDateCustomer.consultedAt && quickDateCustomer.consultedAt.includes('T')) {
+          const timePart = quickDateCustomer.consultedAt.split('T')[1];
+          targetConsultedAt = quickConsultedDateVal + 'T' + timePart;
+        } else {
+          targetConsultedAt = new Date(quickConsultedDateVal + 'T12:00:00').toISOString();
+        }
+      }
+
+      if (user) {
+        await updateDoc(doc(db, 'customers', quickDateCustomer.id), {
+          createdAt: targetCreatedAt,
+          consultedAt: targetConsultedAt || targetCreatedAt
+        });
+
+        // Đồng bộ cập nhật ngày các báo giá liên quan của khách hàng
+        try {
+          const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', quickDateCustomer.id));
+          const quotationSnap = await getDocs(quotationQ);
+          for (const qDoc of quotationSnap.docs) {
+            await updateDoc(doc(db, 'quotations', qDoc.id), {
+              date: quickDateVal,
+              createdAt: targetCreatedAt,
+              updatedAt: new Date().toISOString()
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ['quotations'] });
+        } catch (qErr) {
+          console.error("Lỗi đồng bộ ngày báo giá:", qErr);
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
+      } else {
+        setCustomers(prev => prev.map(c => c.id === quickDateCustomer.id ? {
+          ...c,
+          createdAt: targetCreatedAt,
+          consultedAt: targetConsultedAt || targetCreatedAt
+        } : c));
+      }
+
+      const formattedVN = quickDateVal.split('-').reverse().join('/');
+      toast.success(`Đã cập nhật ngày chốt đơn của khách hàng sang ${formattedVN}!`, { id: toastId });
+      setIsQuickDateDialogOpen(false);
+      setQuickDateCustomer(null);
+    } catch (err: any) {
+      console.error("Lỗi cập nhật ngày chốt:", err);
+      toast.error("Không thể lưu ngày chốt: " + (err.message || String(err)), { id: toastId });
     }
   };
 
@@ -2406,6 +2531,41 @@ export function CustomerPage({
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* Ngày chốt & Ngày tư vấn (phục vụ nhập bù dữ liệu lịch sử) */}
+                    <div className="p-2.5 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-xl space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1">
+                          <Label htmlFor="new-createdAtDate" className="text-[11px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Ngày chốt / Cọc
+                          </Label>
+                          <Input
+                            id="new-createdAtDate"
+                            type="date"
+                            value={newCustomer.createdAtDate}
+                            onChange={(e) => setNewCustomer({ ...newCustomer, createdAtDate: e.target.value })}
+                            className="h-8 rounded-lg text-xs bg-white dark:bg-zinc-900 font-semibold"
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label htmlFor="new-consultedAtDate" className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Ngày tư vấn
+                          </Label>
+                          <Input
+                            id="new-consultedAtDate"
+                            type="date"
+                            value={newCustomer.consultedAtDate}
+                            onChange={(e) => setNewCustomer({ ...newCustomer, consultedAtDate: e.target.value })}
+                            className="h-8 rounded-lg text-xs bg-white dark:bg-zinc-900 font-semibold"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        💡 Có thể chọn ngày trong quá khứ để đưa khách hàng vào đúng tháng doanh thu tương ứng.
+                      </p>
+                    </div>
+
                     <div className="grid gap-1.5">
                       <Label htmlFor="nextContactDate" className="text-xs font-semibold">Nhắc nhở gọi lại</Label>
                       <Input
@@ -2944,21 +3104,45 @@ export function CustomerPage({
 
                       <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] pl-0.5 font-medium">
                         {['contracted', 'production', 'production_completed', 'installation', 'completed'].includes(customer.stage) && customer.createdAt && (
-                          <div className="flex items-center gap-1 text-emerald-600 font-semibold">
-                            <Clock className="h-2.5 w-2.5 opacity-70" />
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openQuickDateDialog(customer);
+                            }}
+                            className="flex items-center gap-1 text-emerald-600 font-semibold cursor-pointer hover:underline hover:text-emerald-700 transition-colors group/date"
+                            title="Bấm để đổi ngày/tháng chốt đơn"
+                          >
+                            <Clock className="h-2.5 w-2.5 opacity-70 group-hover/date:text-emerald-700" />
                             <span>Chốt/Cọc: {formatVNTime(customer.createdAt)}</span>
+                            <Pencil className="h-2 w-2 opacity-0 group-hover/date:opacity-100 transition-opacity ml-0.5" />
                           </div>
                         )}
                         {customer.consultedAt ? (
-                          <div className="flex items-center gap-1 text-amber-600 font-semibold">
-                            <Clock className="h-2.5 w-2.5 opacity-70" />
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openQuickDateDialog(customer);
+                            }}
+                            className="flex items-center gap-1 text-amber-600 font-semibold cursor-pointer hover:underline hover:text-amber-700 transition-colors group/date"
+                            title="Bấm để đổi ngày tư vấn / ngày chốt"
+                          >
+                            <Clock className="h-2.5 w-2.5 opacity-70 group-hover/date:text-amber-700" />
                             <span>Tư vấn: {formatVNTime(customer.consultedAt)}</span>
+                            <Pencil className="h-2 w-2 opacity-0 group-hover/date:opacity-100 transition-opacity ml-0.5" />
                           </div>
                         ) : (
                           customer.stage === 'consulting' && customer.createdAt && (
-                            <div className="flex items-center gap-1 text-amber-600 font-semibold">
-                              <Clock className="h-2.5 w-2.5 opacity-70" />
+                            <div 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openQuickDateDialog(customer);
+                              }}
+                              className="flex items-center gap-1 text-amber-600 font-semibold cursor-pointer hover:underline hover:text-amber-700 transition-colors group/date"
+                              title="Bấm để đổi ngày tư vấn / ngày chốt"
+                            >
+                              <Clock className="h-2.5 w-2.5 opacity-70 group-hover/date:text-amber-700" />
                               <span>Tư vấn: {formatVNTime(customer.createdAt)}</span>
+                              <Pencil className="h-2 w-2 opacity-0 group-hover/date:opacity-100 transition-opacity ml-0.5" />
                             </div>
                           )
                         )}
@@ -3015,6 +3199,13 @@ export function CustomerPage({
                             Tạo báo giá
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem 
+                          onClick={() => openQuickDateDialog(customer)} 
+                          className="text-xs text-primary font-semibold gap-1.5 cursor-pointer"
+                        >
+                          <Calendar className="h-3.5 w-3.5 text-primary" />
+                          Đổi ngày chốt đơn
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openEditDialog(customer)} className="text-xs">Sửa</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openViewDialog(customer)} className="text-xs">Chi tiết</DropdownMenuItem>
                         {['contracted', 'production', 'completed'].includes(customer.stage) && (
@@ -3456,6 +3647,57 @@ export function CustomerPage({
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Ngày chốt & Ngày tư vấn (phục vụ sửa tháng/ngày ghi nhận) */}
+                  <div className="p-2.5 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-xl space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid gap-1">
+                        <Label htmlFor="edit-createdAtDate" className="text-[11px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Ngày chốt / Cọc
+                        </Label>
+                        <Input
+                          id="edit-createdAtDate"
+                          type="date"
+                          value={selectedCustomer.createdAt ? selectedCustomer.createdAt.slice(0, 10) : ''}
+                          onChange={(e) => {
+                            const dateVal = e.target.value;
+                            if (dateVal) {
+                              const timePart = selectedCustomer.createdAt && selectedCustomer.createdAt.includes('T')
+                                ? selectedCustomer.createdAt.split('T')[1]
+                                : '12:00:00.000Z';
+                              setSelectedCustomer({ ...selectedCustomer, createdAt: dateVal + 'T' + timePart });
+                            }
+                          }}
+                          className="h-8 rounded-lg text-xs bg-white dark:bg-zinc-900 font-semibold"
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="edit-consultedAtDate" className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Ngày tư vấn
+                        </Label>
+                        <Input
+                          id="edit-consultedAtDate"
+                          type="date"
+                          value={selectedCustomer.consultedAt ? selectedCustomer.consultedAt.slice(0, 10) : (selectedCustomer.createdAt ? selectedCustomer.createdAt.slice(0, 10) : '')}
+                          onChange={(e) => {
+                            const dateVal = e.target.value;
+                            if (dateVal) {
+                              const timePart = selectedCustomer.consultedAt && selectedCustomer.consultedAt.includes('T')
+                                ? selectedCustomer.consultedAt.split('T')[1]
+                                : '12:00:00.000Z';
+                              setSelectedCustomer({ ...selectedCustomer, consultedAt: dateVal + 'T' + timePart });
+                            }
+                          }}
+                          className="h-8 rounded-lg text-xs bg-white dark:bg-zinc-900 font-semibold"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      💡 Đổi ngày chốt sẽ tự động chuyển khách hàng sang tháng đó trên bộ lọc và cập nhật báo giá liên kết.
+                    </p>
+                  </div>
+
                   <div className="grid gap-1.5">
                     <Label htmlFor="edit-nextContactDate" className="text-xs font-semibold">Nhắc nhở gọi lại</Label>
                     <Input
@@ -3541,6 +3783,61 @@ export function CustomerPage({
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>Hủy</Button>
             <Button onClick={handleUpdateCustomer} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white font-bold">
               {isSaving ? "Đang lưu..." : "Cập nhật"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Date Change Dialog */}
+      <Dialog open={isQuickDateDialogOpen} onOpenChange={setIsQuickDateDialogOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-2xl p-5">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Đổi ngày chốt & Tháng ghi nhận
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Khách hàng: <span className="font-bold text-foreground">{quickDateCustomer?.name}</span> {quickDateCustomer?.code ? `(${quickDateCustomer?.code})` : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-rose-700 flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                Ngày chốt đơn / Đặt cọc (Xác định tháng)
+              </Label>
+              <Input
+                type="date"
+                value={quickDateVal}
+                onChange={(e) => setQuickDateVal(e.target.value)}
+                className="h-10 rounded-xl font-bold text-sm bg-rose-50/30 border-rose-200"
+              />
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                💡 Khách hàng và doanh thu sẽ được chuyển sang tháng tương ứng với ngày được chọn trên thanh lọc.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                Ngày tiếp nhận tư vấn
+              </Label>
+              <Input
+                type="date"
+                value={quickConsultedDateVal}
+                onChange={(e) => setQuickConsultedDateVal(e.target.value)}
+                className="h-10 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-rose-100">
+            <Button variant="outline" size="sm" onClick={() => setIsQuickDateDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button size="sm" onClick={handleSaveQuickDate} className="bg-primary hover:bg-primary/90 text-white font-bold">
+              Lưu ngày chốt
             </Button>
           </DialogFooter>
         </DialogContent>
