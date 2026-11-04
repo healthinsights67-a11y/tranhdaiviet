@@ -880,7 +880,7 @@ function AppContent() {
       case 'users':
         return isAdmin ? <UserManagement /> : <Dashboard tasks={filteredTasks} members={activeMembers} customers={filteredCustomers} quotations={filteredQuotations} currentUser={currentMember} schedules={schedulesData} installations={installationsData} setActiveTab={setActiveTab} />;
       case 'materials':
-        return <MaterialConfigPage tasks={filteredTasks} quotations={filteredQuotations} />;
+        return <MaterialConfigPage tasks={filteredTasks} quotations={filteredQuotations} currentUser={currentMember} />;
       case 'trash':
         return <TrashPage currentUser={currentMember} />;
       case 'ecoplast-learning':

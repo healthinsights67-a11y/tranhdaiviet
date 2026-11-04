@@ -3,6 +3,12 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, writeBatch }
 import { db, handleFirestoreError, OperationType, auth } from '@/src/lib/firebase';
 import { MaterialConfig, Task, Quotation, AccessoryConfig, InventoryTransaction, getWorkshopName } from '@/src/types';
 import { MaterialConfigSchema, AccessoryConfigSchema, InventoryTransactionSchema } from '@/src/schemas';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { Member } from '@/src/types';
+import { Download } from 'lucide-react';
 import { Plus, Pencil, Trash2, Search, FileSpreadsheet, Upload, X, Check, AlertCircle, Sparkles, ArrowDownLeft, ArrowUpRight, History, Settings, AlertTriangle, FileText, Package } from 'lucide-react';
 import { scanInvoice, ScannedInvoiceItem } from '@/src/services/geminiRenderService';
 import { Button } from '@/components/ui/button';
@@ -29,9 +35,14 @@ import { MaterialRequisitionForm } from '../kanban/MaterialRequisitionForm';
 interface MaterialConfigPageProps {
   tasks?: Task[];
   quotations?: Quotation[];
+  currentUser?: Member | null;
 }
 
-export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = [], quotations = [] }) => {
+export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = [], quotations = [], currentUser = null }) => {
+  const { isAdmin } = useAuth();
+  const isManager = isAdmin || !!(currentUser?.role && ['quản lý', 'giám đốc', 'trợ lý', 'kế toán', 'chủ sở hữu', 'admin', 'tổng quản lý'].some(r => currentUser.role.toLowerCase().includes(r)));
+  const canViewPrice = isManager || (currentUser?.permissions?.viewPrice !== false);
+  const inventoryFileInputRef = React.useRef<HTMLInputElement>(null);
   const [materials, setMaterials] = useState<MaterialConfig[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -164,6 +175,233 @@ export const MaterialConfigPage: React.FC<MaterialConfigPageProps> = ({ tasks = 
       toast.error("Lỗi khi tạo kho mẫu: " + (err?.message || ""));
     }
   };
+
+  const handleDeleteInventoryItem = async (item: any) => {
+    if (!isManager) {
+      toast.error("Chỉ Quản lý hoặc Ban Giám đốc mới có quyền xóa mặt hàng khỏi kho!");
+      return;
+    }
+
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa mặt hàng "${item.name}" (Mã: ${item.code}) khỏi kho không?\nHành động này không thể hoàn tác.`)) {
+      return;
+    }
+
+    try {
+      if (item.type === 'material') {
+        await deleteDoc(doc(db, 'materialConfigs', item.id));
+      } else {
+        await deleteDoc(doc(db, 'accessoryConfigs', item.id));
+      }
+      toast.success(`Đã xóa mặt hàng "${item.name}" khỏi danh mục kho!`);
+    } catch (err: any) {
+      console.error("Lỗi xóa mặt hàng:", err);
+      toast.error("Không thể xóa mặt hàng: " + (err?.message || ""));
+    }
+  };
+
+  const handleExportInventoryExcel = async () => {
+    try {
+      if (filteredInventory.length === 0) {
+        toast.error("Không có mặt hàng nào để xuất file!");
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Ton_Kho', {
+        pageSetup: { paperSize: 9, orientation: 'landscape' }
+      });
+
+      sheet.columns = [
+        { width: 8 },   // STT
+        { width: 16 },  // Mã hàng
+        { width: 35 },  // Tên mặt hàng
+        { width: 25 },  // Danh mục
+        { width: 18 },  // Phân loại
+        { width: 10 },  // ĐVT
+        { width: 14 },  // Tồn kho
+        { width: 14 },  // Tối thiểu
+        { width: 16 },  // Trạng thái
+        { width: 18 },  // Đơn giá (VNĐ)
+        { width: 22 },  // Tổng giá trị (VNĐ)
+      ];
+
+      const addTitle = (text: string, bold: boolean, size: number, colorHex: string) => {
+        const row = sheet.addRow([text]);
+        sheet.mergeCells(row.number, 1, row.number, 11);
+        const cell = row.getCell(1);
+        cell.font = { name: 'Times New Roman', bold, size, color: { argb: colorHex } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        row.height = size * 1.8;
+      };
+
+      addTitle('TRANH ĐẠI VIỆT - BÁO CÁO TỒN KHO NGUYÊN VẬT TƯ & PHỤ KIỆN', true, 14, 'FFE11D48');
+      const now = new Date();
+      const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+      addTitle(`Thời điểm xuất báo cáo: ${dateStr} - Người xuất: ${currentUser?.name || 'Quản lý kho'}`, false, 10, 'FF4B5563');
+      sheet.addRow([]).height = 10;
+
+      const headerRow = sheet.addRow([
+        'STT', 'MÃ HÀNG', 'TÊN MẶT HÀNG / QUY CÁCH', 'HẠNG MỤC', 'PHÂN LOẠI', 'ĐVT', 'TỒN KHO', 'TỒN TỐI THIỂU', 'TRẠNG THÁI', 'ĐƠN GIÁ (VNĐ)', 'TỔNG GIÁ TRỊ (VNĐ)'
+      ]);
+      headerRow.height = 26;
+
+      for (let i = 1; i <= 11; i++) {
+        const cell = headerRow.getCell(i);
+        cell.font = { name: 'Times New Roman', bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE11D48' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+
+      filteredInventory.forEach((item, idx) => {
+        const unitPrice = item.type === 'material' ? (item.finalPrice || item.preTaxBoxPrice || 0) : (item.finalPrice || item.preTaxPrice || 0);
+        const stock = item.stock || 0;
+        const minStock = item.minStock || 0;
+        const totalVal = stock * unitPrice;
+        const status = stock === 0 ? 'Hết hàng' : (stock <= minStock ? 'Cảnh báo thiếu' : 'Còn hàng');
+        const typeStr = item.type === 'material' ? 'Gạo / Khung' : 'Phụ kiện';
+
+        const row = sheet.addRow([
+          idx + 1,
+          item.code || '',
+          item.name || '',
+          item.category || '',
+          typeStr,
+          item.unit || '',
+          stock,
+          minStock,
+          status,
+          canViewPrice ? unitPrice : '***',
+          canViewPrice ? totalVal : '***'
+        ]);
+        row.height = 20;
+        row.getCell(1).alignment = { horizontal: 'center' };
+        row.getCell(2).alignment = { horizontal: 'center' };
+        row.getCell(6).alignment = { horizontal: 'center' };
+        row.getCell(7).alignment = { horizontal: 'center' };
+        row.getCell(8).alignment = { horizontal: 'center' };
+        row.getCell(9).alignment = { horizontal: 'center' };
+        row.getCell(10).alignment = { horizontal: 'right' };
+        row.getCell(11).alignment = { horizontal: 'right' };
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Ton_Kho_Tranh_Dai_Viet_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`);
+      toast.success("🎉 Đã xuất file Excel tồn kho thành công!");
+    } catch (err: any) {
+      console.error("Export Excel error:", err);
+      toast.error("Lỗi xuất file Excel: " + (err?.message || ""));
+    }
+  };
+
+  const handleImportInventoryExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toastId = toast.loading("Đang đọc và phân tích file Excel tồn kho...");
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (!rawRows || rawRows.length === 0) {
+        toast.dismiss(toastId);
+        toast.error("File Excel trống!");
+        if (inventoryFileInputRef.current) inventoryFileInputRef.current.value = '';
+        return;
+      }
+
+      let headerIdx = -1;
+      let colMap = { code: -1, name: -1, category: -1, unit: -1, stock: -1, minStock: -1, price: -1, type: -1 };
+
+      for (let r = 0; r < Math.min(rawRows.length, 20); r++) {
+        const row = rawRows[r].map((cell: any) => String(cell || '').trim().toLowerCase());
+        const codeIdx = row.findIndex((c: string) => c.includes('mã'));
+        const nameIdx = row.findIndex((c: string) => c.includes('tên') || c.includes('mặt hàng') || c.includes('vật tư'));
+
+        if (codeIdx !== -1 || nameIdx !== -1) {
+          headerIdx = r;
+          colMap.code = codeIdx;
+          colMap.name = nameIdx;
+          colMap.category = row.findIndex((c: string) => c.includes('hạng mục') || c.includes('danh mục'));
+          colMap.unit = row.findIndex((c: string) => c.includes('đvt') || c.includes('đơn vị'));
+          colMap.stock = row.findIndex((c: string) => c.includes('tồn kho') || c === 'tồn' || c.includes('số lượng'));
+          colMap.minStock = row.findIndex((c: string) => c.includes('tối thiểu') || c.includes('hạn mức'));
+          colMap.price = row.findIndex((c: string) => c.includes('đơn giá') || c.includes('giá') || c.includes('giá vốn'));
+          colMap.type = row.findIndex((c: string) => c.includes('loại') || c.includes('phân loại'));
+          break;
+        }
+      }
+
+      const startRow = headerIdx !== -1 ? headerIdx + 1 : 1;
+      const batch = writeBatch(db);
+      let importedCount = 0;
+
+      for (let i = startRow; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || row.length === 0) continue;
+
+        const name = colMap.name !== -1 ? String(row[colMap.name] || '').trim() : '';
+        const code = colMap.code !== -1 ? String(row[colMap.code] || '').trim() : '';
+        if (!name && !code) continue;
+
+        const category = colMap.category !== -1 ? String(row[colMap.category] || '').trim() : 'GẠO RANG & KHUNG TRANH';
+        const unit = colMap.unit !== -1 ? String(row[colMap.unit] || '').trim() : 'Cái';
+        const stock = colMap.stock !== -1 ? (parseFloat(String(row[colMap.stock] || '').replace(/[^\d.-]/g, '')) || 0) : 0;
+        const minStock = colMap.minStock !== -1 ? (parseFloat(String(row[colMap.minStock] || '').replace(/[^\d.-]/g, '')) || 0) : 0;
+        const price = colMap.price !== -1 ? (parseFloat(String(row[colMap.price] || '').replace(/[^\d.-]/g, '')) || 0) : 0;
+
+        const isAccessory = category.toLowerCase().includes('phụ kiện') || 
+                            name.toLowerCase().includes('keo') || 
+                            name.toLowerCase().includes('tem') || 
+                            name.toLowerCase().includes('móc') || 
+                            name.toLowerCase().includes('hộp');
+
+        if (isAccessory) {
+          const docRef = doc(collection(db, 'accessoryConfigs'));
+          batch.set(docRef, {
+            code: code || `PK_${Math.floor(100 + Math.random() * 900)}`,
+            name: name || code,
+            option: '',
+            unit: unit || 'Cái',
+            stock,
+            minStock,
+            preTaxPrice: price,
+            listedPrice: price,
+            discountPercent: 0,
+            createdAt: new Date().toISOString()
+          });
+        } else {
+          const docRef = doc(collection(db, 'materialConfigs'));
+          batch.set(docRef, {
+            code: code || `VT_${Math.floor(100 + Math.random() * 900)}`,
+            name: name || code,
+            category: category || 'GẠO RANG & KHUNG TRANH',
+            unit: unit || 'Kg',
+            stock,
+            minStock,
+            preTaxBoxPrice: price,
+            listedBoxPrice: price,
+            discountPercent: 0,
+            createdAt: new Date().toISOString()
+          });
+        }
+        importedCount++;
+      }
+
+      await batch.commit();
+      toast.dismiss(toastId);
+      toast.success(`🎉 Đã nhập thành công ${importedCount} mặt hàng vào kho!`);
+      if (inventoryFileInputRef.current) inventoryFileInputRef.current.value = '';
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      console.error("Import inventory error:", err);
+      toast.error("Lỗi nhập file Excel: " + (err?.message || ""));
+    }
+  };
+
 
 const handleOpenTransactionDialog = (item: any) => {
     setSelectedInventoryItem(item);
@@ -1828,6 +2066,33 @@ const handleOpenTransactionDialog = (item: any) => {
                   <Button 
                     size="sm" 
                     variant="outline"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/40 h-8 px-1 sm:px-2.5 justify-center"
+                    onClick={() => inventoryFileInputRef.current?.click()}
+                    title="Nhập danh sách tồn kho từ file Excel"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span>Nhập Excel</span>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold border-rose-300 text-rose-700 hover:bg-rose-50 bg-rose-50/40 h-8 px-1 sm:px-2.5 justify-center"
+                    onClick={handleExportInventoryExcel}
+                    title="Xuất danh sách tồn kho ra file Excel"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                    <span>Xuất Excel</span>
+                  </Button>
+                  <input 
+                    ref={inventoryFileInputRef} 
+                    type="file" 
+                    accept=".xlsx, .xls, .csv" 
+                    className="hidden" 
+                    onChange={handleImportInventoryExcel} 
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline"
                     className="gap-1 rounded-xl text-[11px] sm:text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 bg-indigo-50/50 h-8 px-1 sm:px-2.5 justify-center"
                     onClick={() => document.getElementById('invoice-scanner-input')?.click()}
                   >
@@ -1892,8 +2157,8 @@ const handleOpenTransactionDialog = (item: any) => {
                 </div>
                 <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
                   <p className="text-[9px] sm:text-[10px] font-bold text-indigo-600 uppercase leading-tight">Vốn tồn kho tổng</p>
-                  <p className="text-xs sm:text-base font-black text-indigo-700 mt-0.5 truncate" title={`${totalInventoryValue.toLocaleString('vi-VN')} ₫`}>
-                    {totalInventoryValue.toLocaleString('vi-VN')} ₫
+                  <p className="text-xs sm:text-base font-black text-indigo-700 mt-0.5 truncate" title={`${canViewPrice ? `${totalInventoryValue.toLocaleString('vi-VN')} ₫` : '*** ₫'}`}>
+                    {canViewPrice ? `${totalInventoryValue.toLocaleString('vi-VN')} ₫` : '*** ₫'}
                   </p>
                 </div>
                 <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs">
@@ -1906,8 +2171,8 @@ const handleOpenTransactionDialog = (item: any) => {
                 </div>
                 <div className="p-2.5 sm:p-3 bg-card border rounded-xl shadow-xs col-span-2 sm:col-span-1">
                   <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase leading-tight">Giá trị đã lọc</p>
-                  <p className="text-xs sm:text-base font-black text-blue-700 mt-0.5 truncate" title={`${totalFilteredValue.toLocaleString('vi-VN')} ₫`}>
-                    {totalFilteredValue.toLocaleString('vi-VN')} ₫
+                  <p className="text-xs sm:text-base font-black text-blue-700 mt-0.5 truncate" title={`${canViewPrice ? `${totalFilteredValue.toLocaleString('vi-VN')} ₫` : '*** ₫'}`}>
+                    {canViewPrice ? `${totalFilteredValue.toLocaleString('vi-VN')} ₫` : '*** ₫'}
                   </p>
                 </div>
               </div>
@@ -2029,10 +2294,10 @@ const handleOpenTransactionDialog = (item: any) => {
                               </div>
                             </td>
                             <td className="p-3 text-right font-semibold text-slate-600">
-                              {unitPrice.toLocaleString('vi-VN')} ₫
+                              {canViewPrice ? `${unitPrice.toLocaleString('vi-VN')} ₫` : '*** ₫'}
                             </td>
                             <td className="p-3 text-right font-extrabold text-slate-800">
-                              {itemTotalValue.toLocaleString('vi-VN')} ₫
+                              {canViewPrice ? `${itemTotalValue.toLocaleString('vi-VN')} ₫` : '*** ₫'}
                             </td>
                             <td className="p-3 text-right pr-4">
                               <div className="flex justify-end gap-1.5">
@@ -2053,6 +2318,17 @@ const handleOpenTransactionDialog = (item: any) => {
                                 >
                                   <Settings className="h-4 w-4" />
                                 </Button>
+                                {isManager && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                    onClick={() => handleDeleteInventoryItem(item)}
+                                    title="Xóa mặt hàng (Dành cho Quản lý)"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>

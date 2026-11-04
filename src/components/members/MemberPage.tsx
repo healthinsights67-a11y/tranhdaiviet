@@ -62,7 +62,7 @@ const ROLES = [
 ];
 
 const PERMISSION_LABELS: { [K in keyof MemberPermissions]: string } = {
-  viewPrice: "Xem giá tiền",
+  viewPrice: "Xem đơn giá & giá trị tồn kho",
   viewRevenue: "Xem doanh thu",
   menuProduction: "Lịch Sản xuất",
   menuMeasurement: "Lịch Đo đạc",
