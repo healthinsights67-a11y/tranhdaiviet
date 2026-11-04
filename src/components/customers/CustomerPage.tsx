@@ -960,7 +960,7 @@ export function CustomerPage({
                   id: p.id || Math.random().toString(36).substr(2, 9),
                   category: p.category || matName,
                   name: p.name,
-                  description: p.description || `- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công tinh xảo, khung kèm kính bảo vệ`,
+                  description: p.description || `- Kích thước: ${p.dimensions || 'Tiêu chuẩn'}\n- Chất liệu: ${matName}\n- Hoàn thiện: Khung nghệ thuật kèm mặt bảo vệ & ván chống ẩm`,
                   unit: 'bức',
                   quantity: p.quantity,
                   unitPrice: p.unitPrice,

@@ -15,7 +15,7 @@ export const STANDARD_PRICES: PriceItem[] = [
     unit: 'bức',
     price: 330000,
     category: 'Tranh gạo rang',
-    description: 'Kích cỡ 20x25 cm. Sử dụng hạt gạo rang tự nhiên chuyển màu thủ công tinh xảo.'
+    description: '- Kích thước: 20x25cm\n- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công\n- Hoàn thiện: Khung nghệ thuật kèm mặt bảo vệ & ván chống ẩm'
   },
   {
     name: 'Tranh gạo rang 25x35cm',
@@ -138,7 +138,7 @@ export const STANDARD_PRICES: PriceItem[] = [
     unit: 'bức',
     price: 2400000,
     category: 'Tranh gạo màu',
-    description: 'Kích cỡ 65x85 cm. Khung kép cao cấp, kính bảo vệ trong suốt.'
+    description: 'Kích cỡ 65x85 cm. Khung kép cao cấp, mặt bảo vệ trong suốt.'
   },
   {
     name: 'Tranh gạo màu 75x105cm',

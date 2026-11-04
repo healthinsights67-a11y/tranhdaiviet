@@ -146,47 +146,42 @@ const getAccessoryMaterialCode = (name: string, category?: string): string => {
   return 'PKK'; // Phụ kiện khác
 };
 
-const getMaterialDescriptionNote = (code: string): string => {
-  switch (code.toUpperCase()) {
-    case 'GR':
-      return '- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công tinh xảo, khung kèm kính bảo vệ';
-    case 'GM':
-      return '- Chất liệu: Hạt gạo màu nghệ thuật thủ công tinh xảo, khung kèm kính bảo vệ';
-    case 'CD':
-      return '- Chất liệu: Tranh gạo chân dung truyền thần, phủ bóng nano bảo quản';
-    case 'YEUCAU':
-      return '- Chất liệu: Tranh gạo nghệ thuật chế tác theo market & logo riêng';
-    case 'KHUNG':
-      return '- Chất liệu: Khung tranh nghệ thuật cao cấp, tem đồng lưu niệm';
-    case 'ECO':
-      return '- Chất liệu: Hạt gạo rang tự nhiên kết hợp khung composite cao cấp';
-    default:
-      return '- Chất liệu: Gạo nghệ thuật kết hợp khung composite cao cấp, kính 2mm và ván chống ẩm';
+const buildCleanDescription = (name: string = '', rawDesc: string = '', materialCode: string = 'GR'): string => {
+  const code = (materialCode || 'GR').toUpperCase();
+  const nameClean = name || '';
+  
+  // Trích xuất kích cỡ từ tên (vd: 20x25cm, 40x50cm, 33x43cm...)
+  const dimMatch = nameClean.match(/(\d+\s*[xX×]\s*\d+\s*(?:cm)?)/);
+  const dimText = dimMatch ? dimMatch[1].replace(/\s+/g, '') : '';
+  
+  const points: string[] = [];
+  
+  // 1. Kích thước (nếu có)
+  if (dimText) {
+    points.push(`- Kích thước: ${dimText}`);
   }
+  
+  // 2. Chất liệu theo từng dòng tranh (gọn gàng, không lặp lại)
+  if (code === 'GM' || nameClean.toLowerCase().includes('màu')) {
+    points.push('- Chất liệu: Hạt gạo màu nghệ thuật thủ công tinh xảo');
+  } else if (code === 'CD' || nameClean.toLowerCase().includes('chân dung')) {
+    points.push('- Thể loại: Tranh gạo chân dung truyền thần tỉ mỉ');
+  } else if (code === 'YEUCAU' || nameClean.toLowerCase().includes('yêu cầu')) {
+    points.push('- Thể loại: Chế tác theo market & logo riêng của khách');
+  } else if (code === 'KHUNG' || nameClean.toLowerCase().includes('khung')) {
+    points.push('- Quy cách: Khung composite viền hoa văn sang trọng');
+  } else {
+    points.push('- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công');
+  }
+  
+  // 3. Hoàn thiện: Dùng "mặt bảo vệ" thay vì cố định "kính bảo vệ" (phù hợp cả mica lẫn kính)
+  points.push('- Hoàn thiện: Khung tranh nghệ thuật kèm mặt bảo vệ & ván chống ẩm');
+  
+  return points.join('\n');
 };
 
-const updateDescriptionWithMaterial = (description: string, materialCode: string): string => {
-  const note = getMaterialDescriptionNote(materialCode);
-  const lines = description ? description.split('\n') : [];
-  
-  const materialLineIndex = lines.findIndex(line => 
-    line.toLowerCase().includes('chất liệu') || 
-    line.toLowerCase().includes('chat lieu')
-  );
-
-  if (materialLineIndex !== -1) {
-    if (note) {
-      lines[materialLineIndex] = note;
-    } else {
-      lines.splice(materialLineIndex, 1);
-    }
-  } else {
-    if (note) {
-      lines.unshift(note);
-    }
-  }
-
-  return lines.join('\n').trim();
+const updateDescriptionWithMaterial = (description: string, materialCode: string, name: string = ''): string => {
+  return buildCleanDescription(name, description, materialCode);
 };
 
 const getMaterialColor = (code?: string) => {
@@ -209,7 +204,7 @@ const DEFAULT_ITEMS: QuotationItem[] = [
     id: '1',
     category: 'Tranh gạo rang',
     name: 'Tranh gạo rang 20×25cm',
-    description: '- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công tinh xảo\n- Khung composite cao cấp, kính bảo vệ và ván MDF chống ẩm',
+    description: '- Kích thước: 20×25cm\n- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công\n- Hoàn thiện: Khung tranh nghệ thuật kèm mặt bảo vệ & ván chống ẩm',
     unit: 'bức',
     quantity: 1,
     unitPrice: 330000,
@@ -402,7 +397,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
         id: Math.random().toString(36).substr(2, 9),
         category: product.category || 'Khác',
         name: product.productName,
-        description: updateDescriptionWithMaterial(product.description || '', isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'GR'),
+        description: buildCleanDescription(product.productName, product.description || '', isAccessory ? getAccessoryMaterialCode(product.productName, product.category) : 'GR'),
         unit: product.unit || 'bức',
         quantity: 1,
         basePrice,
@@ -1113,7 +1108,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                       const basePrice = getProductPriceForWorkshop(standard, formData.workshop);
                                       const unitPrice = isAccessory ? basePrice : Math.round(basePrice * ecoRatio);
                                       const accCode = isAccessory ? getAccessoryMaterialCode(standard.productName, standard.category) : 'GR';
-                                      const desc = updateDescriptionWithMaterial(standard.description || '', accCode);
+                                      const desc = buildCleanDescription(standard.productName, standard.description || '', accCode);
                                       updateItem(item.id, { 
                                         name: standard.productName,
                                         unit: standard.unit,
@@ -1156,7 +1151,7 @@ export function QuotationForm({ isOpen, onClose, onSubmit, customers, initialDat
                                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Vật liệu</Label>
                                 <Select 
                                   value={item.materialCode || ''}
-                                  onValueChange={(val) => updateItem(item.id, { materialCode: val })}
+                                  onValueChange={(val) => updateItem(item.id, { materialCode: val, description: buildCleanDescription(item.name, item.description, val) })}
                                 >
                                   <SelectTrigger className="h-9 text-xs bg-slate-50 hover:bg-slate-100 border-dashed truncate">
                                     <SelectValue placeholder="Mặc định" />
