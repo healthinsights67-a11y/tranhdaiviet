@@ -2,18 +2,11 @@ import { db, doc, getDoc, setDoc } from '@/src/lib/firebase';
 import { MaterialMultiplier } from '@/src/types';
 
 export const DEFAULT_MATERIAL_MULTIPLIERS: MaterialMultiplier[] = [
-  { id: '1', stt: 1, code: 'ECO', material: 'ECOPLAST', description: 'ECO hàng A, S', percentage: 105 },
-  { id: '2', stt: 2, code: 'LUX', material: 'ECOPLAST LUXURY', description: 'ECO hàng LUX', percentage: 110 },
-  { id: '3', stt: 3, code: 'ECO+', material: 'ECOPLUS', description: 'ECO+ từ E1-E8', percentage: 120 },
-  { id: '4', stt: 4, code: 'ECOPVC+', material: 'ECOPLUS FILM PVC', description: 'ECO+ hàng phủ film PVC từ E28-E31', percentage: 155 },
-  { id: '5', stt: 5, code: 'PENCO', material: 'PENCO', description: 'Nhựa ECO bản giảm giá thành', percentage: 95 },
-  { id: '6', stt: 6, code: 'CASAWOOD', material: 'CASAWOOD nhựa đặc', description: 'Nhựa đặc phủ PET', percentage: 170 },
-  { id: '7', stt: 7, code: 'THANTRE', material: 'Than tre', description: 'Than tre phủ PET', percentage: 175 },
-  { id: '8', stt: 8, code: 'PKB', material: 'Phụ kiện tủ bếp', description: 'Phụ kiện tủ bếp fulco', percentage: 100 },
-  { id: '9', stt: 9, code: 'MSNT', material: 'Mặt sàn nhựa thường', description: '', percentage: 100 },
-  { id: '10', stt: 10, code: 'MSNCC', material: 'Mặt sàn nhựa cao cấp', description: '', percentage: 120 },
-  { id: '11', stt: 11, code: 'PKTA', material: 'Phụ kiện tủ áo', description: 'Phụ kiện dành cho tủ áo', percentage: 100 },
-  { id: '12', stt: 12, code: 'PKK', material: 'Phụ kiện khác', description: 'Những phụ kiện ngoài khác', percentage: 100 },
+  { id: '1', stt: 1, code: 'GR', material: 'Tranh gạo rang', description: 'Hạt gạo rang tự nhiên chuyển màu thủ công', percentage: 100 },
+  { id: '2', stt: 2, code: 'GM', material: 'Tranh gạo màu', description: 'Gạo nhuộm màu nghệ thuật thủ công tinh xảo', percentage: 100 },
+  { id: '3', stt: 3, code: 'CD', material: 'Tranh chân dung', description: 'Tranh gạo chân dung truyền thần tỉ mỉ', percentage: 100 },
+  { id: '4', stt: 4, code: 'YEUCAU', material: 'Tranh theo yêu cầu', description: 'Tranh làm theo market & logo riêng của khách', percentage: 100 },
+  { id: '5', stt: 5, code: 'KHUNG', material: 'Khung & Phụ kiện', description: 'Khung composite, kính, tem đồng lưu niệm', percentage: 100 },
 ];
 
 const SETTINGS_DOC_ID = 'material_multipliers';
@@ -25,11 +18,19 @@ export const getMaterialMultipliers = async (): Promise<MaterialMultiplier[]> =>
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      if (data && data.items && Array.isArray(data.items)) {
+      if (data && data.items && Array.isArray(data.items) && data.items.length > 0) {
+        // Kiểm tra nếu dữ liệu cũ còn dính ECO/Ecoplast thì tự động di chuyển sang chuẩn Tranh Đại Việt (100%)
+        const hasLegacyEco = data.items.some((i: any) => i.code === 'ECO' || (i.material && i.material.toLowerCase().includes('ecoplast')));
+        if (hasLegacyEco) {
+          console.log("Phát hiện hệ số cũ ECO, tự động chuyển đổi sang danh mục Tranh Đại Việt 100%...");
+          await saveMaterialMultipliers(DEFAULT_MATERIAL_MULTIPLIERS);
+          return DEFAULT_MATERIAL_MULTIPLIERS;
+        }
         return data.items as MaterialMultiplier[];
       }
     }
-    // If not found, return default and potentially save them to initialize
+    // Chưa có thì lưu mặc định và trả về
+    await saveMaterialMultipliers(DEFAULT_MATERIAL_MULTIPLIERS);
     return DEFAULT_MATERIAL_MULTIPLIERS;
   } catch (error) {
     console.error("Error fetching material multipliers:", error);

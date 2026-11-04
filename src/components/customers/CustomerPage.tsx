@@ -952,17 +952,24 @@ export function CustomerPage({
               constructionType: customerData.furnitureCategory || 'Tranh gạo nghệ thuật',
               estimatedTime: '3 - 5 ngày hoàn thiện',
               date: nowStr.split('T')[0],
-              items: newCustomerPaintings.map(p => ({
-                id: p.id || Math.random().toString(36).substr(2, 9),
-                category: p.category || 'Tranh gạo',
-                name: p.name,
-                description: p.description || '',
-                unit: 'bức',
-                quantity: p.quantity,
-                unitPrice: p.unitPrice,
-                total: p.total,
-                basePrice: p.unitPrice
-              })),
+              items: newCustomerPaintings.map(p => {
+                const catLower = (p.category || '').toLowerCase();
+                const matCode = catLower.includes('màu') ? 'GM' : (catLower.includes('chân dung') ? 'CD' : (catLower.includes('yêu cầu') ? 'YEUCAU' : 'GR'));
+                const matName = matCode === 'GM' ? 'Tranh gạo màu' : (matCode === 'CD' ? 'Tranh chân dung' : (matCode === 'YEUCAU' ? 'Tranh theo yêu cầu' : 'Tranh gạo rang'));
+                return {
+                  id: p.id || Math.random().toString(36).substr(2, 9),
+                  category: p.category || matName,
+                  name: p.name,
+                  description: p.description || `- Chất liệu: Hạt gạo rang tự nhiên chuyển màu thủ công tinh xảo, khung kèm kính bảo vệ`,
+                  unit: 'bức',
+                  quantity: p.quantity,
+                  unitPrice: p.unitPrice,
+                  total: p.total,
+                  basePrice: p.unitPrice,
+                  materialCode: matCode,
+                  materialName: matName
+                };
+              }),
               subTotal: quoteTotal,
               discount: 0,
               totalAmount: quoteTotal,
