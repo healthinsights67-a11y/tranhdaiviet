@@ -246,6 +246,8 @@ export function CustomerPage({
       }
 
       let importedCount = 0;
+      let updatedCount = 0;
+      let createdCount = 0;
       const nowStr = new Date().toISOString();
 
       for (let i = dataStartRow; i < rawRows.length; i++) {
@@ -292,67 +294,133 @@ export function CustomerPage({
         const rowWorkshop = colMap.workshop !== -1 ? String(row[colMap.workshop] || '').trim() : '';
         const finalWs = rowWorkshop ? getNormalizedWorkshopId(rowWorkshop) : (currentUser?.workshop && currentUser?.workshop !== 'all' ? getNormalizedWorkshopId(currentUser.workshop) : 'Hà Nội');
 
-        let prefix = 'HN';
-        if (finalWs === 'Cần Thơ') prefix = 'CT';
-        else if (finalWs === 'Đồng Nai') prefix = 'ĐN';
+        let prefixCode = 'HN';
+        if (finalWs === 'Cần Thơ') prefixCode = 'CT';
+        else if (finalWs === 'Đồng Nai') prefixCode = 'ĐN';
 
-        const newCode = rowCode && rowCode.length >= 3 ? rowCode : `${prefix}${getCurrentVNYear()}${Math.floor(100 + Math.random() * 900)}`;
+        const newCode = rowCode && rowCode.length >= 3 ? rowCode : `${prefixCode}${getCurrentVNYear()}${Math.floor(100 + Math.random() * 900)}`;
 
-        const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
-        const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
-
+        // Parse creation date from Excel
         let rowCreatedAt = nowStr;
-        if (colMap.date !== -1 && row[colMap.date]) {
+        if (colMap.date !== -1 && row[colMap.date] !== undefined && row[colMap.date] !== null && String(row[colMap.date]).trim() !== '') {
           const rawDate = row[colMap.date];
           if (rawDate instanceof Date) {
-            rowCreatedAt = rawDate.toISOString();
+            if (!isNaN(rawDate.getTime())) rowCreatedAt = rawDate.toISOString();
           } else if (typeof rawDate === 'number') {
             const jsDate = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
             if (!isNaN(jsDate.getTime())) rowCreatedAt = jsDate.toISOString();
-          } else if (typeof rawDate === 'string' && rawDate.trim()) {
+          } else if (typeof rawDate === 'string') {
             const s = rawDate.trim();
+            // Match DD/MM/YYYY or D/M/YYYY or DD-MM-YYYY
             const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
             if (dmy) {
-              const parsedD = new Date(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}T12:00:00`);
+              const day = dmy[1].padStart(2, '0');
+              const month = dmy[2].padStart(2, '0');
+              const year = dmy[3];
+              const parsedD = new Date(`${year}-${month}-${day}T12:00:00.000Z`);
               if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
             } else {
-              const parsedD = new Date(s);
-              if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
+              // Match YYYY-MM-DD
+              const ymd = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+              if (ymd) {
+                const year = ymd[1];
+                const month = ymd[2].padStart(2, '0');
+                const day = ymd[3].padStart(2, '0');
+                const parsedD = new Date(`${year}-${month}-${day}T12:00:00.000Z`);
+                if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
+              } else {
+                const parsedD = new Date(s);
+                if (!isNaN(parsedD.getTime())) rowCreatedAt = parsedD.toISOString();
+              }
             }
           }
         }
 
-        const docRef = await addDoc(collection(db, 'customers'), {
-          code: newCode,
-          name,
-          phone,
-          address,
-          furnitureCategory: category || 'Tranh gạo nghệ thuật',
-          stage: initialStage,
-          notes,
-          assignedSaleId: currentUser?.id || '',
-          workshop: finalWs,
-          createdAt: rowCreatedAt,
-          consultedAt: rowCreatedAt,
-          orderValue: orderValue || 0,
-          customerType: 'retail'
+        // TÌM XEM KHÁCH HÀNG ĐÃ CÓ TRÊN HỆ THỐNG CHƯA (THEO MÃ KH HOẶC SỐ ĐIỆN THOẠI HOẶC TÊN)
+        const cleanRowCode = (rowCode || '').trim().toLowerCase();
+        const cleanPhone = (phone || '').replace(/\D/g, '');
+
+        const existingCust = customers.find(c => {
+          if (cleanRowCode && c.code && c.code.trim().toLowerCase() === cleanRowCode) return true;
+          if (cleanPhone && c.phone && c.phone.replace(/\D/g, '') === cleanPhone) return true;
+          return false;
         });
 
-        if (needsStageUpdateAfterCreate) {
-          await updateDoc(doc(db, 'customers', docRef.id), { stage });
+        if (existingCust) {
+          // NẾU ĐÃ CÓ: CẬP NHẬT NGÀY TẠO VÀ THÔNG TIN MỚI TỪ FILE EXCEL
+          const updatePayload: any = {
+            createdAt: rowCreatedAt, // CẬP NHẬT NGÀY TẠO THEO FILE EXCEL
+            consultedAt: existingCust.consultedAt || rowCreatedAt,
+          };
+          if (stage) updatePayload.stage = stage;
+          if (orderValue > 0) updatePayload.orderValue = orderValue;
+          if (category) updatePayload.furnitureCategory = category;
+          if (address) updatePayload.address = address;
+          if (notes) updatePayload.notes = notes;
+          if (finalWs) updatePayload.workshop = finalWs;
+
+          await updateDoc(doc(db, 'customers', existingCust.id), updatePayload);
+
+          // ĐỒNG BỘ CẬP NHẬT NGÀY BÁO GIÁ LIÊN KẾT THEO NGÀY MỚI
+          try {
+            const quotationQ = query(collection(db, 'quotations'), where('customerId', '==', existingCust.id));
+            const quotationSnap = await getDocs(quotationQ);
+            for (const qDoc of quotationSnap.docs) {
+              await updateDoc(doc(db, 'quotations', qDoc.id), {
+                date: rowCreatedAt.split('T')[0],
+                createdAt: rowCreatedAt,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          } catch (qErr) {
+            console.error("Lỗi đồng bộ ngày báo giá khi import:", qErr);
+          }
+
+          updatedCount++;
+        } else {
+          // NẾU CHƯA CÓ: THÊM MỚI KHÁCH HÀNG VỚI NGÀY TẠO TỪ FILE EXCEL
+          const needsStageUpdateAfterCreate = ['production', 'production_completed', 'installation', 'completed'].includes(stage);
+          const initialStage = needsStageUpdateAfterCreate ? 'consulting' : stage;
+
+          const docRef = await addDoc(collection(db, 'customers'), {
+            code: newCode,
+            name,
+            phone,
+            address,
+            furnitureCategory: category || 'Tranh gạo nghệ thuật',
+            stage: initialStage,
+            notes,
+            assignedSaleId: currentUser?.id || '',
+            workshop: finalWs,
+            createdAt: rowCreatedAt,
+            consultedAt: rowCreatedAt,
+            orderValue: orderValue || 0,
+            customerType: 'retail'
+          });
+
+          if (needsStageUpdateAfterCreate) {
+            await updateDoc(doc(db, 'customers', docRef.id), { stage });
+          }
+          createdCount++;
         }
+
         importedCount++;
       }
 
       toast.dismiss(toastId);
       if (importedCount > 0) {
         queryClient.invalidateQueries({ queryKey: ['customers'] });
-        toast.success(`🎉 Đã nhập thành công ${importedCount} khách hàng vào hệ thống!`);
-        sendSystemNotification(`🌟 Khách hàng mới (Import từ Excel)!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa import thành công ${importedCount} khách hàng mới.`, 'customers');
+        queryClient.invalidateQueries({ queryKey: ['quotations'] });
+        const summaryMsg = updatedCount > 0 && createdCount > 0
+          ? `🎉 Đã cập nhật ${updatedCount} khách hàng cũ & thêm mới ${createdCount} khách hàng thành công!`
+          : (updatedCount > 0 
+              ? `🎉 Đã cập nhật thành công ngày tạo và thông tin cho ${updatedCount} khách hàng theo file Excel!`
+              : `🎉 Đã nhập mới thành công ${createdCount} khách hàng vào hệ thống!`);
+        toast.success(summaryMsg);
+        sendSystemNotification(`🌟 Đồng bộ dữ liệu Excel!\n\nSale ${currentUser?.name || 'Hệ thống'} vừa cập nhật ${updatedCount} khách hàng và thêm mới ${createdCount} khách hàng từ file Excel.`, 'customers');
       } else {
         toast.error(`Không tìm thấy dòng khách hàng hợp lệ (đã quét ${rawRows.length} dòng). Vui lòng kiểm tra tiêu đề cột Họ tên & SĐT trong file Excel.`);
       }
-
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
       toast.dismiss(toastId);
